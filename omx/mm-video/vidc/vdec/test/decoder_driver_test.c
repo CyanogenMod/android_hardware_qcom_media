@@ -1009,14 +1009,14 @@ static void* async_thread (void *context)
         DEBUG_PRINT ("\n Client Data value in %p", \
                      vdec_msg.msgdata.output_frame.client_data);
         outputframe->bufferaddr = vdec_msg.msgdata.output_frame.bufferaddr;
-        outputframe->framesize.n_bottom = \
-        vdec_msg.msgdata.output_frame.framesize.n_bottom;
-        outputframe->framesize.n_left = \
-        vdec_msg.msgdata.output_frame.framesize.n_left;
-        outputframe->framesize.n_right = \
-        vdec_msg.msgdata.output_frame.framesize.n_right;
-        outputframe->framesize.n_top = \
-        vdec_msg.msgdata.output_frame.framesize.n_top;
+        outputframe->framesize.bottom = \
+        vdec_msg.msgdata.output_frame.framesize.bottom;
+        outputframe->framesize.left = \
+        vdec_msg.msgdata.output_frame.framesize.left;
+        outputframe->framesize.right = \
+        vdec_msg.msgdata.output_frame.framesize.right;
+        outputframe->framesize.top = \
+        vdec_msg.msgdata.output_frame.framesize.top;
         outputframe->framesize = vdec_msg.msgdata.output_frame.framesize;
         outputframe->len = vdec_msg.msgdata.output_frame.len;
         outputframe->time_stamp = vdec_msg.msgdata.output_frame.time_stamp;
@@ -1162,7 +1162,7 @@ static int Read_Buffer_From_DAT_File(unsigned char *dataptr, unsigned int length
   unsigned char *read_buffer=NULL;
   char c = '1'; //initialize to anything except '\0'(0)
   char inputFrameSize[10];
-  int count =0; char cnt =0;
+  int count =0; int cnt =0;
   memset(temp_buffer, 0, sizeof(temp_buffer));
 
   while (cnt < 10)
@@ -1176,7 +1176,7 @@ static int Read_Buffer_From_DAT_File(unsigned char *dataptr, unsigned int length
   inputFrameSize[cnt]='\0';
   frameSize = atoi(inputFrameSize);
   //length = 0;
-  DEBUG_PRINT ("\n Frame Size is %d",frameSize);
+  DEBUG_PRINT ("\n Frame Size is %ld",frameSize);
 
   /* get the frame length */
   fseek(inputBufferFile, -1, SEEK_CUR);

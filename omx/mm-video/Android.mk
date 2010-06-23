@@ -29,22 +29,11 @@
 OMX_VIDEO_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
-ifeq "$(findstring qsd8250,$(TARGET_PRODUCT))" "qsd8250"
-    include $(OMX_VIDEO_PATH)/qdsp6/vdec/Android.mk
-    include $(OMX_VIDEO_PATH)/qdsp6/venc/Android.mk
-endif
+ifneq ($(BUILD_TINY_ANDROID),true)
 
-ifeq "$(findstring qsd8650a,$(TARGET_PRODUCT))" "qsd8650a"
-    include $(OMX_VIDEO_PATH)/qdsp6/vdec/Android.mk
-    include $(OMX_VIDEO_PATH)/qdsp6/venc/Android.mk
-endif
-
-ifeq "$(findstring msm7630,$(TARGET_PRODUCT))" "msm7630"
+ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
     include $(OMX_VIDEO_PATH)/vidc/vdec/Android.mk
     include $(OMX_VIDEO_PATH)/vidc/venc/Android.mk
 endif
 
-ifeq "$(findstring msm8660,$(TARGET_PRODUCT))" "msm8660"
-    include $(OMX_VIDEO_PATH)/vidc/vdec/Android.mk
-    include $(OMX_VIDEO_PATH)/vidc/venc/Android.mk
-endif
+endif #BUILD_TINY_ANDROID

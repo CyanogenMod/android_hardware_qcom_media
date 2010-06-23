@@ -66,7 +66,7 @@ public:
 };
 
 #include <utils/Log.h>
-#define LOG_TAG "OMX-VENC-720p"
+//#define LOG_TAG "OMX-VENC-720p"
 #ifdef ENABLE_DEBUG_LOW
 #define DEBUG_PRINT_LOW LOGE
 #else

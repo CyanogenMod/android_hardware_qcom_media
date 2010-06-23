@@ -49,7 +49,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C"{
 #include<utils/Log.h>
 }
-#define LOG_TAG "OMX-VDEC-720P"
+//#define LOG_TAG "OMX-VDEC-720P"
 #ifdef ENABLE_DEBUG_LOW
 #define DEBUG_PRINT_LOW LOGE
 #else

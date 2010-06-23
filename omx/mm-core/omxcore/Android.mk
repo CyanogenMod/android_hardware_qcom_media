@@ -25,34 +25,18 @@
 #OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 #ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #--------------------------------------------------------------------------
-ifneq ($(BUILD_TINY_ANDROID),true)
-
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
-OMXCORE_CFLAGS := -g -O3 -DVERBOSE
-OMXCORE_CFLAGS += -O0 -fno-inline -fno-short-enums
+#OMXCORE_CFLAGS := -g -O3 -DVERBOSE
+#OMXCORE_CFLAGS += -O0 -fno-inline -fno-short-enums
 OMXCORE_CFLAGS += -D_ANDROID_
 OMXCORE_CFLAGS += -D_ENABLE_QC_MSG_LOG_
 
-#===============================================================================
-#             Figure out the targets
-#===============================================================================
-
-ifeq "$(findstring qsd8250,$(TARGET_PRODUCT))" "qsd8250"
-MM_CORE_TARGET = 8250
-else ifeq "$(findstring msm7627,$(TARGET_PRODUCT))" "msm7627"
-MM_CORE_TARGET = 7627
-else ifeq "$(findstring msm7625,$(TARGET_PRODUCT))" "msm7625"
-MM_CORE_TARGET = 7625
-else ifeq "$(findstring msm7630,$(TARGET_PRODUCT))" "msm7630"
-MM_CORE_TARGET = 7630
-else ifeq "$(findstring msm8660,$(TARGET_PRODUCT))" "msm8660"
-MM_CORE_TARGET = 8660
-else ifeq "$(findstring qsd8650a,$(TARGET_PRODUCT))" "qsd8650a"
-MM_CORE_TARGET =8x50A
+ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
+    MM_CORE_TARGET = 7630
 else
-MM_CORE_TARGET = default
+    $(error Unsupported target platform $(TARGET_BOARD_PLATFORM))
 endif
 
 #===============================================================================
@@ -77,14 +61,12 @@ LOCAL_COPY_HEADERS      += inc/qc_omx_msg.h
 LOCAL_COPY_HEADERS      += inc/QOMX_AudioExtensions.h
 LOCAL_COPY_HEADERS      += inc/QOMX_AudioIndexExtensions.h
 
-
 #===============================================================================
 #             LIBRARY for Android apps
 #===============================================================================
 
 LOCAL_C_INCLUDES        := $(LOCAL_PATH)/src/common
 LOCAL_C_INCLUDES        += $(LOCAL_PATH)/inc
-LOCAL_PRELINK_MODULE    := false
 LOCAL_MODULE            := libOmxCore
 LOCAL_SHARED_LIBRARIES  := liblog libdl
 LOCAL_CFLAGS            := $(OMXCORE_CFLAGS)
@@ -103,7 +85,6 @@ include $(CLEAR_VARS)
 
 LOCAL_C_INCLUDES        := $(LOCAL_PATH)/src/common
 LOCAL_C_INCLUDES        += $(LOCAL_PATH)/inc
-LOCAL_PRELINK_MODULE    := false
 LOCAL_MODULE            := libmm-omxcore
 LOCAL_SHARED_LIBRARIES  := liblog libdl
 LOCAL_CFLAGS            := $(OMXCORE_CFLAGS)
@@ -113,5 +94,3 @@ LOCAL_SRC_FILES         += src/common/qc_omx_core.c
 LOCAL_SRC_FILES         += src/$(MM_CORE_TARGET)/qc_registry_table.c
 
 include $(BUILD_SHARED_LIBRARY)
-
-endif #BUILD_TINY_ANDROID

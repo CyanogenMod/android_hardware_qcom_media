@@ -253,8 +253,8 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                       m_out_mem_ptr(NULL),
                       pending_input_buffers(0),
                       pending_output_buffers(0),
-                      m_out_buf_count(0),
                       m_out_bm_count(0),
+                      m_out_buf_count(0),
                       m_inp_buf_count(OMX_VIDEO_DEC_NUM_INPUT_BUFFERS),
                       m_inp_buf_size(OMX_VIDEO_DEC_INPUT_BUFFER_SIZE),
                       m_inp_bm_count(0),
@@ -272,11 +272,11 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                       m_inp_bEnabled(OMX_TRUE),
                       m_out_bEnabled(OMX_TRUE),
                       m_event_port_settings_sent(false),
+                      input_flush_progress (false),
+                      output_flush_progress (false),
                       m_platform_list(NULL),
                       m_platform_entry(NULL),
                       m_pmem_info(NULL),
-                      output_flush_progress (false),
-                      input_flush_progress (false),
                       input_use_buffer (false),
                       output_use_buffer (false),
                       m_ineos_reached (0),
@@ -290,8 +290,8 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                       codec_type_parse ((codec_type)0),
                       first_frame_meta (true),
                       frame_count (0),
-                      nal_length(0),
                       nal_count (0),
+                      nal_length(0),
                       look_ahead_nal (false),
                       first_frame(0),
                       first_buffer(NULL),
@@ -299,10 +299,10 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                       set_seq_header_done(false),
                       gate_output_buffers(true),
                       gate_input_buffers(false),
-                      sent_first_frame(false),
                       stride(0),
-                      scan_lines(0),
+                      sent_first_frame(false),
                       m_error_propogated(false),
+                      scan_lines(0),
                       m_device_file_ptr(NULL),
                       m_vc1_profile((vc1_profile_type)0)
 {
@@ -442,7 +442,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                     pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                OMX_EventError, OMX_ErrorInvalidState, p2, NULL);
                 }
-                else if (p2 == OMX_ErrorHardware)
+                else if (p2 == (unsigned)OMX_ErrorHardware)
                 {
                    pThis->omx_report_error();
                 }
@@ -5517,14 +5517,14 @@ int omx_vdec::async_message_process (void *context, void* message)
 
         output_respbuf = (struct vdec_output_frameinfo *)\
                           omxhdr->pOutputPortPrivate;
-        output_respbuf->framesize.n_bottom = \
-          vdec_msg->msgdata.output_frame.framesize.n_bottom;
-        output_respbuf->framesize.n_left = \
-          vdec_msg->msgdata.output_frame.framesize.n_left;
-        output_respbuf->framesize.n_right = \
-          vdec_msg->msgdata.output_frame.framesize.n_right;
-        output_respbuf->framesize.n_top = \
-          vdec_msg->msgdata.output_frame.framesize.n_top;
+        output_respbuf->framesize.bottom = \
+          vdec_msg->msgdata.output_frame.framesize.bottom;
+        output_respbuf->framesize.left = \
+          vdec_msg->msgdata.output_frame.framesize.left;
+        output_respbuf->framesize.right = \
+          vdec_msg->msgdata.output_frame.framesize.right;
+        output_respbuf->framesize.top = \
+          vdec_msg->msgdata.output_frame.framesize.top;
         output_respbuf->len = vdec_msg->msgdata.output_frame.len;
         output_respbuf->offset = vdec_msg->msgdata.output_frame.offset;
         output_respbuf->time_stamp = vdec_msg->msgdata.output_frame.time_stamp;
@@ -6176,6 +6176,10 @@ bool omx_vdec::register_output_buffers()
 bool omx_vdec::align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
                                   OMX_U32 alignment)
 {
+//TODO: figure out if this is really necessary (PMEM_ALLOCATE_ALIGNED is a
+// QCOM extension to pmem
+  return true;
+#if 0
   struct pmem_allocation allocation;
   allocation.size = buffer_size;
   allocation.align = clip2(alignment);
@@ -6189,5 +6193,6 @@ bool omx_vdec::align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
     return false;
   }
   return true;
+#endif
 }
 

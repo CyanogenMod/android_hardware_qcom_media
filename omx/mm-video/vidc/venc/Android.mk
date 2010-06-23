@@ -26,8 +26,6 @@
 #ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #--------------------------------------------------------------------------
 
-ifneq ($(BUILD_TINY_ANDROID),true)
-
 ROOT_DIR := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -77,10 +75,10 @@ include $(CLEAR_VARS)
 mm-venc-test720p-inc            := $(TARGET_OUT_HEADERS)/mm-core/omxcore
 mm-venc-test720p-inc            += $(LOCAL_PATH)/inc
 
+LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE                    := mm-venc-omx-test720p
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(mm-venc-test720p-inc)
-LOCAL_PRELINK_MODULE            := false
 LOCAL_SHARED_LIBRARIES          := libmm-omxcore libOmxVenc libbinder
 
 LOCAL_SRC_FILES                 := test/venc_test.cpp
@@ -98,18 +96,11 @@ include $(CLEAR_VARS)
 
 venc-test-inc                   += $(LOCAL_PATH)/inc
 
+LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE                    := mm-video-encdrv-test
 LOCAL_C_INCLUDES                := $(venc-test-inc)
-LOCAL_PRELINK_MODULE            := false
 
 LOCAL_SRC_FILES                 := test/video_encoder_test.c
 LOCAL_SRC_FILES                 += test/queue.c
 
 include $(BUILD_EXECUTABLE)
-
-endif #BUILD_TINY_ANDROID
-
-# ---------------------------------------------------------------------------------
-# 					END
-# ---------------------------------------------------------------------------------
-

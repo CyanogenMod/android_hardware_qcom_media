@@ -522,7 +522,7 @@ OMX_FreeHandle(OMX_IN OMX_HANDLETYPE hComp)
     if ((eRet = qc_omx_component_deinit(hComp)) == OMX_ErrorNone)
     {
         /* Unload component library */
-    if( (i < SIZE_OF_CORE) && core[i].so_lib_handle)
+    if( ((unsigned int)i < SIZE_OF_CORE) && core[i].so_lib_handle)
     {
            if(check_lib_unload(i))
            {

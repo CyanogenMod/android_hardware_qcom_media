@@ -46,14 +46,14 @@ static unsigned char H263_mask_code[4] = {0xFF,0xFF,0xFC,0x00};
 static unsigned char VC1_AP_start_code[4] = {0x00,0x00,0x01,0x0D};
 static unsigned char VC1_AP_mask_code[4] = {0xFF,0xFF,0xFF,0xFF};
 
-frame_parse::frame_parse():parse_state(A0),
+frame_parse::frame_parse():mutils(NULL),
+                           parse_state(A0),
                            last_byte(0),
                            prev_one(0),
                            state_nal(NAL_LENGTH_ACC),
                            nal_length(0),
                            accum_length(0),
                            bytes_tobeparsed(0),
-                           mutils(NULL),
                            time_stamp (0),
                            flags (0)
 {
@@ -337,6 +337,8 @@ int frame_parse::parse_mpeg4_frame ( OMX_BUFFERHEADERTYPE *source,
           {
               parse_state = A0;
           }
+          break;
+      default:
           break;
       }
 

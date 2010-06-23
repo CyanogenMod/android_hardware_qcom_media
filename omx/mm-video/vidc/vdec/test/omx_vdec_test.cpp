@@ -29,6 +29,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     An Open max test application ....
 */
 
+#define LOG_TAG "OMX-VDEC-TEST"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -49,7 +51,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C"{
 #include<utils/Log.h>
 }
-#define LOG_TAG "OMX-VDEC-TEST"
 #define DEBUG_PRINT
 #define DEBUG_PRINT_ERROR
 
@@ -146,10 +147,9 @@ FILE * inputBufferFile;
 FILE * outputBufferFile;
 FILE * seqFile;
 int takeYuvLog = 0;
-int displayYuv = 0;
 int displayWindow = 0;
 int realtime_display = 0;
-struct timeval t_avsync={0};
+struct timeval t_avsync={0,0};
 
 Queue *etb_queue = NULL;
 Queue *fbd_queue = NULL;
@@ -185,8 +185,6 @@ OMX_ERRORTYPE error;
 static int fb_fd = -1;
 static struct fb_var_screeninfo vinfo;
 static struct fb_fix_screeninfo finfo;
-static struct mdp_overlay overlay, *overlayp;
-static struct msmfb_overlay_data ov_front;
 static int vid_buf_front_id;
 int overlay_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr);
 void overlay_set();
@@ -196,7 +194,7 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr);
 /************************************************************************/
 /*              GLOBAL INIT                 */
 /************************************************************************/
-int input_buf_cnt = 0;
+unsigned int input_buf_cnt = 0;
 int height =0, width =0;
 int sliceheight = 0, stride = 0;
 int used_ip_buf_cnt = 0;
@@ -347,7 +345,7 @@ void process_current_command(const char *seq_command)
     else if(strstr(seq_command, "resume") == seq_command)
     {
         printf("\n\n $$$$$   RESUME    $$$$$");
-        printf("\n Immediate effect", data);
+        printf("\n Immediate effect");
         printf("\n Sending PAUSE cmd to OMX compt");
         OMX_SendCommand(dec_handle, OMX_CommandStateSet, OMX_StateExecuting,0);
         wait_for_event();
@@ -516,13 +514,6 @@ void* fbd_thread(void* pArg)
       }
     }
 
-    if (!flush_in_progress && displayYuv && canDisplay && pBuffer->nFilledLen > 0)
-    {
-        if(overlay_fb(pBuffer))
-            break;
-        contigous_drop_frame = 0;
-    }
-
     if (!flush_in_progress && takeYuvLog) {
         pthread_mutex_lock(&fbd_lock);
         bytes_written = fwrite((const char *)pBuffer->pBuffer,
@@ -668,10 +659,6 @@ OMX_ERRORTYPE FillBufferDone(OMX_OUT OMX_HANDLETYPE hComponent,
       currentStatus = GOOD_STATE;
       waitForPortSettingsChanged = 0;
 
-      if(displayYuv)
-      {
-          overlay_set();
-      }
       event_complete();
     }
 
@@ -727,7 +714,7 @@ int main(int argc, char **argv)
       printf(" 3--> H263\n");
       printf(" 4--> VC1\n");
       fflush(stdin);
-      scanf("%d", &codec_format_option);
+      scanf("%d", (int *)&codec_format_option);
       fflush(stdin);
 
       if (codec_format_option > CODEC_FORMAT_MAX)
@@ -755,7 +742,7 @@ int main(int argc, char **argv)
         printf(" 4--> VC1 clip Advance Profile (.vc1)\n");
       }
       fflush(stdin);
-      scanf("%d", &file_type_option);
+      scanf("%d", (int *)&file_type_option);
       fflush(stdin);
     }
 
@@ -805,9 +792,9 @@ int main(int argc, char **argv)
         displayWindow = 0;
       }
 
-      if((file_type_option == FILE_TYPE_PICTURE_START_CODE) ||
-         (file_type_option == FILE_TYPE_RCV) ||
-         (file_type_option == FILE_TYPE_VC1) && argc > 8)
+      if(file_type_option == FILE_TYPE_PICTURE_START_CODE ||
+         file_type_option == FILE_TYPE_RCV ||
+         (file_type_option == FILE_TYPE_VC1 && argc > 8))
       {
           realtime_display = atoi(argv[8]);
       }
@@ -950,19 +937,19 @@ int main(int argc, char **argv)
       printf(" ENTER THE SEQ FILE NAME\n");
       printf(" *********************************************\n");
       fflush(stdin);
-      scanf("%[^\n]", &seq_file_name);
+      scanf("%[^\n]", (char *)&seq_file_name);
       fflush(stdin);
     }
 
     if (outputOption == 0)
     {
-      displayYuv = 0;
       takeYuvLog = 0;
       realtime_display = 0;
     }
     else if (outputOption == 1)
     {
-      displayYuv = 1;
+      printf("Sorry, cannot display to screen\n");
+      return -1;
     }
     else if (outputOption == 2)
     {
@@ -971,13 +958,14 @@ int main(int argc, char **argv)
     }
     else if (outputOption == 3)
     {
-      displayYuv = 1;
-      takeYuvLog = !realtime_display;
+      printf("Sorry, cannot display to screen\n");
+      return -1;
     }
     else
     {
-      printf("Wrong option. Assume you want to see the YUV display\n");
-      displayYuv = 1;
+      printf("Wrong option. Assume you want to take YUV log\n");
+      takeYuvLog = 1;
+      realtime_display = 0;
     }
 
     if (test_option == 2)
@@ -990,7 +978,7 @@ int main(int argc, char **argv)
       printf(" 3 --> Call Free Handle at the OMX_StateExecuting\n");
       printf(" 4 --> Call Free Handle at the OMX_StatePause\n");
       fflush(stdin);
-      scanf("%d", &freeHandle_option);
+      scanf("%d", (int *)&freeHandle_option);
       fflush(stdin);
     }
     else
@@ -1049,36 +1037,6 @@ int main(int argc, char **argv)
       return -1;
     }
 
-    if (displayYuv)
-    {
-      //QPERF_RESET(render_fb);
-#ifdef _ANDROID_
-      DEBUG_PRINT("\n Opening /dev/graphics/fb0");
-      fb_fd = open("/dev/graphics/fb0", O_RDWR);
-#else
-      DEBUG_PRINT("\n Opening /dev/fb0");
-      fb_fd = open("/dev/fb0", O_RDWR);
-#endif
-        if (fb_fd < 0) {
-            printf("[omx_vdec_test] - ERROR - can't open framebuffer!\n");
-            return -1;
-        }
-
-        DEBUG_PRINT("\n fb_fd = %d", fb_fd);
-        if (ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo) < 0)
-        {
-            printf("[omx_vdec_test] - ERROR - can't retrieve fscreenInfo!\n");
-            close(fb_fd);
-            return -1;
-        }
-        if (ioctl(fb_fd, FBIOGET_VSCREENINFO, &vinfo) < 0)
-        {
-            printf("[omx_vdec_test] - ERROR - can't retrieve vscreenInfo!\n");
-            close(fb_fd);
-            return -1;
-        }
-    }
-
     run_tests();
     pthread_cond_destroy(&cond);
     pthread_mutex_destroy(&lock);
@@ -1105,13 +1063,6 @@ int main(int argc, char **argv)
     if (-1 == sem_destroy(&out_flush_sem))
     {
       DEBUG_PRINT_ERROR("Error - sem_destroy failed %d\n", errno);
-    }
-    if (displayYuv)
-    {
-      overlay_unset();
-      close(fb_fd);
-      fb_fd = -1;
-      //QPERF_TERMINATE(render_fb);
     }
     //QPERF_TERMINATE(client_decode);
     return 0;
@@ -1208,7 +1159,7 @@ int run_tests()
   // Wait till EOS is reached...
     if(bOutputEosReached)
     {
-      int bufCnt = 0;
+      unsigned int bufCnt = 0;
 
       DEBUG_PRINT("Moving the decoder to idle state \n");
       OMX_SendCommand(dec_handle, OMX_CommandStateSet, OMX_StateIdle,0);
@@ -1291,11 +1242,11 @@ int Init_Decoder()
     OMX_U32 total = 0;
     char vdecCompNames[50];
     typedef OMX_U8* OMX_U8_PTR;
-    char *role ="video_decoder";
+    char role[] ="video_decoder";
 
     static OMX_CALLBACKTYPE call_back = {&EventHandler, &EmptyBufferDone, &FillBufferDone};
 
-    int i = 0;
+    unsigned int i = 0;
     long bufCnt = 0;
 
     /* Init. the OpenMAX Core */
@@ -1427,7 +1378,8 @@ int Init_Decoder()
 
 int Play_Decoder()
 {
-    int i, bufCnt;
+    int i;
+    unsigned int bufCnt;
     int frameSize=0;
     DEBUG_PRINT("Inside %s \n", __FUNCTION__);
     OMX_ERRORTYPE ret;
@@ -1779,11 +1731,6 @@ int Play_Decoder()
                 DEBUG_PRINT("OMX_FillThisBuffer success!\n");
             }
         }
-
-        if(displayYuv)
-        {
-            overlay_set();
-        }
     }
 
     if (freeHandle_option == FREE_HANDLE_AT_EXECUTING)
@@ -1849,7 +1796,7 @@ static OMX_ERRORTYPE Allocate_Buffer ( OMX_COMPONENTTYPE *dec_handle,
 
 static void do_freeHandle_and_clean_up(bool isDueToError)
 {
-    int bufCnt = 0;
+    unsigned int bufCnt = 0;
 
     for(bufCnt=0; bufCnt < input_buf_cnt; ++bufCnt)
     {
@@ -1924,7 +1871,8 @@ static int Read_Buffer_From_DAT_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     unsigned char *read_buffer=NULL;
     char c = '1'; //initialize to anything except '\0'(0)
     char inputFrameSize[10];
-    int count =0; char cnt =0;
+    int count =0;
+    int cnt = 0;
     memset(temp_buffer, 0, sizeof(temp_buffer));
 
     DEBUG_PRINT("Inside %s \n", __FUNCTION__);
@@ -2051,7 +1999,7 @@ static int Read_Buffer_From_Size_Nal(OMX_BUFFERHEADERTYPE  *pBufHdr)
     int i = 0;
     int j = 0;
     unsigned int size = 0;   // Need to make sure that uint32 has SIZE_NAL_FIELD_MAX (4) bytes
-    int bytes_read = 0;
+    unsigned int bytes_read = 0;
 
     // read the "size_nal_field"-byte size field
     bytes_read = fread(pBufHdr->pBuffer + pBufHdr->nOffset, 1, nalSize, inputBufferFile);
@@ -2322,7 +2270,7 @@ void swap_byte(char *pByte, int nbyte)
 int drawBG(void)
 {
     int result;
-    int i;
+    unsigned int i;
 #ifdef FRAMEBUFFER_32
     long * p;
 #else
@@ -2357,100 +2305,6 @@ int drawBG(void)
 
     DEBUG_PRINT("drawBG success!\n");
     return 0;
-}
-
-void overlay_set()
-{
-    overlayp = &overlay;
-    overlayp->src.width  = stride;
-    overlayp->src.height = sliceheight;
-    overlayp->src.format = MDP_Y_CRCB_H2V2;
-    overlayp->src_rect.x = 0;
-    overlayp->src_rect.y = 0;
-    overlayp->src_rect.w = width;
-    overlayp->src_rect.h = height;
-
-    if(width >= vinfo.xres)
-    {
-        overlayp->dst_rect.x = 0;
-        overlayp->dst_rect.w = vinfo.xres;
-    }
-    else
-    {
-        overlayp->dst_rect.x = (vinfo.xres - width)/2;
-        overlayp->dst_rect.w = width;
-    }
-
-    if(height >= vinfo.yres)
-    {
-        overlayp->dst_rect.y = 0;
-        overlayp->dst_rect.h = vinfo.yres;
-    }
-    else
-    {
-        overlayp->dst_rect.y = (vinfo.yres - height)/2;
-        overlayp->dst_rect.h = height;
-    }
-
-    overlayp->z_order = 0;
-    printf("overlayp->dst_rect.x = %u \n", overlayp->dst_rect.x);
-    printf("overlayp->dst_rect.y = %u \n", overlayp->dst_rect.y);
-    printf("overlayp->dst_rect.w = %u \n", overlayp->dst_rect.w);
-    printf("overlayp->dst_rect.h = %u \n", overlayp->dst_rect.h);
-
-    overlayp->alpha = 0x0;
-    overlayp->transp_mask = 0xFFFFFFFF;
-    overlayp->flags = 0;
-    overlayp->is_fg = 1;
-
-    overlayp->id = MSMFB_NEW_REQUEST;
-    vid_buf_front_id = ioctl(fb_fd, MSMFB_OVERLAY_SET, overlayp);
-    if (vid_buf_front_id < 0)
-    {
-        printf("ERROR: MSMFB_OVERLAY_SET failed! line=%d\n", __LINE__);
-    }
-    vid_buf_front_id = overlayp->id;
-    DEBUG_PRINT("\n vid_buf_front_id = %u", vid_buf_front_id);
-    drawBG();
-}
-
-int overlay_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
-{
-    OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pPMEMInfo = NULL;
-    struct msmfb_overlay_data ov_front;
-    MemoryHeapBase *vheap = NULL;
-    ov_front.id = overlayp->id;
-    pPMEMInfo  = (OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *)
-                ((OMX_QCOM_PLATFORM_PRIVATE_LIST *)
-                    pBufHdr->pPlatformPrivate)->entryList->entry;
-    vheap = (MemoryHeapBase*)pPMEMInfo->pmem_fd;
-
-#ifdef _ANDROID_
-    ov_front.data.memory_id = vheap->getHeapID();
-#else
-    ov_front.data.memory_id = pPMEMInfo->pmem_fd;
-#endif
-    ov_front.data.offset = pPMEMInfo->offset;
-
-    DEBUG_PRINT("\n ov_front.data.memory_id = %d", ov_front.data.memory_id);
-    DEBUG_PRINT("\n ov_front.data.offset = %u", ov_front.data.offset);
-
-    if (ioctl(fb_fd, MSMFB_OVERLAY_PLAY, (void*)&ov_front))
-    {
-        printf("\nERROR! MSMFB_OVERLAY_PLAY failed at frame (Line %d)\n",
-            __LINE__);
-        return -1;
-    }
-    DEBUG_PRINT("\nMSMFB_OVERLAY_PLAY successfull");
-    return 0;
-}
-
-void overlay_unset()
-{
-    if (ioctl(fb_fd, MSMFB_OVERLAY_UNSET, &vid_buf_front_id))
-    {
-        printf("\nERROR! MSMFB_OVERLAY_UNSET failed! (Line %d)\n", __LINE__);
-    }
 }
 
 void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
@@ -2489,13 +2343,13 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     // read to the end of existing extra data sections
     pExtraData = (OMX_OTHER_EXTRADATATYPE*)addr;
 
-    while (addr < end && pExtraData->eType != OMX_ExtraDataFrameInfo)
+    while (addr < end && pExtraData->eType != (enum OMX_EXTRADATATYPE)OMX_ExtraDataFrameInfo)
     {
             addr += pExtraData->nSize;
             pExtraData = (OMX_OTHER_EXTRADATATYPE*)addr;
     }
 
-    if (pExtraData->eType != OMX_ExtraDataFrameInfo)
+    if (pExtraData->eType != (enum OMX_EXTRADATATYPE)OMX_ExtraDataFrameInfo)
     {
        DEBUG_PRINT_ERROR("pExtraData->eType %d pExtraData->nSize %d\n",pExtraData->eType,pExtraData->nSize);
     }

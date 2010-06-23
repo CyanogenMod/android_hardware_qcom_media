@@ -26,8 +26,6 @@
 #ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #--------------------------------------------------------------------------
 
-ifneq ($(BUILD_TINY_ANDROID),true)
-
 ROOT_DIR := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -50,12 +48,8 @@ libOmxVdec-def += -UENABLE_DEBUG_LOW
 libOmxVdec-def += -DENABLE_DEBUG_HIGH
 libOmxVdec-def += -DENABLE_DEBUG_ERROR
 libOmxVdec-def += -UMULTI_DEC_INST
-ifeq "$(findstring msm7630,$(TARGET_PRODUCT))" "msm7630"
 libOmxVdec-def += -DMAX_RES_720P
-endif
-ifeq "$(findstring msm8660,$(TARGET_PRODUCT))" "msm8660"
-libOmxVdec-def += -DMAX_RES_1080P
-endif
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------
@@ -86,10 +80,10 @@ include $(CLEAR_VARS)
 mm-vdec-test-inc		:= $(TARGET_OUT_HEADERS)/mm-core/omxcore
 mm-vdec-test-inc		+= $(LOCAL_PATH)/inc
 
+LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE			:= mm-vdec-omx-test
 LOCAL_CFLAGS	  		:= $(libOmxVdec-def)
 LOCAL_C_INCLUDES  		:= $(mm-vdec-test-inc)
-LOCAL_PRELINK_MODULE		:= false
 LOCAL_SHARED_LIBRARIES		:= libutils libOmxCore libOmxVdec libbinder
 
 LOCAL_SRC_FILES                 := src/queue.c
@@ -105,18 +99,12 @@ include $(CLEAR_VARS)
 mm-vdec-drv-test-inc		:= $(TARGET_OUT_HEADERS)/mm-core/omxcore
 mm-vdec-drv-test-inc		+= $(LOCAL_PATH)/inc
 
+LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE			:= mm-video-driver-test
 LOCAL_CFLAGS	  		:= $(libOmxVdec-def)
 LOCAL_C_INCLUDES  		:= $(mm-vdec-drv-test-inc)
-LOCAL_PRELINK_MODULE		:= false
 
 LOCAL_SRC_FILES                 := src/message_queue.c
 LOCAL_SRC_FILES                 += test/decoder_driver_test.c
 
 include $(BUILD_EXECUTABLE)
-
-endif #BUILD_TINY_ANDROID
-
-# ---------------------------------------------------------------------------------
-#                END
-# ---------------------------------------------------------------------------------
