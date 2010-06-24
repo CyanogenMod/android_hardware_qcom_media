@@ -571,11 +571,11 @@ int allocate_buffer ( unsigned int buffer_dir,
 
   for (i=0; i< buffercount; i++)
   {
-    ptemp [i]->fd = open ("/dev/pmem_adsp",O_RDWR);
+    ptemp [i]->fd = open ("/dev/pmem", O_RDWR | O_SYNC);
 
     if (ptemp [i]->fd < 0)
     {
-      DEBUG_PRINT ("\nallocate_buffer: open pmem_adsp failed");
+      DEBUG_PRINT ("\nallocate_buffer: open pmem failed");
       return -1;
     }
 

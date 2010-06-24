@@ -277,7 +277,7 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
    if (!pMem)
       return NULL;
 
-   pMem->pmem_fd = open("/dev/pmem_adsp", O_RDWR);
+   pMem->pmem_fd = open("/dev/pmem", O_RDWR | O_SYNC);
    if ((int)(pMem->pmem_fd) < 0)
       return NULL;
    nSize = (nSize + 4095) & (~4095);

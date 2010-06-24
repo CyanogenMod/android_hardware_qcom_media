@@ -47,6 +47,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "qc_omx_core.h"
 #include "omx_core_cmp.h"
 
+#define DEBUG_PRINT_ERROR printf
+#define DEBUG_PRINT       printf
+#define DEBUG_DETAIL      printf
+
 extern omx_core_cb_type core[];
 extern const unsigned int SIZE_OF_CORE;
 
@@ -426,7 +430,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
     struct stat sd;
 
     *handle = NULL;
-    if(stat("/dev/pmem_adsp",&sd) != 0)
+    if(stat("/dev/pmem",&sd) != 0)
         return OMX_ErrorInsufficientResources;
 
     cmp_index = get_cmp_index(componentName);

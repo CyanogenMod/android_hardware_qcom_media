@@ -70,6 +70,9 @@ extern "C" {
 #include <linux/fb.h>
 //#include "qutility.h"
 
+#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT_ERROR(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT_LOW(...) printf(__VA_ARGS__)
 
 /************************************************************************/
 /*              #DEFINES                            */
@@ -2240,7 +2243,7 @@ static int open_video_file ()
     }
 
     if (takeYuvLog) {
-        strncpy(outputfilename, "yuvframes.yuv", 14);
+        strcpy(outputfilename, "/data/misc/yuv");
         outputBufferFile = fopen (outputfilename, "ab");
         if (outputBufferFile == NULL)
         {
