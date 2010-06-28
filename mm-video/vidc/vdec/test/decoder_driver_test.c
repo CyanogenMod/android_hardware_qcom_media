@@ -551,7 +551,7 @@ int allocate_buffer ( enum vdec_buffer buffer_dir,
 
   for (i=0; i< buffercount; i++)
   {
-    ptemp [i]->pmem_fd = open ("/dev/pmem", O_RDWR | O_SYNC);
+    ptemp [i]->pmem_fd = open ("/dev/pmem_adsp", O_RDWR | O_SYNC);
 
     if (ptemp [i]->pmem_fd < 0)
     {

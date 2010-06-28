@@ -571,7 +571,7 @@ int allocate_buffer ( unsigned int buffer_dir,
 
   for (i=0; i< buffercount; i++)
   {
-    ptemp [i]->fd = open ("/dev/pmem", O_RDWR | O_SYNC);
+    ptemp [i]->fd = open ("/dev/pmem_adsp", O_RDWR | O_SYNC);
 
     if (ptemp [i]->fd < 0)
     {
