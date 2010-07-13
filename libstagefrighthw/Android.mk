@@ -21,8 +21,10 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
     stagefright_surface_output_msm7x30.cpp \
+    QComHardwareOverlayRenderer.cpp        \
     QComOMXPlugin.cpp                      \
     QComHardwareRenderer.cpp
+
 
 LOCAL_CFLAGS := $(PV_CFLAGS_MINUS_VISIBILITY)
 
@@ -35,7 +37,9 @@ LOCAL_SHARED_LIBRARIES :=       \
         libcutils               \
         libdl                   \
         libui                   \
-        libsurfaceflinger_client\
+        libsurfaceflinger_client \
+        libhardware             
+
 
 LOCAL_MODULE := libstagefrighthw
 
