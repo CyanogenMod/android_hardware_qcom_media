@@ -103,7 +103,9 @@ QComHardwareOverlayRenderer::QComHardwareOverlayRenderer(
 QComHardwareOverlayRenderer::~QComHardwareOverlayRenderer() {
     if (mStatistics) AverageFPSPrint();
 
-    mISurface->unregisterBuffers();
+    if(mOverlay != NULL)
+        mOverlay->destroy();
+    mMemoryHeap.clear();
 }
 
 void QComHardwareOverlayRenderer::render(
