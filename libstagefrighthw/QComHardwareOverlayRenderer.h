@@ -48,6 +48,16 @@ private:
     size_t mFrameSize;
     sp<MemoryHeapPmem> mMemoryHeap;
 
+    //Statistics profiling
+    bool mStatistics;
+    uint32_t mLastFrame;
+    float mFpsSum;
+    uint32_t mFrameNumber;
+    uint32_t mNumFpsSamples;
+    int64_t mLastFrameTime;
+    void AverageFPSProfiling();
+    void AverageFPSPrint();
+
     bool getOffset(void *platformPrivate, size_t *offset);
     void publishBuffers(uint32_t pmem_fd);
 

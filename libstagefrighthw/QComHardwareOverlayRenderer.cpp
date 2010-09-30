@@ -16,6 +16,7 @@
  */
 
 #include <utils/Log.h>
+#undef LOG_TAG
 #define LOG_TAG "QComHardwareOverlayRenderer"
 #include "QComHardwareOverlayRenderer.h"
 
@@ -23,6 +24,9 @@
 #include <binder/MemoryHeapPmem.h>
 #include <media/stagefright/MediaDebug.h>
 #include <surfaceflinger/ISurface.h>
+
+#include <cutils/properties.h>
+#include <sys/time.h>
 
 namespace android {
 
@@ -69,10 +73,21 @@ QComHardwareOverlayRenderer::QComHardwareOverlayRenderer(
       mDisplayHeight(displayHeight),
       mDecodedWidth(decodedWidth),
       mDecodedHeight(decodedHeight),
-      mFrameSize((mDecodedWidth * mDecodedHeight * 3) / 2) {
+      mFrameSize((mDecodedWidth * mDecodedHeight * 3) / 2),
+      mStatistics(false),
+      mLastFrame(0),
+      mFpsSum(0),
+      mFrameNumber(0),
+      mNumFpsSamples(0),
+      mLastFrameTime(0) {
     CHECK(mISurface.get() != NULL);
     CHECK(mDecodedWidth > 0);
     CHECK(mDecodedHeight > 0);
+
+    char value[PROPERTY_VALUE_MAX];
+    property_get("persist.debug.sf.statistics",value,"0");
+    if (atoi(value)) mStatistics = true;
+
     sp<OverlayRef> ref = mISurface->createOverlay(decodedWidth, decodedHeight, OVERLAY_FORMAT_YCrCb_420_SP, ISurface::BufferHeap::ROT_0);
     mOverlay = new Overlay(ref);
     if (mOverlay  == 0){
@@ -86,6 +101,8 @@ QComHardwareOverlayRenderer::QComHardwareOverlayRenderer(
 }
 
 QComHardwareOverlayRenderer::~QComHardwareOverlayRenderer() {
+    if (mStatistics) AverageFPSPrint();
+
     mISurface->unregisterBuffers();
 }
 
@@ -98,6 +115,9 @@ void QComHardwareOverlayRenderer::render(
     }
 
     mOverlay->queueBuffer((void *)offset);
+
+    //Average FPS Profiling
+    if (mStatistics) AverageFPSProfiling();
 }
 
 bool QComHardwareOverlayRenderer::getOffset(void *platformPrivate, size_t *offset) {
@@ -145,6 +165,30 @@ void QComHardwareOverlayRenderer::publishBuffers(uint32_t pmem_fd) {
     LOGV("Calling setFd \n");
     status_t err =  mOverlay->setFd(mFd);
     CHECK_EQ(err, OK);
+}
+
+void QComHardwareOverlayRenderer::AverageFPSPrint() {
+    LOGW("=========================================================");
+    LOGW("Average Frames Per Second: %.4f", mFpsSum/mNumFpsSamples);
+    LOGW("=========================================================");
+}
+
+void QComHardwareOverlayRenderer::AverageFPSProfiling() {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+
+    int64_t now = (int64_t)tv.tv_sec * 1000000 + tv.tv_usec;
+    int64_t diff = now - mLastFrameTime;
+    mFrameNumber++;
+
+    if (diff > 250000) {
+        float mFps = ((mFrameNumber - mLastFrame) * 1E6)/diff;
+        LOGW("Frames Per Second: %.4f",mFps);
+        mFpsSum += mFps;
+        mNumFpsSamples++;
+        mLastFrameTime = now;
+        mLastFrame = mFrameNumber;
+    }
 }
 
 }  // namespace android
