@@ -27,7 +27,7 @@ LOCAL_SRC_FILES := \
 LOCAL_CFLAGS := $(PV_CFLAGS_MINUS_VISIBILITY)
 
 LOCAL_C_INCLUDES:= \
-        $(TOP)/external/opencore/extern_libs_v2/khronos/openmax/include
+        $(TOP)/frameworks/base/include/media/stagefright/openmax
 
 LOCAL_SHARED_LIBRARIES :=       \
         libbinder               \
