@@ -824,16 +824,23 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
 
    init.seq_header = dec->ctxt->sequenceHeader;
    init.seq_len = dec->ctxt->sequenceHeaderLen;
-   if(init.seq_len > VDEC_MAX_SEQ_HEADER_SIZE)
-     init.seq_len = VDEC_MAX_SEQ_HEADER_SIZE;
 
 #if LOG_INPUT_BUFFERS
-   if(pInputFile) {
+   if(pInputFile && init.seq_header) {
+
+      /* Divx 3.11 & VP6 bit streams need the frame size before every frame */
+      if((MAKEFOURCC('D', 'I', 'V', '3') == dec->ctxt->fourcc ) || !strcmp(dec->ctxt->kind, "OMX.qcom.video.decoder.vp"))
+         fwrite(&init.seq_len, sizeof(init.seq_len), 1,pInputFile);
+
       fwritex((uint8 *) init.seq_header, init.seq_len, pInputFile);
       QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
                            "seq head length %d\n", init.seq_len);
    }
 #endif
+
+   /* limiting this as DAL packet size is max 512 bytes */
+   if(init.seq_len > VDEC_MAX_SEQ_HEADER_SIZE)
+     init.seq_len = VDEC_MAX_SEQ_HEADER_SIZE;
 
    init.width = dec->ctxt->width;
 
@@ -870,10 +877,17 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
               "vdec: Opening Divx Decoder \n");
       init.order = 1;
+      if(MAKEFOURCC('D', 'I', 'V', '3') == init.fourcc ){
+        init.seq_header = NULL;
+        init.seq_len = 0;
+      }
    }else if (!strcmp(dec->ctxt->kind, "OMX.qcom.video.decoder.h263")) {
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
               "vdec: Opening H263 Decoder \n");
      init.order = 0;
+     init.seq_header = NULL;
+     init.seq_len = 0;
+
    } else if (!strcmp(dec->ctxt->kind, "OMX.qcom.video.decoder.vc1")) {
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
               "vdec: Opening VC1 Decoder \n");
@@ -886,6 +900,9 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
               "vdec: Opening Spark Decoder \n");
      init.order = 0;
+     init.seq_header = NULL;
+     init.seq_len = 0;
+
    } else {
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
               "Incorrect codec kind\n");
@@ -1050,6 +1067,11 @@ Vdec_ReturnType vdec_post_input_buffer(struct VDecoder * dec,
    }
 #if LOG_INPUT_BUFFERS
    if(pInputFile) {
+
+      /* Divx 3.11 & VP6 bit streams need the frame size before every frame */
+      if((MAKEFOURCC('D', 'I', 'V', '3') == dec->ctxt->fourcc ) || !strcmp(dec->ctxt->kind, "OMX.qcom.video.decoder.vp"))
+         fwrite(&frame->len, sizeof(frame->len),1,pInputFile);
+
       fwritex((uint8 *) frame->data, frame->len, pInputFile);
       QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
                "vdec: input buffer %d len %d\n", counter++, frame->len);
