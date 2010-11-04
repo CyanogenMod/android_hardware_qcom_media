@@ -60,13 +60,15 @@ typedef struct PLATFORM_PRIVATE_PMEM_INFO
 QComHardwareRenderer::QComHardwareRenderer(
         const sp<ISurface> &surface,
         size_t displayWidth, size_t displayHeight,
-        size_t decodedWidth, size_t decodedHeight)
+        size_t decodedWidth, size_t decodedHeight,
+        int32_t rotationDegrees)
     : mISurface(surface),
       mDisplayWidth(displayWidth),
       mDisplayHeight(displayHeight),
       mDecodedWidth(decodedWidth),
       mDecodedHeight(decodedHeight),
-      mFrameSize((mDecodedWidth * mDecodedHeight * 3) / 2) {
+      mFrameSize((mDecodedWidth * mDecodedHeight * 3) / 2),
+      mRotationDegrees(rotationDegrees) {
     CHECK(mISurface.get() != NULL);
     CHECK(mDecodedWidth > 0);
     CHECK(mDecodedHeight > 0);
@@ -126,10 +128,20 @@ void QComHardwareRenderer::publishBuffers(uint32_t pmem_fd) {
     mMemoryHeap = new MemoryHeapPmem(master, heap_flags);
     mMemoryHeap->slap();
 
+    uint32_t orientation;
+    switch (mRotationDegrees) {
+        case 0: orientation = ISurface::BufferHeap::ROT_0; break;
+        case 90: orientation = ISurface::BufferHeap::ROT_90; break;
+        case 180: orientation = ISurface::BufferHeap::ROT_180; break;
+        case 270: orientation = ISurface::BufferHeap::ROT_270; break;
+        default: orientation = ISurface::BufferHeap::ROT_0; break;
+    }
+
     ISurface::BufferHeap bufferHeap(
             mDisplayWidth, mDisplayHeight,
             mDecodedWidth, mDecodedHeight,
             HAL_PIXEL_FORMAT_YCrCb_420_SP,
+            orientation, 0,
             mMemoryHeap);
 
     status_t err = mISurface->registerBuffers(bufferHeap);
