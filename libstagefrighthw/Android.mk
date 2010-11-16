@@ -20,9 +20,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
-    stagefright_surface_output_msm7x30.cpp \
     QComOMXPlugin.cpp                      \
-    QComHardwareRenderer.cpp
 
 LOCAL_CFLAGS := $(PV_CFLAGS_MINUS_VISIBILITY)
 
