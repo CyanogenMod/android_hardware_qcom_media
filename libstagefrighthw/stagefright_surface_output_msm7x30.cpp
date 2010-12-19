@@ -16,7 +16,7 @@
 
 #include <media/stagefright/HardwareAPI.h>
 
-#include "QComHardwareRenderer.h"
+#include "QComHardwareOverlayRenderer.h"
 
 using android::sp;
 using android::ISurface;
@@ -29,15 +29,14 @@ VideoRenderer *createRendererWithRotation(
         size_t displayWidth, size_t displayHeight,
         size_t decodedWidth, size_t decodedHeight,
         int32_t rotationDegrees) {
-    using android::QComHardwareRenderer;
+    using android::QComHardwareOverlayRenderer;
 
     if (colorFormat == OMX_COLOR_FormatYUV420SemiPlanar
         && !strncmp(componentName, "OMX.qcom.7x30.video.decoder.", 28)) {
-        return new QComHardwareRenderer(
+        return new QComHardwareOverlayRenderer(
                 surface, displayWidth, displayHeight,
                 decodedWidth, decodedHeight,
                 rotationDegrees);
     }
-
     return NULL;
 }

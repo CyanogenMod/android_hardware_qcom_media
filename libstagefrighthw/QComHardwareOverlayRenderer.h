@@ -34,7 +34,8 @@ public:
     QComHardwareOverlayRenderer(
             const sp<ISurface> &surface,
             size_t displayWidth, size_t displayHeight,
-            size_t decodedWidth, size_t decodedHeight);
+            size_t decodedWidth, size_t decodedHeight,
+            int32_t rotationDegrees);
 
     virtual ~QComHardwareOverlayRenderer();
 
@@ -46,6 +47,7 @@ private:
     size_t mDisplayWidth, mDisplayHeight;
     size_t mDecodedWidth, mDecodedHeight;
     size_t mFrameSize;
+    int32_t mRotationDegrees;
     sp<MemoryHeapPmem> mMemoryHeap;
 
     //Statistics profiling
