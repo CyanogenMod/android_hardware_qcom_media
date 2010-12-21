@@ -64,6 +64,8 @@ LOCAL_SRC_FILES		:= src/omx_video_base.cpp
 LOCAL_SRC_FILES		+= src/omx_video_encoder.cpp
 LOCAL_SRC_FILES		+= src/video_encoder_device.cpp
 
+LOCAL_MODULE_TAGS := optional
+
 include $(BUILD_SHARED_LIBRARY)
 
 # -----------------------------------------------------------------------------
