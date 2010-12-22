@@ -35,6 +35,10 @@ OMXCORE_CFLAGS += -D_ENABLE_QC_MSG_LOG_
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
     MM_CORE_TARGET = 7630
+else ifeq ($(TARGET_BOARD_PLATFORM),qsd8k)
+    MM_CORE_TARGET = 8250
+else ifeq ($(TARGET_BOARD_PLATFORM),msm7k)
+    MM_CORE_TARGET = 7627
 else
     $(error Unsupported target platform $(TARGET_BOARD_PLATFORM))
 endif
