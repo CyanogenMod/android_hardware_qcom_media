@@ -80,12 +80,15 @@ char filename [] = "/data/input-bitstream.m4v";
     extern "C"{
         #include<utils/Log.h>
     }
-#endif//_ANDROID_
+#define DEBUG_PRINT(...) LOGI(__VA_ARGS__)
+#define DEBUG_PRINT_ERROR(...) LOGE(__VA_ARGS__)
+#define DEBUG_PRINT_LOW(...) LOGV(__VA_ARGS__)
 
+#else
 #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #define DEBUG_PRINT_ERROR(...) printf(__VA_ARGS__)
 #define DEBUG_PRINT_LOW(...) printf(__VA_ARGS__)
-
+#endif//_ANDROID_
 
 void* async_message_thread (void *input)
 {
@@ -231,10 +234,44 @@ void *get_omx_component_factory_fn(void)
 }
 
 #ifdef _ANDROID_
-VideoHeap::VideoHeap(int fd, size_t size, void* base)
+/* NOTE: VideoHeap is only needed because MemoryHeapBase doesn't give
+   us the file descriptor, which we need to communicate with kernel space */
+/* If it gave us the fd, we could just use:
+      MemoryHeapBase("/dev/pmem_adsp", size, NO_CACHING) */
+VideoHeap::VideoHeap(size_t size)
 {
-    // dup file descriptor, map once, use pmem
-    init(dup(fd), base, size, 0 , "/dev/pmem_adsp");
+  mPmemFd = open("/dev/pmem_adsp", O_RDWR | O_SYNC);
+  if (mPmemFd < 0) {
+    DEBUG_PRINT_ERROR("couldn't open pmem");
+    return;
+  }
+
+  void *base = mmap(0, size, PROT_READ|PROT_WRITE, MAP_SHARED, mPmemFd, 0);
+
+  init(mPmemFd, base, size, NO_CACHING, "/dev/pmem_adsp");
+  if (getBase() != MAP_FAILED) {
+    DEBUG_PRINT_LOW("Allocated %d bytes on %s at %p", getSize(), getDevice(), getBase());
+  } else {
+    DEBUG_PRINT_ERROR("Allocation of %d bytes failed on %s", getSize(), getDevice());
+  }
+}
+
+void VideoHeap::dispose_pmem() {
+  int mPmemFd = android_atomic_or(-1, &mPmemFd);
+  if (mPmemFd >= 0) {
+    munmap(getBase(), getSize());
+    dispose();
+  }
+}
+
+VideoHeap::~VideoHeap()
+{
+  dispose_pmem();
+  DEBUG_PRINT_LOW("Deallocated %d bytes on %s at %p", getSize(), getDevice(), getBase());
+}
+
+int VideoHeap::getPmemFd() {
+  return mPmemFd;
 }
 #endif // _ANDROID_
 
@@ -3068,15 +3105,6 @@ OMX_ERRORTYPE  omx_vdec::use_input_buffer(
       return OMX_ErrorInsufficientResources;
     }
 
-    if(pmem_fd == 0)
-    {
-      pmem_fd = open ("/dev/pmem_adsp",O_RDWR | O_SYNC);
-      if (pmem_fd < 0)
-      {
-        return OMX_ErrorInsufficientResources;
-      }
-    }
-
     if(!align_pmem_buffers(pmem_fd, m_inp_buf_size,
       driver_context.input_buffer.alignment))
     {
@@ -3308,17 +3336,6 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
         return OMX_ErrorInsufficientResources;
       }
 
-      if(driver_context.ptr_outputbuffer[i].pmem_fd == 0)
-      {
-        driver_context.ptr_outputbuffer[i].pmem_fd = \
-          open ("/dev/pmem_adsp", O_RDWR | O_SYNC);
-
-        if (driver_context.ptr_outputbuffer[i].pmem_fd < 0)
-        {
-          return OMX_ErrorInsufficientResources;
-        }
-      }
-
       if(!align_pmem_buffers(driver_context.ptr_outputbuffer[i].pmem_fd,
         m_out_buf_size, driver_context.output_buffer.alignment))
       {
@@ -3330,6 +3347,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
       driver_context.ptr_outputbuffer[i].bufferaddr =
         (unsigned char *)mmap(NULL,m_out_buf_size,PROT_READ|PROT_WRITE,
          MAP_SHARED,driver_context.ptr_outputbuffer[i].pmem_fd,0);
+      driver_context.ptr_outputbuffer[i].mmaped_size = m_out_buf_size;
 
       if (driver_context.ptr_outputbuffer[i].bufferaddr == MAP_FAILED)
       {
@@ -3451,7 +3469,7 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
   if (index < m_inp_buf_count && driver_context.ptr_inputbuffer)
   {
     DEBUG_PRINT_LOW("\n Free Input Buffer index = %d",index);
-    if (driver_context.ptr_inputbuffer[index].pmem_fd > 0)
+    if (driver_context.ptr_inputbuffer[index].pmem_fd >= 0)
     {
        struct vdec_ioctl_msg ioctl_msg = {NULL,NULL};
        struct vdec_setbuffer_cmd setbuffers;
@@ -3514,7 +3532,7 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
         DEBUG_PRINT_ERROR("\nRelease output buffer failed in VCD");
     }
 
-    if (driver_context.ptr_outputbuffer[0].pmem_fd > 0)
+    if (driver_context.ptr_outputbuffer[0].pmem_fd >= 0)
     {
        DEBUG_PRINT_LOW("\n unmap the output buffer fd = %d",
                     driver_context.ptr_outputbuffer[0].pmem_fd);
@@ -3721,17 +3739,6 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
       return OMX_ErrorInsufficientResources;
     }
 
-    if (pmem_fd == 0)
-    {
-      pmem_fd = open ("/dev/pmem_adsp", O_RDWR | O_SYNC);
-
-      if (pmem_fd < 0)
-      {
-        DEBUG_PRINT_ERROR("\n open failed for pmem/adsp for input buffer");
-        return OMX_ErrorInsufficientResources;
-      }
-    }
-
     if(!align_pmem_buffers(pmem_fd, m_inp_buf_size,
       driver_context.input_buffer.alignment))
     {
@@ -3824,7 +3831,6 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     int nPlatformEntrySize = 0;
     int nPlatformListSize  = 0;
     int nPMEMInfoSize = 0;
-    int pmem_fd = -1;
     unsigned char *pmem_baseaddress = NULL;
 
     OMX_QCOM_PLATFORM_PRIVATE_LIST      *pPlatformList;
@@ -3848,45 +3854,19 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     DEBUG_PRINT_LOW("PE %d OutputBuffer Count %d \n",nPlatformEntrySize,
                          m_out_buf_count);
 
-    pmem_fd = open ("/dev/pmem_adsp", O_RDWR | O_SYNC);
-
-    if (pmem_fd < 0)
-    {
-      DEBUG_PRINT_ERROR("\nERROR:pmem fd for output buffer %d",m_out_buf_size);
-      return OMX_ErrorInsufficientResources;
-    }
-
-    if(pmem_fd == 0)
-    {
-      pmem_fd = open ("/dev/pmem_adsp", O_RDWR | O_SYNC);
-
-      if (pmem_fd < 0)
-      {
-        DEBUG_PRINT_ERROR("\nERROR:pmem fd for output buffer %d",m_out_buf_size);
-        return OMX_ErrorInsufficientResources;
-      }
-    }
-
-    if(!align_pmem_buffers(pmem_fd, m_out_buf_size * m_out_buf_count,
-      driver_context.output_buffer.alignment))
-    {
-      DEBUG_PRINT_ERROR("\n align_pmem_buffers() failed");
-      close(pmem_fd);
-      return OMX_ErrorInsufficientResources;
-    }
-
-    pmem_baseaddress = (unsigned char *)mmap(NULL,(m_out_buf_size * m_out_buf_count),
-                       PROT_READ|PROT_WRITE,MAP_SHARED,pmem_fd,0);
-    m_heap_ptr = new VideoHeap (pmem_fd,
-                                   m_out_buf_size*m_out_buf_count,
-                                   pmem_baseaddress);
-
-
+    // clear the current reference first
+    // operator= clears it last, and there isn't enough pmem for that.
+    m_heap_ptr.clear();
+    m_heap_ptr = new VideoHeap(m_out_buf_size * m_out_buf_count);
+    pmem_baseaddress = (unsigned char *)m_heap_ptr->getBase();
     if (pmem_baseaddress == MAP_FAILED)
     {
-      DEBUG_PRINT_ERROR("\n MMAP failed for Size %d",m_out_buf_size);
+      DEBUG_PRINT_ERROR("\n MMAP failed for Size %d*%d (%d) on heap %p: %s",
+        m_out_buf_size, m_out_buf_count, m_out_buf_size * m_out_buf_count, m_heap_ptr.get(), strerror(errno));
+      m_heap_ptr.clear();
       return OMX_ErrorInsufficientResources;
     }
+
     m_out_mem_ptr = (OMX_BUFFERHEADERTYPE  *)calloc(nBufHdrSize,1);
     // Alloc mem for platform specific info
     char *pPtr=NULL;
@@ -3900,8 +3880,6 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     if(m_out_mem_ptr && pPtr && driver_context.ptr_outputbuffer
        && driver_context.ptr_respbuffer)
     {
-      driver_context.ptr_outputbuffer[0].mmaped_size =
-        (m_out_buf_size * m_out_buf_count);
       bufHdr          =  m_out_mem_ptr;
       m_platform_list = (OMX_QCOM_PLATFORM_PRIVATE_LIST *)(pPtr);
       m_platform_entry= (OMX_QCOM_PLATFORM_PRIVATE_ENTRY *)
@@ -3942,18 +3920,18 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         pPMEMInfo->pmem_fd = 0;
         bufHdr->pPlatformPrivate = pPlatformList;
 
-        driver_context.ptr_outputbuffer[i].pmem_fd = pmem_fd;
-
         /*Create a mapping between buffers*/
         bufHdr->pOutputPortPrivate = &driver_context.ptr_respbuffer[i];
         driver_context.ptr_respbuffer[i].client_data = (void *) \
                                             &driver_context.ptr_outputbuffer[i];
         driver_context.ptr_outputbuffer[i].offset = m_out_buf_size*i;
+        driver_context.ptr_outputbuffer[i].pmem_fd = static_cast<VideoHeap*>(m_heap_ptr.get())->getPmemFd();
         driver_context.ptr_outputbuffer[i].bufferaddr = \
           pmem_baseaddress + (m_out_buf_size*i);
+        driver_context.ptr_outputbuffer[i].mmaped_size = 0;
 
-        DEBUG_PRINT_LOW("\n pmem_fd = %d offset = %d address = %p",\
-                     pmem_fd,driver_context.ptr_outputbuffer[i].offset,driver_context.ptr_outputbuffer[i].bufferaddr);
+        DEBUG_PRINT_LOW("\n heap = %p offset = %d address = %p",\
+                     m_heap_ptr.get(),driver_context.ptr_outputbuffer[i].offset,driver_context.ptr_outputbuffer[i].bufferaddr);
         // Move the buffer and buffer header pointers
         bufHdr++;
         pPMEMInfo++;

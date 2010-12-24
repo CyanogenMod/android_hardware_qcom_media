@@ -92,8 +92,12 @@ extern "C" {
     class VideoHeap : public MemoryHeapBase
     {
     public:
-        VideoHeap(int fd, size_t size, void* base);
-        virtual ~VideoHeap() {}
+        VideoHeap(size_t size);
+        virtual ~VideoHeap();
+        int getPmemFd();
+        void dispose_pmem();
+    private:
+        int mPmemFd;
     };
 #endif // _ANDROID_
 //////////////////////////////////////////////////////////////////////////////
