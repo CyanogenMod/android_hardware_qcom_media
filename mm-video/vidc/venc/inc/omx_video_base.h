@@ -57,14 +57,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef _ANDROID_
 using namespace android;
-// local pmem heap object
-class VideoHeap : public MemoryHeapBase
-{
-public:
-  VideoHeap(int fd, size_t size, void* base);
-  virtual ~VideoHeap() {}
-};
-
 #include <utils/Log.h>
 //#define LOG_TAG "OMX-VENC-720p"
 #ifdef ENABLE_DEBUG_LOW
