@@ -37,7 +37,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS		:= $(libOmxVdec-def)
 LOCAL_C_INCLUDES	:= $(libmm-vdec-inc)
 
-LOCAL_SHARED_LIBRARIES	:= liblog libutils libbinder
+LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils
 
 LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
