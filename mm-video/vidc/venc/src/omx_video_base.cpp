@@ -186,14 +186,6 @@ unsigned omx_video::omx_cmd_queue::get_q_msg_type()
 
 
 
-#ifdef _ANDROID_
-VideoHeap::VideoHeap(int fd, size_t size, void* base)
-{
-  // dup file descriptor, map once, use pmem
-  init(dup(fd), base, size, 0 , "/dev/pmem_adsp");
-}
-#endif // _ANDROID_
-
 /* ======================================================================
 FUNCTION
   omx_venc::omx_venc
@@ -2058,31 +2050,6 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
       DEBUG_PRINT_ERROR("\nERROR: calloc() Failed for m_pOutput_pmem");
       return OMX_ErrorInsufficientResources;
     }
-
-    if(m_out_mem_ptr)
-    {
-      bufHdr          =  m_out_mem_ptr;
-      DEBUG_PRINT_LOW("Memory Allocation Succeeded for OUT port%p\n",m_out_mem_ptr);
-
-      // Settting the entire storage nicely
-      for(i=0; i < m_sOutPortDef.nBufferCountActual ; i++)
-      {
-        bufHdr->nSize              = sizeof(OMX_BUFFERHEADERTYPE);
-        bufHdr->nVersion.nVersion  = OMX_SPEC_VERSION;
-        bufHdr->nAllocLen          = bytes;
-        bufHdr->nFilledLen         = 0;
-        bufHdr->pAppPrivate        = appData;
-        bufHdr->nOutputPortIndex   = PORT_INDEX_OUT;
-        bufHdr->pBuffer            = NULL;
-        bufHdr++;
-        m_pOutput_pmem[i].fd = -1;
-      }
-    }
-    else
-    {
-      DEBUG_PRINT_ERROR("ERROR: Output buf mem alloc failed[0x%x]\n",m_out_mem_ptr);
-      eRet =  OMX_ErrorInsufficientResources;
-    }
   }
 
   for(i=0; i< m_sOutPortDef.nBufferCountActual; i++)
@@ -2098,7 +2065,13 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
     if(i < m_sOutPortDef.nBufferCountActual)
     {
       *bufferHdr = (m_out_mem_ptr + i );
-      (*bufferHdr)->pBuffer = (OMX_U8 *)buffer;
+      (*bufferHdr)->nSize             = sizeof(OMX_BUFFERHEADERTYPE);
+      (*bufferHdr)->nVersion.nVersion = OMX_SPEC_VERSION;
+      (*bufferHdr)->pAppPrivate       = appData;
+      (*bufferHdr)->nAllocLen         = bytes;
+      (*bufferHdr)->nFilledLen        = 0;
+      (*bufferHdr)->nOutputPortIndex  = PORT_INDEX_OUT;
+      (*bufferHdr)->pBuffer           = (OMX_U8 *)buffer;
       BITMASK_SET(&m_out_bm_count,i);
 
       if(!m_use_output_pmem)
@@ -2261,7 +2234,7 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
 
   if(index < m_sInPortDef.nBufferCountActual && m_pInput_pmem)
   {
-    if(m_pInput_pmem[index].fd > 0 && input_use_buffer == false)
+    if(m_pInput_pmem[index].fd >= 0 && input_use_buffer == false)
     {
       DEBUG_PRINT_LOW("\n FreeBuffer:: i/p AllocateBuffer case");
       if(dev_free_buf(&m_pInput_pmem[index],PORT_INDEX_IN) != true)
@@ -2272,7 +2245,7 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
       close (m_pInput_pmem[index].fd);
       m_pInput_pmem[index].fd = -1;
     }
-    else if(m_pInput_pmem[index].fd > 0 && (input_use_buffer == true &&
+    else if(m_pInput_pmem[index].fd >= 0 && (input_use_buffer == true &&
       m_use_input_pmem == OMX_FALSE))
     {
       DEBUG_PRINT_LOW("\n FreeBuffer:: i/p Heap UseBuffer case");
@@ -2307,7 +2280,7 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
 
   if(index < m_sOutPortDef.nBufferCountActual && m_pOutput_pmem)
   {
-    if(m_pOutput_pmem[index].fd > 0 && output_use_buffer == false )
+    if(m_pOutput_pmem[index].fd >= 0 && output_use_buffer == false )
     {
       DEBUG_PRINT_LOW("\n FreeBuffer:: o/p AllocateBuffer case");
       if(dev_free_buf(&m_pOutput_pmem[index],PORT_INDEX_OUT) != true)
@@ -2318,7 +2291,7 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
       close (m_pOutput_pmem[index].fd);
       m_pOutput_pmem[index].fd = -1;
     }
-    else if( m_pOutput_pmem[index].fd > 0 && (output_use_buffer == true
+    else if( m_pOutput_pmem[index].fd >= 0 && (output_use_buffer == true
       && m_use_output_pmem == OMX_FALSE))
     {
       DEBUG_PRINT_LOW("\n FreeBuffer:: o/p Heap UseBuffer case");
