@@ -4433,6 +4433,9 @@ void Venc::process_empty_buffer(OMX_BUFFERHEADERTYPE* pBufferHdr)
    pmem_input.size =  m_sInPortDef.nBufferSize;
    input.ptr_buffer = (unsigned char *)&pmem_input;
 
+   QC_OMX_MSG_LOW("Empty_input pmem fd=%d offset=%d src=%d size=%d",
+                      pmem_input.fd, pmem_input.offset, pmem_input.src, pmem_input.size);
+
    input.len = pBufferHdr->nFilledLen;
    input.size = pBufferHdr->nAllocLen;
    input.time_stamp = pBufferHdr->nTimeStamp;
@@ -4502,6 +4505,9 @@ void Venc::process_fill_buffer(OMX_BUFFERHEADERTYPE* pBufferHdr)
       pmem_output.src = VENC_PMEM_EBI1;
       pmem_output.size =  m_sOutPortDef.nBufferSize;
       output.ptr_buffer = (unsigned char *)&pmem_output;
+
+      QC_OMX_MSG_LOW("Fill_output pmem fd=%d offset=%d src=%d size=%d",
+		      pmem_output.fd, pmem_output.offset, pmem_output.src, pmem_output.size);
 
       output.client_data = (unsigned long) pBufferHdr;
       driverRet = DeviceIoControl(m_nFd,
