@@ -254,7 +254,7 @@ namespace venctest
           {
             if (pBufferHdr->nFilledLen > 0)
             {
-              VENC_TEST_MSG_MEDIUM("writing frame %ld with %lu bytes...", i, pBufferHdr->nFilledLen);
+              VENC_TEST_MSG_HIGH("writing frame %ld with %lu bytes...", i, pBufferHdr->nFilledLen);
               result = m_pFile->Write((OMX_U8 *)pBufferHdr->pBuffer,
                   pBufferHdr->nFilledLen,
                   &nBytes);

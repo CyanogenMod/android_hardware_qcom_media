@@ -67,14 +67,14 @@ static int ven_set_default_buf_properties(struct ven_device* dvenc)
 
   pcfg = &(dvenc->config.base_config);
 
-  QC_OMX_MSG_HIGH("Update input buffer requirements pcfg: %p\n", pcfg);
+  QC_OMX_MSG_MEDIUM("Update input buffer requirements pcfg: %p", pcfg);
   dvenc->input_attrs.min_count = 1;
   dvenc->input_attrs.actual_count = 6;
   dvenc->input_attrs.suffix_size = 0;
   dvenc->input_attrs.data_size = pcfg->input_width * pcfg->input_height * 3 / 2;
   dvenc->input_attrs.alignment = VEN_PMEM_ALIGN;
 
-  QC_OMX_MSG_HIGH("Update output buffer requirements pcfg:%p \n", pcfg);
+  QC_OMX_MSG_MEDIUM("Update output buffer requirements pcfg:%p", pcfg);
   dvenc->output_attrs.min_count = 1;
   dvenc->output_attrs.actual_count = 8;
   dvenc->output_attrs.suffix_size = 0;
@@ -144,13 +144,21 @@ void ven_update_output_size(struct ven_device* dvenc)
       dvenc->output_attrs.data_size = 248 << 11;
     }
   }
-  else
+  else if (dvenc->config.base_config.codec_type == VEN_CODEC_H264)
   {
     // Compression of 50% of the YUV size
     dvenc->output_attrs.data_size = (int) (width * height * 0.5) * 3 / 2;
+    // FIX IT as per the standard !!!
+    dvenc->output_attrs.data_size = 2*dvenc->output_attrs.data_size;
   }
-
-  QC_OMX_MSG_HIGH("new out buf size: %d", dvenc->output_attrs.data_size);
+  else
+  {
+    QC_OMX_MSG_ERROR("invalid codec specified");
+  }
+  QC_OMX_MSG_HIGH("output width = %d, height = %d", width, height);
+  QC_OMX_MSG_HIGH("new output buffer size [%d] required for spcified level [%d]",
+    dvenc->output_attrs.data_size,
+	dvenc->config.profile_level.level);
 }
 
 static int ven_update_buf_properties(struct ven_device *dvenc)
@@ -165,6 +173,10 @@ static int ven_update_buf_properties(struct ven_device *dvenc)
 
   pcfg = &dvenc->config.base_config;
   dvenc->input_attrs.data_size = pcfg->input_height * pcfg->input_width * 3 / 2;
+  QC_OMX_MSG_HIGH("input width = %d, height = %d",
+    pcfg->input_width, pcfg->input_height);
+  QC_OMX_MSG_HIGH("new input buffer size: %d",
+    dvenc->input_attrs.data_size);
 
   ven_update_output_size(dvenc);
 
@@ -180,7 +192,7 @@ static int ven_set_default_config(struct ven_device *dvenc)
   struct ven_config_type *pconfig;
 
   pconfig = &(dvenc->config);
-  QC_OMX_MSG_HIGH("%s:  pconfig: %p base_cfg %p \n", __func__, pconfig, &(pconfig->base_config) );
+  QC_OMX_MSG_HIGH("%s:  pconfig: %p base_cfg %p", __func__, pconfig, &(pconfig->base_config) );
   // base configuration MPEG4 720p @ 30fps / 8Mbps
   pconfig->base_config.input_width = 1280;
   pconfig->base_config.input_height = 720;
@@ -235,7 +247,7 @@ static int ven_set_default_config(struct ven_device *dvenc)
 
   // disable error resilience
   pconfig->short_header.status = 0;
-  pconfig->hec_interval.header_extension = 0;
+  pconfig->header_extension.hec_interval = 0;
   pconfig->data_partition.status = 0;
 
   return ret;
@@ -245,7 +257,7 @@ static void ven_change_codec(struct ven_device * dvenc)
 {
   struct ven_config_type *pconfig =&(dvenc->config);
 
-  QC_OMX_MSG_HIGH("%s \n", __func__);
+  QC_OMX_MSG_HIGH("%s", __func__);
   if (pconfig->base_config.codec_type == VEN_CODEC_MPEG4)
   {
     pconfig->qp_range.min_qp = 2;
@@ -261,7 +273,7 @@ static void ven_change_codec(struct ven_device * dvenc)
     pconfig->session_qp.pframe_qp = 14;
 
     pconfig->short_header.status = 0;
-    pconfig->hec_interval.header_extension = 0;
+    pconfig->header_extension.hec_interval = 0;
     pconfig->data_partition.status = 0;
   }
   else if (pconfig->base_config.codec_type == VEN_CODEC_H263)
@@ -280,7 +292,7 @@ static void ven_change_codec(struct ven_device * dvenc)
 
     pconfig->short_header.status = 0;
     pconfig->ac_prediction.status = 0;
-    pconfig->hec_interval.header_extension = 0;
+    pconfig->header_extension.hec_interval = 0;
     pconfig->data_partition.status = 0;
   }
   else if (pconfig->base_config.codec_type == VEN_CODEC_H264)
@@ -299,7 +311,7 @@ static void ven_change_codec(struct ven_device * dvenc)
 
     pconfig->short_header.status = 0;
     pconfig->ac_prediction.status = 0;
-    pconfig->hec_interval.header_extension = 0;
+    pconfig->header_extension.hec_interval = 0;
     pconfig->data_partition.status = 0;
   }
   else
@@ -314,6 +326,377 @@ static void ven_change_codec(struct ven_device * dvenc)
 static int ven_validate_config(struct ven_config_type* pconfig)
 {
   return 0;
+#if 0
+  int32 result = 0;
+
+   unsigned long minQp = 1;
+   unsigned long maxQp = 31;
+   boolean condition = 0;
+
+   result = Ven_ValidateLevel(pConfig->base_config.codec_type,
+                       pConfig->base_config.input_width,
+                       pConfig->base_config.input_height,
+                       pConfig->bitrate.target_bitrate,
+                       pConfig->profile_level.level,
+                       pConfig->rate_control.rc_mode);
+
+   // verify input width and height, width must be greater than height
+   condition = pConfig->base_config.input_width == 0 ||
+               pConfig->base_config.input_height ==  0;
+   if (condition)
+   {
+      VEN_INVAL_PARAM("invalid input width or height");
+   }
+
+   // verify non-zero width and height
+   condition = pConfig->base_config.dvs_width == 0 ||
+               pConfig->base_config.dvs_height ==  0;
+   if (condition)
+   {
+      VEN_INVAL_PARAM("invalid dvs width or height");
+   }
+
+   // verify codec
+   condition = pConfig->base_config.codec_type !=  VEN_CODEC_MPEG4 &&
+               pConfig->base_config.codec_type !=  VEN_CODEC_H263 &&
+               pConfig->base_config.codec_type !=  VEN_CODEC_H264;
+   if (condition)
+   {
+      VEN_INVAL_PARAM("invalid codec");
+   }
+
+   // non-zero fps, also protect against div by zero
+   condition = pConfig->base_config.fps_num == 0 ||
+               pConfig->base_config.fps_den == 0;
+   if (condition)
+   {
+      VEN_INVAL_PARAM("invalid fps numerator or denominator");
+   }
+
+   // non-zero bitrate
+   condition = pConfig->base_config.target_bitrate == 0 &&
+               pConfig->rate_control.rc_mode != VEN_RC_OFF;
+   if (condition)
+   {
+      VEN_INVAL_PARAM("invalid bitrate");
+   }
+
+   // must be nv21 yuv format (refer to 4cc color formats)
+   if (pConfig->base_config.input_format != VEN_INPUTFMT_NV21)
+   {
+      VEN_INVAL_PARAM("invalid yuv format");
+   }
+
+   // verify rate control flavor
+   condition = pConfig->rate_control.rc_mode != VEN_RC_OFF &&
+               pConfig->rate_control.rc_mode != VEN_RC_VBR_VFR &&
+               pConfig->rate_control.rc_mode != VEN_RC_VBR_CFR &&
+               pConfig->rate_control.rc_mode != VEN_RC_CBR_VFR;
+   if (condition)
+   {
+      VEN_INVAL_PARAM("invalid rc flavor");
+   }
+
+   // For MMS mode only VBR VFR is valid
+   //condition = (pConfig->sEncMode.nEncoderMode == VEN_MODE_MMS) && 
+   //            (pConfig->rate_control.rc_mode != VEN_RC_VBR_VFR);
+   //if (condition)
+   //{
+   //   VEN_INVAL_PARAM("invalid rc flavor for MMS enc mode");
+   //}   
+   
+   // VBR CFR is only valid for resolutions less than or equal to wqvga
+   //if (pConfig->rate_control.rc_mode == VEN_RC_CBR_VFR)
+   //{
+   //   condition = pConfig->base_config.input_width > VEN_WQVGA_DX ||
+   //               pConfig->base_config.input_width > VEN_WVQGA_DY;
+   //   if (condition)
+   //   {
+   //      VEN_INVAL_PARAM("VEN_RC_VBR_CFR is only valid for small frames");
+   //   }
+   //}
+
+   // non-zero fps, also protect against div by zero
+   condition = pConfig->frame_rate.fps_numerator == 0 ||
+               pConfig->frame_rate.fps_denominator == 0;
+   if (condition)
+   {
+      VEN_INVAL_PARAM("invalid fps numerator or denominator");
+   }
+
+   // ir only valid for qcif
+   //condition = pConfig->intra_refresh.ir_mode == VEN_IR_RANDOM ||
+   //            pConfig->intra_refresh.ir_mode == VEN_IR_CYCLIC;
+   //if (condition)
+   //{
+   //  condition = (pConfig->base_config.dvs_width == VEN_QCIF_DX &&
+   //               pConfig->base_config.dvs_height == VEN_QCIF_DY) || 
+   //               (pConfig->base_config.dvs_width == VEN_QCIF_DY &&
+   //               pConfig->base_config.dvs_height == VEN_QCIF_DX);
+   //  if (!condition)
+   //  {
+   //    VEN_INVAL_PARAM("intra refresh is only valid for qcif");
+   //  } 
+   //}
+
+   // validate intra period, we don't support all iframes
+   if (pConfig->intra_period.num_pframes == 0)
+   {
+      VEN_INVAL_PARAM("we dont support all iframes");
+   }
+
+   // validate QPs
+   if (pConfig->base_config.codec_type == VEN_CODEC_H264)
+   {
+      maxQp = 51;
+   }
+   if (pConfig->rate_control.rc_mode == VEN_RC_OFF)
+   {
+      condition = pConfig->session_qp.iframe_qp < minQp ||
+                  pConfig->session_qp.pframe_qp < minQp ||
+                  pConfig->session_qp.iframe_qp > maxQp ||
+                  pConfig->session_qp.pframe_qp > maxQp;
+      if (condition)
+      {
+         VEN_INVAL_PARAM("invalid session QPs");
+      }
+   }
+   else
+   {
+      condition = pConfig->qp_range.max_qp < minQp ||
+                  pConfig->qp_range.min_qp < minQp ||
+                  pConfig->qp_range.max_qp > maxQp ||
+                  pConfig->qp_range.min_qp > maxQp ||
+                  pConfig->qp_range.min_qp > pConfig->qp_range.max_qp;
+      if (condition)
+      {
+         VEN_INVAL_PARAM("invalid qp range");
+      }
+   }
+#if 0
+   // verify slice configuration
+   if (pConfig->multi_slice.mslice_mode == VEN_MSLICE_CNT_MB)
+   {
+      unsigned long numMBs = (pConfig->base_config.input_width / 16) *
+                             (pConfig->base_config.input_height / 16);
+
+      condition = pConfig->multi_slice.mslice_size == 0 ||
+                  pConfig->multi_slice.mslice_size > numMBs;
+      if (condition)
+      {
+         VEN_INVAL_PARAM("invalid slice MBs");
+      }
+   }
+   else if (pConfig->multi_slice.mslice_mode == VEN_MSLICE_CNT_BYTE)
+   {
+      if (pConfig->multi_slice.mslice_size == 0)
+      {
+         VEN_INVAL_PARAM("invalid slice bytes");
+      }
+   }
+   else if (pConfig->multi_slice.mslice_mode != VEN_MSLICE_OFF &&
+            pConfig->multi_slice.mslice_mode != VEN_MSLICE_GOB)
+   {
+      VEN_INVAL_PARAM("invalid slice flavor");
+   }
+
+   //if (pConfig->multi_slice.mslice_mode == VEN_MSLICE_OFF)
+   //{
+   //   // Disable the slice info
+   //   VEN_MSG_HIGH("Disabling extra data when slicing is off",0,0,0);
+   //   pConfig->sExtraData.nEnableVideoExtraData = 0;
+   //}
+#endif   
+   // codec-specific validation
+   if (pConfig->base_config.codec_type == VEN_CODEC_MPEG4)
+   {
+      // validate profile / level
+      if (pConfig->profile.profile != VEN_PROFILE_MPEG4_SP)
+      {
+         VEN_INVAL_PARAM("invalid profile specified");
+      }
+
+      switch (pConfig->profile_level.level)
+      {
+         case VEN_LEVEL_MPEG4_0:
+         case VEN_LEVEL_MPEG4_0B:
+         case VEN_LEVEL_MPEG4_1:
+         case VEN_LEVEL_MPEG4_2:
+         case VEN_LEVEL_MPEG4_3:
+         case VEN_LEVEL_MPEG4_4A:
+         case VEN_LEVEL_MPEG4_5:
+         case VEN_LEVEL_MPEG4_6:
+            break;
+         default:
+            VEN_INVAL_PARAM("invalid level specified");
+            break;
+      }
+#if 0
+      // gob is only valid for h263
+      if (pConfig->multi_slice.mslice_mode == VEN_MSLICE_GOB)
+      {
+         VEN_INVAL_PARAM("invalid slice flavor for mpeg4");
+      }
+      // ER is only valid for resolutions less than or equal to wqvga
+      if (pConfig->multi_slice.mslice_mode != VEN_MSLICE_OFF)
+      {
+         condition = pConfig->base_config.input_width > VEN_WQVGA_DX ||
+                     pConfig->base_config.input_height > VEN_WVQGA_DY;
+         if (condition)
+         {
+            VEN_INVAL_PARAM("slicing only valid for small frames");
+         }
+      }
+#endif
+      // non-zero time resolution
+      if (pConfig->vop_timing.vop_time_resolution == 0)
+      {
+         VEN_INVAL_PARAM("invalid time inc res");
+      }
+
+      // validate enums
+      condition = pConfig->ac_prediction.status != 0 &&
+                  pConfig->ac_prediction.status != 1;
+      if (condition)
+      {
+         VEN_INVAL_PARAM("invalid ac prediction boolean");
+      }
+
+      // validate enums
+      condition = pConfig->short_header.status != 0 &&
+                  pConfig->short_header.status != 1;
+      if (condition)
+      {
+         VEN_INVAL_PARAM("invalid short header boolean");
+      }
+
+      // validate enums
+      condition = pConfig->data_partition.status != 0 &&
+                  pConfig->data_partition.status != 1;
+      if (condition)
+      {
+         VEN_INVAL_PARAM("invalid data partition boolean");
+      }
+
+      // dp only valid for resolutions less than or equal to wqvga
+      if (pConfig->data_partition.status == 1)
+      {
+         condition = pConfig->base_config.input_width > VEN_WQVGA_DX ||
+                     pConfig->base_config.input_height > VEN_WVQGA_DY;
+         if (condition)
+         {
+            VEN_INVAL_PARAM("dp only valid for small frames");
+         }
+      }
+
+      // hec only valid for resolutions less than or equal to wqvga
+      if (pConfig->header_extension.hec_interval > 0)
+      {
+         condition = pConfig->base_config.input_width > VEN_WQVGA_DX ||
+                     pConfig->base_config.input_height > VEN_WVQGA_DY;
+         if (condition)
+         {
+            VEN_INVAL_PARAM("hec only valid for resolutions less than or equal to wqvga");
+         }
+      }
+   }
+   else if (pConfig->base_config.codec_type == VEN_CODEC_H263)
+   {
+      // validate profile / level
+      if (pConfig->profile.profile != VEN_PROFILE_H263_BASELINE)
+      {
+         VEN_INVAL_PARAM("invalid profile specified");
+      }
+
+      switch (pConfig->profile_level.level)
+      {
+         case VEN_LEVEL_H263_10:
+         case VEN_LEVEL_H263_20:
+         case VEN_LEVEL_H263_30:
+         case VEN_LEVEL_H263_40:
+         case VEN_LEVEL_H263_45:
+         case VEN_LEVEL_H263_50:
+         case VEN_LEVEL_H263_60:
+         case VEN_LEVEL_H263_70:
+            break;
+         default:
+            VEN_INVAL_PARAM("invalid level specified");
+            break;
+      }
+#if 0
+      // we don't support annex k
+      condition = pConfig->multi_slice.mslice_mode == VEN_MSLICE_CNT_BYTE ||
+                  pConfig->multi_slice.mslice_mode == VEN_MSLICE_CNT_MB;
+      if (condition)
+      {
+         VEN_INVAL_PARAM("invalid slice flavor for h263");
+      }
+#endif
+      // make sure no mp4 params are configured for h263
+      condition = pConfig->ac_prediction.status != 0 ||
+                  pConfig->short_header.status != 0 ||
+                  pConfig->data_partition.status != 0 ||
+                  pConfig->header_extension.hec_interval != 0;
+      if (condition)
+      {
+         VEN_INVAL_PARAM("mpeg4 params can't be set for h263");
+      }
+   }
+   else if (pConfig->base_config.codec_type == VEN_CODEC_H264)
+   {
+      // validate profile / level
+      if (pConfig->profile.profile != VEN_PROFILE_H264_BASELINE)
+      {
+         VEN_INVAL_PARAM("invalid profile specified");
+      }
+
+      switch (pConfig->profile_level.level)
+      {
+         case VEN_LEVEL_H264_1:
+         case VEN_LEVEL_H264_1B:
+         case VEN_LEVEL_H264_1P1:
+         case VEN_LEVEL_H264_1P2:
+         case VEN_LEVEL_H264_1P3:
+         case VEN_LEVEL_H264_2:
+         case VEN_LEVEL_H264_2P1:
+         case VEN_LEVEL_H264_2P2:
+         case VEN_LEVEL_H264_3:
+         case VEN_LEVEL_H264_3P1:
+            break;
+         default:
+            VEN_INVAL_PARAM("invalid level specified");
+            break;
+      }
+#if 0
+      // gob is only valid for h263
+      if (pConfig->multi_slice.mslice_mode == VEN_MSLICE_GOB)
+      {
+         VEN_INVAL_PARAM("invalid slice flavor for h264");
+      }
+      // ER is only valid for resolutions less than or equal to CIF
+      if (pConfig->multi_slice.mslice_mode != VEN_MSLICE_OFF)
+      {
+         condition = pConfig->base_config.input_width > VEN_CIF_DX ||
+                     pConfig->base_config.input_height > VEN_CIF_DY;
+         if (condition)
+         {
+            VEN_INVAL_PARAM("slicing only valid for resolutions less than or equal to CIF");
+         }
+      }
+#endif
+      // make sure no mp4 params are configured for h264
+      condition = pConfig->ac_prediction.status != 0 ||
+                  pConfig->short_header.status != 0 ||
+                  pConfig->data_partition.status != 0 ||
+                  pConfig->header_extension.hec_interval != 0;
+      if (condition)
+      {
+         VEN_INVAL_PARAM("mpeg4 params can't be set for h264");
+      }
+   }
+
+    return result;
+#endif
 }
 
 /**************************************************************************
@@ -322,37 +705,37 @@ static int ven_validate_config(struct ven_config_type* pconfig)
 static void ven_print_config(struct venc_q6_config* pconfig)
 {
 
-  QC_OMX_MSG_PROFILE("Config for video encoder \n");
-  QC_OMX_MSG_PROFILE("config standard=%d, input_frame_height=%d, input_frame_width=%d \n",
+  QC_OMX_MSG_PROFILE("Config for video encoder");
+  QC_OMX_MSG_PROFILE("config standard=%d, input_frame_height=%d, input_frame_width=%d",
       (int ) pconfig->config_params.standard,
       (int ) pconfig->config_params.input_frame_height,
       (int ) pconfig->config_params.input_frame_width);
 
-  QC_OMX_MSG_PROFILE("config output_frame_height=%d, output_frame_width=%d, rotation_angle=%d \n",
+  QC_OMX_MSG_PROFILE("config output_frame_height=%d, output_frame_width=%d, rotation_angle=%d",
       (int ) pconfig->config_params.output_frame_height,
       (int ) pconfig->config_params.output_frame_width,
       (int ) pconfig->config_params.rotation_angle);
 
-  QC_OMX_MSG_PROFILE("config intra_period=%d \n",
+  QC_OMX_MSG_PROFILE("config intra_period=%d",
       (int ) pconfig->config_params.intra_period);
 
-  QC_OMX_MSG_PROFILE("config rate_control=%d \n",
+  QC_OMX_MSG_PROFILE("config rate_control=%d",
       (int ) pconfig->config_params.rate_control);
 
   ////////////////////////////////////////
   //////////////////////// slice
-  QC_OMX_MSG_PROFILE("config mslice_mode=%d, slice_size=%d \n",
+  QC_OMX_MSG_PROFILE("config mslice_mode=%d, slice_size=%d",
       (int ) pconfig->config_params.slice_config.slice_mode,
       (int ) pconfig->config_params.slice_config.units_per_slice);
 
   ////////////////////////////////////////
   //////////////////////// quality
-  QC_OMX_MSG_PROFILE("config frame_numerator=%d, fps_denominator=%d, bitrate=%d \n",
+  QC_OMX_MSG_PROFILE("config frame_numerator=%d, fps_denominator=%d, bitrate=%d",
       (int ) pconfig->config_params.frame_rate.frame_rate_num,
       (int ) pconfig->config_params.frame_rate.frame_rate_den,
       (int ) pconfig->config_params.bitrate);
 
-  QC_OMX_MSG_PROFILE("config iframe_qp=%d, pframe_qp=%d, min_qp=%d \n",
+  QC_OMX_MSG_PROFILE("config iframe_qp=%d, pframe_qp=%d, min_qp=%d",
       (int ) pconfig->config_params.iframe_qp,
       (int ) pconfig->config_params.pframe_qp,
       (int ) pconfig->config_params.qp_range.min_qp);
@@ -364,11 +747,11 @@ static void ven_print_config(struct venc_q6_config* pconfig)
   //////////////////////// mp4
   if (pconfig->config_params.standard == VENC_CODEC_MPEG4)
   {
-    QC_OMX_MSG_PROFILE("config mp4 profile=%d, level=%d, time_resolution=%d \n",
+    QC_OMX_MSG_PROFILE("config mp4 profile=%d, level=%d, time_resolution=%d",
         (int ) pconfig->codec_params.mpeg4_params.profile,
         (int ) pconfig->codec_params.mpeg4_params.level,
         (int ) pconfig->codec_params.mpeg4_params.time_resolution);
-    QC_OMX_MSG_PROFILE("config ac_prediction=%d, hec_interval=%d, data_partition=%d \n",
+    QC_OMX_MSG_PROFILE("config ac_prediction=%d, hec_interval=%d, data_partition=%d",
         (int ) pconfig->codec_params.mpeg4_params.ac_prediction,
         (int ) pconfig->codec_params.mpeg4_params.hec_interval,
         (int ) pconfig->codec_params.mpeg4_params.data_partition);
@@ -380,7 +763,7 @@ static void ven_print_config(struct venc_q6_config* pconfig)
   //////////////////////// h263
   else if (pconfig->config_params.standard == VENC_CODEC_H263)
   {
-    QC_OMX_MSG_PROFILE("config h263 profile=%d, level=%d \n",
+    QC_OMX_MSG_PROFILE("config h263 profile=%d, level=%d",
         (int ) pconfig->codec_params.h263_params.profile,
         (int ) pconfig->codec_params.h263_params.level);
   }
@@ -389,7 +772,7 @@ static void ven_print_config(struct venc_q6_config* pconfig)
   //////////////////////// h264
   else if (pconfig->config_params.standard == VENC_CODEC_H264)
   {
-    QC_OMX_MSG_PROFILE("config h264 profile=%d, level=%d \n",
+    QC_OMX_MSG_PROFILE("config h264 profile=%d, level=%d",
         (int ) pconfig->codec_params.h264_params.profile,
         (int ) pconfig->codec_params.h264_params.level);
   }
@@ -409,8 +792,10 @@ static int ven_translate_config(struct ven_config_type* psrc,
       pcommon == NULL ||
       pcodec == NULL) {
     QC_OMX_MSG_ERROR( "%s: failed with null parameter \n", __func__);
+     ret = VENC_S_EFAIL;
+     return ret;
   }
-
+  
   memset(pcommon, 0, sizeof(*pcommon));
   memset(pcodec, 0, sizeof(*pcodec));
 
@@ -419,7 +804,7 @@ static int ven_translate_config(struct ven_config_type* psrc,
   {
     struct venc_mpeg4_config* pmp4 = &(pcodec->mpeg4_params);
 
-    QC_OMX_MSG_HIGH("Configuring for mpeg4... psrc = %p\n",psrc);
+    QC_OMX_MSG_HIGH("Configuring for mpeg4... psrc = %p",psrc);
     pcommon->standard = VENC_CODEC_MPEG4;
 
     if (psrc->profile.profile == VEN_PROFILE_MPEG4_SP) {
@@ -462,7 +847,7 @@ static int ven_translate_config(struct ven_config_type* psrc,
 
     pmp4->time_resolution = psrc->vop_timing.vop_time_resolution;
     pmp4->ac_prediction = psrc->ac_prediction.status == 1 ? 1 : 0;
-    pmp4->hec_interval = psrc->hec_interval.header_extension; /// @int egrate need to have HEC int erval in driver api. also fix this hack in the OMX layer
+    pmp4->hec_interval = psrc->header_extension.hec_interval; /// @int egrate need to have HEC int erval in driver api. also fix this hack in the OMX layer
     pmp4->data_partition = psrc->data_partition.status == 1 ? 1 : 0;
     pmp4->short_header = psrc->short_header.status == 1 ? 1 : 0;
   }
@@ -675,7 +1060,8 @@ int ven_start(struct ven_device *dvenc,
   int ret = 0;
   struct venc_init_config vcfg;
 
-  ven_translate_config(&(dvenc->config), &(vcfg.q6_config.codec_params),
+  QC_OMX_MSG_HIGH("Processing ven_start...");
+  ret = ven_translate_config(&(dvenc->config), &(vcfg.q6_config.codec_params),
       &(vcfg.q6_config.config_params));
   memcpy(&(vcfg.q6_bufs), venc_bufs, sizeof(struct venc_buffers));
 
@@ -695,6 +1081,7 @@ int ven_get_sequence_hdr(struct ven_device *dvenc,
   int ret = 0;
   struct venc_seq_config vcfg;
 
+  QC_OMX_MSG_HIGH("Processing ven_get_sequence_hdr...");
   ven_translate_config(&(dvenc->config), &(vcfg.q6_config.codec_params),
       &(vcfg.q6_config.config_params));
   memcpy(&(vcfg.buf), pbuf, sizeof(struct venc_pmem));
@@ -714,7 +1101,7 @@ int ven_set_input_req(struct ven_device* dvenc,
                               struct ven_allocator_property* pprop)
 {
   int ret = 0;
-  QC_OMX_MSG_HIGH("Processing ven_set_input_req...\n");
+  QC_OMX_MSG_MEDIUM("Processing ven_set_input_req...");
 
   if (pprop == NULL)
   {  QC_OMX_MSG_ERROR( "null params(s)");
@@ -776,7 +1163,7 @@ int ven_set_output_req(struct ven_device* dvenc,
                                struct ven_allocator_property* pprop)
 {
   int ret = 0;
-  QC_OMX_MSG_HIGH("Processing ven_set_output_req...");
+  QC_OMX_MSG_MEDIUM("Processing ven_set_output_req...");
 
   if (dvenc != NULL && pprop != NULL)
   {
@@ -839,8 +1226,10 @@ int ven_set_qp_range(struct ven_device* dvenc,
   int ret = 0;
   struct venc_qp_range qp;
 
-  QC_OMX_MSG_HIGH("%s: SET_QP_RANGE \n", __func__);
   memcpy(&(dvenc->config.qp_range), ptr, sizeof(struct ven_qp_range));
+  QC_OMX_MSG_HIGH("%s: min = %d, max = %d",__func__,
+    (dvenc->config.qp_range).min_qp,
+    (dvenc->config.qp_range).max_qp);
 
   if (dvenc->state == VENC_STATE_START) {
 
@@ -859,8 +1248,9 @@ int ven_get_qp_range(struct ven_device* dvenc,
                              struct ven_qp_range *ptr)
 {
   int ret = 0;
-
-  QC_OMX_MSG_HIGH("%s: SET_INTRA_PERIOD \n", __func__);
+  QC_OMX_MSG_HIGH("%s: min = %d, max = %d",__func__,
+    (dvenc->config.qp_range).min_qp,
+    (dvenc->config.qp_range).max_qp);
   memcpy(ptr, &(dvenc->config.session_qp),
       sizeof(struct ven_qp_range));
   return ret;
@@ -874,10 +1264,11 @@ int ven_set_session_qp(struct ven_device* dvenc,
                                 struct ven_session_qp *ptr)
 {
   int ret = 0;
-
-  QC_OMX_MSG_HIGH("%s: SET_SESSION_QP \n", __func__);
   memcpy(&(dvenc->config.session_qp), ptr,
       sizeof(struct ven_session_qp));
+  QC_OMX_MSG_HIGH("%s: iframe_qp = %d, pframe_qp = %d",__func__,
+    (dvenc->config.session_qp).iframe_qp,
+    (dvenc->config.session_qp).pframe_qp);
   return ret;
 }
 
@@ -885,8 +1276,9 @@ int ven_get_session_qp(struct ven_device* dvenc,
                                 struct ven_session_qp *ptr)
 {
   int ret = 0;
-
-  QC_OMX_MSG_HIGH("%s: GET_SESSION_QP \n", __func__);
+  QC_OMX_MSG_HIGH("%s: iframe_qp = %d, pframe_qp = %d",__func__,
+    (dvenc->config.session_qp).iframe_qp,
+    (dvenc->config.session_qp).pframe_qp);
   memcpy(ptr, &(dvenc->config.session_qp),
       sizeof(struct ven_session_qp));
   return ret;
@@ -896,10 +1288,10 @@ int ven_set_ac_prediction(struct ven_device* dvenc,
                            struct ven_switch *ptr)
 {
   int ret = 0;
-
-  QC_OMX_MSG_HIGH("%s: SET_AC_PREDICITON \n", __func__);
   memcpy(&(dvenc->config.ac_prediction), ptr,
       sizeof(struct ven_switch));
+  QC_OMX_MSG_HIGH("%s: status = %d",__func__,
+    (dvenc->config.ac_prediction).status);
   return ret;
 }
 
@@ -907,8 +1299,8 @@ int ven_get_ac_prediction(struct ven_device* dvenc,
                            struct ven_switch *ptr)
 {
   int ret = 0;
-
-  QC_OMX_MSG_HIGH("%s: GET_AC_PREDICTION \n", __func__);
+  QC_OMX_MSG_HIGH("%s: status = %d",__func__,
+    (dvenc->config.ac_prediction).status);
   memcpy(ptr, &(dvenc->config.ac_prediction),
       sizeof(struct ven_switch));
   return ret;
@@ -918,10 +1310,10 @@ int ven_set_short_hdr(struct ven_device* dvenc,
                            struct ven_switch *ptr)
 {
   int ret = 0;
-
-  QC_OMX_MSG_HIGH("%s: SET_SHORT_HEADER \n", __func__);
   memcpy(&(dvenc->config.short_header), ptr,
       sizeof(struct ven_switch));
+  QC_OMX_MSG_HIGH("%s: status = %d",__func__,
+    (dvenc->config.short_header).status);
   return ret;
 }
 
@@ -929,8 +1321,8 @@ int ven_get_short_hdr(struct ven_device* dvenc,
                            struct ven_switch *ptr)
 {
   int ret = 0;
-
-  QC_OMX_MSG_HIGH("%s: GET_SHORT_HEADER \n", __func__);
+  QC_OMX_MSG_HIGH("%s: status =%d",__func__,
+    (dvenc->config.short_header).status);
   memcpy(ptr, &(dvenc->config.short_header),
       sizeof(struct ven_switch));
   return ret;
@@ -946,13 +1338,13 @@ int ven_set_intra_period(struct ven_device* dvenc,
 {
   int ret = 0;
   unsigned int pnum=0;
-
-  QC_OMX_MSG_HIGH("%s: SET_INTRA_PERIOD \n", __func__);
   memcpy(&(dvenc->config.intra_period), ptr, sizeof(struct ven_intra_period));
+  QC_OMX_MSG_HIGH("%s: num_pframes = %d",__func__,
+    (dvenc->config.intra_period).num_pframes);
 
   if (dvenc->state == VENC_STATE_START) {
     pnum = (dvenc->config.intra_period).num_pframes;
-    QC_OMX_MSG_HIGH("Process intra period with pnum:%d \n", pnum);
+    QC_OMX_MSG_MEDIUM("Process intra period with pnum:%d", pnum);
 
     ret = ioctl(dvenc->fd, VENC_IOCTL_SET_INTRA_PERIOD, &pnum);
     if (ret) {
@@ -968,6 +1360,8 @@ int ven_get_intra_period(struct ven_device* dvenc,
 {
   if(!intra_period || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("%s: num_pframes = %d",__func__,
+    (dvenc->config.intra_period).num_pframes);
   memcpy(intra_period, &dvenc->config.intra_period, sizeof(struct ven_intra_period));
   return 0;
 }
@@ -983,8 +1377,10 @@ int ven_set_frame_rate(struct ven_device* dvenc,
   int ret = 0;
   struct venc_frame_rate pdata;
 
-  QC_OMX_MSG_HIGH("%s: SET_FRAME_RATE \n", __func__);
   memcpy(&(dvenc->config.frame_rate), ptr, sizeof(struct ven_frame_rate));
+  QC_OMX_MSG_HIGH("%s: fps_numerator = %d, fps_denominator = %d",__func__,
+    (dvenc->config.frame_rate).fps_numerator,
+    (dvenc->config.frame_rate).fps_denominator);
 
   if (dvenc->state == VENC_STATE_START)
   {
@@ -1006,6 +1402,9 @@ int ven_get_frame_rate(struct ven_device* dvenc,
 {
   if(!frame_rate || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("%s: fps_numerator = %d, fps_denominator = %d",__func__,
+    (dvenc->config.frame_rate).fps_numerator,
+    (dvenc->config.frame_rate).fps_denominator);
   memcpy(frame_rate, &dvenc->config.frame_rate, sizeof(struct ven_frame_rate));
   return 0;
 }
@@ -1022,6 +1421,8 @@ int ven_set_target_bitrate(struct ven_device* dvenc,
   unsigned int pdata = 0;
 
   memcpy(&(dvenc->config.bitrate), ptr, sizeof(struct ven_target_bitrate));
+  QC_OMX_MSG_HIGH("%s: target_bitrate = %d",__func__,
+    (dvenc->config.bitrate).target_bitrate);
 
   if (dvenc->state == VENC_STATE_START)
   {
@@ -1041,6 +1442,8 @@ int ven_get_target_bitrate(struct ven_device* dvenc,
 {
   if(!ptr || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("%s: target_bitrate = %d",__func__,
+    (dvenc->config.bitrate).target_bitrate);
   memcpy(ptr, &dvenc->config.bitrate, sizeof(struct ven_target_bitrate));
   return 0;
 }
@@ -1048,6 +1451,7 @@ int ven_request_iframe(struct ven_device* dvenc)
 {
   if(!dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("%s: REQUEST_IFRAME", __func__);
   int rc = ioctl(dvenc->fd, VENC_IOCTL_CMD_REQUEST_IFRAME);
   if(rc) {
     QC_OMX_MSG_ERROR("%s: err: %d \n", __func__, rc);
@@ -1063,7 +1467,11 @@ int ven_set_intra_refresh_rate(struct ven_device* dvenc,
   unsigned int pnum;
   if(!intra_ref || !dvenc)
     return -1;
+
   memcpy(&dvenc->config.intra_refresh, intra_ref, sizeof(struct ven_intra_refresh));
+  QC_OMX_MSG_HIGH("%s: mode = %d, mb_count = %d",__func__,
+    (dvenc->config.intra_refresh).ir_mode,
+    (dvenc->config.intra_refresh).mb_count);
   pnum = dvenc->config.intra_refresh.mb_count;
   ret = ioctl(dvenc->fd, VENC_IOCTL_SET_INTRA_REFRESH, &pnum);
   if (ret) {
@@ -1077,6 +1485,9 @@ int ven_get_intra_refresh_rate(struct ven_device* dvenc,
 {
   if(!intra_ref || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("%s: mode = %d, mb_count = %d",__func__,
+    (dvenc->config.intra_refresh).ir_mode,
+    (dvenc->config.intra_refresh).mb_count);
   memcpy(intra_ref,&dvenc->config.intra_refresh, sizeof(struct ven_intra_refresh));
   return 0;
 }
@@ -1087,6 +1498,9 @@ int ven_set_multislice_cfg(struct ven_device* dvenc,
   if(!multi_slice_cfg || !dvenc)
     return -1;
   memcpy(&dvenc->config.multi_slice, multi_slice_cfg, sizeof(struct ven_multi_slice_cfg));
+  QC_OMX_MSG_HIGH("%s: mode = %d, size = %d",__func__,
+    (dvenc->config.multi_slice).mslice_mode,
+    (dvenc->config.multi_slice).mslice_size);
   return 0;
 }
 int ven_get_multislice_cfg(struct ven_device* dvenc,
@@ -1094,6 +1508,9 @@ int ven_get_multislice_cfg(struct ven_device* dvenc,
 {
   if(!multi_slice_cfg || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("%s: mode = %d, size = %d",__func__,
+    (dvenc->config.multi_slice).mslice_mode,
+    (dvenc->config.multi_slice).mslice_size);
   memcpy(multi_slice_cfg, &dvenc->config.multi_slice, sizeof(struct ven_multi_slice_cfg));
   return 0;
 }
@@ -1103,6 +1520,8 @@ int ven_set_rate_control(struct ven_device* dvenc,
   if(!rate_ctrl || !dvenc)
     return -1;
   memcpy(&dvenc->config.rate_control, rate_ctrl, sizeof(struct ven_rate_ctrl_cfg));
+  QC_OMX_MSG_HIGH("%s: rc_mode = %d",__func__,
+    (dvenc->config.rate_control).rc_mode);
   return 0;
 }
 int ven_get_rate_control(struct ven_device* dvenc,
@@ -1110,6 +1529,8 @@ int ven_get_rate_control(struct ven_device* dvenc,
 {
   if(!rate_ctrl || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("%s: rc_mode = %d",__func__,
+   (dvenc->config.rate_control).rc_mode);
   memcpy(rate_ctrl, &dvenc->config.rate_control, sizeof(struct ven_rate_ctrl_cfg));
   return 0;
 }
@@ -1118,7 +1539,9 @@ int ven_set_vop_timing(struct ven_device* dvenc,
 {
   if(!vop_timing || !dvenc)
     return -1;
-  memcpy(&dvenc->config.rate_control, vop_timing, sizeof(struct ven_vop_timing_cfg));
+  memcpy(&dvenc->config.vop_timing, vop_timing, sizeof(struct ven_vop_timing_cfg));
+  QC_OMX_MSG_HIGH("%s: vop_time_resolution = %d",__func__,
+    (dvenc->config.vop_timing).vop_time_resolution);
   return 0;
 }
 int ven_get_vop_timing(struct ven_device* dvenc,
@@ -1126,7 +1549,9 @@ int ven_get_vop_timing(struct ven_device* dvenc,
 {
   if(!vop_timing || !dvenc)
     return -1;
-  memcpy(vop_timing, &dvenc->config.rate_control, sizeof(struct ven_vop_timing_cfg));
+  QC_OMX_MSG_HIGH("%s: vop_time_resolution = %d",__func__,
+    (dvenc->config.vop_timing).vop_time_resolution);
+  memcpy(vop_timing, &dvenc->config.vop_timing, sizeof(struct ven_vop_timing_cfg));
   return 0;
 }
 int ven_set_rotation(struct ven_device* dvenc,
@@ -1135,6 +1560,8 @@ int ven_set_rotation(struct ven_device* dvenc,
   if(!rotation || !dvenc)
     return -1;
   memcpy(&dvenc->config.rotation, rotation, sizeof(struct ven_rotation));
+  QC_OMX_MSG_HIGH("%s: rotation = %d",__func__,
+    (dvenc->config.rotation).rotation);
   return 0;
 }
 int ven_get_rotation(struct ven_device* dvenc,
@@ -1142,23 +1569,29 @@ int ven_get_rotation(struct ven_device* dvenc,
 {
   if(!rotation || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("%s: rotation = %d",__func__,
+    (dvenc->config.rotation).rotation);
   memcpy(rotation, &dvenc->config.rotation, sizeof(struct ven_rotation));
   return 0;
 }
 int ven_set_hec(struct ven_device* dvenc,
-    struct ven_switch* hex)
+    struct ven_header_extension* hex)
 {
   if(!hex || !dvenc)
     return -1;
-  memcpy(&dvenc->config.rotation, hex, sizeof(struct ven_header_extension));
+  memcpy(&dvenc->config.header_extension, hex, sizeof(struct ven_header_extension));
+  QC_OMX_MSG_HIGH("%s: hec_interval = %d",__func__,
+    (dvenc->config.header_extension).hec_interval);
   return 0;
 }
 int ven_get_hec(struct ven_device* dvenc,
-    struct ven_switch* hex)
+    struct ven_header_extension* hex)
 {
   if(!hex || !dvenc)
     return -1;
-  memcpy(hex, &dvenc->config.rotation, sizeof(struct ven_header_extension));
+  QC_OMX_MSG_HIGH("%s: hec_interval = %d",__func__,
+    (dvenc->config.header_extension).hec_interval);
+  memcpy(hex, &dvenc->config.header_extension, sizeof(struct ven_header_extension));
   return 0;
 }
 int ven_set_data_partition(struct ven_device* dvenc,
@@ -1166,7 +1599,9 @@ int ven_set_data_partition(struct ven_device* dvenc,
 {
   if(!dp || !dvenc)
     return -1;
-  memcpy(&dvenc->config.rotation, dp, sizeof(struct ven_switch));
+  memcpy(&dvenc->config.data_partition, dp, sizeof(struct ven_switch));
+  QC_OMX_MSG_HIGH("%s: status = %d",__func__,
+    (dvenc->config.data_partition).status);
   return 0;
 }
 int ven_get_data_partition(struct ven_device* dvenc,
@@ -1174,7 +1609,9 @@ int ven_get_data_partition(struct ven_device* dvenc,
 {
   if(!dp || !dvenc)
     return -1;
-  memcpy(dp, &dvenc->config.rotation, sizeof(struct ven_switch));
+  QC_OMX_MSG_HIGH("%s: status = %d",__func__,
+    (dvenc->config.data_partition).status);
+  memcpy(dp, &dvenc->config.data_partition, sizeof(struct ven_switch));
   return 0;
 }
 int ven_get_base_cfg(struct ven_device * dvenc,
@@ -1182,6 +1619,7 @@ int ven_get_base_cfg(struct ven_device * dvenc,
 {
   if(!bcfg || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("get base_config");
   memcpy(bcfg, &dvenc->config.base_config, sizeof(struct ven_base_cfg));
   return 0;
 }
@@ -1192,7 +1630,7 @@ int ven_set_base_cfg(struct ven_device * dvenc,
   struct ven_base_cfg *pconfig;
   int new_codec;
   int result = 0;
-
+  QC_OMX_MSG_HIGH("set base_config");
   if (dvenc == NULL || pcfg == NULL) {
     QC_OMX_MSG_ERROR( "null driver");
     return -1;
@@ -1207,7 +1645,19 @@ int ven_set_base_cfg(struct ven_device * dvenc,
   dvenc->input_attrs.data_size = pconfig->input_width * pconfig->input_height * 3 / 2;
   dvenc->output_attrs.data_size = pconfig->input_width * pconfig->input_height * 3 / 2;
   dvenc->config.intra_period.num_pframes = pconfig->fps_num * 2 - 1;
-  dvenc->config.vop_timing.vop_time_resolution = pconfig->fps_num * 2;
+  /* removed the vop_time_resolution resetting to default value as we have already set it */
+  /* properly via set_parameter call */
+  //dvenc->config.vop_timing.vop_time_resolution = pconfig->fps_num * 2;
+  QC_OMX_MSG_HIGH("fps = %d, bitrate = %d, intra period = %d",
+    dvenc->config.frame_rate.fps_numerator,
+	dvenc->config.bitrate.target_bitrate,
+	dvenc->config.intra_period.num_pframes);
+  QC_OMX_MSG_HIGH("input width = %d, height = %d",
+    pconfig->input_width,
+	pconfig->input_height);
+  QC_OMX_MSG_HIGH("input buffer size = %d, output buffer size = %d",
+    dvenc->input_attrs.data_size,
+	dvenc->output_attrs.data_size);
 
   if (new_codec)
   {
@@ -1224,6 +1674,7 @@ int ven_set_codec_profile(struct ven_device* dvenc,
   if(!prof || !dvenc)
     return -1;
   memcpy(&dvenc->config.profile, prof, sizeof(struct ven_profile));
+  QC_OMX_MSG_HIGH("profile = %d", (dvenc->config.profile).profile);
   return 0;
 }
 int ven_get_codec_profile(struct ven_device* dvenc,
@@ -1231,6 +1682,7 @@ int ven_get_codec_profile(struct ven_device* dvenc,
 {
   if(!prof || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("profile = %d", (dvenc->config.profile).profile);
   memcpy(prof, &dvenc->config.profile, sizeof(struct ven_profile));
   return 0;
 }
@@ -1242,6 +1694,7 @@ int ven_set_profile_level(struct ven_device* dvenc,
   if(!prof_level || !dvenc)
     return -1;
   memcpy(&dvenc->config.profile_level, prof_level, sizeof(struct ven_profile_level));
+  QC_OMX_MSG_HIGH("level = %d", (dvenc->config.profile_level).level);
   result = ven_update_buf_properties(dvenc);
 
   return result;
@@ -1251,6 +1704,7 @@ int ven_get_profile_level(struct ven_device* dvenc,
 {
   if(!prof_level || !dvenc)
     return -1;
+  QC_OMX_MSG_HIGH("level = %d", (dvenc->config.profile_level).level);
   memcpy(prof_level, &dvenc->config.profile_level, sizeof(struct ven_profile_level));
   return 0;
 }
@@ -1260,12 +1714,12 @@ int ven_device_open(struct ven_device** handle)
 {
   int fd;
 
-  QC_OMX_MSG_HIGH("%s \n", __func__);
+  QC_OMX_MSG_HIGH("%s", __func__);
   struct ven_device* dvenc = (struct ven_device *)malloc(sizeof(struct ven_device));
   if (!dvenc) return -1;
 
   *handle = dvenc;
-  QC_OMX_MSG_HIGH("%s: dvenc:%p pconfig: %p \n", __func__, dvenc, &(dvenc->config.base_config));
+  QC_OMX_MSG_HIGH("%s: dvenc:%p pconfig: %p", __func__, dvenc, &(dvenc->config.base_config));
   fd = open("/dev/q6venc", O_RDWR);
   if (fd < 0)
   {
@@ -1281,7 +1735,7 @@ int ven_device_open(struct ven_device** handle)
   dvenc->state = VENC_STATE_STOP;
 
   //  dvenc->is_active = 1;
-  QC_OMX_MSG_HIGH("%s  = %d\n", __func__,fd);
+  QC_OMX_MSG_HIGH("%s  = %d", __func__,fd);
   return fd;
 }
 
@@ -1290,7 +1744,7 @@ int ven_device_close(struct ven_device* handle)
   int ret = 0;
   struct ven_device *dvenc;
 
-  QC_OMX_MSG_HIGH("%s\n", __func__);
+  QC_OMX_MSG_HIGH("%s", __func__);
 
   dvenc = (struct ven_device *)handle;
   if (dvenc) {

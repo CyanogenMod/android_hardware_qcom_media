@@ -323,7 +323,7 @@ namespace venctest
 
     TestEncode* pTester = (TestEncode*) pAppData;
 
-    VENC_TEST_MSG_HIGH("FBD ...\n");
+    VENC_TEST_MSG_MEDIUM("FBD ...\n");
     // get performance data
     if (pBuffer->nFilledLen != 0)
     {
