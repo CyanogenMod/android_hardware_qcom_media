@@ -3551,7 +3551,7 @@ OMX_ERRORTYPE Venc::allocate_buffer(OMX_IN OMX_HANDLETYPE hComponent,
           pBufferHdr->pBuffer =(OMX_U8 *)(pPrivateData->sPmemInfo).virt;
           pBufferHdr->nAllocLen = m_sOutPortDef.nBufferSize;
           pBufferHdr->nAllocLen = nSizeBytes;
-          //pBufferHdr->pAppPrivate = pAppPrivate;
+          pBufferHdr->pAppPrivate = pAppPrivate;
           OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* private_info =
             (OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* )malloc(
                 sizeof(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO));
@@ -3626,7 +3626,7 @@ OMX_ERRORTYPE Venc::allocate_buffer(OMX_IN OMX_HANDLETYPE hComponent,
         {
           pBufferHdr->pBuffer = (OMX_U8 *)(pPrivateData->sPmemInfo).virt;
           pBufferHdr->nAllocLen = m_sInPortDef.nBufferSize;
-          //pBufferHdr->pAppPrivate = pAppPrivate;
+          pBufferHdr->pAppPrivate = pAppPrivate;
           OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* private_info =
             (OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* )malloc(
                 sizeof(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO));
