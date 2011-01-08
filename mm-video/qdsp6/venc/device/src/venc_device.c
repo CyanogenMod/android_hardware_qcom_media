@@ -76,7 +76,7 @@ static int ven_set_default_buf_properties(struct ven_device* dvenc)
 
   QC_OMX_MSG_MEDIUM("Update output buffer requirements pcfg:%p", pcfg);
   dvenc->output_attrs.min_count = 1;
-  dvenc->output_attrs.actual_count = 8;
+  dvenc->output_attrs.actual_count = 6;
   dvenc->output_attrs.suffix_size = 0;
   dvenc->output_attrs.data_size = pcfg->input_width * pcfg->input_height * 3 / 2;
   dvenc->output_attrs.alignment = VEN_PMEM_ALIGN;
