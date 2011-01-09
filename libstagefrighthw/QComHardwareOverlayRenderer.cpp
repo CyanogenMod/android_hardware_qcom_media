@@ -74,6 +74,7 @@ QComHardwareOverlayRenderer::QComHardwareOverlayRenderer(
       mDisplayHeight(displayHeight),
       mDecodedWidth(decodedWidth),
       mDecodedHeight(decodedHeight),
+      mRotationDegrees(rotationDegrees),
       mFrameSize((mDecodedWidth * mDecodedHeight * 3) / 2),
       mStatistics(false),
       mLastFrame(0),
