@@ -1016,7 +1016,7 @@ OMX_ERRORTYPE Venc::translate_profile(unsigned int* pDriverProfile,
         break;
       default:
         QC_OMX_MSG_ERROR("unsupported profile");
-        result = OMX_ErrorBadParameter;
+        *pDriverProfile = VEN_PROFILE_MPEG4_SP;
         break;
     }
   }
@@ -1042,7 +1042,7 @@ OMX_ERRORTYPE Venc::translate_profile(unsigned int* pDriverProfile,
         break;
       default:
         QC_OMX_MSG_ERROR("unsupported profile");
-        result = OMX_ErrorBadParameter;
+        *pDriverProfile = VEN_PROFILE_H264_BASELINE;
         break;
     }
   }
@@ -1092,7 +1092,7 @@ OMX_ERRORTYPE Venc::translate_level(unsigned int* pDriverLevel,
         break;
       default:
         QC_OMX_MSG_ERROR("unsupported level");
-        result = OMX_ErrorBadParameter;
+        *pDriverLevel = VEN_LEVEL_MPEG4_0;
         break;
     }
   }
@@ -1168,7 +1168,7 @@ OMX_ERRORTYPE Venc::translate_level(unsigned int* pDriverLevel,
         break;
       default:
         QC_OMX_MSG_ERROR("unsupported level");
-        result = OMX_ErrorBadParameter;
+        *pDriverLevel = VEN_LEVEL_H264_3P1;
         break;
     }
   }
