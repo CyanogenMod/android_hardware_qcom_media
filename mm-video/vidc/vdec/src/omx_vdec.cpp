@@ -233,48 +233,6 @@ void *get_omx_component_factory_fn(void)
   return (new omx_vdec);
 }
 
-#ifdef _ANDROID_
-/* NOTE: VideoHeap is only needed because MemoryHeapBase doesn't give
-   us the file descriptor, which we need to communicate with kernel space */
-/* If it gave us the fd, we could just use:
-      MemoryHeapBase("/dev/pmem_adsp", size, NO_CACHING) */
-VideoHeap::VideoHeap(size_t size)
-{
-  mPmemFd = open("/dev/pmem_adsp", O_RDWR | O_SYNC);
-  if (mPmemFd < 0) {
-    DEBUG_PRINT_ERROR("couldn't open pmem");
-    return;
-  }
-
-  void *base = mmap(0, size, PROT_READ|PROT_WRITE, MAP_SHARED, mPmemFd, 0);
-
-  init(mPmemFd, base, size, NO_CACHING, "/dev/pmem_adsp");
-  if (getBase() != MAP_FAILED) {
-    DEBUG_PRINT_LOW("Allocated %d bytes on %s at %p", getSize(), getDevice(), getBase());
-  } else {
-    DEBUG_PRINT_ERROR("Allocation of %d bytes failed on %s", getSize(), getDevice());
-  }
-}
-
-void VideoHeap::dispose_pmem() {
-  int mPmemFd = android_atomic_or(-1, &mPmemFd);
-  if (mPmemFd >= 0) {
-    munmap(getBase(), getSize());
-    dispose();
-  }
-}
-
-VideoHeap::~VideoHeap()
-{
-  dispose_pmem();
-  DEBUG_PRINT_LOW("Deallocated %d bytes on %s at %p", getSize(), getDevice(), getBase());
-}
-
-int VideoHeap::getPmemFd() {
-  return mPmemFd;
-}
-#endif // _ANDROID_
-
 /* ======================================================================
 FUNCTION
   omx_vdec::omx_vdec
@@ -3857,7 +3815,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     // clear the current reference first
     // operator= clears it last, and there isn't enough pmem for that.
     m_heap_ptr.clear();
-    m_heap_ptr = new VideoHeap(m_out_buf_size * m_out_buf_count);
+    m_heap_ptr = new MemoryHeapBase("/dev/pmem_adsp", m_out_buf_size * m_out_buf_count, MemoryHeapBase::NO_CACHING);
     pmem_baseaddress = (unsigned char *)m_heap_ptr->getBase();
     if (pmem_baseaddress == MAP_FAILED)
     {
@@ -3925,7 +3883,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         driver_context.ptr_respbuffer[i].client_data = (void *) \
                                             &driver_context.ptr_outputbuffer[i];
         driver_context.ptr_outputbuffer[i].offset = m_out_buf_size*i;
-        driver_context.ptr_outputbuffer[i].pmem_fd = static_cast<VideoHeap*>(m_heap_ptr.get())->getPmemFd();
+        driver_context.ptr_outputbuffer[i].pmem_fd = m_heap_ptr.get()->getHeapID();
         driver_context.ptr_outputbuffer[i].bufferaddr = \
           pmem_baseaddress + (m_out_buf_size*i);
         driver_context.ptr_outputbuffer[i].mmaped_size = 0;
