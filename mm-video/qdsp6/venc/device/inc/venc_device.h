@@ -645,7 +645,7 @@ struct ven_timeout
 
 struct ven_header_extension
 {
-  unsigned int    header_extension;   /**< If 0 then header extension is
+  unsigned int    hec_interval;   /**< If 0 then header extension is
                *   disabled.
                *   If > 0, then it specifies number
                *   of consecutive video packets
@@ -680,7 +680,7 @@ struct ven_config_type
   struct ven_vop_timing_cfg     vop_timing;
   struct ven_switch           ac_prediction;
   struct ven_switch           short_header;
-  struct ven_header_extension           hec_interval;
+  struct ven_header_extension header_extension;
   struct ven_switch           data_partition;
   void   *                    callback_event;
 };
@@ -742,8 +742,8 @@ int ven_set_vop_timing(struct ven_device* dvenc, struct ven_vop_timing_cfg* vop_
 int ven_get_vop_timing(struct ven_device* dvenc, struct ven_vop_timing_cfg* vop_timing);
 int ven_set_rotation(struct ven_device* dvenc, struct ven_rotation* rotation);
 int ven_get_rotation(struct ven_device* dvenc, struct ven_rotation* rotation);
-int ven_set_hec(struct ven_device* dvenc, struct ven_switch* hex);
-int ven_get_hec(struct ven_device* dvenc, struct ven_switch* hex);
+int ven_set_hec(struct ven_device* dvenc, struct ven_header_extension* hex);
+int ven_get_hec(struct ven_device* dvenc, struct ven_header_extension* hex);
 int ven_set_data_partition(struct ven_device* dvenc, struct ven_switch* dp);
 int ven_get_data_partition(struct ven_device* dvenc, struct ven_switch* dp);
 

@@ -758,7 +758,7 @@ namespace venctest
   /////////////////////////////////////////////////////////////////////////////
   OMX_ERRORTYPE Encoder::DeliverInput(OMX_BUFFERHEADERTYPE* pBuffer)
   {
-    VENC_TEST_MSG_MEDIUM("deliver input frame %ld", m_nInFrameIn);
+    VENC_TEST_MSG_HIGH(" deliver  input frame %ld", m_nInFrameIn);
     ++m_nInFrameIn;
 
     if (m_pStats != NULL)
@@ -773,7 +773,7 @@ namespace venctest
   /////////////////////////////////////////////////////////////////////////////
   OMX_ERRORTYPE Encoder::DeliverOutput(OMX_BUFFERHEADERTYPE* pBuffer)
   {
-    VENC_TEST_MSG_MEDIUM("deliver output frame %ld", m_nOutFrameIn);
+    VENC_TEST_MSG_HIGH("deliver output frame %ld", m_nOutFrameIn);
     ++m_nOutFrameIn;
     pBuffer->nFlags = 0;
     return OMX_FillThisBuffer(m_hEncoder, pBuffer);
