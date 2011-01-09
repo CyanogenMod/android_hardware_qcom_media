@@ -4273,6 +4273,7 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             if (release_output_done())
             {
               DEBUG_PRINT_HIGH("\n ALL output buffers are freed/released");
+              m_heap_ptr.clear();
               output_use_buffer = false;
               if (m_out_mem_ptr)
               {
