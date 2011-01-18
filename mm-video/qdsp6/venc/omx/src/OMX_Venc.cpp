@@ -124,7 +124,7 @@ Venc* Venc::g_pVencInstance = NULL;
 extern "C" {
    void* get_omx_component_factory_fn(void)
    {
-     return Venc::get_instance();
+     return new Venc();
    }
 }
 #define GetLastError() 1
