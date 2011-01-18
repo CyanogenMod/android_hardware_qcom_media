@@ -85,8 +85,6 @@ static const char pRoleAVC[] = "video_encoder.avc";
 /*----------------------------------------------------------------------------
 * Static Variable Definitions
 * -------------------------------------------------------------------------*/
-Venc* Venc::g_pVencInstance = NULL;
-
 #define VEN_QCIF_DX                 176
 #define VEN_QCIF_DY                 144
 
@@ -170,7 +168,6 @@ Venc::Venc() :
 
 Venc::~Venc()
 {
-  g_pVencInstance = NULL;
   QC_OMX_MSG_HIGH("deconstructor (closing driver)");
   sem_destroy(&m_cmd_lock);
   ven_device_close(m_pDevice);
@@ -575,18 +572,6 @@ bail:
     free(m_pComponentName);
   }
   return result;
-}
-
-Venc* Venc::get_instance()
-{
-  QC_OMX_MSG_HIGH("getting instance...");
-  if (g_pVencInstance)
-  {
-    QC_OMX_MSG_ERROR("Singleton Class can't created more than one instance");
-    return NULL;
-  }
-  g_pVencInstance = new Venc();
-  return g_pVencInstance;
 }
 
 OMX_ERRORTYPE Venc::get_component_version(OMX_IN  OMX_HANDLETYPE hComponent,

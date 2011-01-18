@@ -68,7 +68,6 @@ class Venc : public qc_omx_component
     /**********************************************************************//**
      * @brief Class constructor
      *************************************************************************/
-    static Venc* get_instance();
     Venc();
 
     /**********************************************************************//**
@@ -192,8 +191,6 @@ class Venc : public qc_omx_component
         OMX_IN OMX_U32 nIndex);
 
   private:
-    static Venc* g_pVencInstance;
-
     /// Max number of input buffers (assumed)
     static const OMX_S32 MAX_IN_BUFFERS = 16;
 
