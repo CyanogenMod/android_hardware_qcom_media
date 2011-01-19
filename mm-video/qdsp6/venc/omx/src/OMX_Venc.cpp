@@ -1655,8 +1655,13 @@ OMX_ERRORTYPE Venc::update_param_port_fmt(OMX_IN OMX_VIDEO_PARAM_PORTFORMATTYPE*
   return result;
 }
 
-OMX_ERRORTYPE Venc::update_param_port_def(OMX_IN OMX_PARAM_PORTDEFINITIONTYPE* pParam)
+OMX_ERRORTYPE Venc::update_param_port_def(OMX_IN OMX_PARAM_PORTDEFINITIONTYPE* pOrigParam)
 {
+  // The code below tries to write to pParam - keep a local
+  // version instead of writing into the user specified data
+  // (which might be in read-only memory in some cases), and
+  // point pParam to that.
+  OMX_PARAM_PORTDEFINITIONTYPE localParam = *pOrigParam, *pParam = &localParam;
   OMX_ERRORTYPE result = OMX_ErrorNone;
   int rc = 0;
   if (pParam != NULL)
