@@ -138,6 +138,7 @@ typedef struct QOMX_AUDIO_PARAM_WMA10PROTYPE {
     OMX_U32 formatTag;
     OMX_U32 advancedEncodeOpt;
     OMX_U32 advancedEncodeOpt2;
+    OMX_U16 nVirtualPktSize;
 } QOMX_AUDIO_PARAM_WMA10PROTYPE;
 
 /**
