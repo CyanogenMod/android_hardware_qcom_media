@@ -211,7 +211,7 @@ unsigned char seq_enabled = 0, flush_in_progress = 0;
 unsigned int cmd_data = 0, etb_count = 0;;
 
 char curr_seq_command[100];
-int timeStampLfile = 0;
+OMX_S64 timeStampLfile = 0;
 int timestampInterval = 33333;
 codec_format  codec_format_option;
 file_type     file_type_option;
@@ -2168,7 +2168,7 @@ static int Read_Buffer_From_RCV_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
 
 static int Read_Buffer_From_VC1_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
 {
-    static int timeStampLfile = 0;
+    static OMX_S64 timeStampLfile = 0;
     OMX_U8 *pBuffer = pBufHdr->pBuffer + pBufHdr->nOffset;
     DEBUG_PRINT("Inside %s \n", __FUNCTION__);
 
