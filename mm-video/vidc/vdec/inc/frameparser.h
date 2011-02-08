@@ -71,7 +71,7 @@ public:
 		                        OMX_BUFFERHEADERTYPE *dest ,
 							              OMX_U32 *partialframe);
   void flush ();
-  void update_metadata (unsigned int time_stamp ,unsigned int flags);
+  void update_metadata (OMX_S64 time_stamp ,unsigned int flags);
 	 frame_parse ();
 	~frame_parse ();
 
@@ -87,7 +87,7 @@ private:
    unsigned int nal_length;
    unsigned int accum_length;
    unsigned int bytes_tobeparsed;
-   unsigned int time_stamp;
+   OMX_S64 time_stamp;
    unsigned int flags;
 };
 

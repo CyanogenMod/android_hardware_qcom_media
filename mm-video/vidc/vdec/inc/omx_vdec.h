@@ -603,7 +603,7 @@ private:
     unsigned char *first_buffer;
     int first_frame_size;
     unsigned int mp4h263_flags;
-    unsigned int mp4h263_timestamp;
+    OMX_S64 mp4h263_timestamp;
     bool set_seq_header_done;
     bool gate_output_buffers;
     bool gate_input_buffers;
