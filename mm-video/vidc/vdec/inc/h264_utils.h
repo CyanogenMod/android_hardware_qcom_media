@@ -150,6 +150,8 @@ typedef struct {
 //    H264ParamNaluSet seq;
 //};
 
+class extra_data_parser;
+
 class RbspParser
 /******************************************************************************
  ** This class is used to convert an H.264 NALU (network abstraction layer
@@ -182,10 +184,10 @@ public:
     ~H264_Utils();
     void initialize_frame_checking_environment();
     void allocate_rbsp_buffer(uint32 inputBufferSize);
-    bool isNewFrame(OMX_IN OMX_U8 *bitstream,
-                    OMX_IN OMX_U32 bitstream_length,
+    bool isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
                     OMX_IN OMX_U32 size_of_nal_length_field,
-                    OMX_OUT OMX_BOOL &isNewFrame);
+                    OMX_OUT OMX_BOOL &isNewFrame,
+                    extra_data_parser *extradata_parser);
 
 private:
     boolean extract_rbsp(OMX_IN   OMX_U8  *buffer,
@@ -205,5 +207,166 @@ private:
     bool              m_au_data;
 };
 
+class perf_metrics
+{
+  public:
+    perf_metrics() :
+      start_time(0),
+      proc_time(0),
+      active(false)
+    {
+    };
+    ~perf_metrics() {};
+    void start();
+    void stop();
+    void end(OMX_U32 units_cntr = 0);
+    void reset();
+    OMX_U64 processing_time_us();
+  private:
+    inline OMX_U64 get_act_time();
+    OMX_U64 start_time;
+    OMX_U64 proc_time;
+    bool active;
+};
+
+#define EMULATION_PREVENTION_THREE_BYTE 0x03
+#define MAX_CPB_COUNT     32
+#define VDEC_OMX_SEI      0x7F000007
+#define VDEC_OMX_VUI      0x7F000008
+#define NO_PAN_SCAN_BIT   0x00000100
+#define MAX_PAN_SCAN_RECT 3
+#define VALID_TS(ts)      ((ts < LLONG_MAX)? true : false)
+
+enum SEI_PAYLOAD_TYPE
+{
+  BUFFERING_PERIOD = 0,
+  PIC_TIMING,
+  PAN_SCAN_RECT,
+  FILLER_PAYLOAD,
+  USER_DATA_REGISTERED_ITU_T_T35,
+  USER_DATA_UNREGISTERED,
+  RECOVERY_POINT,
+  DEC_REF_PIC_MARKING_REPETITION,
+  SPARE_PIC,
+  SCENE_INFO,
+  SUB_SEQ_INFO,
+  SUB_SEQ_LAYER_CHARACTERISTICS,
+  SUB_SEQ_CHARACTERISTICS,
+  FULL_FRAME_FREEZE,
+  FULL_FRAME_FREEZE_RELEASE,
+  FULL_FRAME_SNAPSHOT,
+  PROGRESSIVE_REFINEMENT_SEGMENT_START,
+  PROGRESSIVE_REFINEMENT_SEGMENT_END
+};
+
+typedef struct
+{
+  OMX_U32  cpb_cnt;
+  OMX_U8   bit_rate_scale;
+  OMX_U8   cpb_size_scale;
+  OMX_U32  bit_rate_value[MAX_CPB_COUNT];
+  OMX_U32  cpb_size_value[MAX_CPB_COUNT];
+  OMX_U8   cbr_flag[MAX_CPB_COUNT];
+  OMX_U8   initial_cpb_removal_delay_length;
+  OMX_U8   cpb_removal_delay_length;
+  OMX_U8   dpb_output_delay_length;
+  OMX_U8   time_offset_length;
+} h264_hrd_param;
+
+typedef struct
+{
+  OMX_U8   timing_info_present_flag;
+  OMX_U32  num_units_in_tick;
+  OMX_U32  time_scale;
+  OMX_U8   fixed_frame_rate_flag;
+  OMX_U8   nal_hrd_parameters_present_flag;
+  h264_hrd_param   nal_hrd_parameters;
+  OMX_U8   vcl_hrd_parameters_present_flag;
+  h264_hrd_param   vcl_hrd_parameters;
+  OMX_U8   low_delay_hrd_flag;
+  OMX_U8   pic_struct_present_flag;
+} h264_vui_param;
+
+typedef struct
+{
+  OMX_U32 cpb_removal_delay;
+  OMX_U32 dpb_output_delay;
+  OMX_U8  pic_struct;
+  OMX_U32 num_clock_ts;
+  OMX_U8  ct_type;
+  OMX_U32 nuit_field_based_flag;
+  OMX_U8  counting_type;
+  OMX_U8  full_timestamp_flag;
+  OMX_U8  discontinuity_flag;
+  OMX_U8  cnt_dropped_flag;
+  OMX_U32 n_frames;
+  OMX_U32 seconds_value;
+  OMX_U32 minutes_value;
+  OMX_U32 hours_value;
+  OMX_S32 time_offset;
+} h264_sei_pic_param;
+
+typedef struct
+{
+  OMX_U32  initial_cpb_removal_delay[MAX_CPB_COUNT];
+  OMX_U32  initial_cpb_removal_delay_offset[MAX_CPB_COUNT];
+  OMX_U32  au_cntr;
+  OMX_S64  reference_ts;
+  OMX_S64  new_reference_ts;
+  bool     is_valid;
+} h264_sei_buf_period;
+
+typedef struct
+{
+  OMX_U32  rect_id;
+  OMX_U8   rect_cancel_flag;
+  OMX_U32  cnt;
+  OMX_U32  rect_left_offset[MAX_PAN_SCAN_RECT];
+  OMX_U32  rect_right_offset[MAX_PAN_SCAN_RECT];
+  OMX_U32  rect_top_offset[MAX_PAN_SCAN_RECT];
+  OMX_U32  rect_bottom_offset[MAX_PAN_SCAN_RECT];
+  OMX_U32  rect_repetition_period;
+} h264_pan_scan;
+
+class extra_data_parser
+{
+public:
+  extra_data_parser() { reset_params(); };
+  ~extra_data_parser() {};
+  bool parse_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr,
+    OMX_U32 decoder_fmt, OMX_U32 interlace_fmt);
+  void parse_sps(OMX_U8* data, OMX_U32 size);
+  void parse_sei(OMX_BUFFERHEADERTYPE *p_buf_hdr);
+  void reset_params();
+private:
+  void init_bitstream(OMX_U8* data, OMX_U32 size);
+  OMX_U32 extract_bits(OMX_U32 n);
+  inline bool more_bits();
+  void read_word();
+  OMX_U32 uev();
+  OMX_S32 sev();
+  void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_U32 interlace_fmt);
+  void append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_U32 interlace_fmt);
+  void append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra);
+  void parse_vui(bool vui_in_extradata);
+  bool parse_sei(OMX_S64 *p_timestamp);
+  void hrd_parameters(h264_hrd_param *hrd_param);
+  void sei_buffering_period(OMX_S64 timestamp);
+  bool sei_picture_timing(OMX_S64 &timestamp);
+  void scaling_list(OMX_U32 size_of_scaling_list);
+  void sei_pan_scan();
+  OMX_S64 calculate_ts(OMX_U32 cpb_removal_delay);
+
+  OMX_U32 curr_32_bit;
+  OMX_U32 bits_read;
+  OMX_U32 zero_cntr;
+  OMX_U32 emulation_code_skip_cntr;
+  OMX_U32 au_num;
+  OMX_U8* bitstream;
+  OMX_U32 bitstream_bytes;
+  h264_vui_param vui_param;
+  h264_sei_buf_period sei_buf_period;
+  h264_pan_scan pan_scan_param;
+};
 
 #endif /* H264_UTILS_H */
