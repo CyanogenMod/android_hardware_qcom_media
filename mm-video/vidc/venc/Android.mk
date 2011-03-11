@@ -26,6 +26,8 @@
 #ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #--------------------------------------------------------------------------
 
+ifneq ($(BUILD_TINY_ANDROID),true)
+
 ROOT_DIR := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -44,6 +46,11 @@ libmm-venc-def += -D_ANDROID_
 libmm-venc-def += -UENABLE_DEBUG_LOW
 libmm-venc-def += -DENABLE_DEBUG_HIGH
 libmm-venc-def += -DENABLE_DEBUG_ERROR
+libmm-venc-def += -UINPUT_BUFFER_LOG
+libmm-venc-def += -UOUTPUT_BUFFER_LOG
+libmm-venc-def += -DMAX_RES_720P
+libmm-venc-def += -DCONFIG_MSM_MDP40
+
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVenc)
@@ -64,7 +71,7 @@ LOCAL_SRC_FILES		:= src/omx_video_base.cpp
 LOCAL_SRC_FILES		+= src/omx_video_encoder.cpp
 LOCAL_SRC_FILES		+= src/video_encoder_device.cpp
 
-LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_TAGS       := optional
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -77,16 +84,18 @@ include $(CLEAR_VARS)
 mm-venc-test720p-inc            := $(TARGET_OUT_HEADERS)/mm-core/omxcore
 mm-venc-test720p-inc            += $(LOCAL_PATH)/inc
 
-LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE                    := mm-venc-omx-test720p
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(mm-venc-test720p-inc)
+LOCAL_PRELINK_MODULE            := false
 LOCAL_SHARED_LIBRARIES          := libmm-omxcore libOmxVenc libbinder
 
 LOCAL_SRC_FILES                 := test/venc_test.cpp
 LOCAL_SRC_FILES                 += test/camera_test.cpp
 LOCAL_SRC_FILES                 += test/venc_util.c
 LOCAL_SRC_FILES                 += test/fb_test.c
+
+LOCAL_MODULE_TAGS               := optional
 
 include $(BUILD_EXECUTABLE)
 
@@ -98,11 +107,20 @@ include $(CLEAR_VARS)
 
 venc-test-inc                   += $(LOCAL_PATH)/inc
 
-LOCAL_MODULE_TAGS := eng
 LOCAL_MODULE                    := mm-video-encdrv-test
 LOCAL_C_INCLUDES                := $(venc-test-inc)
+LOCAL_PRELINK_MODULE            := false
 
 LOCAL_SRC_FILES                 := test/video_encoder_test.c
 LOCAL_SRC_FILES                 += test/queue.c
 
+LOCAL_MODULE_TAGS               := optional
+
 include $(BUILD_EXECUTABLE)
+
+endif #BUILD_TINY_ANDROID
+
+# ---------------------------------------------------------------------------------
+# 					END
+# ---------------------------------------------------------------------------------
+
