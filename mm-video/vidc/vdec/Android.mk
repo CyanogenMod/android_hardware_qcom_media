@@ -63,7 +63,7 @@ libmm-vdec-inc	        += $(TARGET_OUT_HEADERS)/mm-core/omxcore
 LOCAL_MODULE		:= libOmxVdec
 LOCAL_CFLAGS		:= $(libOmxVdec-def)
 LOCAL_C_INCLUDES	:= $(libmm-vdec-inc)
-LOCAL_PRELINK_MODULE	:= false
+
 LOCAL_SHARED_LIBRARIES	:= liblog libutils libbinder
 
 LOCAL_SRC_FILES         := src/frameparser.cpp

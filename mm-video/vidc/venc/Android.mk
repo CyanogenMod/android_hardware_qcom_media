@@ -57,7 +57,7 @@ libmm-venc-inc			+= $(TARGET_OUT_HEADERS)/mm-core/omxcore
 LOCAL_MODULE			:= libOmxVenc
 LOCAL_CFLAGS	  		:= $(libmm-venc-def)
 LOCAL_C_INCLUDES  		:= $(libmm-venc-inc)
-LOCAL_PRELINK_MODULE		:= false
+
 LOCAL_SHARED_LIBRARIES		:= liblog libutils libbinder
 
 LOCAL_SRC_FILES		:= src/omx_video_base.cpp
