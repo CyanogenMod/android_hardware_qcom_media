@@ -597,6 +597,7 @@ typedef struct QOMX_VIDEO_PARAM_DIVXTYPE {
     OMX_U32 nPortIndex;
     QOMX_VIDEO_DIVXFORMATTYPE eFormat;
     QOMX_VIDEO_DIVXPROFILETYPE eProfile;
+    OMX_PTR  pDrmHandle;     // DRM handle
 } QOMX_VIDEO_PARAM_DIVXTYPE;
 
 
