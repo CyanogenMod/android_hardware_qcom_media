@@ -31,6 +31,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <inttypes.h>
 #include <linux/msm_vidc_dec.h>
 #include <pthread.h>
 #include <semaphore.h>
