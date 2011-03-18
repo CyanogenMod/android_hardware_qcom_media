@@ -28,6 +28,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __OMX_QCOM_EXTENSIONS_H__
 #define __OMX_QCOM_EXTENSIONS_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
 /*============================================================================
 *//** @file OMX_QCOMExtns.h
   This header contains constants and type definitions that specify the
@@ -306,7 +310,21 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /*"OMX.QCOM.index.param.Vptype */
     OMX_QcomIndexParamVideoVp = 0x7F00000D,
 
-    OMX_QcomIndexQueryNumberOfVideoDecInstance = 0x7F00000E
+    OMX_QcomIndexQueryNumberOfVideoDecInstance = 0x7F00000E,
+
+    OMX_QcomIndexParamVideoSyncFrameDecodingMode = 0x7F00000F,
+
+    OMX_QcomIndexParamVideoDecoderPictureOrder = 0x7F000010,
+
+    OMX_QcomIndexConfigVideoFramePackingArrangement = 0x7F000011,
+
+    OMX_QcomIndexParamConcealMBMapExtraData = 0x7F000012,
+
+    OMX_QcomIndexParamFrameInfoExtraData = 0x7F000013,
+
+    OMX_QcomIndexParamInterlaceExtraData = 0x7F000014,
+
+    OMX_QcomIndexParamH264TimeInfo = 0x7F000015
 };
 
 /**
@@ -546,8 +564,27 @@ typedef enum OMX_QCOM_EXTRADATATYPE
    OMX_ExtraDataH264 = 0x7F000002,
    OMX_ExtraDataVC1 = 0x7F000003,
    OMX_ExtraDataFrameDimension = 0x7F000004,
-   OMX_ExtraDataVideoEncoderSliceInfo = 0x7F000005
+   OMX_ExtraDataVideoEncoderSliceInfo = 0x7F000005,
+   OMX_ExtraDataConcealMB = 0x7F000006,
+   OMX_ExtraDataInterlaceFormat = 0x7F000007
 } OMX_QCOM_EXTRADATATYPE;
+
+typedef struct  OMX_STREAMINTERLACEFORMATTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bInterlaceFormat;
+    OMX_U32 nInterlaceFormats;
+} OMX_STREAMINTERLACEFORMAT;
+
+typedef enum OMX_INTERLACETYPE
+{
+   OMX_InterlaceFrameProgressive,
+   OMX_InterlaceInterleaveFrameTopFieldFirst,
+   OMX_InterlaceInterleaveFrameBottomFieldFirst,
+   OMX_InterlaceFrameTopFieldFirst,
+   OMX_InterlaceFrameBottomFieldFirst
+}OMX_INTERLACEs;
 
 
 #define OMX_EXTRADATA_HEADER_SIZE 20
@@ -684,6 +721,30 @@ typedef struct QOMX_VIDEO_QUERY_DECODER_INSTANCES {
     OMX_U32 nNumOfInstances;
 } QOMX_VIDEO_QUERY_DECODER_INSTANCES;
 
+typedef struct QOMX_ENABLETYPE {
+    OMX_BOOL bEnable;
+} QOMX_ENABLETYPE;
 
+typedef enum QOMX_VIDEO_EVENTS {
+    OMX_EventIndexsettingChanged = OMX_EventVendorStartUnused
+} QOMX_VIDEO_EVENTS;
+
+typedef enum QOMX_VIDEO_PICTURE_ORDER {
+    QOMX_VIDEO_DISPLAY_ORDER = 0x1,
+    QOMX_VIDEO_DECODE_ORDER = 0x2
+} QOMX_VIDEO_PICTURE_ORDER;
+
+typedef struct QOMX_VIDEO_DECODER_PICTURE_ORDER {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    QOMX_VIDEO_PICTURE_ORDER eOutputPictureOrder;
+} QOMX_VIDEO_DECODER_PICTURE_ORDER;
+
+#define OMX_QCOM_INDEX_PARAM_VIDEO_SYNCFRAMEDECODINGMODE "OMX.QCOM.index.param.video.SyncFrameDecodingMode"
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
 
 #endif /* __OMX_QCOM_EXTENSIONS_H__ */

@@ -170,7 +170,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   m_sConfigIntraRefreshVOP.IntraRefreshVOP = OMX_FALSE;
 
   OMX_INIT_STRUCT(&m_sConfigFrameRotation, OMX_CONFIG_ROTATIONTYPE);
-  m_sConfigFrameRotation.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+  m_sConfigFrameRotation.nPortIndex = (OMX_U32) PORT_INDEX_IN;
   m_sConfigFrameRotation.nRotation = 0;
 
   OMX_INIT_STRUCT(&m_sSessionQuantization, OMX_VIDEO_PARAM_QUANTIZATIONTYPE);
@@ -186,6 +186,22 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   m_sAVCSliceFMO.nSliceGroupMapType = 0;
   OMX_INIT_STRUCT(&m_sParamProfileLevel, OMX_VIDEO_PARAM_PROFILELEVELTYPE);
   m_sParamProfileLevel.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+
+  OMX_INIT_STRUCT(&m_sIntraperiod, QOMX_VIDEO_INTRAPERIODTYPE);
+  m_sIntraperiod.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+  m_sIntraperiod.nPFrames = (m_sConfigFramerate.xEncodeFramerate * 2) - 1;
+
+  OMX_INIT_STRUCT(&m_sErrorCorrection, OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE);
+  m_sErrorCorrection.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+  m_sErrorCorrection.bEnableDataPartitioning = OMX_FALSE;
+  m_sErrorCorrection.bEnableHEC = OMX_FALSE;
+  m_sErrorCorrection.bEnableResync = OMX_FALSE;
+  m_sErrorCorrection.bEnableRVLC = OMX_FALSE;
+  m_sErrorCorrection.nResynchMarkerSpacing = 0;
+
+  OMX_INIT_STRUCT(&m_sIntraRefresh, OMX_VIDEO_PARAM_INTRAREFRESHTYPE);
+  m_sIntraRefresh.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+  m_sIntraRefresh.eRefreshMode = OMX_VIDEO_IntraRefreshMax;
 
   if(codec_type == OMX_VIDEO_CodingMPEG4)
   {
@@ -303,7 +319,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   m_sParamMPEG4.nSliceHeaderSpacing = 0;
   m_sParamMPEG4.bSVH = OMX_FALSE;
   m_sParamMPEG4.bGov = OMX_FALSE;
-  m_sParamMPEG4.nPFrames = 29; // 2 second intra period for default 15 fps
+  m_sParamMPEG4.nPFrames = (m_sOutPortFormat.xFramerate * 2 - 1);  // 2 second intra period for default outport fps
   m_sParamMPEG4.bACPred = OMX_TRUE;
   m_sParamMPEG4.nTimeIncRes = 30; // delta = 2 @ 15 fps
   m_sParamMPEG4.nAllowedPictureTypes = 2; // pframe and iframe
@@ -313,43 +329,43 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   // h263 specific init
   OMX_INIT_STRUCT(&m_sParamH263, OMX_VIDEO_PARAM_H263TYPE);
   m_sParamH263.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
-  m_sParamH263.nPFrames = 29;
+  m_sParamH263.nPFrames = (m_sOutPortFormat.xFramerate * 2 - 1); // 2 second intra period for default outport fps
   m_sParamH263.nBFrames = 0;
   m_sParamH263.eProfile = OMX_VIDEO_H263ProfileBaseline;
   m_sParamH263.eLevel = OMX_VIDEO_H263Level10;
   m_sParamH263.bPLUSPTYPEAllowed = OMX_FALSE;
   m_sParamH263.nAllowedPictureTypes = 2;
-  m_sParamH263.bForceRoundingTypeToZero = OMX_TRUE; ///@todo determine what this should be
-  m_sParamH263.nPictureHeaderRepetition = 0; ///@todo determine what this should be
-  m_sParamH263.nGOBHeaderInterval = 0; ///@todo determine what this should be
+  m_sParamH263.bForceRoundingTypeToZero = OMX_TRUE;
+  m_sParamH263.nPictureHeaderRepetition = 0; 
+  m_sParamH263.nGOBHeaderInterval = 1;
 
   // h264 specific init
-  OMX_INIT_STRUCT(&m_sParamH263, OMX_VIDEO_PARAM_AVCTYPE);
+  OMX_INIT_STRUCT(&m_sParamAVC, OMX_VIDEO_PARAM_AVCTYPE);
   m_sParamAVC.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
-  m_sParamAVC.nSliceHeaderSpacing =
-  m_sParamAVC.nPFrames = 29;
+  m_sParamAVC.nSliceHeaderSpacing = 0;
+  m_sParamAVC.nPFrames = (m_sOutPortFormat.xFramerate * 2 - 1); // 2 second intra period for default outport fps
   m_sParamAVC.nBFrames = 0;
-  m_sParamAVC.bUseHadamard = OMX_FALSE;//todo: to decide the value
-  m_sParamAVC.nRefFrames = 0; //todo: to decide the value
-  m_sParamAVC.nRefIdx10ActiveMinus1 = 0; //todo: to decide the value
-  m_sParamAVC.nRefIdx11ActiveMinus1 = 0; //todo: to decide the value
-  m_sParamAVC.bEnableUEP = OMX_FALSE; //todo: to decide the value
-  m_sParamAVC.bEnableFMO = OMX_FALSE;//todo: to decide the value
-  m_sParamAVC.bEnableASO = OMX_FALSE; //todo: to decide the value
-  m_sParamAVC.bEnableRS = OMX_FALSE;//todo: to decide the value
+  m_sParamAVC.bUseHadamard = OMX_FALSE;
+  m_sParamAVC.nRefFrames = 1;
+  m_sParamAVC.nRefIdx10ActiveMinus1 = 1; 
+  m_sParamAVC.nRefIdx11ActiveMinus1 = 0;
+  m_sParamAVC.bEnableUEP = OMX_FALSE;
+  m_sParamAVC.bEnableFMO = OMX_FALSE;
+  m_sParamAVC.bEnableASO = OMX_FALSE;
+  m_sParamAVC.bEnableRS = OMX_FALSE;
   m_sParamAVC.eProfile = OMX_VIDEO_AVCProfileBaseline;
   m_sParamAVC.eLevel = OMX_VIDEO_AVCLevel1;
   m_sParamAVC.nAllowedPictureTypes = 2;
-  m_sParamAVC.bFrameMBsOnly = OMX_FALSE; //todo: to decide the value
-  m_sParamAVC.bMBAFF = OMX_FALSE; //todo: to decide the value
-  m_sParamAVC.bEntropyCodingCABAC = OMX_FALSE; //todo: to decide the value
-  m_sParamAVC.bWeightedPPrediction = OMX_FALSE; //todo: to decide the value
-  m_sParamAVC.nWeightedBipredicitonMode = 0;//todo: to decide the value
-  m_sParamAVC.bconstIpred = OMX_FALSE;//todo: to decide the value
-  m_sParamAVC.bDirect8x8Inference = OMX_FALSE; //todo: to decide the value
-  m_sParamAVC.bDirectSpatialTemporal = OMX_FALSE; //todo: to decide the value
-  m_sParamAVC.nCabacInitIdc = 0; //todo: to decide the value
-  //m_sParamAVC.eLoopFilterMode = 0; //todo: to decide the value
+  m_sParamAVC.bFrameMBsOnly = OMX_FALSE;
+  m_sParamAVC.bMBAFF = OMX_FALSE;
+  m_sParamAVC.bEntropyCodingCABAC = OMX_FALSE;
+  m_sParamAVC.bWeightedPPrediction = OMX_FALSE;
+  m_sParamAVC.nWeightedBipredicitonMode = 0;
+  m_sParamAVC.bconstIpred = OMX_FALSE;
+  m_sParamAVC.bDirect8x8Inference = OMX_FALSE;
+  m_sParamAVC.bDirectSpatialTemporal = OMX_FALSE;
+  m_sParamAVC.nCabacInitIdc = 0;
+  m_sParamAVC.eLoopFilterMode = OMX_VIDEO_AVCLoopFilterEnable;
 
   m_state                   = OMX_StateLoaded;
 
@@ -466,12 +482,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         DEBUG_PRINT_LOW("\n i/p previous actual cnt = %d\n", m_sInPortDef.nBufferCountActual);
         DEBUG_PRINT_LOW("\n i/p previous min cnt = %d\n", m_sInPortDef.nBufferCountMin);
-        m_sInPortDef.format.video.nFrameWidth = portDefn->format.video.nFrameWidth;
-        m_sInPortDef.format.video.nFrameHeight = portDefn->format.video.nFrameHeight;
-        m_sInPortDef.format.video.xFramerate = portDefn->format.video.xFramerate;
-        m_sInPortDef.format.video.nBitrate = portDefn->format.video.nBitrate;
-        m_sInPortDef.format.video.eColorFormat = portDefn->format.video.eColorFormat;
-
+        memcpy(&m_sInPortDef, portDefn,sizeof(OMX_PARAM_PORTDEFINITIONTYPE));
 
         /*Query Input Buffer Requirements*/
         dev_get_buf_req   (&m_sInPortDef.nBufferCountMin,
@@ -496,6 +507,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           DEBUG_PRINT_ERROR("\nERROR: venc_set_param output failed");
           return OMX_ErrorUnsupportedSetting;
         }
+        memcpy(&m_sOutPortDef,portDefn,sizeof(struct OMX_PARAM_PORTDEFINITIONTYPE));
+        update_profile_level(); //framerate , bitrate
 
         DEBUG_PRINT_LOW("\n o/p previous actual cnt = %d\n", m_sOutPortDef.nBufferCountActual);
         DEBUG_PRINT_LOW("\n o/p previous min cnt = %d\n", m_sOutPortDef.nBufferCountMin);
@@ -529,7 +542,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoPortFormat %d\n",
             portFmt->eColorFormat);
-
+        update_profile_level(); //framerate
         m_sInPortFormat.eColorFormat = portFmt->eColorFormat;
         m_sInPortFormat.xFramerate = portFmt->xFramerate;
       }
@@ -553,7 +566,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       }
       m_sParamBitrate.nTargetBitrate = pParam->nTargetBitrate;
       m_sParamBitrate.eControlRate = pParam->eControlRate;
-
+      update_profile_level(); //bitrate
       m_sConfigBitrate.nEncodeBitrate = pParam->nTargetBitrate;
 	  m_sInPortDef.format.video.nBitrate = pParam->nTargetBitrate;
       m_sOutPortDef.format.video.nBitrate = pParam->nTargetBitrate;
@@ -564,20 +577,30 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
     {
       OMX_VIDEO_PARAM_MPEG4TYPE* pParam = (OMX_VIDEO_PARAM_MPEG4TYPE*)paramData;
       DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoMpeg4");
+      if(m_sParamMPEG4.eProfile == OMX_VIDEO_MPEG4ProfileAdvancedSimple)
+      {
+#ifdef MAX_RES_1080P
+        if(pParam->nBFrames > 1)
+        {
+          DEBUG_PRINT_ERROR("BFrame set to %d (only 1 Bframe is supported)", pParam->nBFrames);
+          return OMX_ErrorUnsupportedSetting;
+        }
+#else
+        if(pParam->nBFrames > 0)
+        {
+          DEBUG_PRINT_ERROR("B frames not supported\n");
+          return OMX_ErrorUnsupportedSetting;
+        }
+#endif
+      }
+      else
+        pParam->nBFrames = 0;
+
       if(handle->venc_set_param(paramData,OMX_IndexParamVideoMpeg4) != true)
       {
         return OMX_ErrorUnsupportedSetting;
       }
-      //.. more than one variable storing the npframes,profile,level details
-      m_sParamMPEG4.nPFrames = pParam->nPFrames;
-      m_sParamMPEG4.eProfile = pParam->eProfile;
-      m_sParamMPEG4.eLevel = pParam->eLevel;
-      m_sParamMPEG4.bACPred = pParam->bACPred;
-      m_sParamMPEG4.nTimeIncRes = pParam->nTimeIncRes;
-      m_sParamMPEG4.bReversibleVLC = pParam->bReversibleVLC;
-
-      m_sParamProfileLevel.eProfile = pParam->eProfile;
-      m_sParamProfileLevel.eLevel = pParam->eLevel;
+      memcpy(&m_sParamMPEG4,pParam, sizeof(struct OMX_VIDEO_PARAM_MPEG4TYPE));
       break;
     }
   case OMX_IndexParamVideoH263:
@@ -588,38 +611,54 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       {
         return OMX_ErrorUnsupportedSetting;
       }
-      //.. more than one variable storing the npframes,profile,level details
-      m_sParamH263.nPFrames = pParam->nPFrames;
-      m_sParamH263.eProfile = pParam->eProfile;
-      m_sParamH263.eLevel = pParam->eLevel;
-
-      m_sParamProfileLevel.eProfile = pParam->eProfile;
-      m_sParamProfileLevel.eLevel = pParam->eLevel;
+      memcpy(&m_sParamH263,pParam, sizeof(struct OMX_VIDEO_PARAM_H263TYPE));
       break;
     }
   case OMX_IndexParamVideoAvc:
     {
       OMX_VIDEO_PARAM_AVCTYPE* pParam = (OMX_VIDEO_PARAM_AVCTYPE*)paramData;
       DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoAvc");
+
+      if((m_sParamAVC.eProfile == OMX_VIDEO_AVCProfileHigh)||
+         (m_sParamAVC.eProfile == OMX_VIDEO_AVCProfileMain))
+      {
+#ifdef MAX_RES_1080P
+        if(pParam->nBFrames > 1)
+        {
+          DEBUG_PRINT_ERROR("BFrame set to %d (only 1 Bframe is supported)", pParam->nBFrames);
+          return OMX_ErrorUnsupportedSetting;
+        }
+        pParam->nRefFrames = 2;
+#else
+       if(pParam->nBFrames > 0)
+       {
+         DEBUG_PRINT_ERROR("B frames not supported\n");
+         return OMX_ErrorUnsupportedSetting;
+       }
+       pParam->nRefFrames = 1;
+#endif
+      }
+      else
+      {
+        pParam->nRefFrames = 1;
+        pParam->nBFrames = 0;
+      }
+
       if(handle->venc_set_param(paramData,OMX_IndexParamVideoAvc) != true)
       {
         return OMX_ErrorUnsupportedSetting;
       }
-      //.. more than one variable storing the npframes,profile,level details
-      m_sParamAVC.nPFrames = pParam->nPFrames;
-      m_sParamAVC.eProfile = pParam->eProfile;
-      m_sParamAVC.eLevel = pParam->eLevel;
-
-      m_sParamProfileLevel.eProfile = pParam->eProfile;
-      m_sParamProfileLevel.eLevel = pParam->eLevel;
+      memcpy(&m_sParamAVC,pParam, sizeof(struct OMX_VIDEO_PARAM_AVCTYPE));
       break;
     }
   case OMX_IndexParamVideoProfileLevelCurrent:
     {
       OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam = (OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
       DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoProfileLevelCurrent");
-      if(handle->venc_set_param(paramData,OMX_IndexParamVideoProfileLevelCurrent) != true)
+      if(handle->venc_set_param(pParam,OMX_IndexParamVideoProfileLevelCurrent) != true)
       {
+        DEBUG_PRINT_ERROR("set_parameter: OMX_IndexParamVideoProfileLevelCurrent failed for Profile: %d "
+                          "Level :%d", pParam->eProfile, pParam->eLevel);
         return OMX_ErrorUnsupportedSetting;
       }
       m_sParamProfileLevel.eProfile = pParam->eProfile;
@@ -641,7 +680,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           DEBUG_PRINT_LOW("\n H263 profile = %d, level = %d", m_sParamH263.eProfile,
               m_sParamH263.eLevel);
       }
-      else
+      else if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.avc",\
+          OMX_MAX_STRINGNAME_SIZE))
       {
           m_sParamAVC.eProfile = (OMX_VIDEO_AVCPROFILETYPE)m_sParamProfileLevel.eProfile;
           m_sParamAVC.eLevel = (OMX_VIDEO_AVCLEVELTYPE)m_sParamProfileLevel.eLevel;
@@ -806,39 +846,34 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       }
       break;
     }
-//#endif //# QCOM_EXT
-  case OMX_IndexParamVideoSliceFMO:
-    {
-      DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoSliceFMO\n");
-      OMX_VIDEO_PARAM_AVCSLICEFMO *avc_slice_fmo = (OMX_VIDEO_PARAM_AVCSLICEFMO*)paramData;
-      if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.avc",\
-          OMX_MAX_STRINGNAME_SIZE) && avc_slice_fmo->nPortIndex == PORT_INDEX_OUT)
-      {
-        if(handle->venc_set_param(paramData, OMX_IndexParamVideoSliceFMO) != true)
-        {
-          return OMX_ErrorUnsupportedSetting;
-        }
-        m_sAVCSliceFMO.eSliceMode = avc_slice_fmo->eSliceMode;
-      }
-      else
-      {
-        DEBUG_PRINT_ERROR("\nERROR: Unsupported codec type/port Index for AVCSliceFMO setting\n");
-        eRet = OMX_ErrorBadPortIndex;
-      }
-      break;
-    }
+
   case OMX_IndexParamVideoErrorCorrection:
     {
-	  DEBUG_PRINT_ERROR("ERROR: OMX_IndexParamVideoErrorCorrection unsupported\n");
-	  eRet = OMX_ErrorUnsupportedIndex;
+	    DEBUG_PRINT_LOW("OMX_IndexParamVideoErrorCorrection\n");
+      OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* pParam =
+          (OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE*)paramData;
+      if(!handle->venc_set_param(paramData, OMX_IndexParamVideoErrorCorrection))
+      {
+        DEBUG_PRINT_ERROR("\nERROR: Request for setting Error Resilience failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      memcpy(&m_sErrorCorrection,pParam, sizeof(m_sErrorCorrection));
       break;
     }
   case OMX_IndexParamVideoIntraRefresh:
     {
-	  DEBUG_PRINT_ERROR("ERROR: OMX_IndexParamVideoIntraRefresh unsupported\n");
-	  eRet = OMX_ErrorUnsupportedIndex;
+      DEBUG_PRINT_LOW("set_param:OMX_IndexParamVideoIntraRefresh\n");
+      OMX_VIDEO_PARAM_INTRAREFRESHTYPE* pParam =
+          (OMX_VIDEO_PARAM_INTRAREFRESHTYPE*)paramData;
+      if(!handle->venc_set_param(paramData,OMX_IndexParamVideoIntraRefresh))
+      {
+        DEBUG_PRINT_ERROR("\nERROR: Request for setting intra refresh failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      memcpy(&m_sIntraRefresh, pParam, sizeof(m_sIntraRefresh));
       break;
     }
+  case OMX_IndexParamVideoSliceFMO:
   default:
     {
       DEBUG_PRINT_ERROR("ERROR: Setparameter: unknown param %d\n", paramIndex);
@@ -849,6 +884,45 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
   return eRet;
 }
 
+bool omx_venc::update_profile_level()
+{
+  OMX_U32 eProfile, eLevel;
+
+  if(!handle->venc_get_profile_level(&eProfile,&eLevel))
+  {
+    DEBUG_PRINT_ERROR("\nFailed to update the profile_level\n");
+    return false;
+  }
+
+  m_sParamProfileLevel.eProfile = (OMX_VIDEO_MPEG4PROFILETYPE)eProfile;
+  m_sParamProfileLevel.eLevel = (OMX_VIDEO_MPEG4LEVELTYPE)eLevel;
+
+  if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.mpeg4",\
+              OMX_MAX_STRINGNAME_SIZE))
+  {
+    m_sParamMPEG4.eProfile = (OMX_VIDEO_MPEG4PROFILETYPE)eProfile;
+    m_sParamMPEG4.eLevel = (OMX_VIDEO_MPEG4LEVELTYPE)eLevel;
+    DEBUG_PRINT_LOW("\n MPEG4 profile = %d, level = %d", m_sParamMPEG4.eProfile,
+                    m_sParamMPEG4.eLevel);
+  }
+  else if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.h263",\
+                   OMX_MAX_STRINGNAME_SIZE))
+  {
+    m_sParamH263.eProfile = (OMX_VIDEO_H263PROFILETYPE)eProfile;
+    m_sParamH263.eLevel = (OMX_VIDEO_H263LEVELTYPE)eLevel;
+    DEBUG_PRINT_LOW("\n H263 profile = %d, level = %d", m_sParamH263.eProfile,
+                    m_sParamH263.eLevel);
+  }
+  else if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.avc",\
+                   OMX_MAX_STRINGNAME_SIZE))
+  {
+    m_sParamAVC.eProfile = (OMX_VIDEO_AVCPROFILETYPE)eProfile;
+    m_sParamAVC.eLevel = (OMX_VIDEO_AVCLEVELTYPE)eLevel;
+    DEBUG_PRINT_LOW("\n AVC profile = %d, level = %d", m_sParamAVC.eProfile,
+                    m_sParamAVC.eLevel);
+  }
+  return true;
+}
 /* ======================================================================
 FUNCTION
   omx_video::SetConfig
@@ -932,6 +1006,59 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 
       break;
     }
+  case QOMX_IndexConfigVideoIntraperiod:
+    {
+      QOMX_VIDEO_INTRAPERIODTYPE* pParam =
+        reinterpret_cast<QOMX_VIDEO_INTRAPERIODTYPE*>(configData);
+
+      if(pParam->nPortIndex == PORT_INDEX_OUT)
+      {
+#ifdef MAX_RES_720P
+        if(pParam->nBFrames > 0)
+        {
+          DEBUG_PRINT_ERROR("B frames not supported\n");
+          return OMX_ErrorUnsupportedSetting;
+        }
+#endif
+        if(handle->venc_set_config(configData, (OMX_INDEXTYPE) QOMX_IndexConfigVideoIntraperiod) != true)
+        {
+          DEBUG_PRINT_ERROR("ERROR: Setting QOMX_IndexConfigVideoIntraperiod failed");
+          return OMX_ErrorUnsupportedSetting;
+        }
+        m_sIntraperiod.nPFrames = pParam->nPFrames;
+        m_sIntraperiod.nBFrames = pParam->nBFrames;
+        m_sIntraperiod.nIDRPeriod = pParam->nIDRPeriod;
+
+        if(m_sOutPortFormat.eCompressionFormat == OMX_VIDEO_CodingMPEG4)
+        {
+          m_sParamMPEG4.nPFrames = pParam->nPFrames;
+          if(m_sParamMPEG4.eProfile != OMX_VIDEO_MPEG4ProfileSimple)
+            m_sParamMPEG4.nBFrames = pParam->nBFrames;
+          else
+            m_sParamMPEG4.nBFrames = 0;
+        }
+        else if(m_sOutPortFormat.eCompressionFormat == OMX_VIDEO_CodingH263)
+        {
+          m_sParamH263.nPFrames = pParam->nPFrames;
+        }
+        else
+        {
+          m_sParamAVC.nPFrames = pParam->nPFrames;
+          if(m_sParamAVC.eProfile != OMX_VIDEO_AVCProfileBaseline)
+            m_sParamAVC.nBFrames = pParam->nBFrames;
+          else
+            m_sParamAVC.nBFrames = 0;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("ERROR: (QOMX_IndexConfigVideoIntraperiod) Unsupported port index: %u", pParam->nPortIndex);
+        return OMX_ErrorBadPortIndex;
+      }
+
+      break;
+    }
+
   case OMX_IndexConfigVideoIntraVOPRefresh:
     {
       OMX_CONFIG_INTRAREFRESHVOPTYPE* pParam =
@@ -958,7 +1085,51 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     }
   case OMX_IndexConfigCommonRotate:
     {
-      DEBUG_PRINT_ERROR("ERROR: OMX_IndexConfigCommonRotate is currently unsupported");
+      OMX_CONFIG_ROTATIONTYPE *pParam =
+         reinterpret_cast<OMX_CONFIG_ROTATIONTYPE*>(configData);
+      OMX_S32 nRotation;
+
+      if(pParam->nPortIndex != PORT_INDEX_IN){
+           DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", pParam->nPortIndex);
+           return OMX_ErrorBadPortIndex;
+      }
+      if( pParam->nRotation == 0   ||
+          pParam->nRotation == 90  ||
+          pParam->nRotation == 180 ||
+          pParam->nRotation == 270 ) {
+          DEBUG_PRINT_HIGH("\nset_config: Rotation Angle %u", pParam->nRotation);
+      } else {
+          DEBUG_PRINT_ERROR("ERROR: un supported Rotation %u", pParam->nRotation);
+          return OMX_ErrorUnsupportedSetting;
+      }
+      nRotation = pParam->nRotation - m_sConfigFrameRotation.nRotation;
+      if(nRotation < 0)
+        nRotation = -nRotation;
+      if(nRotation == 90 || nRotation == 270) {
+          DEBUG_PRINT_HIGH("\nset_config: updating device Dims");
+          if(handle->venc_set_config(configData,
+             OMX_IndexConfigCommonRotate) != true) {
+             DEBUG_PRINT_ERROR("ERROR: Set OMX_IndexConfigCommonRotate failed");
+             return OMX_ErrorUnsupportedSetting;
+          } else {
+                  OMX_U32 nFrameWidth;
+
+                  DEBUG_PRINT_HIGH("\nset_config: updating port Dims");
+
+                  nFrameWidth = m_sInPortDef.format.video.nFrameWidth;
+	          m_sInPortDef.format.video.nFrameWidth =
+                      m_sInPortDef.format.video.nFrameHeight;
+                  m_sInPortDef.format.video.nFrameHeight = nFrameWidth;
+
+                  m_sOutPortDef.format.video.nFrameWidth  =
+                      m_sInPortDef.format.video.nFrameWidth;
+                  m_sOutPortDef.format.video.nFrameHeight =
+                      m_sInPortDef.format.video.nFrameHeight;
+                  m_sConfigFrameRotation.nRotation = pParam->nRotation;
+           }
+       } else {
+          m_sConfigFrameRotation.nRotation = pParam->nRotation;
+      }
       break;
     }
   default:

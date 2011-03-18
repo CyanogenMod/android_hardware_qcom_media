@@ -48,8 +48,10 @@ libOmxVdec-def += -UENABLE_DEBUG_LOW
 libOmxVdec-def += -DENABLE_DEBUG_HIGH
 libOmxVdec-def += -DENABLE_DEBUG_ERROR
 libOmxVdec-def += -UMULTI_DEC_INST
+libOmxVdec-def += -UINPUT_BUFFER_LOG
+libOmxVdec-def += -UOUTPUT_BUFFER_LOG
 libOmxVdec-def += -DMAX_RES_720P
-
+libOmxVdec-def += -DCONFIG_MSM_MDP40
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------
