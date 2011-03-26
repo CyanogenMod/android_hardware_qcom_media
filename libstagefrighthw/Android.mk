@@ -33,7 +33,6 @@ LOCAL_SHARED_LIBRARIES :=       \
         libcutils               \
         libdl                   \
         libui                   \
-        libsurfaceflinger_client\
 
 LOCAL_MODULE := libstagefrighthw
 
