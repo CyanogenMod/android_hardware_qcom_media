@@ -74,7 +74,7 @@ MP4_Utils::MP4_Utils()
    }
    else
    {
-       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR, "MP4_Utils:: Constr failed in \
+       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED, "MP4_Utils:: Constr failed in \
            getting value for the Android property [persist.omxvideo.profilecheck]");
    }
 
@@ -87,7 +87,7 @@ MP4_Utils::MP4_Utils()
    }
    else
    {
-       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR, "MP4_Utils:: Constr failed in \
+       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED, "MP4_Utils:: Constr failed in \
            getting value for the Android property [persist.omxvideo.levelcheck]");
    }
 #endif
@@ -505,6 +505,7 @@ bool MP4_Utils::parseHeader(mp4StreamType * psBits) {
        && (profile_and_level_indication != SIMPLE_PROFILE_LEVEL4A)
        && (profile_and_level_indication != SIMPLE_PROFILE_LEVEL5)
        && (profile_and_level_indication != SIMPLE_PROFILE_LEVEL6)
+       && (profile_and_level_indication != SIMPLE_PROFILE_LEVEL0B)
        && (profile_and_level_indication != SIMPLE_SCALABLE_PROFILE_LEVEL0)
        && (profile_and_level_indication != SIMPLE_SCALABLE_PROFILE_LEVEL1)
        && (profile_and_level_indication != SIMPLE_SCALABLE_PROFILE_LEVEL2)
@@ -877,7 +878,10 @@ bool MP4_Utils::parseHeader(mp4StreamType * psBits) {
             || quant_precision  > MAX_QUANTPRECISION )
       {
          QTV_MSG(QTVDIAG_VIDEO_TASK,"returning INVALID_QUANT_PRECISION ");
-         return false;
+/* though per standard we can fail playback here, we choose not to
+ * we will simply leave a msg
+ */
+//         return false;
       }
 
       /* bits_per_pixel*/
@@ -885,7 +889,10 @@ bool MP4_Utils::parseHeader(mp4StreamType * psBits) {
       if ( BitsPerPixel < 4 || BitsPerPixel > 12 )
       {
       QTV_MSG(QTVDIAG_VIDEO_TASK,"returning INVALID_BITS_PER_PIXEL ");
-      return false;
+/* though per standard we can fail playback here, we choose not to
+ * we will simply leave a msg
+ */
+//      return false;
       }
    }
 
@@ -1127,14 +1134,6 @@ uint32 MP4_Utils::parse_frames_in_chunk(const uint8* pBitstream,
       else if(0x000000c0 == vopType)  frame_info[noOfVopsInSameChunk].vopType = MPEG4_S_VOP;
       noOfVopsInSameChunk++;
       code = 0;
-    }
-    else if (code == VOL_START_CODE)
-    {
-      frame_info[noOfVopsInSameChunk].offset = i-4;
-      frame_info[noOfVopsInSameChunk].vopType = NO_VOP;
-
-      noOfVopsInSameChunk++;
-      break;
     }
     code <<= 8;
     code |= (0x000000FF & (pBitstream[i]));

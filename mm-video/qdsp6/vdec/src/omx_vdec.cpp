@@ -316,7 +316,8 @@ m_codec_profile(0),
 m_bInvalidState(false),
 m_display_id(NULL),
 m_is_use_egl_buffer(false),
-m_first_sync_frame_rcvd(false)
+m_first_sync_frame_rcvd(false),
+m_heap_ptr(NULL)
 {
    /* Assumption is that , to begin with , we have all the frames with client */
    memset(m_out_flags, 0x00, (OMX_CORE_NUM_OUTPUT_BUFFERS + 7) / 8);
@@ -743,6 +744,8 @@ void omx_vdec::buffer_done_cb(struct vdec_context *ctxt, void *cookie)
                    buffer_done_cb_arbitrarybytes(ctxt,
                              cookie);
             } else {
+            QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
+                    "buffer Done %x",bufHdr->pBuffer);
                pThis->m_cb.EmptyBufferDone(&pThis->
                             m_cmp,
                             pThis->
@@ -794,27 +797,37 @@ void omx_vdec::buffer_done_cb_arbitrarybytes(struct vdec_context *ctxt,
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
               "buffer Done callback - end of arbitrary bytes buffer!!\n");
       pThis->free_extra_buffer(extra_buf_index);
-      unsigned int nPortIndex =
-          pThis->m_extra_buf_info[extra_buf_index].
-          arbitrarybytesInput -
-          (OMX_BUFFERHEADERTYPE *) pThis->
-          m_arbitrary_bytes_input_mem_ptr;
-      if (nPortIndex < MAX_NUM_INPUT_BUFFERS) {
-         pThis->m_cb.EmptyBufferDone(&pThis->m_cmp,
-                      pThis->m_app_data,
-                      pThis->
-                      m_extra_buf_info
-                      [extra_buf_index].
-                      arbitrarybytesInput);
-         pThis->m_extra_buf_info[extra_buf_index].
-             arbitrarybytesInput = NULL;
-         pThis->push_pending_buffers_proxy();
-      } else {
-         QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
-                  "Incorrect previous arbitrary bytes buffer %p\n",
-                  pThis->m_extra_buf_info[extra_buf_index].
-                  arbitrarybytesInput);
-      }
+      if (pThis->m_extra_buf_info[extra_buf_index].arbitrarybytesInput)
+      {
+         unsigned int nPortIndex =
+             pThis->m_extra_buf_info[extra_buf_index].
+             arbitrarybytesInput -
+             (OMX_BUFFERHEADERTYPE *) pThis->
+             m_arbitrary_bytes_input_mem_ptr;
+         if (nPortIndex < MAX_NUM_INPUT_BUFFERS) {
+            QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
+                       "buffer Done arb %x",pThis->m_extra_buf_info[extra_buf_index].arbitrarybytesInput->pBuffer);
+            pThis->m_cb.EmptyBufferDone(&pThis->m_cmp,
+                         pThis->m_app_data,
+                         pThis->
+                         m_extra_buf_info
+                         [extra_buf_index].
+                         arbitrarybytesInput);
+            pThis->m_extra_buf_info[extra_buf_index].
+                arbitrarybytesInput = NULL;
+            pThis->push_pending_buffers_proxy();
+         } else {
+            QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
+                     "Incorrect previous arbitrary bytes buffer %p\n",
+                     pThis->m_extra_buf_info[extra_buf_index].
+                     arbitrarybytesInput);
+         }
+     }
+    else
+    {
+      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH, "arbitrarybytesInput NULL");
+      pThis->push_pending_buffers_proxy();
+    }
    }
 
    QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
@@ -945,6 +958,9 @@ void omx_vdec::process_event_cb(struct vdec_context *ctxt, unsigned char id)
                }
                /* posting error events for illegal state transition */
                else if (p1 == OMX_EventError) {
+                  QTV_MSG_PRIO1(QTVDIAG_GENERAL,
+                           QTVDIAG_PRIO_ERROR,
+                           "-------Error %x------",p2);
                   if (p2 == OMX_ErrorInvalidState) {
                      pThis->m_state =
                          OMX_StateInvalid;
@@ -1133,7 +1149,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
    }
    else
    {
-       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR, "OMX_VDEC:: Comp Init failed in \
+       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED, "OMX_VDEC:: Comp Init failed in \
            getting value for the Android property [persist.omxvideo.arb-bytes]");
    }
 
@@ -1146,7 +1162,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
    }
    else
    {
-       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR, "OMX_VDEC:: Comp Init failed in \
+       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED, "OMX_VDEC:: Comp Init failed in \
            getting value for the Android property [persist.omxvideo.arb-bytes-vc1]");
    }
 
@@ -1159,7 +1175,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
    }
    else
    {
-       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR, "OMX_VDEC:: Comp Init failed in \
+       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED, "OMX_VDEC:: Comp Init failed in \
            getting value for the Android property [persist.omxvideo.accsubframe]");
    }
 #endif
@@ -1260,7 +1276,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       m_out_buf_count = OMX_CORE_NUM_OUTPUT_BUFFERS_VC1;
       m_outstanding_frames = -OMX_CORE_NUM_OUTPUT_BUFFERS_VC1;
       m_bAccumulate_subframe = true;
-      m_bArbitraryBytes =  false;
       m_bAccumulate_subframe = (m_bAccumulate_subframe && m_default_accumulate_subframe);
    } else if (strncmp(m_vdec_cfg.kind, "OMX.qcom.video.decoder.vp", 25) ==
          0) {
@@ -1985,7 +2000,7 @@ bool omx_vdec::execute_output_flush(void)
              Dequeue();
       }
    }
-   if (m_vdec) {
+   if (m_vdec && m_vdec->is_commit_memory) {
       /* . Execute the decoder flush */
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
               "\n *** Calling vdec_flush ***  \n");
@@ -2089,10 +2104,10 @@ bool omx_vdec::execute_input_flush(void)
             pInpBufHdr = (OMX_BUFFERHEADERTYPE *) p2;
             m_extra_buf_info[index].arbitrarybytesInput =
                 pInpBufHdr;
-	    /* since these buffers are not processed by vdec, below statment should make sure that the
-	     * nFilledLen is not zero, so that client knows that vdec didnt consume the buffer*/
-	    m_extra_buf_info[index].arbitrarybytesInput->nOffset=
-		m_extra_buf_info[index].arbitrarybytesInput->nFilledLen;
+/* since these buffers are not processed by vdec, below statment should make sure that the
+   nFilledLen is not zero, so that client knows that vdec didnt consume the buffer*/
+            m_extra_buf_info[index].arbitrarybytesInput->nOffset=
+               m_extra_buf_info[index].arbitrarybytesInput->nFilledLen;
             //post_event((unsigned)&m_vdec_cfg,(unsigned)pInpBufHdr,OMX_COMPONENT_GENERATE_BUFFER_DONE);
          }
          for (i = 0; i < m_inp_buf_count; i++) {
@@ -2264,7 +2279,7 @@ OMX_ERRORTYPE omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE hComp,
             if (!m_inp_buf_count) {
                if (VDEC_SUCCESS !=
                    vdec_get_input_buf_requirements
-                   (&bufferReq)) {
+                   (&bufferReq, m_vdec_cfg.postProc)) {
                   QTV_MSG_PRIO(QTVDIAG_GENERAL,
                           QTVDIAG_PRIO_ERROR,
                           "get_parameter: ERROR - Failed in get input buffer requirement\n");
@@ -2280,8 +2295,7 @@ OMX_ERRORTYPE omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE hComp,
                }
             }
             portDefn->nBufferCountActual = m_inp_buf_count;
-            portDefn->nBufferCountMin =
-                OMX_CORE_NUM_INPUT_BUFFERS;
+            portDefn->nBufferCountMin = m_inp_buf_count;                //OMX_CORE_NUM_INPUT_BUFFERS;
             portDefn->nBufferSize = m_inp_buf_size;
             portDefn->eDir = OMX_DirInput;
             portDefn->format.video.eColorFormat =
@@ -2579,7 +2593,17 @@ OMX_ERRORTYPE omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE hComp,
                 if (profileLevelType->nProfileIndex == 0)
                 {
                    profileLevelType->eProfile = OMX_VIDEO_AVCProfileBaseline;
-                   profileLevelType->eLevel   = OMX_VIDEO_AVCLevel31;
+                   profileLevelType->eLevel   = OMX_VIDEO_AVCLevel32;
+                }
+                else if (profileLevelType->nProfileIndex == 1)
+                {
+                   profileLevelType->eProfile = OMX_VIDEO_AVCProfileMain;
+                   profileLevelType->eLevel   = OMX_VIDEO_AVCLevel32;
+                }
+                else if (profileLevelType->nProfileIndex == 2)
+                {
+                   profileLevelType->eProfile = OMX_VIDEO_AVCProfileHigh;
+                   profileLevelType->eLevel   = OMX_VIDEO_AVCLevel32;
                 }
                 else
                 {
@@ -2595,7 +2619,7 @@ OMX_ERRORTYPE omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE hComp,
                 if (profileLevelType->nProfileIndex == 0)
                 {
                    profileLevelType->eProfile = OMX_VIDEO_H263ProfileBaseline;
-                   profileLevelType->eLevel   = OMX_VIDEO_H263Level60;
+                   profileLevelType->eLevel   = OMX_VIDEO_H263Level30;
                 }
                 else
                 {
@@ -2609,6 +2633,11 @@ OMX_ERRORTYPE omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE hComp,
              else if (!strncmp(m_vdec_cfg.kind, "OMX.qcom.video.decoder.mpeg4",OMX_MAX_STRINGNAME_SIZE))
              {
                 if (profileLevelType->nProfileIndex == 0)
+                {
+                   profileLevelType->eProfile = OMX_VIDEO_MPEG4ProfileSimple;
+                   profileLevelType->eLevel   = OMX_VIDEO_MPEG4Level4a;
+                }
+                else if (profileLevelType->nProfileIndex == 1)
                 {
                    profileLevelType->eProfile = OMX_VIDEO_MPEG4ProfileAdvancedSimple;
                    profileLevelType->eLevel   = OMX_VIDEO_MPEG4Level5;
@@ -2866,8 +2895,7 @@ OMX_ERRORTYPE omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE hComp,
                 OMX_CORE_NUM_INPUT_BUFFERS) {
                m_inp_buf_count =
                    portDefn->nBufferCountActual;
-            } else if (portDefn->nBufferCountActual <
-                  OMX_CORE_NUM_INPUT_BUFFERS) {
+            } else if (portDefn->nBufferCountActual < OMX_CORE_MIN_INPUT_BUFFERS) {
                QTV_MSG_PRIO1(QTVDIAG_GENERAL,
                         QTVDIAG_PRIO_ERROR,
                         " Set_parameter: Actual buffer count = %d less than Min Buff count",
@@ -3235,6 +3263,17 @@ OMX_ERRORTYPE omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE hComp,
           }
         break;
       }
+   case OMX_QcomIndexParamVideoSyncFrameDecodingMode:
+      {
+         /* client sets vdec into thumbnail mode */
+         QOMX_ENABLETYPE *enableType = (QOMX_ENABLETYPE *)paramData;
+         if(enableType && TRUE == enableType->bEnable) {
+               QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+                  "Decoder set to Thumbnail Mode");
+               m_vdec_cfg.postProc = FLAG_THUMBNAIL_MODE;
+            }
+         break;
+      }
 
    default:
       {
@@ -3499,14 +3538,16 @@ OMX_ERRORTYPE omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE hComp,
                    OMX_IN OMX_STRING paramName,
                    OMX_OUT OMX_INDEXTYPE * indexType)
 {
-   QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
-           "get_extension_index: Error, Not implemented\n");
    if (m_state == OMX_StateInvalid) {
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
               "Get Extension Index in Invalid State\n");
       return OMX_ErrorInvalidState;
    }
-   return OMX_ErrorNotImplemented;
+   else if (!strncmp(paramName, "OMX.QCOM.index.param.video.SyncFrameDecodingMode",sizeof("OMX.QCOM.index.param.video.SyncFrameDecodingMode") - 1))
+   {
+      *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoSyncFrameDecodingMode;
+   }
+   return OMX_ErrorNone;
 }
 
 /* ======================================================================
@@ -4160,7 +4201,7 @@ OMX_ERRORTYPE omx_vdec::allocate_input_buffer(OMX_IN OMX_HANDLETYPE hComp,
                    OMX_CORE_INPUT_PORT_INDEX;
                QTV_MSG_PRIO2(QTVDIAG_GENERAL,
                         QTVDIAG_PRIO_MED,
-                        "Input Buffer %p bufHdr[%p]\n",
+                        "Input Buffer %x bufHdr[%p]\n",
                         bufHdr->pBuffer, bufHdr);
                if (!m_bArbitraryBytes
                    && bufHdr->pBuffer == NULL) {
@@ -4302,6 +4343,8 @@ OMX_ERRORTYPE omx_vdec::allocate_input_buffer(OMX_IN OMX_HANDLETYPE hComp,
                  i++) {
                if (m_extra_buf_info[i].extra_pBuffer ==
                    NULL) {
+                   QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
+                          "allocating extra buffers\n");
                   //m_extra_buf_info[i].extra_pBuffer = (OMX_U8*) malloc(m_inp_buf_size);
                   if (VDEC_EFAILED ==
                       vdec_allocate_input_buffer
@@ -5436,27 +5479,8 @@ OMX_ERRORTYPE omx_vdec::
       m_current_frame->pBuffer = buffer->pBuffer + buffer->nOffset;
       m_current_frame->nOffset = 0;
       m_current_frame->nFilledLen = 0;
-      m_current_frame->nTimeStamp= -1;
-   }
-   else if((m_current_arbitrary_bytes_input->nFlags & OMX_BUFFERFLAG_EOS) &&
-                         (m_current_arbitrary_bytes_input->nFilledLen == 0))
-   {  /* If the current ETB came with EOS with size 0 in partial frame mode
-         then declare the previous ETB is complete frame and  post it to QDSP. */
-      unsigned nPortIndex = m_current_frame - ((OMX_BUFFERHEADERTYPE *) m_inp_mem_ptr);
-      add_entry(nPortIndex);
-      m_current_frame = get_free_input_buffer();
-      if (m_current_frame == NULL) {
-      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
-                "omx_vdec::empty_this_buffer_proxy_arbitrary_bytes, waiting for resource");
-      m_bWaitForResource = true;
-      return OMX_ErrorNone;
-      }
-      m_current_frame->pBuffer = m_current_arbitrary_bytes_input->pBuffer +
-                                 m_current_arbitrary_bytes_input->nOffset;
-      m_current_frame->nOffset = 0;
-      m_current_frame->nFilledLen = 0;
       m_current_frame->nTimeStamp = -1;
-      m_bPartialFrame = false;
+
    }
 
    if (!m_vdec) {
@@ -5810,12 +5834,22 @@ OMX_ERRORTYPE omx_vdec::
             QTV_MSG_PRIO(QTVDIAG_GENERAL,
                     QTVDIAG_PRIO_ERROR,
                     "empty_this_buffer_proxy_subframe_stitching- Bit stream Error send Eventerro\n");
-            m_bInvalidState = true;
-            m_cb.EventHandler(&m_cmp, m_app_data,
-                    OMX_EventError,
-                    OMX_ErrorStreamCorrupt, 0,
-                    NULL);
-            return OMX_ErrorStreamCorrupt;
+
+            /* bitsteam is corrupted beyond improvisation
+             * so moving to invalid state.
+             */
+
+            m_state = OMX_StateInvalid;
+
+            post_event(OMX_EventError,
+                  OMX_ErrorStreamCorrupt,
+                  OMX_COMPONENT_GENERATE_EVENT);
+
+            post_event(OMX_EventError,
+                  OMX_ErrorInvalidState,
+                  OMX_COMPONENT_GENERATE_EVENT);
+
+            return OMX_ErrorInvalidState;
 
          }
       }
@@ -5892,13 +5926,37 @@ OMX_ERRORTYPE omx_vdec::
                         "Copy the new buffer to the current frame allocLen %d\n",
                         m_pcurrent_frame->
                         nAllocLen);
-               memcpy(m_pcurrent_frame->pBuffer +
-                      m_pcurrent_frame->nFilledLen,
-                      buffer->pBuffer +
-                      buffer->nOffset,
-                      buffer->nFilledLen);
-               m_pcurrent_frame->nFilledLen +=
-                   buffer->nFilledLen;
+               if (m_pcurrent_frame->nAllocLen >=
+                  (m_pcurrent_frame->nFilledLen +buffer->nFilledLen)){
+                  memcpy(m_pcurrent_frame->pBuffer +
+                         m_pcurrent_frame->nFilledLen,
+                         buffer->pBuffer +
+                         buffer->nOffset,
+                         buffer->nFilledLen);
+                  m_pcurrent_frame->nFilledLen +=
+                      buffer->nFilledLen;
+               }
+               else{
+                  QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+                          "Frame size too high [%d], Aborting session\n",(m_pcurrent_frame->nFilledLen +buffer->nFilledLen));
+                  /* bitsteam is corrupted beyond improvisation
+                   * so moving to invalid state.
+                   */
+
+                  m_state = OMX_StateInvalid;
+
+                  post_event(OMX_EventError,
+                        OMX_ErrorStreamCorrupt,
+                        OMX_COMPONENT_GENERATE_EVENT);
+
+                  post_event(OMX_EventError,
+                        OMX_ErrorInvalidState,
+                        OMX_COMPONENT_GENERATE_EVENT);
+
+                  return OMX_ErrorInvalidState;
+
+               }
+
             } else
                 if (find_extra_buffer_index(buffer->pBuffer)
                != -1) {
@@ -6287,7 +6345,7 @@ RETURN VALUE
          QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
                  "push_pending_buffers_proxy - m_event_port_settings_sent == true\n");
          return 0;
-   }
+      }
 
    while (is_pending()) {
       // If both buffers are pending try to push the first one
@@ -6539,15 +6597,6 @@ OMX_ERRORTYPE omx_vdec::fill_this_buffer_proxy(OMX_IN OMX_HANDLETYPE hComp,
       }
    }
    if (nPortIndex < m_out_buf_count) {
-      if (m_state == OMX_StateExecuting) {
-         QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
-                 "FTB:: push_pending_buffer_proxy\n");
-         push_cnt = push_pending_buffers_proxy();
-      }
-      QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
-               "FTB Pushed %d input frames at the same time\n",
-               push_cnt);
-
       if (BITMASK_PRESENT((m_out_flags), nPortIndex)) {
          QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
                   "FTB[%d] Ignored \n", nPortIndex);
@@ -6597,6 +6646,17 @@ OMX_ERRORTYPE omx_vdec::fill_this_buffer_proxy(OMX_IN OMX_HANDLETYPE hComp,
          vdec_release_frame(m_vdec,
                   (vdec_frame *) buffer->
                   pOutputPortPrivate);
+
+        if (m_state == OMX_StateExecuting)
+        {
+           QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
+                   "FTB:: push_pending_buffer_proxy\n");
+           push_cnt = push_pending_buffers_proxy();
+        }
+        QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
+              "FTB Pushed %d input frames at the same time\n",
+              push_cnt);
+
       }
    } else {
       QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
@@ -6779,20 +6839,22 @@ OMX_ERRORTYPE omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp) {
    /* get strong count gets the refernce count of the pmem, the count will
     * be incremented by our kernal driver and surface flinger, by the time
     * we close the pmem, this cound needs to be zero, but there is no way
-   * for us to know when surface flinger reduces its cound, so we wait
+    * for us to know when surface flinger reduces its cound, so we wait
     * here in a infinite loop till the count is zero
     */
-   while(1)
-   {
-      if ( (/*for getting count */ (m_heap_ptr.get())->getStrongCount()) == 1)
+   if(m_heap_ptr != NULL) {
+     while(1)
+     {
+       if ( ((m_heap_ptr.get() != NULL) && (m_heap_ptr.get())->getStrongCount()) == 1)
          break;
-      else
+       else
          usleep(10);
+     }
+     // Clear the strong reference
+     m_heap_ptr.clear();
    }
-   // Clear the strong reference
-   m_heap_ptr.clear();
 #endif // _ANDROID_
-   omx_vdec_free_output_port_memory();
+omx_vdec_free_output_port_memory();
 
    return OMX_ErrorNone;
 }
@@ -7655,9 +7717,8 @@ OMX_ERRORTYPE omx_vdec::omx_vdec_check_port_settings(OMX_BUFFERHEADERTYPE *
 
          bInterlace = ((buf[9] & 0x40) ? true : false);
          QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_LOW,
-                  "omx_vdec_check_port_settings - VC1 Advance profile Not supported, %d x %d\n",
+                  "omx_vdec_check_port_settings - VC1 Advance profile Width:%d x Height:%d\n",
                   width, height);
-         return OMX_ErrorStreamCorrupt;
       } else if(m_vendor_config.nDataSize == VC1_STRUCT_C_LEN) {
          QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_LOW,
                       "QC_DEBUG :: omx_vdec_check_port_settings - VC1 height and width, %d x %d\n",
@@ -7716,8 +7777,12 @@ OMX_ERRORTYPE omx_vdec::omx_vdec_validate_port_param(int height, int width) {
 
    if (hxw > (OMX_CORE_720P_HEIGHT * OMX_CORE_720P_WIDTH)) {
       ret = OMX_ErrorNotImplemented;
-      QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
-               "Invalid Ht[%d] wdth[%d]\n", height, width);
+      QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+               "-----Invalid Ht[%d] wdth[%d]----", height, width);
+      QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+               "--Max supported is 720 x 1280---", height, width);
+      QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+               "-------Aborting session---------", height, width);
    }
    return ret;
 }
@@ -7864,7 +7929,6 @@ OMX_ERRORTYPE omx_vdec::
    m_vdec_cfg.width = m_port_width;
    m_vdec_cfg.size_of_nal_length_field = m_nalu_bytes;
    m_vdec_cfg.vc1Rowbase = 0;
-   m_vdec_cfg.postProc = 0;
    m_vdec_cfg.color_format = m_color_format;
 
    QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED, "m_vdec_cfg.kind %s\n",
@@ -8483,19 +8547,6 @@ bool omx_vdec::get_one_complete_frame(OMX_OUT OMX_BUFFERHEADERTYPE * dest) {
       }
       mutex_unlock();
       if (ident == OMX_COMPONENT_GENERATE_ETB_ARBITRARYBYTES) {
-         OMX_BUFFERHEADERTYPE *next_etb_input = (OMX_BUFFERHEADERTYPE *) p2;
-         /* This check avoids the overwrite of current ETB TimeStamp
-            with next ETB TimeStamp if next ETB comes with EOS and
-            zero stream len */
-         if((next_etb_input->nFlags & OMX_BUFFERFLAG_EOS)&&
-            (next_etb_input->nFilledLen == 0))
-         {
-            mutex_lock();
-            m_etb_arbitrarybytes_q.insert_entry(p1, p2, ident);
-            mutex_unlock();
-            m_bPartialFrame = false;
-            break;
-         }
          m_current_arbitrary_bytes_input =
              (OMX_BUFFERHEADERTYPE *) p2;
 
@@ -8790,7 +8841,7 @@ OMX_ERRORTYPE omx_vdec::
             }
             dest->nFilledLen += copy_size;
             dest->nFlags = source->nFlags;
-            if(-1 == dest->nTimeStamp)
+            if (-1 == dest->nTimeStamp)
             {
                 dest->nTimeStamp = source->nTimeStamp;
             }
@@ -8923,6 +8974,27 @@ OMX_ERRORTYPE omx_vdec::
          *isPartialFrame = true;
          source->nFilledLen -= readSize;
          source->nOffset += readSize;
+         if(FLAG_THUMBNAIL_MODE == m_vdec_cfg.postProc)
+         {
+            unsigned int nPortIndex =
+                source -
+                (OMX_BUFFERHEADERTYPE *)
+                m_arbitrary_bytes_input_mem_ptr;
+            if (nPortIndex < MAX_NUM_INPUT_BUFFERS) {
+            QTV_MSG_PRIO1(QTVDIAG_GENERAL,
+                     QTVDIAG_PRIO_HIGH,
+                     "get_one_frame - EmptyBufferDone %p\n",
+                     source);
+               m_cb.EmptyBufferDone(&m_cmp, m_app_data,
+                          source);
+            } else {
+               QTV_MSG_PRIO1(QTVDIAG_GENERAL,
+                        QTVDIAG_PRIO_ERROR,
+                        "ERROR!! Incorrect arbitrary bytes buffer %p\n",
+                        source);
+            }
+            m_extra_buf_info[index].arbitrarybytesInput = NULL;
+         }
       }
       m_current_arbitrary_bytes_input = NULL;
 
@@ -9712,12 +9784,7 @@ void omx_vdec::fill_extradata(OMX_INOUT OMX_BUFFERHEADERTYPE * pBufHdr,
 
    // read to the end of existing extra data sections
    pExtraData = (OMX_OTHER_EXTRADATATYPE *) addr;
-   if (m_vdec_cfg.postProc) {
-      while (addr < end && pExtraData->eType != OMX_ExtraDataNone) {
-         addr += pExtraData->nSize;
-         pExtraData = (OMX_OTHER_EXTRADATATYPE *) addr;
-      }
-   }
+
    // append the common frame info extra data
    size =
        (OMX_EXTRADATA_HEADER_SIZE + sizeof(OMX_QCOM_EXTRADATA_FRAMEINFO) +
@@ -9745,12 +9812,14 @@ void omx_vdec::fill_extradata(OMX_INOUT OMX_BUFFERHEADERTYPE * pBufHdr,
          QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,"First I frame with 100% concealment.");
       }
       else
-     {
+      {
          pBufHdr->nFlags |= OMX_BUFFERFLAG_SYNCFRAME;
          QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,"First I frame received.");
          m_first_sync_frame_rcvd = true;
       }
    }
+
+
    if (frameDetails->ePicFormat == VDEC_PROGRESSIVE_FRAME)
       pExtraFrameInfo->interlaceType =
           OMX_QCOM_InterlaceFrameProgressive;
@@ -9793,7 +9862,7 @@ void omx_vdec::fill_extradata(OMX_INOUT OMX_BUFFERHEADERTYPE * pBufHdr,
       /* (frame->timestamp & SEI_TRIGGER_BIT_VDEC) -> tells if we asked for sei math
        * frame->flags & SEI_TRIGGER_BIT_QDSP) -> dsp is succesfull,if this is zero
        */
-      pExtraCodecData->h264ExtraData.seiTimeStamp = 0;
+       pExtraCodecData->h264ExtraData.seiTimeStamp = 0;
 
       if(!(frame->timestamp & SEI_TRIGGER_BIT_VDEC) &&
          !(frame->flags & SEI_TRIGGER_BIT_QDSP))
@@ -9855,6 +9924,38 @@ void omx_vdec::fill_extradata(OMX_INOUT OMX_BUFFERHEADERTYPE * pBufHdr,
       pExtraFrameDimension->nActualHeight= frameDetails->cwin.y2 - frameDetails->cwin.y1;
    }
 
+   /* khronos standardized way of converying interlaced info */
+   OMX_STREAMINTERLACEFORMATTYPE *pInterlaceInfo=NULL;
+
+   size =
+       (OMX_EXTRADATA_HEADER_SIZE + sizeof(OMX_STREAMINTERLACEFORMATTYPE) +
+        3) & (~3);
+   pExtraData->nSize = size;
+   pExtraData->nVersion.nVersion = OMX_SPEC_VERSION;
+   pExtraData->nPortIndex = 1;
+   pExtraData->eType = (OMX_EXTRADATATYPE) OMX_ExtraDataInterlaceFormat;   /* Extra Data type */
+   pExtraData->nDataSize = sizeof(OMX_STREAMINTERLACEFORMATTYPE);   /* Size of the supporting data to follow */
+   pInterlaceInfo = (OMX_STREAMINTERLACEFORMATTYPE *) pExtraData->data;
+   pInterlaceInfo ->nSize = sizeof(OMX_STREAMINTERLACEFORMATTYPE);
+   pInterlaceInfo ->nVersion.nVersion = OMX_SPEC_VERSION;
+   pInterlaceInfo ->nPortIndex = 1;
+
+   if (frameDetails->ePicFormat == VDEC_PROGRESSIVE_FRAME)
+   {
+       pInterlaceInfo ->bInterlaceFormat = OMX_FALSE;
+       pInterlaceInfo ->nInterlaceFormats = OMX_InterlaceFrameProgressive;
+   }
+   else if (frameDetails->ePicFormat = VDEC_INTERLACED_FRAME)
+   {
+      pInterlaceInfo ->bInterlaceFormat = OMX_TRUE;
+      if (frameDetails->bTopFieldFirst)
+       pInterlaceInfo ->nInterlaceFormats =
+             OMX_InterlaceInterleaveFrameTopFieldFirst;
+      else
+       pInterlaceInfo ->nInterlaceFormats =
+             OMX_InterlaceInterleaveFrameBottomFieldFirst;
+   }
+
    // append extradata terminator
    addr += size;
    pExtraData = (OMX_OTHER_EXTRADATATYPE *) addr;
@@ -9906,3 +10007,4 @@ bool omx_vdec::find_new_frame_ap_vc1(OMX_IN OMX_U8 * buffer,
             "find_new_frame_ap_vc1  %d\n", isNewFrame);
    return true;
 }
+

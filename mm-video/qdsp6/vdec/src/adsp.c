@@ -62,8 +62,6 @@ static const char *logFN = "/data/adsp_log.txt";
 
 struct adsp_module {
    int fd;
-   int cpu_dma_fd;
-   unsigned long cpu_dma_freq;
    volatile int dead;
    volatile int init_done;
 
@@ -226,14 +224,6 @@ void adsp_close(struct adsp_module *mod)
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
               "*************adsp_close ERROR!");
    }
-   if(mod->cpu_dma_fd > 0) {
-      if(write(mod->cpu_dma_fd, &mod->cpu_dma_freq, sizeof(mod->cpu_dma_freq)) < 0) {
-           QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
-                     "ERROR - adsp: Request cpu_dma_freq write failed\n");
-      }
-      close(mod->cpu_dma_fd);
-      mod->cpu_dma_fd = 0;
-   }
 
    QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_LOW,
             "adsp_close returned %d, fd: %d", ret, mod->fd);
@@ -260,7 +250,6 @@ struct adsp_module *adsp_open(const char *name, struct adsp_open_info info,
    QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_LOW, "adsp_open: %s", name);
    int fds[2], r;
    struct adsp_module *mod;
-   unsigned long cpu_dma_freq = 1000;
 
    mod = calloc(1, sizeof(*mod));
    if (!mod)
@@ -289,21 +278,6 @@ struct adsp_module *adsp_open(const char *name, struct adsp_open_info info,
                   mod->fd, strerror(errno));
          goto fail_open;
       }
-   }
-   mod->cpu_dma_fd = open("/dev/cpu_dma_latency", O_RDWR);
-   if(mod->cpu_dma_fd < 0) {
-      QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_FATAL,
-               "adsp: cannot open cpu_dma_latency, fd: %d (%s)\n",
-               mod->fd, strerror(errno));
-   } else {
-        if(read(mod->cpu_dma_fd, &mod->cpu_dma_freq, sizeof(mod->cpu_dma_freq)) < 0) {
-            QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
-                      "ERROR - adsp: Request cpu_dma_freq read failed\n");
-        }
-        if(write(mod->cpu_dma_fd, &cpu_dma_freq, sizeof(cpu_dma_freq)) < 0) {
-            QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
-                      "ERROR - adsp: Request cpu_dma_freq write failed\n");
-        }
    }
 #if DEBUG
    if (pthread_mutex_init(&logMTX, NULL) == 0) {
@@ -433,7 +407,7 @@ int adsp_init(struct adsp_module *mod, struct adsp_init *init)
    vi.sps_cfg.seq.len = init->seq_len;
    vi.buf_req = &buf;
 
-   /* set the color format based on version*/
+   /* set the color format based on version */
    if (ver.major < 2 && init->color_format != 0) {
      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
               "VDEC_IOCTL_INITIALIZE wrong value for reserved field\n");

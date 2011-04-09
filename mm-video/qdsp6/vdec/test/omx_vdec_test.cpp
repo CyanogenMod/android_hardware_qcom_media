@@ -85,6 +85,7 @@ extern "C" {
 #define SWAPBYTES(ptrA, ptrB) { char t = *ptrA; *ptrA = *ptrB; *ptrB = t;}
 #define SIZE_NAL_FIELD_MAX  4
 #define MDP_DEINTERLACE 0x80000000
+#define MDP_VERSION_3_1 100 /* 3.1--> 51('3') + 49('1') = 100 */
 
 /************************************************************************/
 /*				GLOBAL DECLARATIONS                     */
@@ -162,8 +163,11 @@ int is_yamato = 0;
 Queue *etb_queue = NULL;
 Queue *fbd_queue = NULL;
 
+int realtime_display = 0;
+
 pthread_t ebd_thread_id;
 pthread_t fbd_thread_id;
+pthread_t fbiopan_thread_id;
 void* ebd_thread(void*);
 void* fbd_thread(void*);
 
@@ -179,6 +183,9 @@ pthread_cond_t eos_cond;
 
 sem_t etb_sem;
 sem_t fbd_sem;
+
+void* fbiopan_thread(void*);
+int fbiopan_pipe[2] = {0};
 
 OMX_PARAM_PORTDEFINITIONTYPE portFmt;
 OMX_PORT_PARAM_TYPE portParam;
@@ -202,7 +209,7 @@ int bOutputEosReached = 0;
 char in_filename[512];
 
 int timeStampLfile = 0;
-int timestampInterval = 100;
+int timestampInterval = 33333; /* default 30 fps */
 codec_format  codec_format_option;
 file_type     file_type_option;
 freeHandle_test freeHandle_option;
@@ -219,6 +226,8 @@ OMX_BUFFERHEADERTYPE  **pInputBufHdrs = NULL;
 OMX_BUFFERHEADERTYPE  **pOutYUVBufHdrs= NULL;
 
 int rcv_v1=0;
+
+struct timeval t_avsync={0};
 
 /* Performance related variable*/
 QPERF_INIT(render_fb);
@@ -343,6 +352,15 @@ void* fbd_thread(void* pArg)
   {
     int bytes_written = 0;
     OMX_BUFFERHEADERTYPE *pBuffer;
+    int canDisplay = 1;
+    long current_avsync_time = 0, delta_time = 0;
+    static int contigous_drop_frame = 0;
+    static long base_avsync_time = 0;
+    static long base_timestamp = 0;
+    long lipsync_time = 250000;
+    int ioresult = 0;
+    char fbiopan_signal = 1;
+
     sem_wait(&fbd_sem);
     QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,"Inside %s fbd_cnt[%d] \n", __FUNCTION__, fbd_cnt);
 
@@ -356,6 +374,44 @@ void* fbd_thread(void* pArg)
       continue;
     }
 
+    if (realtime_display)
+    {
+      if(!gettimeofday(&t_avsync,NULL))
+      {
+         current_avsync_time =(t_avsync.tv_sec*1000000)+t_avsync.tv_usec;
+      }
+
+      if (base_avsync_time != 0)
+      {
+        delta_time = (current_avsync_time - base_avsync_time) - (pBuffer->nTimeStamp - base_timestamp);
+
+        if (delta_time < 0 )
+        {
+          QTV_MSG_PRIO1(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,"Sleep %d us. AV Sync time is left behind\n",
+                 -delta_time);
+          usleep(-delta_time);
+          canDisplay = 1;
+        }
+        else if ((delta_time>lipsync_time) && (contigous_drop_frame < 6))
+        {
+          QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,"\n\nError - Drop the frame at the renderer. Video frame with ts %ld behind by %d us\n\n",
+                         pBuffer->nTimeStamp,delta_time);
+          canDisplay = 0;
+          contigous_drop_frame++;
+        }
+        else
+        {
+          canDisplay = 1;
+        }
+      }
+      else
+      {
+        base_avsync_time = current_avsync_time;
+        base_timestamp = pBuffer->nTimeStamp;
+      }
+    }
+
+
     /*********************************************
     Write the output of the decoder to the file.
     *********************************************/
@@ -366,14 +422,16 @@ void* fbd_thread(void* pArg)
        continue;
     }
 
-    if (displayYuv && pBuffer->nFilledLen > 0)
+    if (displayYuv && canDisplay && pBuffer->nFilledLen > 0)
     {
       QPERF_TIME(render_fb, render_fb(pBuffer));
+      contigous_drop_frame = 0;
     }
 
-    if (takeYuvLog) {
+    if (takeYuvLog && outputBufferFile) {
+
           bytes_written = fwrite((const char *)pBuffer->pBuffer,
-                                pBuffer->nFilledLen,1,outputBufferFile);
+                                1,pBuffer->nFilledLen,outputBufferFile);
           if (bytes_written < 0) {
               QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                          "\nFillBufferDone: Failed to write to the file\n");
@@ -408,6 +466,14 @@ void* fbd_thread(void* pArg)
       break;
     }
     OMX_FillThisBuffer(dec_handle, pBuffer);
+
+    ioresult =  write(fbiopan_pipe[1], &fbiopan_signal, 1);
+    if(ioresult < 0)
+    {
+       QTV_MSG_PRIO1(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,"\n Error in writing to fbd PIPE %d \n", ioresult);
+       break;
+    }
+
   }
   return NULL;
 }
@@ -451,7 +517,8 @@ OMX_ERRORTYPE EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
             QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                          "OMX_EventError \n");
              currentStatus = INVALID_STATE;
-            if (OMX_ErrorInvalidState == (OMX_ERRORTYPE)nData1)
+            if (OMX_ErrorInvalidState == (OMX_ERRORTYPE)nData1 ||
+                OMX_ErrorStreamCorrupt == (OMX_ERRORTYPE)nData1)
             {
               QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                            "Invalid State \n");
@@ -556,6 +623,12 @@ int main(int argc, char **argv)
     int test_option = 0;
     OMX_ERRORTYPE result;
 
+    if (argc < 2)
+    {
+      printf("To use it: ./mm-vdec-omx-test <clip location> \n");
+      printf("Command line argument is also available\n");
+      return -1;
+    }
     strncpy(in_filename, argv[1], strlen(argv[1])+1);
 
     if(argc > 5)
@@ -569,6 +642,8 @@ int main(int argc, char **argv)
       printf("To use it: ./mm-vdec-omx-test <clip location> <codec_type> \n");
       printf("           <input_type: 1. per AU(.dat), 2. arbitrary, 3.per NAL/frame>\n");
       printf("           <output_type> <test_case> <size_nal if H264>\n\n\n");
+      printf("           <realtime_display: 0 if ASAP, 1 if real time, only for non-arbitrary option>\n");
+      printf("           <fps> <size_nal if H264>\n\n\n");
 
       printf(" *********************************************\n");
       printf(" ENTER THE TEST CASE YOU WOULD LIKE TO EXECUTE\n");
@@ -657,34 +732,49 @@ int main(int argc, char **argv)
 
     if(argc > 5)
     {
-      outputOption = atoi(argv[4]);
-      test_option = atoi(argv[5]);
-      if (argc > 6)
-      {
-        nalSize = atoi(argv[6]);
-      }
-      else
-      {
-        nalSize = 0;
-      }
-
-      if(argc > 7)
-      {
-        displayWindow = atoi(argv[7]);
-        if(displayWindow > 4)
+        if(CODEC_FORMAT_H264 != codec_format_option )
         {
-            printf(" display window 0-4 only supported forcing it to 0 \n");
-            displayWindow = 0;
-        }
-      }
-      else
-      {
-        displayWindow = 0;
-      }
+           outputOption = atoi(argv[4]);
+           test_option = atoi(argv[5]);
+           displayWindow = atoi(argv[6]);
 
-    }
+           if ((file_type_option != FILE_TYPE_ARBITRARY_BYTES) && (argc > 7))
+           {
+             realtime_display = atoi(argv[7]);
+           }
+
+           if (realtime_display && (argc > 8))
+           {
+             int fps = atoi(argv[8]);
+             timestampInterval = 1000000/fps;
+             printf("\n\n ***Real time rending @%d fps**\n\n",fps);
+           }
+
+        }
+        else
+        {
+           nalSize = atoi(argv[4]);
+           outputOption = atoi(argv[5]);
+           test_option = atoi(argv[6]);
+           displayWindow = atoi(argv[7]);
+
+           if ((file_type_option != FILE_TYPE_ARBITRARY_BYTES) && (argc > 8))
+           {
+             realtime_display = atoi(argv[8]);
+           }
+
+           if (realtime_display && (argc > 9))
+           {
+             int fps = atoi(argv[9]);
+             timestampInterval = 1000000/fps;
+             printf("\n\n ***Real time rending @%d fps**\n\n",fps);
+           }
+
+        }
+   }
     else
     {
+      int fps = 30;
       switch(file_type_option)
       {
           case FILE_TYPE_DAT_PER_AU:
@@ -706,7 +796,9 @@ int main(int argc, char **argv)
                 {
                   printf(" Enter 0 if it is a start code based clip\n");
                 }
+                fflush(stdin);
                 scanf("%d", &nalSize);
+                fflush(stdin);
                 if ((file_type_option == FILE_TYPE_264_NAL_SIZE_LENGTH) &&
                     (nalSize == 0))
                 {
@@ -760,6 +852,33 @@ int main(int argc, char **argv)
       fflush(stdin);
       scanf("%d", &displayWindow);
       fflush(stdin);
+
+      if (file_type_option != FILE_TYPE_ARBITRARY_BYTES) {
+        printf(" *********************************************\n");
+        printf(" DO YOU WANT TEST APP TO DISPLAY IT BASED ON FPS (Real time) \n");
+        printf(" 0 --> NO\n 1 --> YES\n");
+        printf(" Warning: For H264, it require one NAL per frame clip.\n");
+        printf("          For Arbitrary bytes option, Real time display is not recommend\n");
+        printf(" *********************************************\n");
+        fflush(stdin);
+        scanf("%d", &realtime_display);
+        fflush(stdin);
+      }
+
+
+      if (realtime_display)
+      {
+        printf(" *********************************************\n");
+        printf(" ENTER THE CLIP FPS\n");
+        printf(" Exception: VC1 Simple and Main Profile will be based on the timestamp at RCV file.\n");
+        printf(" *********************************************\n");
+        fflush(stdin);
+        scanf("%d", &fps);
+        fflush(stdin);
+        timestampInterval = 1000000/fps;
+        printf("\n\n ***Real time rending @%d fps**\n\n",fps);
+      }
+
 
     }
 
@@ -846,6 +965,20 @@ int main(int argc, char **argv)
       return -1;
     }
 
+    if (displayYuv && (0 != pipe(fbiopan_pipe)))
+    {
+       printf("\n Error in Creating fbiopan_pipe \n");
+       do_freeHandle_and_clean_up(true);
+       return -1;
+    }
+
+    if(0 != pthread_create(&fbiopan_thread_id, NULL, fbiopan_thread, NULL))
+    {
+      printf("\n Error in Creating fbiopan_thread \n");
+      do_freeHandle_and_clean_up(true);
+      return -1;
+    }
+
     if (displayYuv)
     {
       QPERF_RESET(render_fb);
@@ -865,7 +998,7 @@ int main(int argc, char **argv)
           return -1;
       }
       if (ioctl(fb_fd, FBIOGET_FSCREENINFO, &finfo) < 0) {
-          printf("[omx_vdec_test] - ERROR - can't retrieve fscreenInfo!\n");
+          printf("[omx_vdec_test] - ERROR - can't retrieve vscreenInfo!\n");
           close(fb_fd);
           return -1;
       }
@@ -1042,7 +1175,6 @@ int run_tests()
         free_queue(fbd_queue);
         fbd_queue = NULL;
       }
-
       printf("*****************************************\n");
       printf("******...TEST SUCCESSFULL...*******\n");
       printf("*****************************************\n");
@@ -1777,6 +1909,15 @@ static void do_freeHandle_and_clean_up(bool isDueToError)
 {
     int bufCnt = 0;
 
+    if(isDueToError)
+    {
+       QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,"Moving the decoder to idle state \n");
+       OMX_SendCommand(dec_handle, OMX_CommandStateSet, OMX_StateIdle,0);
+
+       QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,"Moving the decoder to loaded state \n");
+       OMX_SendCommand(dec_handle, OMX_CommandStateSet, OMX_StateLoaded,0);
+    }
+
     for(bufCnt=0; bufCnt < input_buf_cnt; ++bufCnt)
     {
         OMX_FreeBuffer(dec_handle, 0, pInputBufHdrs[bufCnt]);
@@ -1838,6 +1979,10 @@ static void do_freeHandle_and_clean_up(bool isDueToError)
     }
     QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,"[OMX Vdec Test] - after free iftb_queue\n");
 
+    if(fbiopan_pipe[0])
+      close(fbiopan_pipe[0]);
+    if(fbiopan_pipe[1])
+      close(fbiopan_pipe[1]);
 
     printf("*****************************************\n");
     if (isDueToError)
@@ -1995,8 +2140,10 @@ static int Read_Buffer_From_Vop_Start_Code_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
       }
       readOffset++;
     }while (1);
+
     pBufHdr->nTimeStamp = timeStampLfile;
     timeStampLfile += timestampInterval;
+
     ret = ((readOffset > pBufHdr->nAllocLen)?pBufHdr->nAllocLen:readOffset);
     return ret;
 }
@@ -2043,6 +2190,8 @@ static int Read_Buffer_From_Size_Nal(OMX_BUFFERHEADERTYPE  *pBufHdr)
       /* reseek to beginning of sequence header */
        fseek(inputBufferFile, size-bytes_read, SEEK_CUR);
     }
+    pBufHdr->nTimeStamp = timeStampLfile;
+    timeStampLfile += timestampInterval;
 
     return bytes_read + nalSize;
 }
@@ -2137,6 +2286,8 @@ static int Read_Buffer_From_RCV_File_Seq_Layer(OMX_BUFFERHEADERTYPE  *pBufHdr)
       printf("\n");
     }
 #endif
+    pBufHdr->nTimeStamp = timeStampLfile;
+    timeStampLfile += timestampInterval;
     return readOffset;
 }
 
@@ -2213,6 +2364,9 @@ static int Read_Buffer_From_RCV_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     }
 #endif
 
+    pBufHdr->nTimeStamp = timeStampLfile;
+    timeStampLfile += timestampInterval;
+
     return readOffset;
 }
 
@@ -2272,6 +2426,8 @@ static int Read_Buffer_From_VC1_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
       printf("\n");
     }
 #endif
+    pBufHdr->nTimeStamp = timeStampLfile;
+    timeStampLfile += timestampInterval;
 
     return readOffset;
 }
@@ -2288,6 +2444,8 @@ static int open_video_file ()
         QTV_MSG_PRIO1(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
                       "Error - i/p file %s could NOT be opened\n",
 		                  in_filename);
+        printf("Error - i/p file %s could NOT be opened\n",in_filename);
+
         error_code = -1;
     }
     else {
@@ -2296,7 +2454,7 @@ static int open_video_file ()
 
     if (takeYuvLog) {
         strncpy(outputfilename, "yuvframes.yuv", 14);
-        outputBufferFile = fopen (outputfilename, "ab");
+        outputBufferFile = fopen (outputfilename, "wb");
         if (outputBufferFile == NULL)
         {
           QTV_MSG_PRIO1(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
@@ -2307,6 +2465,7 @@ static int open_video_file ()
         {
           QTV_MSG_PRIO1(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                         "O/p file %s is opened \n", outputfilename);
+          printf ("\n** yuv frames will be logged into %s **\n",outputfilename);
         }
     }
     return error_code;
@@ -2332,7 +2491,7 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     OMX_QCOM_EXTRADATA_FRAMEDIMENSION *pExtraFrameDimension = 0;
     OMX_QCOM_EXTRADATA_CODEC_DATA *pExtraCodecData = 0;
     OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pPMEMInfo = NULL;
-    unsigned int destx, desty,destW, destH;
+    unsigned int destx, desty,destW, destH,scale,version;
     struct use_egl_id *egl_info = NULL;
 #ifdef _ANDROID_
     MemoryHeapBase *vheap = NULL;
@@ -2392,18 +2551,18 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
 
     if (pExtraData->eType == OMX_ExtraDataNone)
     {
-       QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
+       QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                   "pExtraData->eType %d pExtraData->nSize %d\n",pExtraData->eType,pExtraData->nSize);
     }
 
     if (pExtraCodecData)
-       QTV_MSG_PRIO1(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,"Extra Data Codec Data TimeStamp %d\n",pExtraCodecData->h264ExtraData.seiTimeStamp);
+       QTV_MSG_PRIO1(QTVDIAG_GENERAL,QTVDIAG_PRIO_LOW,"Extra Data Codec Data TimeStamp %d\n",pExtraCodecData->h264ExtraData.seiTimeStamp);
 
     if (pExtraFrameDimension)
     {
-       QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
+       QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                   "Extra Data FrameDimension DecWidth %d DecHeight %d\n",pExtraFrameDimension->nDecWidth,pExtraFrameDimension->nDecHeight);
-       QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
+       QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                   "Extra Data FrameDimension CropWidth %d CropHeight %d\n",pExtraFrameDimension->nActualWidth,pExtraFrameDimension->nActualHeight);
     }
 
@@ -2420,9 +2579,9 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
 #endif
 
 
-    QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
+    QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                   "DecWidth %d DecHeight %d\n",portFmt.format.video.nStride,portFmt.format.video.nSliceHeight);
-    QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
+    QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                   "DispWidth %d DispHeight %d\n",portFmt.format.video.nFrameWidth,portFmt.format.video.nFrameHeight);
 
 
@@ -2433,6 +2592,19 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     }else{
 	e->src.width = portFmt.format.video.nStride;
 	e->src.height = portFmt.format.video.nSliceHeight;
+    }
+
+    if (is_yamato)
+    {   int i1,yamato_chroma_offset;
+        int nv21_chroma_offset=e->src.width * e->src.height;
+        int yamato_chroma_w=2*(((e->src.width >> 1) + 31) & ~31);
+        yamato_chroma_offset = ( nv21_chroma_offset + 4095) & ~4095;
+
+        for (i1 = 0; i1 < e->src.height>>1; i1++)
+        {
+            memcpy(&pBufHdr->pBuffer[nv21_chroma_offset],&pBufHdr->pBuffer[yamato_chroma_offset],e->src.width);
+            nv21_chroma_offset+=e->src.width; yamato_chroma_offset+=yamato_chroma_w;
+        }
     }
 
     e->src.format = MDP_Y_CBCR_H2V2;
@@ -2449,12 +2621,13 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
 #endif
     }
 
-    QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
+    QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,
                   "pmemOffset %d pmemID %d\n",e->src.offset,e->src.memory_id);
 
-    e->dst.width  = finfo.line_length/2;
+    e->dst.width = (finfo.line_length * 8) / (vinfo.bits_per_pixel);
     e->dst.height = vinfo.yres;
-    e->dst.format = MDP_RGB_565;
+
+    e->dst.format = MDP_RGBA_8888;
     e->dst.offset = 0;
     e->dst.memory_id = fb_fd;
 
@@ -2468,7 +2641,7 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
        e->flags = MDP_DEINTERLACE;
     }
     else
-        e->flags = 0;
+      e->flags = 0;
 	e->alpha = 0xff;
 
     switch(displayWindow)
@@ -2498,25 +2671,25 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
      default:
             destx = 0;
             desty = 0;
-            destW = finfo.line_length;
-            destH = vinfo.yres;
+            /* MDP driver version 3.1 supports up to 8X scaling */
+            version = (finfo.id[5] + finfo.id[6]);
+            /* if MDP version is above 3.1 then return unsupported version */
+            if(version > MDP_VERSION_3_1)
+            {
+              QTV_MSG_PRIO2(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
+              "Unsupported Display driver version%c.%c \n",finfo.id[5] , finfo.id[6]);
+              return;
+            }/* if MDP version is 3.1 then set 8x as max scaling factor */
+            else if(version == MDP_VERSION_3_1)   scale = 3;
+            /* if MDP version is less then 3.1 then set 4x as max scaling factor */
+            else  scale = 2;
+
+            destW = (e->src.width<<scale);
+            destH = (e->src.height<<scale);
+            destW = (vinfo.xres > destW) ? destW : vinfo.xres;
+            destH = (vinfo.yres > destH) ? destH : vinfo.yres;
     }
 
-    if(portFmt.format.video.nFrameWidth < destW)
-    {
-      if(pExtraFrameDimension)
-        destW=pExtraFrameDimension->nActualWidth;
-      else
-         destW = portFmt.format.video.nFrameWidth ;
-    }
-
-    if(portFmt.format.video.nFrameHeight < destH)
-    {
-      if(pExtraFrameDimension)
-        destH=pExtraFrameDimension->nActualHeight;
-      else
-        destH = portFmt.format.video.nFrameHeight;
-    }
 
     e->dst_rect.x = destx;
     e->dst_rect.y = desty;
@@ -2524,7 +2697,7 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     e->dst_rect.h = destH;
 
     //e->dst_rect.w = 800;
-    //e->dst_rect.h = 480;
+   //e->dst_rect.h = 800;
 
     e->src_rect.x = 0;
     e->src_rect.y = 0;
@@ -2541,18 +2714,39 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     //e->src_rect.w = portFmt.format.video.nStride;
     //e->src_rect.h = portFmt.format.video.nSliceHeight;
 
+
     if (ioctl(fb_fd, MSMFB_BLIT, &img)) {
 	QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,"MSMFB_BLIT ioctl failed!\n");
 	return;
     }
+}
 
-    if (ioctl(fb_fd, FBIOPAN_DISPLAY, &vinfo) < 0)
+
+void* fbiopan_thread(void* pArg)
+{
+  int ioresult = 0;
+  char fbiopan_signal = 0;
+
+  while(1)
+  {
+    ioresult = read(fbiopan_pipe[0], &fbiopan_signal, 1);
+    if(ioresult <= 0)
     {
-       QTV_MSG_PRIO1(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,
-                  "FBIOPAN_DISPLAY failed! line=%d\n", __LINE__);
-	return;
+      QTV_MSG_PRIO1(QTVDIAG_GENERAL,QTVDIAG_PRIO_ERROR,"\n Error in reading from fbiopan PIPE %d \n", ioresult);
+      return NULL;
+    }
+
+    vinfo.activate = FB_ACTIVATE_VBL;
+    vinfo.xoffset = 0;
+    vinfo.yoffset = 0;
+
+    if(ioctl(fb_fd, FBIOPAN_DISPLAY, &vinfo) < 0)
+    {
+      QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_LOW,"FBIOPAN_DISPLAY: Failed\n");
     }
 
     QTV_MSG_PRIO(QTVDIAG_GENERAL,QTVDIAG_PRIO_MED,"render_fb complete!\n");
+  }
+  return NULL;
 }
 

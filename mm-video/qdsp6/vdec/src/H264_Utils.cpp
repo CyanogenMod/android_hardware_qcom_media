@@ -181,7 +181,7 @@ H264_Utils::H264_Utils():m_height(0), m_width(0), m_rbspBytes(NULL),
    }
    else
    {
-       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR, "H264_Utils:: Constr failed in \
+       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED, "H264_Utils:: Constr failed in \
            getting value for the Android property [persist.omxvideo.profilecheck]");
    }
 
@@ -194,7 +194,7 @@ H264_Utils::H264_Utils():m_height(0), m_width(0), m_rbspBytes(NULL),
    }
    else
    {
-       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR, "H264_Utils:: Constr failed in \
+       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED, "H264_Utils:: Constr failed in \
            getting value for the Android property [persist.omxvideo.levelcheck]");
    }
 #endif

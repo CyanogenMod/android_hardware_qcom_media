@@ -63,6 +63,7 @@ static void vdec_reuse_input_cb_handler(void *vdec_context, void *buffer_id);
 
 #define VDEC_INPUT_BUFFER_SIZE  450 * 1024
 #define VDEC_NUM_INPUT_BUFFERS  8
+#define VDEC_NUM_INPUT_BUFFERS_THUMBNAIL_MODE  2
 #define VDEC_MAX_SEQ_HEADER_SIZE 300
 
 struct Vdec_pthread_info {
@@ -84,10 +85,15 @@ static int counter = 0;
 
 int timestamp = 0;
 
-static int getExtraDataSize()
+int getExtraDataSize()
 {
    int extraSize =
-       ((OMX_EXTRADATA_HEADER_SIZE + sizeof(OMX_QCOM_EXTRADATA_FRAMEINFO)+3) & (~3)) + ((OMX_EXTRADATA_HEADER_SIZE+sizeof(OMX_QCOM_EXTRADATA_CODEC_DATA)+3) & (~3)) + ((OMX_EXTRADATA_HEADER_SIZE+sizeof(OMX_QCOM_EXTRADATA_FRAMEDIMENSION)+3) & (~3))+(OMX_EXTRADATA_HEADER_SIZE + 4);                                                                                                                        return extraSize;
+      (((OMX_EXTRADATA_HEADER_SIZE + sizeof(OMX_QCOM_EXTRADATA_FRAMEINFO)+3) & (~3)) +
+       ((OMX_EXTRADATA_HEADER_SIZE+sizeof(OMX_QCOM_EXTRADATA_CODEC_DATA)+3) & (~3)) +
+       ((OMX_EXTRADATA_HEADER_SIZE+sizeof(OMX_QCOM_EXTRADATA_FRAMEDIMENSION)+3) & (~3))+
+       ((OMX_EXTRADATA_HEADER_SIZE+sizeof(OMX_STREAMINTERLACEFORMAT)+3) & (~3))+
+       (OMX_EXTRADATA_HEADER_SIZE + 4));
+   return extraSize;
 }
 
 void vdec_frame_cb_handler(void *vdec_context,
@@ -148,10 +154,14 @@ void vdec_frame_cb_handler(void *vdec_context,
             /* we dont need any other flags at this momment for a successfully decoded
              * frame
              */
-            dec->ctxt->outputBuffer[index].flags = (SEI_TRIGGER_BIT_QDSP & (pFrame -> flags)); 
-            QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_LOW,
+            dec->ctxt->outputBuffer[index].flags = (SEI_TRIGGER_BIT_QDSP & (pFrame -> flags));
+            QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
                      "vdec: callback status good frame, cnt: %d\n",
                      nGoodFrameCnt);
+
+            if(pFrame ->nPercentConcealedMacroblocks > 0)
+               QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+               "***nPercentConcealedMacroblocks %d",pFrame ->nPercentConcealedMacroblocks);
 
 #if LOG_YUV_FRAMES
             if (pYUVFile) {
@@ -199,6 +209,20 @@ void vdec_frame_cb_handler(void *vdec_context,
                      QTVDIAG_PRIO_ERROR,
                      "[readframe] - sem_post failed %d\n",
                      errno);;
+
+      /* There is to know the last frame sent by
+       * DSP for every flush, we need this for
+       * the divx time stamp swap logic, also DSP send EOS
+       * status but it does it in a erratic fashion.
+       */
+           static struct vdec_frame vdecFrame;
+           memset(&vdecFrame, 0, sizeof(vdecFrame));
+           vdecFrame.flags |= FRAME_FLAG_EOS;
+           dec->ctxt->frame_done(dec->ctxt, &vdecFrame);
+
+           QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
+                   "vdec: Fake frame EOS for flush done.\n");
+
          }
          break;
       }
@@ -325,7 +349,7 @@ Vdec_ReturnType vdec_close(struct VDecoder *dec)
 }
 
 Vdec_ReturnType vdec_get_input_buf_requirements(struct VDecoder_buf_info *
-                  buf_req)
+                  buf_req, int mode)
 {
    if (NULL == buf_req) {
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
@@ -334,7 +358,11 @@ Vdec_ReturnType vdec_get_input_buf_requirements(struct VDecoder_buf_info *
    }
 
    buf_req->buffer_size = VDEC_INPUT_BUFFER_SIZE;
-   buf_req->numbuf = VDEC_NUM_INPUT_BUFFERS;
+   if(mode == FLAG_THUMBNAIL_MODE) {
+      buf_req->numbuf = VDEC_NUM_INPUT_BUFFERS_THUMBNAIL_MODE;
+   } else {
+      buf_req->numbuf = VDEC_NUM_INPUT_BUFFERS;
+   }
    return VDEC_SUCCESS;
 }
 
@@ -375,9 +403,9 @@ Vdec_ReturnType vdec_allocate_input_buffer(unsigned int size,
       buf->state = VDEC_BUFFER_WITH_APP;
    } else {
       byte *data = NULL;
-      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
-              "Allocating input buffer from heap\n");
       data = (byte *) malloc(size * sizeof(byte));
+      QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
+              "Allocating input buffer from heap %x\n",data );
       if (data == NULL) {
          QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
                  "heap allocation failed\n");
@@ -764,10 +792,49 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
       goto fail_open;
    }
 
+#if LOG_YUV_FRAMES
+#ifdef T_WINNT
+   pYUVFile = fopen("../debug/yuvframes.yuv", "wb");
+#elif _ANDROID_
+   pYUVFile = fopen("/data/yuvframes.yuv", "wb");
+#else
+   pYUVFile = fopen("yuvframes.yuv", "wb");
+#endif
+   if(!pYUVFile) {
+      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+          "vdec: error: Unable to open file to log YUV frames.");
+   }
+#endif /* LOG_YUV_FRAMES */
+
+#if LOG_INPUT_BUFFERS
+#ifdef T_WINNT
+   pInputFile = fopen("../debug/inputbuffers.264", "wb");
+#elif _ANDROID_
+   pInputFile = fopen("/data/inputbuffers.264", "wb");
+#else
+   pInputFile = fopen("inputbuffers.264", "wb");
+#endif
+   if(!pInputFile) {
+      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+          "vdec: error: Unable to open file to log Input buffers.");
+   }
+
+#endif /* LOG_INPUT_BUFFERS */
+
+
    init.seq_header = dec->ctxt->sequenceHeader;
    init.seq_len = dec->ctxt->sequenceHeaderLen;
    if(init.seq_len > VDEC_MAX_SEQ_HEADER_SIZE)
      init.seq_len = VDEC_MAX_SEQ_HEADER_SIZE;
+
+#if LOG_INPUT_BUFFERS
+   if(pInputFile) {
+      fwritex((uint8 *) init.seq_header, init.seq_len, pInputFile);
+      QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+                           "seq head length %d\n", init.seq_len);
+   }
+#endif
+
    init.width = dec->ctxt->width;
 
    init.height = dec->ctxt->height;
@@ -839,8 +906,15 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
    dec->ctxt->inputReq.numMaxBuffers = init.buf_req->input.bufnum_max;
    dec->ctxt->inputReq.bufferSize = init.buf_req->input.bufsize;
 
-   dec->ctxt->outputReq.numMinBuffers = init.buf_req->output.bufnum_min;
-   dec->ctxt->outputReq.numMaxBuffers = init.buf_req->output.bufnum_max;
+   if(init.buf_req->output.bufnum_min < 2) {
+      /* actually according to dsp for thumbnails only 1 o/p buff is enough, but
+         because of some issue for some clips they needed atleast two o/p buffs */
+      dec->ctxt->outputReq.numMinBuffers = 2;
+      dec->ctxt->outputReq.numMaxBuffers = 2;
+   } else {
+      dec->ctxt->outputReq.numMinBuffers = init.buf_req->output.bufnum_min;
+      dec->ctxt->outputReq.numMaxBuffers = init.buf_req->output.bufnum_max;
+   }
    dec->ctxt->outputReq.bufferSize = init.buf_req->output.bufsize;
    QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
             "vdec_open input numbuf= %d and bufsize= %d\n",
@@ -865,35 +939,6 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
             dec->decReq2.bufferSize);
    dec->ctxt->numOutputBuffers =
           dec->ctxt->outputReq.numMinBuffers;
-
-#if LOG_YUV_FRAMES
-#ifdef T_WINNT
-   pYUVFile = fopen("../debug/yuvframes.yuv", "wb");
-#elif _ANDROID_
-   pYUVFile = fopen("/data/yuvframes.yuv", "wb");
-#else
-   pYUVFile = fopen("yuvframes.yuv", "wb");
-#endif
-   if(!pYUVFile) {
-      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
-          "vdec: error: Unable to open file to log YUV frames.");
-   }
-#endif /* LOG_YUV_FRAMES */
-
-#if LOG_INPUT_BUFFERS
-#ifdef T_WINNT
-   pInputFile = fopen("../debug/inputbuffers.264", "wb");
-#elif _ANDROID_
-   pInputFile = fopen("/data/inputbuffers.264", "wb");
-#else
-   pInputFile = fopen("inputbuffers.264", "wb");
-#endif
-   if(!pInputFile) {
-      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
-          "vdec: error: Unable to open file to log Input buffers.");
-   }
-
-#endif /* LOG_INPUT_BUFFERS */
 
    return dec;
 

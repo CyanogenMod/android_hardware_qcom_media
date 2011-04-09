@@ -110,6 +110,7 @@ class VideoHeap:public MemoryHeapBase {
 #define BITMASK_ABSENT(mArray,mIndex) \
             (((mArray)[BITMASK_OFFSET(mIndex)] & BITMASK_FLAG(mIndex)) == 0x0)
 
+#define OMX_CORE_MIN_INPUT_BUFFERS   1
 #define OMX_CORE_NUM_INPUT_BUFFERS   MAX_NUM_INPUT_BUFFERS
 #define OMX_CORE_NUM_OUTPUT_BUFFERS  32   //changed from 32 - 8
 #define OMX_CORE_NUM_OUTPUT_BUFFERS_H264  8
@@ -448,7 +449,8 @@ class omx_vdec:public qc_omx_component, public omx_vdec_inpbuf {
          chroma_height = ((m_port_height >> 1) + 31) & ~31;
          chroma_width = 2 * (((m_port_width >> 1) + 31) & ~31);
          buffer_size += (chroma_height * chroma_width) + getExtraDataSize();
-       } else {
+       } 
+       else {
           buffer_size = m_port_height * m_port_width * 3/2  + getExtraDataSize();
        }
        return buffer_size;

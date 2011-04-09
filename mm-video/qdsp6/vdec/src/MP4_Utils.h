@@ -111,6 +111,7 @@ typedef unsigned char byte;   /* Unsigned 8  bit value type. */
 #define SIMPLE_PROFILE_LEVEL4A            0x04
 #define SIMPLE_PROFILE_LEVEL5            0x05
 #define SIMPLE_PROFILE_LEVEL6            0x06
+#define SIMPLE_PROFILE_LEVEL0B           0x09
 
 #define SIMPLE_SCALABLE_PROFILE_LEVEL0                  0x10
 #define SIMPLE_SCALABLE_PROFILE_LEVEL1                  0x11
@@ -178,9 +179,11 @@ typedef unsigned char byte;   /* Unsigned 8  bit value type. */
 #define MP4_VGA_HEIGHT            480
 #define MP4_WVGA_WIDTH            800
 #define MP4_WVGA_HEIGHT           480
+#define MP4_720P_WIDTH            1280
+#define MP4_720P_HEIGHT           720
 
-#define MP4_MAX_DECODE_WIDTH    MP4_WVGA_WIDTH
-#define MP4_MAX_DECODE_HEIGHT   MP4_WVGA_HEIGHT
+#define MP4_MAX_DECODE_WIDTH    MP4_720P_WIDTH
+#define MP4_MAX_DECODE_HEIGHT   MP4_720P_HEIGHT
 
 typedef struct {
    unsigned char *data;

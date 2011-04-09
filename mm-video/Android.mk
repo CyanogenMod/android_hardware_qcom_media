@@ -40,7 +40,7 @@ endif
 
 # Decoder is producing artifacts, disabled for now
 ifeq ($(TARGET_BOARD_PLATFORM),qsd8k)
-#    include $(OMX_VIDEO_PATH)/qdsp6/vdec/Android.mk
+    include $(OMX_VIDEO_PATH)/qdsp6/vdec/Android.mk
     include $(OMX_VIDEO_PATH)/qdsp6/venc/Android.mk
 endif
 

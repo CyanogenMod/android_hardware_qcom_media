@@ -63,7 +63,12 @@ extern "C" {
 #define FRAME_FATAL_ERROR          0x00000010
 
 // Post processing flags for for the ConfigParametersType */
-#define POST_PROC_QUANTIZATION     0x1
+typedef enum PostProc_Flags{
+     POST_PROC_QUANTIZATION = 0x1,
+     POST_PROC_DEBLOCKING = 0x2,
+     POST_PROC_METADATAPROPAGATION = 0x4,
+     FLAG_THUMBNAIL_MODE = 0x8
+   } PostProc_Flags;
 
    typedef enum Vdec_ReturnType {
       VDEC_SUCCESS = 0,   /* no error */
@@ -127,6 +132,13 @@ extern "C" {
       VDEC_PICTURE_RES_1x2,
       VDEC_PICTURE_RES_2x2
    } Vdec_PictureRes;
+
+   typedef enum Vdec_PerformanceRequestType {
+     VDEC_PERF_SET_MIN = 0,
+     VDEC_PERF_LOWER,
+     VDEC_PERF_RAISE,
+     VDEC_PERF_SET_MAX
+   }Vdec_PerformanceRequestType;
 
 /**
  * This defines the structure of the pan scan parameters used in
@@ -350,7 +362,7 @@ extern "C" {
   *     -1 failure
   */
    Vdec_ReturnType vdec_get_input_buf_requirements(struct VDecoder_buf_info
-                     *buf_req);
+                     *buf_req, int mode);
 
 /**
   * This method is to be used to get the input buffer
