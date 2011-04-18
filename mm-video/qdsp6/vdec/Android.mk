@@ -62,7 +62,7 @@ LOCAL_MODULE_TAGS       := optional
 LOCAL_CFLAGS            := $(libOmxVdec-def)
 LOCAL_C_INCLUDES        := $(mm-vdec-test-inc)
 LOCAL_PRELINK_MODULE    := false
-LOCAL_SHARED_LIBRARIES  := libmm-omxcore libOmxVdec libbinder
+LOCAL_SHARED_LIBRARIES  := libmm-omxcore libOmxVdec libbinder liblog
 
 LOCAL_SRC_FILES         := test/omx_vdec_test.cpp
 LOCAL_SRC_FILES         += test/queue.c
@@ -96,7 +96,7 @@ LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS	  		:= $(libOmxVdec-def) -DTARGET_ARCH_8K
 LOCAL_C_INCLUDES  		:= $(mm-vdec-test-inc)
 LOCAL_PRELINK_MODULE    	:= false
-LOCAL_SHARED_LIBRARIES 		:= libmm-omxcore libOmxVdec liblasic
+LOCAL_SHARED_LIBRARIES 		:= libmm-omxcore libOmxVdec liblasic liblog libcutils
 LOCAL_SRC_FILES 		:= test/ast_omx_mm_vdec_test.cpp \
 				   test/ast_testutils.cpp \
 				   src/H264_Utils.cpp
