@@ -42,7 +42,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
         #include <utils/Log.h>
         #define DEBUG_PRINT_ERROR LOGE
         #define DEBUG_PRINT       LOGI
-        #define DEBUG_DETAIL      LOGV
+        #define DEBUG_DETAIL      ALOGV
     #else
         #define DEBUG_PRINT_ERROR printf
         #define DEBUG_PRINT       printf
