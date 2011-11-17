@@ -55,6 +55,7 @@ libmm-venc-inc			:= $(LOCAL_PATH)/inc
 libmm-venc-inc			+= $(TARGET_OUT_HEADERS)/mm-core/omxcore
 
 LOCAL_MODULE			:= libOmxVenc
+LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS	  		:= $(libmm-venc-def)
 LOCAL_C_INCLUDES  		:= $(libmm-venc-inc)
 
