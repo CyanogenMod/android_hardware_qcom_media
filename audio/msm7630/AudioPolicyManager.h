@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (c) 2009, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009, 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,12 @@
  * limitations under the License.
  */
 
-
 #include <stdint.h>
 #include <sys/types.h>
 #include <utils/Timers.h>
 #include <utils/Errors.h>
 #include <utils/KeyedVector.h>
 #include <hardware_legacy/AudioPolicyManagerBase.h>
-
 
 namespace android_audio_legacy {
 
@@ -56,7 +54,6 @@ public:
         //  where conditions are changing (setDeviceConnectionState(), setPhoneState()...) AND
         //  before updateDeviceForStrategy() is called.
         virtual uint32_t getDeviceForStrategy(routing_strategy strategy, bool fromCache = true);
-#ifdef LPA_DECODE
         virtual audio_io_handle_t getSession(AudioSystem::stream_type stream,
                                             uint32_t format,
                                             AudioSystem::output_flags flags,
@@ -64,7 +61,6 @@ public:
         virtual void pauseSession(audio_io_handle_t output, AudioSystem::stream_type stream);
         virtual void resumeSession(audio_io_handle_t output, AudioSystem::stream_type stream);
         virtual void releaseSession(audio_io_handle_t output);
-#endif
         virtual status_t startOutput(audio_io_handle_t output,
                                      AudioSystem::stream_type stream,
                                      int session = 0);
