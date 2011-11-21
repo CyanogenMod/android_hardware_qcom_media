@@ -26,9 +26,6 @@
 
 namespace android_audio_legacy {
 
-//using android_audio_legacy::AudioPolicyManagerBase;
-//using android_audio_legacy::AudioPolicyClientInterface;
-
 class AudioPolicyManager: public AudioPolicyManagerBase
 {
 
