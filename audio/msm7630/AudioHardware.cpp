@@ -22,7 +22,6 @@
 #define LOG_TAG "AudioHardwareMSM7X30"
 #include <utils/Log.h>
 #include <utils/String8.h>
-
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -638,7 +637,7 @@ AudioStreamOut* AudioHardware::openOutputStream(
     }
     return mOutput;
 }
-#ifdef LPA_DECODE
+
 AudioStreamOut* AudioHardware::openOutputSession(
         uint32_t devices, int *format, status_t *status, int sessionId)
 {
@@ -659,7 +658,6 @@ AudioStreamOut* AudioHardware::openOutputSession(
     }
     return out;
 }
-#endif
 
 void AudioHardware::closeOutputStream(AudioStreamOut* out) {
     Mutex::Autolock lock(mLock);
