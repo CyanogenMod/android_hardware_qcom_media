@@ -31,7 +31,7 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 #include "AudioHardware.h"
-//#include <media/AudioRecord.h>
+#include <media/AudioSystem.h>
 #include <cutils/properties.h>
 
 #include <linux/android_pmem.h>
@@ -778,7 +778,6 @@ AudioStreamOut* AudioHardware::openOutputStream(
     { // scope for the lock
         status_t lStatus;
         Mutex::Autolock lock(mLock);
-#ifdef VOIP_MVS
         // only one output stream allowed
         if (mOutput && (devices != AudioSystem::DEVICE_OUT_DIRECTOUTPUT)) {
             if (status) {
@@ -803,10 +802,7 @@ AudioStreamOut* AudioHardware::openOutputStream(
                 delete out;
             }
             return mDirectOutput;
-        }
-        else
-#endif
-        {
+        } else {
             LOGV(" AudioHardware::openOutputStream AudioStreamOutMSM72xx output stream \n");
             // only one output stream allowed
             if (mOutput) {
@@ -882,7 +878,6 @@ AudioStreamIn* AudioHardware::openInputStream(
     }
 
     mLock.lock();
-#ifdef VOIP_MVS
     if(devices == AudioSystem::DEVICE_IN_COMMUNICATION) {
         LOGE("Create Audio stream Voip \n");
         AudioStreamInVoip* inVoip = new AudioStreamInVoip();
@@ -900,9 +895,7 @@ AudioStreamIn* AudioHardware::openInputStream(
         mVoipInputs.add(inVoip);
         mLock.unlock();
         return inVoip;
-    } else 
-#endif
-    {
+    } else {
         AudioStreamInMSM72xx* in72xx = new AudioStreamInMSM72xx();
         status_t lStatus = in72xx->set(this, devices, format, channels, sampleRate, acoustic_flags);
         if (status) {
@@ -1143,11 +1136,7 @@ static unsigned calculate_audpre_table_index(unsigned index)
 }
 size_t AudioHardware::getInputBufferSize(uint32_t sampleRate, int format, int channelCount)
 {
-    if ((format != AudioSystem::PCM_16_BIT)
-#ifdef VOIP_MVS
-        && (format != AudioSystem::VOIP_PCM_INPUT)
-#endif
-     ){
+    if (format != AudioSystem::PCM_16_BIT){
         LOGW("getInputBufferSize bad format: %d", format);
         return 0;
     }
@@ -1156,14 +1145,11 @@ size_t AudioHardware::getInputBufferSize(uint32_t sampleRate, int format, int ch
         return 0;
     }
 
-#ifdef VOIP_MVS
-    else if ((format == AudioSystem::VOIP_PCM_INPUT) && (sampleRate == 8000))
+    if (sampleRate == 8000) {
        return 320*channelCount;
-    else if ((format == AudioSystem::VOIP_PCM_INPUT) && (sampleRate == 16000))
+    } else if (sampleRate == 16000){
        return 640*channelCount;
-#endif
-    else
-    {
+    } else {
         /*
             Return pcm record buffer size based on the sampling rate:
             If sampling rate >= 44.1 Khz, use 512 samples/channel pcm recording and
@@ -1221,10 +1207,9 @@ status_t AudioHardware::setVoiceVolume(float v)
     return NO_ERROR;
 }
 
-#ifdef FM_RADIO
 status_t AudioHardware::setFmVolume(float v)
 {
-    int vol = AudioSystem::logToLinear( v );
+    int vol = android::AudioSystem::logToLinear( v );
     if ( vol > 100 ) {
         vol = 100;
     }
@@ -1246,7 +1231,6 @@ status_t AudioHardware::setFmVolume(float v)
     LOGV("msm_set_volume(%d) for FM succeeded",vol);
     return NO_ERROR;
 }
-#endif
 
 status_t AudioHardware::setMasterVolume(float v)
 {
@@ -1498,11 +1482,8 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
         // call
         // Recording will happen through currently active tx device
         if((inputDevice == AudioSystem::DEVICE_IN_VOICE_CALL)
-#ifdef FM_RADIO
            || (inputDevice == AudioSystem::DEVICE_IN_FM_RX)
-           || (inputDevice == AudioSystem::DEVICE_IN_FM_RX_A2DP)
-#endif
-          )
+           || (inputDevice == AudioSystem::DEVICE_IN_FM_RX_A2DP))
             return NO_ERROR;
         if (inputDevice != 0) {
             if (inputDevice & AudioSystem::DEVICE_IN_BLUETOOTH_SCO_HEADSET) {
@@ -1518,11 +1499,9 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                     LOGI("Routing audio to Wired Headset\n");
                     sndDevice = SND_DEVICE_HEADSET;
                 }
-#ifdef ANC
             } else if (inputDevice & AudioSystem::DEVICE_IN_ANC_HEADSET) {
                     LOGI("Routing audio to ANC Headset\n");
                     sndDevice = SND_DEVICE_ANC_HEADSET;
-#endif
             } else if (isStreamOnAndActive(PCM_PLAY) || isStreamOnAndActive(LPA_DECODE)) {
                 if (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER) {
                     LOGI("Routing audio to Speakerphone\n");
@@ -1530,11 +1509,9 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                 } else if (outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADPHONE) {
                     LOGI("Routing audio to Speakerphone\n");
                     sndDevice = SND_DEVICE_NO_MIC_HEADSET;
-#ifdef FM_RADIO
                 } else if (outputDevices & AudioSystem::DEVICE_OUT_FM_TX) {
                     LOGE("Routing audio_rx to Speaker\n");
                     sndDevice = SND_DEVICE_SPEAKER_TX;
-#endif
                 } else {
                     LOGI("Routing audio to Handset\n");
                     sndDevice = SND_DEVICE_HANDSET;
@@ -1556,10 +1533,7 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
         }
         if ((mTtyMode != TTY_OFF) && (mMode == AudioSystem::MODE_IN_CALL) &&
                 ((outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET)
-#ifdef ANC
-                 ||(outputDevices & AudioSystem::DEVICE_OUT_ANC_HEADSET)
-#endif
-                 )) {
+                 ||(outputDevices & AudioSystem::DEVICE_OUT_ANC_HEADSET))) {
             if (mTtyMode == TTY_FULL) {
                 LOGI("Routing audio to TTY FULL Mode\n");
                 sndDevice = SND_DEVICE_TTY_FULL;
@@ -1585,14 +1559,12 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
             LOGI("Routing audio to Wired Headset and Speaker\n");
             sndDevice = SND_DEVICE_HEADSET_AND_SPEAKER;
             audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-#ifdef FM_RADIO
         } else if ((outputDevices & AudioSystem::DEVICE_OUT_FM_TX) &&
                    (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER)) {
             LOGI("Routing audio to FM Tx and Speaker\n");
             sndDevice = SND_DEVICE_FM_TX_AND_SPEAKER;
             enableComboDevice(sndDevice,1);
             audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-#endif
         }   else if (outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADPHONE) {
             if (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER) {
                 LOGI("Routing audio to No microphone Wired Headset and Speaker (%d,%x)\n", mMode, outputDevices);
@@ -1603,32 +1575,26 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                 sndDevice = SND_DEVICE_NO_MIC_HEADSET;
                 audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
             }
-#ifdef ANC
         } else if (outputDevices & AudioSystem::DEVICE_OUT_ANC_HEADPHONE) {
                 LOGI("Routing audio to No microphone ANC Headset (%d,%x)\n", mMode, outputDevices);
                 sndDevice = SND_DEVICE_NO_MIC_ANC_HEADSET;
                 audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-#endif
         } else if (outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET) {
              LOGI("Routing audio to Wired Headset\n");
              sndDevice = SND_DEVICE_HEADSET;
              audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-#ifdef ANC
         } else if (outputDevices & AudioSystem::DEVICE_OUT_ANC_HEADSET) {
             LOGI("Routing audio to ANC Headset\n");
             sndDevice = SND_DEVICE_ANC_HEADSET;
             audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-#endif
         }  else if (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER) {
             LOGI("Routing audio to Speakerphone\n");
             sndDevice = SND_DEVICE_SPEAKER;
             audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-#ifdef FM_RADIO
         }else if (outputDevices & AudioSystem::DEVICE_OUT_FM_TX){
             LOGI("Routing audio to FM Tx Device\n");
             sndDevice = SND_DEVICE_FM_TX;
             audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-#endif
         } else if(outputDevices & AudioSystem::DEVICE_OUT_EARPIECE){
             LOGI("Routing audio to Handset\n");
             sndDevice = SND_DEVICE_HANDSET;
@@ -1645,7 +1611,6 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
             sndDevice = SND_DEVICE_IN_S_SADC_OUT_SPEAKER_PHONE;
         }
     }
-#ifdef FM_RADIO
     if ((outputDevices & AudioSystem::DEVICE_OUT_FM) && (mFmFd == -1)){
         enableFM(sndDevice);
     }
@@ -1671,27 +1636,25 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
         CurrentComboDeviceData.DeviceId = INVALID_DEVICE;
         CurrentComboDeviceData.StreamType = INVALID_STREAM;
     }
-#endif
 
     if (sndDevice != -1 && sndDevice != mCurSndDevice) {
         ret = doAudioRouteOrMute(sndDevice);
         mCurSndDevice = sndDevice;
     }
-#ifdef ANC
     //check if ANC setting is ON
     if (anc_setting == true
                 && (sndDevice == SND_DEVICE_ANC_HEADSET
                 || sndDevice ==SND_DEVICE_NO_MIC_ANC_HEADSET)) {
         enableANC(1,sndDevice);
         anc_running = true;
-    } else
-    //disconnection case
-       anc_running = false;
-#endif
+    } else {
+        //disconnection case
+        anc_running = false;
+    }
 
     return ret;
 }
-#ifdef FM_RADIO
+
 status_t AudioHardware::enableComboDevice(uint32_t sndDevice, bool enableOrDisable)
 {
     LOGD("enableComboDevice %u",enableOrDisable);
@@ -1850,7 +1813,6 @@ status_t AudioHardware::disableFM()
     }
     return NO_ERROR;
 }
-#endif //#ifdef FM_RADIO
 
 status_t AudioHardware::dumpInternals(int fd, const Vector<String16>& args)
 {
@@ -2200,7 +2162,6 @@ ssize_t AudioHardware::AudioStreamOutMSM72xx::write(const void* buffer, size_t b
                 LOGE("msm_route_stream failed");
                 return 0;
             }
-#ifdef FM_RADIO
             Mutex::Autolock lock_1(mComboDeviceLock);
 
             if(CurrentComboDeviceData.DeviceId == SND_DEVICE_FM_TX_AND_SPEAKER){
@@ -2227,7 +2188,6 @@ ssize_t AudioHardware::AudioStreamOutMSM72xx::write(const void* buffer, size_t b
                 }
                 CurrentComboDeviceData.StreamType = PCM_PLAY;
             }
-#endif
             addToTable(dec_id,cur_rx,INVALID_DEVICE,PCM_PLAY,true);
             ioctl(mFd, AUDIO_START, 0);
         }
@@ -2714,7 +2674,6 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
     }
     status_t status =0;
     struct msm_voicerec_mode voc_rec_cfg;
-#ifdef FM_RADIO
     if(devices == AudioSystem::DEVICE_IN_FM_RX_A2DP) {
         status = ::open("/dev/msm_pcm_in", O_RDONLY);
         if (status < 0) {
@@ -2767,9 +2726,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
         mChannels = *pChannels;
         mSampleRate = config.sample_rate;
         mBufferSize = config.buffer_size;
-    } else 
-#endif
-    if (*pFormat == AUDIO_HW_IN_FORMAT) {
+    } else if (*pFormat == AUDIO_HW_IN_FORMAT) {
         if (mHardware->mNumPcmRec > 0) {
             /* Only one PCM recording is allowed at a time */
             LOGE("Multiple PCM recordings is not allowed");
@@ -2929,7 +2886,6 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
             hw->mLock.unlock();
             return -1;
         }
-#ifdef FM_RADIO
         if((mDevices == AudioSystem::DEVICE_IN_FM_RX) || (mDevices == AudioSystem::DEVICE_IN_FM_RX_A2DP) ){
             if(ioctl(mFd, AUDIO_GET_SESSION_ID, &dec_id)) {
                 LOGE("AUDIO_GET_SESSION_ID failed*********");
@@ -2961,9 +2917,7 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
                 mFmRec = FM_FILE_REC;
             }
             hw->mLock.unlock();
-        } else
-#endif
-        {
+        } else {
             hw->mLock.unlock();
             if(ioctl(mFd, AUDIO_GET_SESSION_ID, &dec_id)) {
                 LOGE("AUDIO_GET_SESSION_ID failed*********");
@@ -3191,7 +3145,6 @@ AudioHardware::AudioStreamInMSM72xx *AudioHardware::getActiveInput_l()
     return NULL;
 }
 
-#ifdef VOIP_MVS
 // ----------------------------------------------------------------------------
 //  VOIP stream class
 //.----------------------------------------------------------------------------
@@ -3555,10 +3508,9 @@ AudioHardware::AudioStreamInVoip*AudioHardware::getActiveVoipInput_l()
 }
 // ---------------------------------------------------------------------------
 //  VOIP stream class end
-#endif //#ifdef VOIP_MVS
 
 extern "C" AudioHardwareInterface* createAudioHardware(void) {
     return new AudioHardware();
 }
 
-}; // namespace android
+}; // namespace android_audio_legacy
