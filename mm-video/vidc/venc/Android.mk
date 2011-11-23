@@ -44,6 +44,10 @@ libmm-venc-def += -D_ANDROID_
 libmm-venc-def += -UENABLE_DEBUG_LOW
 libmm-venc-def += -DENABLE_DEBUG_HIGH
 libmm-venc-def += -DENABLE_DEBUG_ERROR
+libmm-venc-def += -UINPUT_BUFFER_LOG
+libmm-venc-def += -UOUTPUT_BUFFER_LOG
+libmm-venc-def += -USINGLE_ENCODER_INSTANCE
+libmm-venc-def += -DMAX_RES_720P
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVenc)
@@ -64,6 +68,8 @@ LOCAL_SHARED_LIBRARIES		:= liblog libutils libbinder
 LOCAL_SRC_FILES		:= src/omx_video_base.cpp
 LOCAL_SRC_FILES		+= src/omx_video_encoder.cpp
 LOCAL_SRC_FILES		+= src/video_encoder_device.cpp
+
+LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_SHARED_LIBRARY)
 

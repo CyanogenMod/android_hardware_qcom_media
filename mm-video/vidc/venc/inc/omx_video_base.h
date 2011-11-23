@@ -43,6 +43,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include<stdlib.h>
 #include <stdio.h>
+#include <sys/mman.h>
 #ifdef _ANDROID_
   #include <binder/MemoryHeapBase.h>
 #endif // _ANDROID_
@@ -66,7 +67,7 @@ public:
 };
 
 #include <utils/Log.h>
-//#define LOG_TAG "OMX-VENC-720p"
+#define LOG_TAG "OMX-VENC-720p"
 #ifdef ENABLE_DEBUG_LOW
 #define DEBUG_PRINT_LOW LOGE
 #else
@@ -82,7 +83,13 @@ public:
 #else
 #define DEBUG_PRINT_ERROR
 #endif
+
+#else //_ANDROID_
+#define DEBUG_PRINT_LOW
+#define DEBUG_PRINT_HIGH
+#define DEBUG_PRINT_ERROR
 #endif // _ANDROID_
+
 //////////////////////////////////////////////////////////////////////////////
 //                       Module specific globals
 //////////////////////////////////////////////////////////////////////////////
@@ -405,19 +412,18 @@ public:
                    unsigned int p2,
                    unsigned int id
                  );
-
+  OMX_ERRORTYPE get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
   inline void omx_report_error ()
   {
-    m_state = OMX_StateInvalid;
-    if(m_pCallbacks.EventHandler)
+    if(m_pCallbacks.EventHandler && !m_error_propogated)
     {
+      m_error_propogated = true;
       m_pCallbacks.EventHandler(&m_cmp,m_app_data,
                                 OMX_EventError,OMX_ErrorHardware,0,NULL);
-      m_pCallbacks.EventHandler(&m_cmp,m_app_data,
-                                OMX_EventError, OMX_ErrorInvalidState,0, NULL);
     }
   }
 
+  void complete_pending_buffer_done_cbs();
 
   //*************************************************************
   //*******************MEMBER VARIABLES *************************
@@ -425,7 +431,7 @@ public:
 
   pthread_mutex_t       m_lock;
   sem_t                 m_cmd_lock;
-
+  bool              m_error_propogated;
 
   //sem to handle the minimum procesing of commands
 
@@ -461,6 +467,9 @@ public:
   OMX_CONFIG_INTRAREFRESHVOPTYPE m_sConfigIntraRefreshVOP;
   OMX_VIDEO_PARAM_QUANTIZATIONTYPE m_sSessionQuantization;
   OMX_VIDEO_PARAM_AVCSLICEFMO m_sAVCSliceFMO;
+  QOMX_VIDEO_INTRAPERIODTYPE m_sIntraperiod;
+  OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE m_sErrorCorrection;
+  OMX_VIDEO_PARAM_INTRAREFRESHTYPE m_sIntraRefresh;
 
   // fill this buffer queue
   omx_cmd_queue         m_ftb_q;

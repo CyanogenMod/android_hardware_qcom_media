@@ -313,7 +313,7 @@ qc_omx_component_empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_empty_this_buffer %x, %x\n",(unsigned)hComp,(unsigned)buffer);
+  //DEBUG_PRINT("OMXCORE: qc_omx_component_empty_this_buffer %x, %x\n",(unsigned)hComp,(unsigned)buffer);
 
   if(pThis)
   {
@@ -328,7 +328,7 @@ qc_omx_component_fill_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_fill_this_buffer %x, %x\n",(unsigned)hComp,(unsigned)buffer);
+  //DEBUG_PRINT("OMXCORE: qc_omx_component_fill_this_buffer %x, %x\n",(unsigned)hComp,(unsigned)buffer);
   if(pThis)
   {
     eRet = pThis->fill_this_buffer(hComp,buffer);
@@ -368,7 +368,6 @@ qc_omx_component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     eRet = pThis->component_deinit(hComp);
     // destroy the component.
     delete pThis;
-    ((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate = NULL;
   }
   return eRet;
 }

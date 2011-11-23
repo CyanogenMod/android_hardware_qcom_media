@@ -31,9 +31,19 @@ include $(CLEAR_VARS)
 
 ifneq ($(BUILD_TINY_ANDROID),true)
 
+ifeq ($(BOARD_USES_QCOM_LIBS),true)
+
 ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
     include $(OMX_VIDEO_PATH)/vidc/vdec/Android.mk
     include $(OMX_VIDEO_PATH)/vidc/venc/Android.mk
 endif
+
+# Decoder is producing artifacts, disabled for now
+ifeq ($(TARGET_BOARD_PLATFORM),qsd8k)
+    include $(OMX_VIDEO_PATH)/qdsp6/vdec/Android.mk
+    include $(OMX_VIDEO_PATH)/qdsp6/venc/Android.mk
+endif
+
+endif # BOARD_USES_QCOM_LIBS
 
 endif #BUILD_TINY_ANDROID

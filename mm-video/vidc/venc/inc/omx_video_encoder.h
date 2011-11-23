@@ -28,6 +28,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __OMX_VENC__H
 #define __OMX_VENC__H
 
+#include <unistd.h>
 #include "omx_video_base.h"
 #include "video_encoder_device.h"
 
@@ -65,6 +66,7 @@ private:
   bool dev_fill_buf(void *, void *);
   bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
   bool dev_set_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
+  bool update_profile_level();
 };
 
 #endif //__OMX_VENC__H
