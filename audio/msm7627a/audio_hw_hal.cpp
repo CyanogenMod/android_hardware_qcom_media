@@ -23,7 +23,8 @@
 #include <system/audio.h>
 #include <hardware/audio.h>
 
-#include "AudioHardware.h"
+#include <hardware_legacy/AudioHardwareInterface.h>
+#include <hardware_legacy/AudioSystemLegacy.h>
 
 namespace android_audio_legacy {
 
@@ -344,6 +345,12 @@ static int adev_set_master_volume(struct audio_hw_device *dev, float volume)
     return qadev->hwif->setMasterVolume(volume);
 }
 
+static int adev_set_fm_volume(struct audio_hw_device *dev, float volume)
+{
+    struct qcom_audio_device *qadev = to_ladev(dev);
+    return qadev->hwif->setFmVolume(volume);
+}
+
 static int adev_set_mode(struct audio_hw_device *dev, int mode)
 {
     struct qcom_audio_device *qadev = to_ladev(dev);
@@ -551,6 +558,7 @@ static int qcom_adev_open(const hw_module_t* module, const char* name,
     qadev->device.init_check = adev_init_check;
     qadev->device.set_voice_volume = adev_set_voice_volume;
     qadev->device.set_master_volume = adev_set_master_volume;
+    qadev->device.set_fm_volume = adev_set_fm_volume;
     qadev->device.set_mode = adev_set_mode;
     qadev->device.set_mic_mute = adev_set_mic_mute;
     qadev->device.get_mic_mute = adev_get_mic_mute;
