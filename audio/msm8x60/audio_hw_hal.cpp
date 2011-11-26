@@ -311,9 +311,12 @@ static uint32_t adev_get_supported_devices(const struct audio_hw_device *dev)
             AUDIO_DEVICE_OUT_WIRED_HEADSET |
             AUDIO_DEVICE_OUT_WIRED_HEADPHONE |
             AUDIO_DEVICE_OUT_AUX_DIGITAL |
-            AUDIO_DEVICE_OUT_ANLG_DOCK_HEADSET |
-            AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET |
             AUDIO_DEVICE_OUT_ALL_SCO |
+            AUDIO_DEVICE_OUT_ANC_HEADSET |
+            AUDIO_DEVICE_OUT_ANC_HEADPHONE |
+            AUDIO_DEVICE_OUT_FM |
+            AUDIO_DEVICE_OUT_FM_TX |
+            AUDIO_DEVICE_OUT_DIRECTOUTPUT |
             AUDIO_DEVICE_OUT_DEFAULT |
             /* IN */
             AUDIO_DEVICE_IN_COMMUNICATION |
@@ -323,6 +326,9 @@ static uint32_t adev_get_supported_devices(const struct audio_hw_device *dev)
             AUDIO_DEVICE_IN_AUX_DIGITAL |
             AUDIO_DEVICE_IN_BACK_MIC |
             AUDIO_DEVICE_IN_ALL_SCO |
+            AUDIO_DEVICE_IN_ANC_HEADSET |
+            AUDIO_DEVICE_IN_FM_RX |
+            AUDIO_DEVICE_IN_FM_RX_A2DP |
             AUDIO_DEVICE_IN_DEFAULT);
 }
 
