@@ -833,7 +833,7 @@ AudioStreamOut* AudioHardware::openOutputStream(
     }
 }
 
-#ifdef LPA_DECODE
+
 AudioStreamOut* AudioHardware::openOutputSession(
         uint32_t devices, int *format, status_t *status, int sessionId)
 {
@@ -854,7 +854,7 @@ AudioStreamOut* AudioHardware::openOutputSession(
     }
     return out;
 }
-#endif //#ifdef LPA_DECODE
+
 
 void AudioHardware::closeOutputStream(AudioStreamOut* out) {
     Mutex::Autolock lock(mLock);
