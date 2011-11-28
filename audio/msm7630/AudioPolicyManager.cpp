@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (c) 2009-2010, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -520,7 +520,7 @@ void AudioPolicyManager::setPhoneState(int state)
         mLimitRingtoneVolume = false;
     }
 }
-#ifdef LPA_DECODE
+
 audio_io_handle_t AudioPolicyManager::getSession(AudioSystem::stream_type stream,
                                     uint32_t format,
                                     AudioSystem::output_flags flags,
@@ -617,7 +617,6 @@ void AudioPolicyManager::releaseSession(audio_io_handle_t output)
     mLPAActiveStreamType = AudioSystem::DEFAULT;
     mLPAMuted = false;
 }
-#endif LPA_DECODE
 
 status_t AudioPolicyManager::startOutput(audio_io_handle_t output,
                                              AudioSystem::stream_type stream,

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 The Android Open Source Project
+ * Copyright (c) 2011, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -133,6 +134,39 @@ static int ap_init_check(const struct audio_policy *pol)
     const struct qcom_audio_policy *qap = to_cgap(pol);
     return qap->apm->initCheck();
 }
+static audio_io_handle_t ap_get_session(struct audio_policy *pol,
+                                       audio_stream_type_t stream,
+                                       uint32_t format,
+                                       audio_policy_output_flags_t flags,
+                                       int sessionId)
+{
+    struct qcom_audio_policy *qap = to_qap(pol);
+
+    LOGV("%s: tid %d", __func__, gettid());
+    return qap->apm->getSession((AudioSystem::stream_type)stream,
+                               format, (AudioSystem::output_flags)flags,
+                               sessionId);
+}
+
+static void ap_pause_session(struct audio_policy *pol, audio_io_handle_t output,
+                          audio_stream_type_t stream)
+{
+    struct qcom_audio_policy *qap = to_qap(pol);
+    qap->apm->pauseSession(output, (AudioSystem::stream_type)stream);
+}
+
+static void ap_resume_session(struct audio_policy *pol, audio_io_handle_t output,
+                          audio_stream_type_t stream)
+{
+    struct qcom_audio_policy *qap = to_qap(pol);
+    qap->apm->resumeSession(output, (AudioSystem::stream_type)stream);
+}
+
+static void ap_release_session(struct audio_policy *pol, audio_io_handle_t output)
+{
+    struct qcom_audio_policy *qap = to_qap(pol);
+    qap->apm->releaseSession(output);
+}
 
 static audio_io_handle_t ap_get_output(struct audio_policy *pol,
                                        audio_stream_type_t stream,
@@ -156,7 +190,6 @@ static int ap_start_output(struct audio_policy *pol, audio_io_handle_t output,
     return qap->apm->startOutput(output, (AudioSystem::stream_type)stream,
                                  session);
 }
-
 static int ap_stop_output(struct audio_policy *pol, audio_io_handle_t output,
                           audio_stream_type_t stream, int session)
 {
@@ -310,6 +343,10 @@ static int create_qcom_ap(const struct audio_policy_device *device,
         ap_set_can_mute_enforced_audible;
     qap->policy.init_check = ap_init_check;
     qap->policy.get_output = ap_get_output;
+    qap->policy.get_session = ap_get_session;
+    qap->policy.pause_session = ap_pause_session;
+    qap->policy.resume_session = ap_resume_session;
+    qap->policy.release_session = ap_release_session;
     qap->policy.start_output = ap_start_output;
     qap->policy.stop_output = ap_stop_output;
     qap->policy.release_output = ap_release_output;
