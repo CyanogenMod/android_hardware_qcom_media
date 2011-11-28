@@ -23,8 +23,6 @@
 
 namespace android_audio_legacy {
 
-//using android_audio_legacy::AudioPolicyClientInterface;
-
 // ----------------------------------------------------------------------------
 // AudioPolicyManager for msm8660 platform
 // ----------------------------------------------------------------------------
@@ -77,12 +75,10 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
             if (device) break;
             device = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET;
             if (device) break;
-#ifdef ANC
             device = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_ANC_HEADPHONE;
             if (device) break;
             device = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_ANC_HEADSET;
             if (device) break;
-#endif
             device = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_EARPIECE;
             if (device == 0) {
                 LOGE("getDeviceForStrategy() earpiece device not found");
@@ -108,11 +104,9 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
             }
             break;
         }
-#ifdef FM_RADIO
         if (mAvailableOutputDevices & AudioSystem::DEVICE_OUT_FM) {
             device |= AudioSystem::DEVICE_OUT_FM;
         }
-#endif
     break;
 
     case STRATEGY_SONIFICATION:
@@ -162,19 +156,15 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
             if (device2 == 0) {
                 device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET;
             }
-#ifdef ANC
             if (device2 == 0) {
                 device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_ANC_HEADPHONE;
             }
             if (device2 == 0) {
                 device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_ANC_HEADSET;
             }
-#endif
-#ifdef FM_RADIO
             if (device2 == 0) {
                 device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_FM_TX;
             }
-#endif
             if (device2 == 0) {
                 device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_SPEAKER;
             }
@@ -191,19 +181,16 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
             device = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_SPEAKER;
             break;
         }
-#ifdef FM_RADIO
         if (mAvailableOutputDevices & AudioSystem::DEVICE_OUT_FM) {
             device |= AudioSystem::DEVICE_OUT_FM;
         }
-#endif
-#ifdef ANC
         if (mAvailableOutputDevices & AudioSystem::DEVICE_OUT_ANC_HEADSET) {
             device |= AudioSystem::DEVICE_OUT_ANC_HEADSET;
         }
         if (mAvailableOutputDevices & AudioSystem::DEVICE_OUT_ANC_HEADPHONE) {
             device |= AudioSystem::DEVICE_OUT_ANC_HEADPHONE;
         }
-#endif
+
         // Do not play media stream if in call and the requested device would change the hardware
         // output routing
         if (mPhoneState == AudioSystem::MODE_IN_CALL &&
@@ -332,7 +319,6 @@ status_t AudioPolicyManager::setDeviceConnectionState(AudioSystem::audio_devices
         if(newDevice == 0 && mLPADecodeOutput != -1) {
             newDevice = AudioPolicyManagerBase::getNewDevice(mLPADecodeOutput, false);
         }
-#ifdef FM_RADIO
         if(device == AudioSystem::DEVICE_OUT_FM) {
             if (state == AudioSystem::DEVICE_STATE_AVAILABLE) {
                 mOutputs.valueFor(mHardwareOutput)->changeRefCount(AudioSystem::FM, 1);
@@ -344,15 +330,12 @@ status_t AudioPolicyManager::setDeviceConnectionState(AudioSystem::audio_devices
                 newDevice = getDeviceForStrategy(STRATEGY_MEDIA, false);
             }
         }
-#endif
-#ifdef ANC
         if(device == AudioSystem::DEVICE_OUT_ANC_HEADPHONE ||
             device == AudioSystem::DEVICE_OUT_ANC_HEADSET) {
             if(newDevice == 0){
                 newDevice = getDeviceForStrategy(STRATEGY_MEDIA, false);
             }
         }
-#endif
 #ifdef WITH_A2DP
         AudioPolicyManagerBase::checkOutputForAllStrategies();
         // A2DP outputs must be closed after checkOutputForAllStrategies() is executed
@@ -371,10 +354,8 @@ status_t AudioPolicyManager::setDeviceConnectionState(AudioSystem::audio_devices
                    device == AudioSystem::DEVICE_OUT_BLUETOOTH_SCO_HEADSET ||
                    device == AudioSystem::DEVICE_OUT_BLUETOOTH_SCO_CARKIT) {
             device = AudioSystem::DEVICE_IN_BLUETOOTH_SCO_HEADSET;
-#ifdef ANC
         } else if(device == AudioSystem::DEVICE_OUT_ANC_HEADSET){
                device = AudioSystem::DEVICE_IN_ANC_HEADSET; //wait for actual ANC device
-#endif
         } else {
             return NO_ERROR;
         }
@@ -669,16 +650,11 @@ status_t AudioPolicyManager::startOutput(audio_io_handle_t output, AudioSystem::
     // NOTE that the usage count is the same for duplicated output and hardware output which is
     // necassary for a correct control of hardware output routing by startOutput() and stopOutput()
     outputDesc->changeRefCount(stream, 1);
-#ifdef FM_RADIO
     if(stream == AudioSystem::FM && output == mA2dpOutput) {
         setOutputDevice(output, AudioPolicyManagerBase::getNewDevice(output), true);
-    }
-   else
-#endif         
-    if (output != mLPADecodeOutput) {
+    } else if (output != mLPADecodeOutput) {
         setOutputDevice(output, AudioPolicyManagerBase::getNewDevice(output));
-    }
-    else{
+    } else {
         setOutputDevice(output, AudioPolicyManagerBase::getNewDevice(output), true);
     }
 
@@ -793,17 +769,12 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
     outputDesc->mDevice = device;
     // mute media streams if both speaker and headset are selected
     if (device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADSET)
-#ifdef ANC
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_ANC_HEADSET)
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_ANC_HEADPHONE)
-#endif
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADPHONE)
-#ifdef FM_RADIO
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADSET | AudioSystem::DEVICE_OUT_FM)
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADPHONE | AudioSystem::DEVICE_OUT_FM)
-        || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_FM_TX)
-#endif
-        ){
+        || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_FM_TX)) {
         setStrategyMute(STRATEGY_MEDIA, true, output);
         // Mute LPA output also if it belongs to STRATEGY_MEDIA
         if((mLPADecodeOutput != -1 &&
@@ -856,17 +827,12 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
 #endif
     // if changing from a combined headset + speaker route, unmute media streams
     if (prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADSET)
-#ifdef ANC
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_ANC_HEADSET)
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_ANC_HEADPHONE)
-#endif
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADPHONE)
-#ifdef FM_RADIO
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADSET | AudioSystem::DEVICE_OUT_FM)
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADPHONE | AudioSystem::DEVICE_OUT_FM)
-        || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_FM_TX)
-#endif
-        ){
+        || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_FM_TX)) {
         setStrategyMute(STRATEGY_MEDIA, false, output, delayMs);
         // Unmute LPA output also if it belongs to STRATEGY_MEDIA
         if((mLPADecodeOutput != -1 &&
@@ -897,10 +863,7 @@ status_t AudioPolicyManager::checkAndSetVolume(int stream, int index, audio_io_h
     float volume = computeVolume(stream, index, output, device);
     // do not set volume if the float value did not change
     if ((volume != mOutputs.valueFor(output)->mCurVolume[stream]) || (stream == AudioSystem::VOICE_CALL) ||
-#ifdef FM_RADIO
-        (stream == AudioSystem::FM) || 
-#endif
-        force) {
+        (stream == AudioSystem::FM) || force) {
         mOutputs.valueFor(output)->mCurVolume[stream] = volume;
         LOGD("setStreamVolume() for output %d stream %d, volume %f, delay %d", output, stream, volume, delayMs);
         if (stream == AudioSystem::VOICE_CALL ||
@@ -918,7 +881,6 @@ status_t AudioPolicyManager::checkAndSetVolume(int stream, int index, audio_io_h
             if (voiceVolume >= 0 && output == mHardwareOutput) {
                 mpClientInterface->setVoiceVolume(voiceVolume, delayMs);
             }
-#ifdef FM_RADIO
         } else if (stream == AudioSystem::FM) {
             float fmVolume = -1.0;
             fmVolume = computeVolume(stream, index, output, device);
@@ -929,7 +891,6 @@ status_t AudioPolicyManager::checkAndSetVolume(int stream, int index, audio_io_h
                     mpClientInterface->setStreamVolume((AudioSystem::stream_type)stream, volume, output, delayMs);
             }
             return NO_ERROR;
-#endif
         }
         mpClientInterface->setStreamVolume((AudioSystem::stream_type)stream, volume, output, delayMs);
     }
@@ -1051,10 +1012,8 @@ uint32_t AudioPolicyManager::getDeviceForInputSource(int inputSource)
             device = AudioSystem::DEVICE_IN_BLUETOOTH_SCO_HEADSET;
         } else if (mAvailableInputDevices & AudioSystem::DEVICE_IN_WIRED_HEADSET) {
             device = AudioSystem::DEVICE_IN_WIRED_HEADSET;
-#ifdef ANC
         } else if (mAvailableInputDevices & AudioSystem::DEVICE_IN_ANC_HEADSET) {
             device = AudioSystem::DEVICE_IN_ANC_HEADSET;
-#endif
         } else {
             device = AudioSystem::DEVICE_IN_BUILTIN_MIC;
         }
@@ -1074,14 +1033,12 @@ uint32_t AudioPolicyManager::getDeviceForInputSource(int inputSource)
     case AUDIO_SOURCE_VOICE_CALL:
         device = AudioSystem::DEVICE_IN_VOICE_CALL;
         break;
-#ifdef FM_RADIO
    case AUDIO_SOURCE_FM_RX:
         device = AudioSystem::DEVICE_IN_FM_RX;
         break;
     case AUDIO_SOURCE_FM_RX_A2DP:
         device = AudioSystem::DEVICE_IN_FM_RX_A2DP;
         break;
-#endif
     default:
         LOGW("getInput() invalid input source %d", inputSource);
         device = 0;

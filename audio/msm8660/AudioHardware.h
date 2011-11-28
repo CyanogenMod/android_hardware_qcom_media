@@ -110,12 +110,6 @@ enum tty_modes {
 #define AUDIO_HW_VOIP_SAMPLERATE_8K 8000
 #define AUDIO_HW_VOIP_SAMPLERATE_16K 16000
 
-using android_audio_legacy::AudioHardwareBase;
-using android_audio_legacy::AudioStreamOut;
-using android_audio_legacy::AudioStreamIn;
-using android_audio_legacy::AudioSystem;
-using android_audio_legacy::AudioHardwareInterface;
-
 class AudioHardware : public  AudioHardwareBase
 {
     class AudioStreamOutMSM72xx;
@@ -131,9 +125,7 @@ public:
 
     virtual status_t    setVoiceVolume(float volume);
     virtual status_t    setMasterVolume(float volume);
-#ifdef FM_RADIO
     virtual status_t    setFmVolume(float volume);
-#endif
     virtual status_t    setMode(int mode);
 
     // mic mute
@@ -183,11 +175,10 @@ private:
     uint32_t    getInputSampleRate(uint32_t sampleRate);
     bool        checkOutputStandby();
     status_t    doRouting(AudioStreamInMSM72xx *input);
-#ifdef FM_RADIO
     status_t    enableFM(int sndDevice);
     status_t    enableComboDevice(uint32_t sndDevice, bool enableOrDisable);
     status_t    disableFM();
-#endif
+
     AudioStreamInMSM72xx*   getActiveInput_l();
     AudioStreamInVoip* getActiveVoipInput_l();
 
