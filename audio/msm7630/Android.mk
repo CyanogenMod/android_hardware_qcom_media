@@ -29,7 +29,7 @@ LOCAL_STATIC_LIBRARIES := \
     libmedia_helper \
     libaudiohw_legacy
 
-LOCAL_MODULE := audio.primary.msm7630_surf
+LOCAL_MODULE := audio.primary.msm7x30
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_MODULE_TAGS := optional
 
