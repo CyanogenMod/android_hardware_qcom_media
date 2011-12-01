@@ -12,7 +12,7 @@ LOCAL_SRC_FILES := \
     HardwarePinSwitching.c
 
 ifeq ($(BOARD_HAVE_BLUETOOTH),true)
-  LOCAL_CFLAGS += -DWITH_A2DP
+    LOCAL_CFLAGS += -DWITH_A2DP
 endif
 
 LOCAL_SHARED_LIBRARIES := \
@@ -21,7 +21,7 @@ LOCAL_SHARED_LIBRARIES := \
     libmedia
 
 ifneq ($(TARGET_SIMULATOR),true)
-LOCAL_SHARED_LIBRARIES += libdl
+    LOCAL_SHARED_LIBRARIES += libdl
 endif
 
 LOCAL_STATIC_LIBRARIES := \
@@ -65,7 +65,7 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_MODULE_TAGS := optional
 
 ifeq ($(BOARD_HAVE_BLUETOOTH),true)
-  LOCAL_CFLAGS += -DWITH_A2DP
+    LOCAL_CFLAGS += -DWITH_A2DP
 endif
 
 LOCAL_C_INCLUDES := hardware/libhardware_legacy/audio

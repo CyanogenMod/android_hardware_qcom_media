@@ -27,10 +27,13 @@
 #include <hardware_legacy/AudioHardwareBase.h>
 
 extern "C" {
-#include <linux/msm_audio.h>
-#include <linux/msm_audio_qcp.h>
+#include <linux/msm_audio_7x30.h>
 #include <linux/msm_audio_aac.h>
+
+#ifdef WITH_QCOM_SPEECH
+#include <linux/msm_audio_qcp.h>
 #include <linux/msm_audio_amrnb.h>
+#endif
 }
 
 namespace android_audio_legacy {
@@ -59,6 +62,8 @@ using android::Mutex;
 #define EQ_DISABLE   0x0000
 #define RX_IIR_ENABLE   0x0004
 #define RX_IIR_DISABLE  0x0000
+#define MBADRC_ENABLE  0x0010
+#define MBADRC_DISABLE 0x0000
 
 struct eq_filter_type {
     int16_t gain;
@@ -86,11 +91,29 @@ struct msm_audio_config {
     uint32_t unused[3];
 };
 
+enum tty_modes {
+    TTY_OFF = 0,
+    TTY_VCO = 1,
+    TTY_HCO = 2,
+    TTY_FULL = 3
+};
+
+#define CODEC_TYPE_PCM 0
+#define AUDIO_HW_NUM_OUT_BUF 2  // Number of buffers in audio driver for output
+// TODO: determine actual audio DSP and hardware latency
+#define AUDIO_HW_OUT_LATENCY_MS 0  // Additionnal latency introduced by audio DSP and hardware in ms
+
+#define AUDIO_HW_IN_SAMPLERATE 8000                 // Default audio input sample rate
+#define AUDIO_HW_IN_CHANNELS (AudioSystem::CHANNEL_IN_MONO) // Default audio input channel mask
+#define AUDIO_HW_IN_BUFFERSIZE 2048                 // Default audio input buffer size
+#define AUDIO_HW_IN_FORMAT (AudioSystem::PCM_16_BIT)  // Default audio input sample format
+
 struct msm_audio_stats {
     uint32_t out_bytes;
     uint32_t unused[3];
 };
 
+#ifdef WITH_QCOM_SPEECH
 /* AMR frame type definitions */
 typedef enum {
   AMRSUP_SPEECH_GOOD,          /* Good speech frame              */
@@ -198,22 +221,6 @@ typedef struct {
   unsigned short *class_c;
 } amrsup_frame_order_type;
 
-enum tty_modes {
-    TTY_OFF = 0,
-    TTY_VCO = 1,
-    TTY_HCO = 2,
-    TTY_FULL = 3
-};
-
-#define CODEC_TYPE_PCM 0
-#define AUDIO_HW_NUM_OUT_BUF 2  // Number of buffers in audio driver for output
-// TODO: determine actual audio DSP and hardware latency
-#define AUDIO_HW_OUT_LATENCY_MS 0  // Additionnal latency introduced by audio DSP and hardware in ms
-
-#define AUDIO_HW_IN_SAMPLERATE 8000                 // Default audio input sample rate
-#define AUDIO_HW_IN_CHANNELS (AudioSystem::CHANNEL_IN_MONO) // Default audio input channel mask
-#define AUDIO_HW_IN_BUFFERSIZE 2048                 // Default audio input buffer size
-#define AUDIO_HW_IN_FORMAT (AudioSystem::PCM_16_BIT)  // Default audio input sample format
 /* ======================== 12.2 kbps mode ========================== */
 const unsigned short amrsup_bit_order_122_a[AMR_CLASS_A_BITS_122] = {
      0,   1,   2,   3,   4,   5,   6,   7,   8,   9,
@@ -241,7 +248,6 @@ const unsigned short amrsup_bit_order_122_b[AMR_CLASS_B_BITS_122] = {
    222, 221,  73,  72
 };
 
-
 const unsigned short amrsup_bit_order_122_c[AMR_CLASS_C_BITS_122] = {
    /* ------------- */  71,  76,  75,  74,  79,  78,
     77,  82,  81,  80,  85,  84,  83, 123, 122, 121,
@@ -261,6 +267,7 @@ const amrsup_frame_order_type amrsup_122_framing = {
   AMR_CLASS_C_BITS_122,
   (unsigned short *) amrsup_bit_order_122_c
 };
+#endif
 
 // ----------------------------------------------------------------------------
 
@@ -273,7 +280,9 @@ using android_audio_legacy::AudioHardwareInterface;
 class AudioHardware : public  AudioHardwareBase
 {
     class AudioStreamOutMSM72xx;
+#ifdef WITH_QCOM_LPA
     class AudioSessionOutMSM7xxx;
+#endif
     class AudioStreamInMSM72xx;
 
 public:
@@ -302,13 +311,16 @@ public:
                                 uint32_t *channels=0,
                                 uint32_t *sampleRate=0,
                                 status_t *status=0);
+
+#ifdef WITH_QCOM_LPA
     virtual AudioStreamOut* openOutputSession(
                                 uint32_t devices,
                                 int *format=0,
                                 status_t *status=0,
                                 int sessionId=-1);
-    virtual AudioStreamIn* openInputStream(
+#endif
 
+    virtual AudioStreamIn* openInputStream(
                                 uint32_t devices,
                                 int *format,
                                 uint32_t *channels,
@@ -376,6 +388,7 @@ private:
                 uint32_t    mDevices;
     };
 
+#ifdef WITH_QCOM_LPA
     class AudioSessionOutMSM7xxx : public AudioStreamOut {
     public:
                             AudioSessionOutMSM7xxx();
@@ -408,6 +421,7 @@ private:
                 uint32_t    mDevices;
                 int         mSessionId;
     };
+#endif
 
     class AudioStreamInMSM72xx : public AudioStreamIn {
     public:
