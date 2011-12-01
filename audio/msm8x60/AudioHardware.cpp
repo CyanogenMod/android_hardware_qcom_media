@@ -3407,10 +3407,18 @@ status_t AudioHardware::AudioStreamInVoip::standby()
             return 0;
         }
 
-        if((temp->dev_id != INVALID_DEVICE && temp->dev_id_tx != INVALID_DEVICE)&& (!isStreamOn(VOICE_CALL))) {
-           enableDevice(temp->dev_id,0);
-           enableDevice(temp->dev_id_tx,0);
-           LOGE("VOIPin: disable voip rx tx");
+        if((temp->dev_id != INVALID_DEVICE && temp->dev_id_tx != INVALID_DEVICE)) {
+           if(!getNodeByStreamType(VOICE_CALL) && !getNodeByStreamType(LPA_DECODE)
+              && !getNodeByStreamType(PCM_PLAY) && !getNodeByStreamType(FM_RADIO)) {
+               if (anc_running == false) {
+                   enableDevice(temp->dev_id, 0);
+                   LOGV("Voipin: disable voip rx");
+               }
+            }
+            if(!getNodeByStreamType(VOICE_CALL) && !getNodeByStreamType(PCM_REC)) {  
+                 enableDevice(temp->dev_id_tx,0);
+                 LOGD("VOIPin: disable voip tx");
+            }
         }
         deleteFromTable(VOIP_CALL);
          if (mFd >= 0) {
