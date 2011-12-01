@@ -17,7 +17,7 @@
 
 #include <math.h>
 
-//#define LOG_NDEBUG 0
+#define LOG_NDEBUG 0
 
 #define LOG_TAG "AudioHardwareMSM7X30"
 #include <utils/Log.h>
@@ -30,14 +30,16 @@
 #include <dlfcn.h>
 #include <fcntl.h>
 
-// ToDo: Remove this definition
-#define QC_PROP
-#if defined(QC_PROP)
 #include "control.h"
-extern "C" {
-#include "initialize_audcal7x30.h"
-}
-#else
+
+// ToDo: Remove this definition
+//#define QC_PROP
+//#if defined(QC_PROP)
+//extern "C" {
+//#include "initialize_audcal7x30.h"
+//}
+//#else
+#if 0
         #define msm_mixer_count() (-EPERM)
         #define msm_mixer_open(name, card) (-EPERM)
         #define msm_mixer_close() (-EPERM)
@@ -70,18 +72,23 @@ extern "C" {
 #define DUALMIC_KEY "dualmic_enabled"
 #define TTY_MODE_KEY "tty_mode"
 #define BTHEADSET_VGS "bt_headset_vgs"
+
+#ifdef WITH_QCOM_SPEECH
 #define AMRNB_DEVICE_IN "/dev/msm_amrnb_in"
 #define EVRC_DEVICE_IN "/dev/msm_evrc_in"
 #define QCELP_DEVICE_IN "/dev/msm_qcelp_in"
+#endif
 #define AAC_DEVICE_IN "/dev/msm_aac_in"
+
 #define FM_DEVICE  "/dev/msm_fm"
 #define FM_A2DP_REC 1
 #define FM_FILE_REC 2
 
+#ifdef WITH_QCOM_SPEECH
 #define AMRNB_FRAME_SIZE 32
 #define EVRC_FRAME_SIZE 23
 #define QCELP_FRAME_SIZE 35
-
+#endif
 
 
 namespace android_audio_legacy {
@@ -579,7 +586,6 @@ AudioHardware::AudioHardware() :
             device_list[index].capability = msm_get_device_capability(device_list[index].dev_id);
             LOGV("class ID = %d,capablity = %d for device %d",device_list[index].class_id,device_list[index].capability,device_list[index].dev_id);
         }
-        audcal_initialize();
         mInit = true;
 
         CurrentComboDeviceData.DeviceId = INVALID_DEVICE;
@@ -598,7 +604,6 @@ AudioHardware::~AudioHardware()
         acoustic = 0;
     }
     msm_mixer_close();
-    audcal_deinitialize();
     freeMemory();
     fclose(fp);
     mInit = false;
@@ -637,7 +642,7 @@ AudioStreamOut* AudioHardware::openOutputStream(
     }
     return mOutput;
 }
-
+#ifdef WITH_QCOM_LPA
 AudioStreamOut* AudioHardware::openOutputSession(
         uint32_t devices, int *format, status_t *status, int sessionId)
 {
@@ -658,6 +663,7 @@ AudioStreamOut* AudioHardware::openOutputSession(
     }
     return out;
 }
+#endif
 
 void AudioHardware::closeOutputStream(AudioStreamOut* out) {
     Mutex::Autolock lock(mLock);
@@ -850,6 +856,7 @@ String8 AudioHardware::getParameters(const String8& keys)
         if(mBluetoothVGS)
            param.addInt(String8("isVGS"), true);
     }
+#ifdef WITH_QCOM_SPEECH
     key = String8("tunneled-input-formats");
     if ( param.get(key,value) == NO_ERROR ) {
         param.addInt(String8("AMR"), true );
@@ -858,6 +865,7 @@ String8 AudioHardware::getParameters(const String8& keys)
           param.addInt(String8("QCELP"), true );
         }
     }
+#endif
     key = String8("Fm-radio");
     if ( param.get(key,value) == NO_ERROR ) {
         if ( getNodeByStreamType(FM_RADIO) ) {
@@ -887,9 +895,11 @@ static unsigned calculate_audpre_table_index(unsigned index)
 size_t AudioHardware::getInputBufferSize(uint32_t sampleRate, int format, int channelCount)
 {
     if ((format != AudioSystem::PCM_16_BIT) &&
+#ifdef WITH_QCOM_SPEECH
         (format != AudioSystem::AMR_NB)      &&
         (format != AudioSystem::EVRC)      &&
         (format != AudioSystem::QCELP)  &&
+#endif
         (format != AudioSystem::AAC)){
         LOGW("getInputBufferSize bad format: %d", format);
         return 0;
@@ -898,15 +908,17 @@ size_t AudioHardware::getInputBufferSize(uint32_t sampleRate, int format, int ch
         LOGW("getInputBufferSize bad channel count: %d", channelCount);
         return 0;
     }
-
+#ifdef WITH_QCOM_SPEECH
     if (format == AudioSystem::AMR_NB)
        return 320*channelCount;
     if (format == AudioSystem::EVRC)
        return 230*channelCount;
     else if (format == AudioSystem::QCELP)
        return 350*channelCount;
+#else
     else if (format == AudioSystem::AAC)
        return 2048;
+#endif
     else
     {
         if (build_id[17] == '1') {
@@ -1212,7 +1224,7 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                     (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER)) {
                     LOGI("Routing audio to Wired Headset and Speaker\n");
                     sndDevice = SND_DEVICE_HEADSET_AND_SPEAKER;
-                    audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
+                    audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE );
                 } else {
                     LOGI("Routing audio to Wired Headset\n");
                     sndDevice = SND_DEVICE_HEADSET;
@@ -1266,20 +1278,20 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                    (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER)) {
             LOGI("Routing audio to Wired Headset and Speaker\n");
             sndDevice = SND_DEVICE_HEADSET_AND_SPEAKER;
-            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
+            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE );
 #ifdef FM_RADIO
         } else if ((outputDevices & AudioSystem::DEVICE_OUT_FM_TX) &&
                    (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER)) {
             LOGI("Routing audio to FM Tx and Speaker\n");
             sndDevice = SND_DEVICE_FM_TX_AND_SPEAKER;
             enableComboDevice(sndDevice,1);
-            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
+            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE );
 #endif
         }   else if (outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADPHONE) {
             if (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER) {
                 LOGI("Routing audio to No microphone Wired Headset and Speaker (%d,%x)\n", mMode, outputDevices);
                 sndDevice = SND_DEVICE_HEADPHONE_AND_SPEAKER;
-                audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
+                audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE );
             } else {
                 LOGI("Routing audio to No microphone Wired Headset (%d,%x)\n", mMode, outputDevices);
                 sndDevice = SND_DEVICE_NO_MIC_HEADSET;
@@ -1287,20 +1299,20 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
         } else if (outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET) {
             LOGI("Routing audio to Wired Headset\n");
             sndDevice = SND_DEVICE_HEADSET;
-            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
+            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE );
         } else if (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER) {
             LOGI("Routing audio to Speakerphone\n");
             sndDevice = SND_DEVICE_SPEAKER;
-            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
+            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE );
         } else if(outputDevices & AudioSystem::DEVICE_OUT_EARPIECE){
             LOGI("Routing audio to Handset\n");
             sndDevice = SND_DEVICE_HANDSET;
-            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
+            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE );
 #ifdef FM_RADIO
         } else if(outputDevices & AudioSystem::DEVICE_OUT_FM_TX){
             LOGI("Routing audio to FM Tx Device\n");
             sndDevice = SND_DEVICE_FM_TX;
-            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
+            audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE );
 #endif
         }
     }
@@ -1567,6 +1579,7 @@ uint32_t AudioHardware::getInputSampleRate(uint32_t sampleRate)
 
 
 // ----------------------------------------------------------------------------
+#ifdef WITH_QCOM_LPA
 
 AudioHardware::AudioSessionOutMSM7xxx::AudioSessionOutMSM7xxx() :
     mHardware(0), mStartCount(0), mRetryCount(0), mStandby(true), mDevices(0), mSessionId(-1)
@@ -1720,7 +1733,7 @@ status_t AudioHardware::AudioSessionOutMSM7xxx::setVolume(float left, float righ
     LOGV("msm_set_volume(%f) succeeded",vol);
     return NO_ERROR;
 }
-
+#endif
 // ----------------------------------------------------------------------------
 
 AudioHardware::AudioStreamOutMSM72xx::AudioStreamOutMSM72xx() :
@@ -2025,9 +2038,11 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
 {
     if ((pFormat == 0) ||
         ((*pFormat != AUDIO_HW_IN_FORMAT) &&
+#ifdef WITH_QCOM_SPEECH
          (*pFormat != AudioSystem::AMR_NB) &&
          (*pFormat != AudioSystem::EVRC) &&
          (*pFormat != AudioSystem::QCELP) &&
+#endif
          (*pFormat != AudioSystem::AAC)))
     {
         *pFormat = AUDIO_HW_IN_FORMAT;
@@ -2204,6 +2219,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
         mSampleRate = config.sample_rate;
         mBufferSize = config.buffer_size;
     }
+#ifdef WITH_QCOM_SPEECH
     else if (*pFormat == AudioSystem::EVRC)
     {
           LOGI("Recording format: EVRC");
@@ -2413,6 +2429,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
             goto  Error;
           }
     }
+#endif
     else if (*pFormat == AudioSystem::AAC)
     {
           LOGI("Recording format: AAC");
@@ -2622,6 +2639,7 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
             }
         }
     }
+#ifdef WITH_QCOM_SPEECH
     else if ((mFormat == AudioSystem::EVRC) || (mFormat == AudioSystem::QCELP) || (mFormat == AudioSystem::AMR_NB))
     {
         uint8_t readBuf[36];
@@ -2674,6 +2692,7 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
             }
         }
     }
+#endif
     else if (mFormat == AudioSystem::AAC)
     {
         *((uint32_t*)recogPtr) = 0x51434F4D ;// ('Q','C','O', 'M') Number to identify format as AAC by higher layers
@@ -2877,7 +2896,7 @@ AudioHardware::AudioStreamInMSM72xx *AudioHardware::getActiveInput_l()
 extern "C" AudioHardwareInterface* createAudioHardware(void) {
     return new AudioHardware();
 }
-
+#ifdef WITH_QCOM_SPEECH
 /*===========================================================================
 
 FUNCTION amrsup_frame_len
@@ -3190,5 +3209,5 @@ static void amr_transcode(unsigned char *src, unsigned char *dst)
 
    return;
 }
-
+#endif
 }; // namespace android
