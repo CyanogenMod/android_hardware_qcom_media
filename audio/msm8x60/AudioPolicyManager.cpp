@@ -788,7 +788,7 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
 #ifdef WITH_A2DP
     // suspend A2DP output if SCO device is selected
     if (AudioSystem::isBluetoothScoDevice((AudioSystem::audio_devices)device)) {
-         if (mA2dpOutput != 0) {
+         if ((mA2dpOutput != 0) && (output == mHardwareOutput)) {
              mpClientInterface->suspendOutput(mA2dpOutput);
          }
     }
