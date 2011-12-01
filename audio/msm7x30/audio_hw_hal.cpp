@@ -347,11 +347,13 @@ static int adev_set_master_volume(struct audio_hw_device *dev, float volume)
     return qadev->hwif->setMasterVolume(volume);
 }
 
+#ifdef HAVE_FM_RADIO
 static int adev_set_fm_volume(struct audio_hw_device *dev, float volume)
 {
     struct qcom_audio_device *qadev = to_ladev(dev);
     return qadev->hwif->setFmVolume(volume);
 }
+#endif
 
 static int adev_set_mode(struct audio_hw_device *dev, int mode)
 {
@@ -395,6 +397,7 @@ static size_t adev_get_input_buffer_size(const struct audio_hw_device *dev,
     return qadev->hwif->getInputBufferSize(sample_rate, format, channel_count);
 }
 
+#ifdef WITH_QCOM_LPA
 static int adev_open_output_session(struct audio_hw_device *dev,
                                    uint32_t devices,
                                    int *format,
@@ -428,7 +431,7 @@ err_open:
     *stream_out = NULL;
     return ret;
 }
-
+#endif
 static int adev_open_output_stream(struct audio_hw_device *dev,
                                    uint32_t devices,
                                    int *format,
@@ -594,7 +597,9 @@ static int qcom_adev_open(const hw_module_t* module, const char* name,
     qadev->device.init_check = adev_init_check;
     qadev->device.set_voice_volume = adev_set_voice_volume;
     qadev->device.set_master_volume = adev_set_master_volume;
+#ifdef HAVE_FM_RADIO
     qadev->device.set_fm_volume = adev_set_fm_volume;
+#endif
     qadev->device.set_mode = adev_set_mode;
     qadev->device.set_mic_mute = adev_set_mic_mute;
     qadev->device.get_mic_mute = adev_get_mic_mute;
@@ -602,7 +607,9 @@ static int qcom_adev_open(const hw_module_t* module, const char* name,
     qadev->device.get_parameters = adev_get_parameters;
     qadev->device.get_input_buffer_size = adev_get_input_buffer_size;
     qadev->device.open_output_stream = adev_open_output_stream;
+#ifdef WITH_QCOM_LPA
     qadev->device.open_output_session = adev_open_output_session;
+#endif
     qadev->device.close_output_stream = adev_close_output_stream;
     qadev->device.open_input_stream = adev_open_input_stream;
     qadev->device.close_input_stream = adev_close_input_stream;
