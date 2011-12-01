@@ -14,6 +14,14 @@ ifeq ($(BOARD_HAVE_BLUETOOTH),true)
   LOCAL_CFLAGS += -DWITH_A2DP
 endif
 
+ifeq ($(BOARD_USES_QCOM_LPA),true)
+  LOCAL_CFLAGS += -DWITH_QCOM_LPA
+endif
+
+ifeq ($(BOARD_USES_QCOM_SPEECH),true)
+  LOCAL_CFLAGS += -DWITH_QCOM_SPEECH
+endif
+
 LOCAL_SHARED_LIBRARIES := \
     libcutils       \
     libutils        \
@@ -70,6 +78,11 @@ ifeq ($(BOARD_HAVE_BLUETOOTH),true)
   LOCAL_CFLAGS += -DWITH_A2DP
 endif
 
+ifeq ($(BOARD_USES_QCOM_LPA),true)
+  LOCAL_CFLAGS += -DWITH_QCOM_LPA
+endif
+
 LOCAL_C_INCLUDES := hardware/libhardware_legacy/audio
+
 
 include $(BUILD_SHARED_LIBRARY)
