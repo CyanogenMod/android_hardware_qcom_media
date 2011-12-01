@@ -14,6 +14,14 @@ ifeq ($(BOARD_HAVE_BLUETOOTH),true)
   LOCAL_CFLAGS += -DWITH_A2DP
 endif
 
+ifeq ($(BOARD_USES_QCOM_LPA),true)
+  LOCAL_CFLAGS += -DWITH_QCOM_LPA
+endif
+
+ifeq ($(BOARD_USES_QCOM_SPEECH),true)
+  LOCAL_CFLAGS += -DWITH_QCOM_SPEECH
+endif
+
 LOCAL_SHARED_LIBRARIES := \
     libcutils       \
     libutils        \
@@ -36,7 +44,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS += -fno-short-enums
 
 LOCAL_C_INCLUDES := $(TARGET_OUT_HEADERS)/mm-audio/audio-alsa
-LOCAL_C_INCLUDES += $(TARGET_OUT_HEADERS)/mm-audio/audcal
+LOCAL_C_INCLUDES := $(TARGET_OUT_HEADERS)/mm-audio/audcal
 LOCAL_C_INCLUDES += hardware/libhardware/include
 LOCAL_C_INCLUDES += hardware/libhardware_legacy/include
 LOCAL_C_INCLUDES += frameworks/base/include
@@ -70,6 +78,11 @@ ifeq ($(BOARD_HAVE_BLUETOOTH),true)
   LOCAL_CFLAGS += -DWITH_A2DP
 endif
 
+ifeq ($(BOARD_USES_QCOM_LPA),true)
+  LOCAL_CFLAGS += -DWITH_QCOM_LPA
+endif
+
 LOCAL_C_INCLUDES := hardware/libhardware_legacy/audio
+
 
 include $(BUILD_SHARED_LIBRARY)
