@@ -319,6 +319,7 @@ static uint32_t adev_get_supported_devices(const struct audio_hw_device *dev)
             AUDIO_DEVICE_OUT_DIRECTOUTPUT |
             AUDIO_DEVICE_OUT_DEFAULT |
             /* IN */
+            AUDIO_DEVICE_IN_VOICE_CALL |
             AUDIO_DEVICE_IN_COMMUNICATION |
             AUDIO_DEVICE_IN_AMBIENT |
             AUDIO_DEVICE_IN_BUILTIN_MIC |

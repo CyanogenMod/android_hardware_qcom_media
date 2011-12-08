@@ -2752,7 +2752,10 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
         }
 
         LOGV("set config");
-        config.channel_count = AudioSystem::popCount(*pChannels);
+        config.channel_count = AudioSystem::popCount((*pChannels) &
+                              (AudioSystem::CHANNEL_IN_STEREO|
+                               AudioSystem::CHANNEL_IN_MONO));
+
         config.sample_rate = *pRate;
 
         mBufferSize = mHardware->getInputBufferSize(config.sample_rate,
