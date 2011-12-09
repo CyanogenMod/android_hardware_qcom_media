@@ -463,6 +463,7 @@ void AudioPolicyManager::setPhoneState(int state)
         newDevice = getDeviceForStrategy(STRATEGY_MEDIA, false);
     }
 #endif
+
 #ifdef WITH_A2DP
     AudioPolicyManagerBase::checkOutputForAllStrategies();
     // suspend A2DP output if a SCO device is present.
@@ -720,6 +721,7 @@ status_t AudioPolicyManager::stopOutput(audio_io_handle_t output,
 #else
         setOutputDevice(output, AudioPolicyManagerBase::getNewDevice(output));
 #endif
+
 #ifdef WITH_A2DP
         if (mA2dpOutput != 0 && !a2dpUsedForSonification() && strategy == STRATEGY_SONIFICATION) {
             setStrategyMute(STRATEGY_MEDIA, false, mA2dpOutput, mOutputs.valueFor(mHardwareOutput)->mLatency*2);
@@ -824,6 +826,7 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
         AudioPolicyManagerBase::applyStreamVolumes(mLPADecodeOutput, device, delayMs);
     }
 #endif
+
 #ifdef WITH_A2DP
     // if disconnecting SCO device, restore A2DP output
     if (AudioSystem::isBluetoothScoDevice((AudioSystem::audio_devices)prevDevice)) {
