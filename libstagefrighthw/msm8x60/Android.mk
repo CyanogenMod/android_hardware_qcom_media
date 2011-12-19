@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
+ifeq ($(TARGET_BOARD_PLATFORM),msm8x60)
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
