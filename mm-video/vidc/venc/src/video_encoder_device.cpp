@@ -141,8 +141,8 @@ void* async_venc_message_thread (void *input)
   timeout.millisec = VEN_TIMEOUT_INFINITE;
   while(1)
   {
-    ioctl_msg.inputparam = NULL;
-    ioctl_msg.outputparam = (void*)&venc_msg;
+    ioctl_msg.in = NULL;
+    ioctl_msg.out = (void*)&venc_msg;
 
     /*Wait for a message from the video decoder driver*/
     if(ioctl(omx->handle->m_nDriver_fd,VEN_IOCTL_CMD_READ_NEXT_MSG,(void *)&ioctl_msg) < 0)
@@ -211,8 +211,8 @@ bool venc_dev::venc_open(OMX_U32 codec)
     codec_profile.profile = VEN_PROFILE_H264_BASELINE;
     profile_level.level = VEN_LEVEL_H264_1p1;
   }
-  ioctl_msg.inputparam = (void*)&m_sVenc_cfg;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = (void*)&m_sVenc_cfg;
+  ioctl_msg.out = NULL;
   if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < 0 )
   {
     DEBUG_PRINT_ERROR("\nERROR: Request for setting base configuration failed");
@@ -220,15 +220,15 @@ bool venc_dev::venc_open(OMX_U32 codec)
   }
 
   // Get the I/P and O/P buffer requirements
-  ioctl_msg.inputparam = NULL;
-  ioctl_msg.outputparam = (void*)&m_sInput_buff_property;
+  ioctl_msg.in = NULL;
+  ioctl_msg.out = (void*)&m_sInput_buff_property;
   if(ioctl (m_nDriver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
   {
     DEBUG_PRINT_ERROR("\nERROR: Request for getting i/p buffer requirement failed");
     return false;
   }
-  ioctl_msg.inputparam = NULL;
-  ioctl_msg.outputparam = (void*)&m_sOutput_buff_property;
+  ioctl_msg.in = NULL;
+  ioctl_msg.out = (void*)&m_sOutput_buff_property;
   if(ioctl (m_nDriver_fd,VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
   {
     DEBUG_PRINT_ERROR("\nERROR: Request for getting o/p buffer requirement failed");
@@ -274,8 +274,8 @@ bool venc_dev::venc_set_buf_req(unsigned long *min_buff_count,
     {
       temp_count = m_sInput_buff_property.actualcount;
       m_sInput_buff_property.actualcount = *actual_buff_count;
-      ioctl_msg.inputparam = (void*)&m_sInput_buff_property;
-      ioctl_msg.outputparam = NULL;
+      ioctl_msg.in = (void*)&m_sInput_buff_property;
+      ioctl_msg.out = NULL;
       if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
       {
         DEBUG_PRINT_ERROR("\nERROR: Request for setting i/p buffer requirement failed");
@@ -291,8 +291,8 @@ bool venc_dev::venc_set_buf_req(unsigned long *min_buff_count,
     {
 	  temp_count = m_sOutput_buff_property.actualcount;
       m_sOutput_buff_property.actualcount = *actual_buff_count;
-      ioctl_msg.inputparam = (void*)&m_sOutput_buff_property;
-      ioctl_msg.outputparam = NULL;
+      ioctl_msg.in = (void*)&m_sOutput_buff_property;
+      ioctl_msg.out = NULL;
       if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
       {
         DEBUG_PRINT_ERROR("\nERROR: Request for setting o/p buffer requirement failed");
@@ -316,8 +316,8 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
 
   if(port == 0)
   {
-    ioctl_msg.inputparam = NULL;
-    ioctl_msg.outputparam = (void*)&m_sInput_buff_property;
+    ioctl_msg.in = NULL;
+    ioctl_msg.out = (void*)&m_sInput_buff_property;
     if(ioctl (m_nDriver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
     {
       DEBUG_PRINT_ERROR("\nERROR: Request for getting i/p buffer requirement failed");
@@ -330,8 +330,8 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
   }
   else
   {
-    ioctl_msg.inputparam = NULL;
-    ioctl_msg.outputparam = (void*)&m_sOutput_buff_property;
+    ioctl_msg.in = NULL;
+    ioctl_msg.out = (void*)&m_sOutput_buff_property;
     if(ioctl (m_nDriver_fd,VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
     {
       DEBUG_PRINT_ERROR("\nERROR: Request for getting o/p buffer requirement failed");
@@ -373,8 +373,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
           m_sVenc_cfg.input_width = portDefn->format.video.nFrameWidth;
 
           temp_out_buf_count = m_sOutput_buff_property.actualcount;
-          ioctl_msg.inputparam = (void*)&m_sVenc_cfg;
-          ioctl_msg.outputparam = NULL;
+          ioctl_msg.in = (void*)&m_sVenc_cfg;
+          ioctl_msg.out = NULL;
           if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < 0)
           {
             DEBUG_PRINT_ERROR("\nERROR: Request for setting base config failed");
@@ -382,8 +382,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
           }
 
           DEBUG_PRINT_LOW("\n Updating the buffer count/size for the new resolution");
-          ioctl_msg.inputparam = NULL;
-          ioctl_msg.outputparam = (void*)&m_sInput_buff_property;
+          ioctl_msg.in = NULL;
+          ioctl_msg.out = (void*)&m_sInput_buff_property;
           if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
           {
             DEBUG_PRINT_ERROR("\nERROR: Request for getting i/p bufreq failed");
@@ -395,8 +395,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                       m_sInput_buff_property.maxcount, m_sInput_buff_property.actualcount,
                       m_sInput_buff_property.mincount);
 
-          ioctl_msg.inputparam = NULL;
-          ioctl_msg.outputparam = (void*)&m_sOutput_buff_property;
+          ioctl_msg.in = NULL;
+          ioctl_msg.out = (void*)&m_sOutput_buff_property;
           if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
           {
             DEBUG_PRINT_ERROR("\nERROR: Request for getting o/p bufreq failed");
@@ -412,8 +412,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
           if(temp_out_buf_count < 7)
             temp_out_buf_count = 7;
           m_sOutput_buff_property.actualcount = temp_out_buf_count;
-          ioctl_msg.inputparam = (void*)&m_sOutput_buff_property;
-          ioctl_msg.outputparam = NULL;
+          ioctl_msg.in = (void*)&m_sOutput_buff_property;
+          ioctl_msg.out = NULL;
           if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
           {
             DEBUG_PRINT_ERROR("\nERROR: Request for setting o/p bufreq failed");
@@ -424,8 +424,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
            (portDefn->nBufferCountActual <= m_sInput_buff_property.maxcount))
           {
             m_sInput_buff_property.actualcount = portDefn->nBufferCountActual;
-            ioctl_msg.inputparam = (void*)&m_sInput_buff_property;
-            ioctl_msg.outputparam = NULL;
+            ioctl_msg.in = (void*)&m_sInput_buff_property;
+            ioctl_msg.out = NULL;
             if(ioctl(m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
             {
               DEBUG_PRINT_ERROR("\nERROR: Request for setting i/p buffer requirements failed");
@@ -452,8 +452,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
             (m_sInput_buff_property.datasize == portDefn->nBufferSize))
           {
             m_sInput_buff_property.actualcount = portDefn->nBufferCountActual;
-            ioctl_msg.inputparam = (void*)&m_sInput_buff_property;
-            ioctl_msg.outputparam = NULL;
+            ioctl_msg.in = (void*)&m_sInput_buff_property;
+            ioctl_msg.out = NULL;
             if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
             {
               DEBUG_PRINT_ERROR("\nERROR: ioctl VEN_IOCTL_SET_INPUT_BUFFER_REQ failed");
@@ -487,8 +487,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
           )
         {
           m_sOutput_buff_property.actualcount = portDefn->nBufferCountActual;
-          ioctl_msg.inputparam = (void*)&m_sOutput_buff_property;
-          ioctl_msg.outputparam = NULL;
+          ioctl_msg.in = (void*)&m_sOutput_buff_property;
+          ioctl_msg.out = NULL;
           if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
           {
             DEBUG_PRINT_ERROR("\nERROR: ioctl VEN_IOCTL_SET_OUTPUT_BUFFER_REQ failed");
@@ -825,16 +825,16 @@ unsigned venc_dev::venc_flush( unsigned port)
   if(port == PORT_INDEX_IN)
   {
     buffer_index.flush_mode = VEN_FLUSH_INPUT;
-    ioctl_msg.inputparam = (void*)&buffer_index;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = (void*)&buffer_index;
+    ioctl_msg.out = NULL;
 
     return ioctl (m_nDriver_fd,VEN_IOCTL_CMD_FLUSH,(void*)&ioctl_msg);
   }
   else if(port == PORT_INDEX_OUT)
   {
     buffer_index.flush_mode = VEN_FLUSH_OUTPUT;
-    ioctl_msg.inputparam = (void*)&buffer_index;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = (void*)&buffer_index;
+    ioctl_msg.out = NULL;
     return ioctl (m_nDriver_fd,VEN_IOCTL_CMD_FLUSH,(void*)&ioctl_msg);
   }
   else
@@ -861,10 +861,10 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port)
     dev_buffer.pbuffer = (OMX_U8 *)pmem_tmp->buffer;
     dev_buffer.fd  = pmem_tmp->fd;
     dev_buffer.maped_size = pmem_tmp->size;
-    dev_buffer.nsize = pmem_tmp->size;
+    dev_buffer.sz = pmem_tmp->size;
     dev_buffer.offset = pmem_tmp->offset;
-    ioctl_msg.inputparam  = (void*)&dev_buffer;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in  = (void*)&dev_buffer;
+    ioctl_msg.out = NULL;
 
     DEBUG_PRINT_LOW("\n venc_use_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
@@ -882,11 +882,11 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port)
   {
     dev_buffer.pbuffer = (OMX_U8 *)pmem_tmp->buffer;
     dev_buffer.fd  = pmem_tmp->fd;
-    dev_buffer.nsize = pmem_tmp->size;
+    dev_buffer.sz = pmem_tmp->size;
     dev_buffer.maped_size = pmem_tmp->size;
     dev_buffer.offset = pmem_tmp->offset;
-    ioctl_msg.inputparam  = (void*)&dev_buffer;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in  = (void*)&dev_buffer;
+    ioctl_msg.out = NULL;
 
     DEBUG_PRINT_LOW("\n venc_use_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
@@ -924,10 +924,10 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
     dev_buffer.pbuffer = (OMX_U8 *)pmem_tmp->buffer;
     dev_buffer.fd  = pmem_tmp->fd;
     dev_buffer.maped_size = pmem_tmp->size;
-    dev_buffer.nsize = pmem_tmp->size;
+    dev_buffer.sz = pmem_tmp->size;
     dev_buffer.offset = pmem_tmp->offset;
-    ioctl_msg.inputparam  = (void*)&dev_buffer;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in  = (void*)&dev_buffer;
+    ioctl_msg.out = NULL;
 
     DEBUG_PRINT_LOW("\n venc_free_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
@@ -945,11 +945,11 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
   {
     dev_buffer.pbuffer = (OMX_U8 *)pmem_tmp->buffer;
     dev_buffer.fd  = pmem_tmp->fd;
-    dev_buffer.nsize = pmem_tmp->size;
+    dev_buffer.sz = pmem_tmp->size;
     dev_buffer.maped_size = pmem_tmp->size;
     dev_buffer.offset = pmem_tmp->offset;
-    ioctl_msg.inputparam  = (void*)&dev_buffer;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in  = (void*)&dev_buffer;
+    ioctl_msg.out = NULL;
 
     DEBUG_PRINT_LOW("\n venc_free_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
@@ -1000,14 +1000,14 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf)
   }
 
   frameinfo.clientdata = (void *) buffer;
-  frameinfo.size = bufhdr->nFilledLen;
+  frameinfo.sz = bufhdr->nFilledLen;
   frameinfo.len = bufhdr->nFilledLen;
   frameinfo.flags = bufhdr->nFlags;
   frameinfo.offset = bufhdr->nOffset;
   frameinfo.timestamp = bufhdr->nTimeStamp;
   DEBUG_PRINT_LOW("\n i/p TS = %u", (OMX_U32)frameinfo.timestamp);
-  ioctl_msg.inputparam = &frameinfo;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &frameinfo;
+  ioctl_msg.out = NULL;
 
   DEBUG_PRINT_LOW("DBG: i/p frameinfo: bufhdr->pBuffer = %p, ptrbuffer = %p, offset = %u, len = %u",
       bufhdr->pBuffer, frameinfo.ptrbuffer, frameinfo.offset, frameinfo.len);
@@ -1044,12 +1044,12 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf)
   }
 
   frameinfo.clientdata = buffer;
-  frameinfo.size = bufhdr->nAllocLen;
+  frameinfo.sz = bufhdr->nAllocLen;
   frameinfo.flags = bufhdr->nFlags;
   frameinfo.offset = bufhdr->nOffset;
 
-  ioctl_msg.inputparam = &frameinfo;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &frameinfo;
+  ioctl_msg.out = NULL;
   DEBUG_PRINT_LOW("DBG: o/p frameinfo: bufhdr->pBuffer = %p, ptrbuffer = %p, offset = %u, len = %u",
       bufhdr->pBuffer, frameinfo.ptrbuffer, frameinfo.offset, frameinfo.len);
   if(ioctl (m_nDriver_fd,VEN_IOCTL_CMD_FILL_OUTPUT_BUFFER,&ioctl_msg) < 0)
@@ -1071,8 +1071,8 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp)
   qp.iframeqp = i_frame_qp;
   qp.pframqp = p_frame_qp;
 
-  ioctl_msg.inputparam = (void*)&qp;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = (void*)&qp;
+  ioctl_msg.out = NULL;
   if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_SESSION_QP,(void*)&ioctl_msg)< 0)
   {
     DEBUG_PRINT_ERROR("\nERROR: Request for setting session qp failed");
@@ -1284,8 +1284,8 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
 
   if(!m_profile_set)
   {
-    ioctl_msg.inputparam = (void*)&requested_profile;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = (void*)&requested_profile;
+    ioctl_msg.out = NULL;
     if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_CODEC_PROFILE,(void*)&ioctl_msg)< 0)
     {
       DEBUG_PRINT_LOW("\nERROR: Request for setting profile failed");
@@ -1297,8 +1297,8 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
 
   if(!m_level_set)
   {
-    ioctl_msg.inputparam = (void*)&requested_level;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = (void*)&requested_level;
+    ioctl_msg.out = NULL;
     if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_PROFILE_LEVEL,(void*)&ioctl_msg)< 0)
     {
       DEBUG_PRINT_LOW("\nERROR: Request for setting profile level failed");
@@ -1319,8 +1319,8 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames)
   DEBUG_PRINT_LOW("\n venc_set_intra_period: nPFrames = %u",
     nPFrames);
   intra_period.num_pframes = nPFrames;
-  ioctl_msg.inputparam = (void*)&intra_period;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = (void*)&intra_period;
+  ioctl_msg.out = NULL;
   if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_INTRA_PERIOD,(void*)&ioctl_msg)< 0)
   {
     DEBUG_PRINT_ERROR("\nERROR: Request for setting intra period failed");
@@ -1338,8 +1338,8 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate)
   DEBUG_PRINT_LOW("\n venc_set_target_bitrate: bitrate = %u",
     nTargetBitrate);
   bit_rate.target_bitrate = nTargetBitrate ;
-  ioctl_msg.inputparam = (void*)&bit_rate;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = (void*)&bit_rate;
+  ioctl_msg.out = NULL;
   if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_TARGET_BITRATE,(void*)&ioctl_msg) < 0)
   {
     DEBUG_PRINT_ERROR("\nERROR: Request for setting bit rate failed");
@@ -1381,8 +1381,8 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate)
     frame_rate.fps_denominator = 1;
   }
 
-  ioctl_msg.inputparam = (void*)&frame_rate;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = (void*)&frame_rate;
+  ioctl_msg.out = NULL;
   if(ioctl(m_nDriver_fd, VEN_IOCTL_SET_FRAME_RATE,
       (void*)&ioctl_msg) < 0)
   {
@@ -1417,8 +1417,8 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
     m_sVenc_cfg.inputformat = VEN_INPUTFMT_NV12;
     DEBUG_PRINT_HIGH("\n Default color format YUV420SemiPlanar is set");
   }
-  ioctl_msg.inputparam = (void*)&m_sVenc_cfg;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = (void*)&m_sVenc_cfg;
+  ioctl_msg.out = NULL;
   if (ioctl(m_nDriver_fd, VEN_IOCTL_SET_BASE_CFG, (void*)&ioctl_msg) < 0)
   {
     DEBUG_PRINT_ERROR("\nERROR: Request for setting color format failed");
@@ -1472,8 +1472,8 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
 
   if(status)
   {
-    ioctl_msg.inputparam = (void*)&rate_ctrl;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = (void*)&rate_ctrl;
+    ioctl_msg.out = NULL;
     if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_RATE_CTRL_CFG,(void*)&ioctl_msg) < 0)
     {
       DEBUG_PRINT_ERROR("\nERROR: Request for setting rate control failed");
@@ -1871,8 +1871,8 @@ bool venc_dev::venc_set_multislice_cfg(OMX_VIDEO_AVCSLICEMODETYPE eSliceMode)
 
   if(status)
   {
-    ioctl_msg.inputparam = (void*)&multislice_cfg;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = (void*)&multislice_cfg;
+    ioctl_msg.out = NULL;
     if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_MULTI_SLICE_CFG,(void*)&ioctl_msg) < 0)
     {
       DEBUG_PRINT_ERROR("\nERROR: Request for setting multi-slice cfg failed");
