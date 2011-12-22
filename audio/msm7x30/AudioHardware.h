@@ -1,6 +1,7 @@
 /*
 ** Copyright 2008, The Android Open-Source Project
 ** Copyright (c) 2011, Code Aurora Forum. All rights reserved.
+** Copyright (c) 2011, The CyanogenMod Project
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -29,7 +30,6 @@
 extern "C" {
 #include <linux/msm_audio_7x30.h>
 #include <linux/msm_audio_aac.h>
-
 #ifdef WITH_QCOM_SPEECH
 #include <linux/msm_audio_qcp.h>
 #include <linux/msm_audio_amrnb.h>
@@ -65,6 +65,23 @@ using android::Mutex;
 #define MBADRC_ENABLE  0x0010
 #define MBADRC_DISABLE 0x0000
 
+/* HTC */
+#define MOD_PLAY 1
+#define MOD_REC  2
+#define MOD_TX   3
+#define MOD_RX   4
+
+#define ACDB_ID_HAC_HANDSET_MIC           107
+#define ACDB_ID_HAC_HANDSET_SPKR          207
+#define ACDB_ID_EXT_MIC_REC               307
+#define ACDB_ID_HEADSET_PLAYBACK          407
+#define ACDB_ID_HEADSET_RINGTONE_PLAYBACK 408
+#define ACDB_ID_INT_MIC_REC               507
+#define ACDB_ID_CAMCORDER                 508
+#define ACDB_ID_INT_MIC_VR                509
+#define ACDB_ID_SPKR_PLAYBACK             607
+#define ACDB_ID_ALT_SPKR_PLAYBACK         608
+
 struct eq_filter_type {
     int16_t gain;
     uint16_t freq;
@@ -91,6 +108,12 @@ struct msm_audio_config {
     uint32_t unused[3];
 };
 
+struct msm_bt_endpoint {
+    int tx;
+    int rx;
+    char name[64];
+};
+
 enum tty_modes {
     TTY_OFF = 0,
     TTY_VCO = 1,
@@ -107,6 +130,8 @@ enum tty_modes {
 #define AUDIO_HW_IN_CHANNELS (AudioSystem::CHANNEL_IN_MONO) // Default audio input channel mask
 #define AUDIO_HW_IN_BUFFERSIZE 2048                 // Default audio input buffer size
 #define AUDIO_HW_IN_FORMAT (AudioSystem::PCM_16_BIT)  // Default audio input sample format
+
+#define VOICE_VOLUME_MAX        100  /* Maximum voice volume */
 
 struct msm_audio_stats {
     uint32_t out_bytes;
@@ -345,7 +370,18 @@ private:
     status_t    dumpInternals(int fd, const Vector<String16>& args);
     uint32_t    getInputSampleRate(uint32_t sampleRate);
     bool        checkOutputStandby();
+    status_t    get_mMode();
+    status_t    set_mRecordState(bool onoff);
+    status_t    get_mRecordState();
+    status_t    get_snd_dev();
     status_t    doRouting(AudioStreamInMSM72xx *input);
+    uint32_t    getACDB(int mode, uint32_t device);
+    status_t    do_aic3254_control(uint32_t device);
+    bool        isAic3254Device(uint32_t device);
+    status_t    aic3254_config(uint32_t device);
+    int         aic3254_ioctl(int cmd, const int argc);
+    void        aic3254_powerdown();
+    int         aic3254_set_volume(int volume);
 #ifdef FM_RADIO
     status_t    enableFM(int sndDevice);
     status_t enableComboDevice(uint32_t sndDevice, bool enableOrDisable);
@@ -477,13 +513,24 @@ private:
             bool        mBluetoothNrec;
             bool        mBluetoothVGS;
             uint32_t    mBluetoothId;
+            bool        mHACSetting;
+            uint32_t    mBluetoothIdTx;
+            uint32_t    mBluetoothIdRx;
             AudioStreamOutMSM72xx*  mOutput;
             SortedVector <AudioStreamInMSM72xx*>   mInputs;
-
+            msm_bt_endpoint *mBTEndpoints;
+            int         mNumBTEndpoints;
             int mCurSndDevice;
             int m7xsnddriverfd;
-            bool    mDualMicEnabled;
-            int     mTtyMode;
+            uint32_t    mVoiceVolume;
+            int         mTtyMode;
+            int         mNoiseSuppressionState;
+            bool        mDualMicEnabled;
+            bool        mRecordState;
+            char        mCurDspProfile[22];
+            bool        mEffectEnabled;
+            char        mActiveAP[10];
+            char        mEffect[10];
 
      friend class AudioStreamInMSM72xx;
             Mutex       mLock;
