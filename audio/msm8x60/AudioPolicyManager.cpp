@@ -571,6 +571,10 @@ audio_io_handle_t AudioPolicyManager::getSession(AudioSystem::stream_type stream
         delete outputDesc;
         return 0;
     }
+
+    //reset it here, it will get updated in startoutput
+    outputDesc->mDevice = 0;
+
     mOutputs.add(output, outputDesc);
     mLPADecodeOutput = output;
     mLPAStreamType   = stream;
@@ -789,10 +793,16 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_FM_TX)) {
         setStrategyMute(STRATEGY_MEDIA, true, output);
         // Mute LPA output also if it belongs to STRATEGY_MEDIA
-        if((mLPADecodeOutput != -1 &&
+        if(((mLPADecodeOutput != -1) && (mLPADecodeOutput != output) &&
             mOutputs.valueFor(mLPADecodeOutput)->isUsedByStrategy(STRATEGY_MEDIA))) {
-            LOGV("setOutputDevice: Muting mLPADecodeOutput");
+            LOGV("setOutputDevice: Muting mLPADecodeOutput:%d",mLPADecodeOutput);
             setStrategyMute(STRATEGY_MEDIA, true, mLPADecodeOutput);
+        }
+        // Mute hardware output also if it belongs to STRATEGY_MEDIA
+        if(((mHardwareOutput != -1) && (mHardwareOutput != output) &&
+            mOutputs.valueFor(mHardwareOutput)->isUsedByStrategy(STRATEGY_MEDIA))) {
+            LOGV("setOutputDevice: Muting mHardwareOutput:%d",mHardwareOutput);
+            setStrategyMute(STRATEGY_MEDIA, true, mHardwareOutput);
         }
         // wait for the PCM output buffers to empty before proceeding with the rest of the command
         usleep(outputDesc->mLatency*2*1000);
@@ -847,10 +857,16 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_FM_TX)) {
         setStrategyMute(STRATEGY_MEDIA, false, output, delayMs);
         // Unmute LPA output also if it belongs to STRATEGY_MEDIA
-        if((mLPADecodeOutput != -1 &&
+        if(((mLPADecodeOutput != -1) && (mLPADecodeOutput != output) &&
             mOutputs.valueFor(mLPADecodeOutput)->isUsedByStrategy(STRATEGY_MEDIA))) {
-            LOGV("setOutputDevice: Unmuting mLPADecodeOutput");
+            LOGV("setOutputDevice: Unmuting mLPADecodeOutput:%d delayMs:%d",mLPADecodeOutput,delayMs);
             setStrategyMute(STRATEGY_MEDIA, false, mLPADecodeOutput, delayMs);
+        }
+        // Unmute hardware output also if it belongs to STRATEGY_MEDIA
+        if(((mHardwareOutput != -1) && (mHardwareOutput != output) &&
+            mOutputs.valueFor(mHardwareOutput)->isUsedByStrategy(STRATEGY_MEDIA))) {
+            LOGV("setOutputDevice: Unmuting mHardwareOutput:%d delayMs:%d",mHardwareOutput,delayMs);
+            setStrategyMute(STRATEGY_MEDIA, false, mHardwareOutput, delayMs);
         }
     }
 }
