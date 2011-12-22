@@ -314,9 +314,11 @@ static uint32_t adev_get_supported_devices(const struct audio_hw_device *dev)
             AUDIO_DEVICE_OUT_WIRED_HEADPHONE |
             AUDIO_DEVICE_OUT_AUX_DIGITAL |
             AUDIO_DEVICE_OUT_ALL_SCO |
+#ifdef FM_RADIO
             AUDIO_DEVICE_OUT_FM |
             AUDIO_DEVICE_OUT_FM_TX |
             AUDIO_DEVICE_OUT_DIRECTOUTPUT |
+#endif
             AUDIO_DEVICE_OUT_DEFAULT |
             /* IN */
             AUDIO_DEVICE_IN_VOICE_CALL |
@@ -327,8 +329,10 @@ static uint32_t adev_get_supported_devices(const struct audio_hw_device *dev)
             AUDIO_DEVICE_IN_AUX_DIGITAL |
             AUDIO_DEVICE_IN_BACK_MIC |
             AUDIO_DEVICE_IN_ALL_SCO |
+#ifdef FM_RADIO
             AUDIO_DEVICE_IN_FM_RX |
             AUDIO_DEVICE_IN_FM_RX_A2DP |
+#endif
             AUDIO_DEVICE_IN_DEFAULT);
 }
 
@@ -351,7 +355,7 @@ static int adev_set_master_volume(struct audio_hw_device *dev, float volume)
     return qadev->hwif->setMasterVolume(volume);
 }
 
-#ifdef HAVE_FM_RADIO
+#ifdef FM_RADIO
 static int adev_set_fm_volume(struct audio_hw_device *dev, float volume)
 {
     struct qcom_audio_device *qadev = to_ladev(dev);
@@ -601,7 +605,7 @@ static int qcom_adev_open(const hw_module_t* module, const char* name,
     qadev->device.init_check = adev_init_check;
     qadev->device.set_voice_volume = adev_set_voice_volume;
     qadev->device.set_master_volume = adev_set_master_volume;
-#ifdef HAVE_FM_RADIO
+#ifdef FM_RADIO
     qadev->device.set_fm_volume = adev_set_fm_volume;
 #endif
     qadev->device.set_mode = adev_set_mode;
