@@ -8,4 +8,9 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
     include $(OMX_VIDEO_PATH)/vidc/venc/Android.mk
 endif
 
+ifeq ($(TARGET_BOARD_PLATFORM),qsd8k)
+#    include $(OMX_VIDEO_PATH)/qdsp6/vdec/Android.mk
+    include $(OMX_VIDEO_PATH)/qdsp6/venc/Android.mk
+endif
+
 endif #BUILD_TINY_ANDROID
