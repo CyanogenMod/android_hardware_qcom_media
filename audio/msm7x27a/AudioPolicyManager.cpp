@@ -239,6 +239,11 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
             device = getDeviceForStrategy(STRATEGY_PHONE, false);
             break;
         }
+        // FALL THROUGH
+
+    case STRATEGY_ENFORCED_AUDIBLE:
+        // strategy STRATEGY_ENFORCED_AUDIBLE uses same routing policy as STRATEGY_SONIFICATION
+        // except when in call where it doesn't default to STRATEGY_PHONE behavior
         device = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_SPEAKER;
         if (device == 0) {
             LOGE("getDeviceForStrategy() speaker device not found");
@@ -285,7 +290,8 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
                 device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_EARPIECE;
             }
 
-            // device is DEVICE_OUT_SPEAKER if we come from case STRATEGY_SONIFICATION, 0 otherwise
+            // device is DEVICE_OUT_SPEAKER if we come from case STRATEGY_SONIFICATION or
+            // STRATEGY_ENFORCED_AUDIBLE, 0 otherwise
             device |= device2;
         }
             break;
@@ -681,7 +687,8 @@ status_t AudioPolicyManager::startOutput(audio_io_handle_t output,
     routing_strategy strategy = getStrategy((AudioSystem::stream_type)stream);
 
 #ifdef WITH_A2DP
-    if (mA2dpOutput != 0  && !a2dpUsedForSonification() && strategy == STRATEGY_SONIFICATION) {
+    if (mA2dpOutput != 0  && !a2dpUsedForSonification() &&
+            (strategy == STRATEGY_SONIFICATION || strategy == STRATEGY_ENFORCED_AUDIBLE)) {
         setStrategyMute(STRATEGY_MEDIA, true, mA2dpOutput);
     }
 #endif
@@ -751,7 +758,8 @@ status_t AudioPolicyManager::stopOutput(audio_io_handle_t output,
 		setOutputDevice(output, newDevice);
 
 #ifdef WITH_A2DP
-        if (mA2dpOutput != 0 && !a2dpUsedForSonification() && strategy == STRATEGY_SONIFICATION) {
+        if (mA2dpOutput != 0 && !a2dpUsedForSonification() &&
+                (strategy == STRATEGY_SONIFICATION || strategy == STRATEGY_ENFORCED_AUDIBLE)) {
             setStrategyMute(STRATEGY_MEDIA, false, mA2dpOutput, mOutputs.valueFor(mHardwareOutput)->mLatency*2);
         }
 #endif
