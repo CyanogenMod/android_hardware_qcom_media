@@ -41,7 +41,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     #ifdef _ANDROID_
         #include <utils/Log.h>
         #define DEBUG_PRINT_ERROR LOGE
-        #define DEBUG_PRINT       LOGI
+        #define DEBUG_PRINT       ALOGI
         #define DEBUG_DETAIL      ALOGV
     #else
         #define DEBUG_PRINT_ERROR printf
