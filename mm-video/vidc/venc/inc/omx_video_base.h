@@ -68,17 +68,17 @@ public:
 #include <utils/Log.h>
 //#define LOG_TAG "OMX-VENC-720p"
 #ifdef ENABLE_DEBUG_LOW
-#define DEBUG_PRINT_LOW LOGE
+#define DEBUG_PRINT_LOW ALOGE
 #else
 #define DEBUG_PRINT_LOW
 #endif
 #ifdef ENABLE_DEBUG_HIGH
-#define DEBUG_PRINT_HIGH LOGE
+#define DEBUG_PRINT_HIGH ALOGE
 #else
 #define DEBUG_PRINT_HIGH
 #endif
 #ifdef ENABLE_DEBUG_ERROR
-#define DEBUG_PRINT_ERROR LOGE
+#define DEBUG_PRINT_ERROR ALOGE
 #else
 #define DEBUG_PRINT_ERROR
 #endif

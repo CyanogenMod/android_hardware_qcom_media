@@ -40,7 +40,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef _ENABLE_QC_MSG_LOG_
     #ifdef _ANDROID_
         #include <utils/Log.h>
-        #define DEBUG_PRINT_ERROR LOGE
+        #define DEBUG_PRINT_ERROR ALOGE
         #define DEBUG_PRINT       ALOGI
         #define DEBUG_DETAIL      ALOGV
     #else
