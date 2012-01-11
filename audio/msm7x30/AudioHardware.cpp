@@ -580,6 +580,7 @@ AudioHardware::AudioHardware() :
             device_list[i].dev_id = INVALID_DEVICE;
 
         for(i = 0; i < dev_cnt;i++) {
+            LOGI("******* name[%d] = [%s] *********", i, (char* )name[i]);
             if(strcmp((char* )name[i],"handset_rx") == 0)
                 index = DEVICE_HANDSET_RX;
             else if(strcmp((char* )name[i],"handset_tx") == 0)
