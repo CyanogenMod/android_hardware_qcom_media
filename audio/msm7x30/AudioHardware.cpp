@@ -107,18 +107,23 @@ static const uint32_t SND_DEVICE_USB_HEADSET = 253;
 
 static const uint32_t DEVICE_HANDSET_RX = 0;           /* handset_rx */
 static const uint32_t DEVICE_HANDSET_TX = 1;           /* handset_tx */
-static const uint32_t DEVICE_HEADSET_RX = 2;           /* headset_stereo_rx */
-static const uint32_t DEVICE_HEADSET_TX = 4;           /* headset_mono_tx */
+static const uint32_t DEVICE_HEADSET_RX = 2;           /* headset_stereo_rx
+                                                          sam: headset_rx */
+static const uint32_t DEVICE_HEADSET_TX = 4;           /* headset_mono_tx
+                                                          sam: headset_tx */
 static const uint32_t DEVICE_FMRADIO_HANDSET_RX = 5;   /* fmradio_handset_rx */
-static const uint32_t DEVICE_SPEAKER_RX = 6;           /* htc: speaker_mono_rx
-                                                          caf: speaker_sterteo_rx */
+static const uint32_t DEVICE_SPEAKER_RX = 6;           /* speaker_sterteo_rx
+                                                          htc: speaker_mono_rx
+                                                          sam: speaker_rx */
 static const uint32_t DEVICE_FMRADIO_SPEAKER_RX = 7;   /* fmradio_speaker_rx */
 static const uint32_t DEVICE_FMRADIO_HEADSET_RX = 8;   /* fmradio_headset_rx */
 static const uint32_t DEVICE_TTY_HEADSET_MONO_TX = 9;  /* tty_headset_mono_tx */
 static const uint32_t DEVICE_TTY_HEADSET_MONO_RX = 10; /* tty_headset_mono_rx */
-static const uint32_t DEVICE_SPEAKER_TX = 11;          /* speaker_mono_tx */
-static const uint32_t DEVICE_SPEAKER_HEADSET_RX = 12;  /* htc: headset_speaker_stereo_rx
-                                                          caf: headset_stereo_speaker_stereo_rx */
+static const uint32_t DEVICE_SPEAKER_TX = 11;          /* speaker_mono_tx
+                                                          sam: speaker_tx */
+static const uint32_t DEVICE_SPEAKER_HEADSET_RX = 12;  /* headset_stereo_speaker_stereo_rx
+                                                          htc: headset_speaker_stereo_rx
+                                                          sam: speaker_headset_rx */
 static const uint32_t DEVICE_USB_HEADSET_RX = 13;      /* usb_headset_stereo_rx */
 static const uint32_t DEVICE_HAC_RX = 14;              /* hac_mono_rx */
 static const uint32_t DEVICE_ALT_RX = 15;              /* alt_mono_rx */
@@ -586,13 +591,17 @@ AudioHardware::AudioHardware() :
             else if(strcmp((char* )name[i],"handset_tx") == 0)
                 index = DEVICE_HANDSET_TX;
             else if((strcmp((char* )name[i],"speaker_stereo_rx") == 0) ||
-                    (strcmp((char* )name[i],"speaker_mono_rx") == 0))
+                    (strcmp((char* )name[i],"speaker_mono_rx") == 0) ||
+                    (strcmp((char* )name[i],"speaker_rx") == 0))
                 index = DEVICE_SPEAKER_RX;
-            else if(strcmp((char* )name[i],"speaker_mono_tx") == 0)
+            else if((strcmp((char* )name[i],"speaker_mono_tx") == 0) ||
+                    (strcmp((char* )name[i],"speaker_tx") == 0))
                 index = DEVICE_SPEAKER_TX;
-            else if(strcmp((char* )name[i],"headset_stereo_rx") == 0)
+            else if((strcmp((char* )name[i],"headset_stereo_rx") == 0) ||
+                    (strcmp((char* )name[i],"headset_rx") == 0))
                 index = DEVICE_HEADSET_RX;
-            else if(strcmp((char* )name[i],"headset_mono_tx") == 0)
+            else if((strcmp((char* )name[i],"headset_mono_tx") == 0) ||
+                    (strcmp((char* )name[i],"headset_tx") == 0))
                 index = DEVICE_HEADSET_TX;
             else if(strcmp((char* )name[i],"fmradio_handset_rx") == 0)
                 index = DEVICE_FMRADIO_HANDSET_RX;
@@ -613,7 +622,8 @@ AudioHardware::AudioHardware() :
             else if(strcmp((char* )name[i],"bt_sco_tx") == 0)
                 index = DEVICE_BT_SCO_TX;
             else if((strcmp((char*)name[i],"headset_stereo_speaker_stereo_rx") == 0) ||
-                    (strcmp((char*)name[i],"headset_speaker_stereo_rx") == 0))
+                    (strcmp((char*)name[i],"headset_speaker_stereo_rx") == 0) ||
+                    (strcmp((char*)name[i],"speaker_headset_rx") == 0))
                 index = DEVICE_SPEAKER_HEADSET_RX;
             else if(strcmp((char*)name[i],"fmradio_stereo_tx") == 0)
                 index = DEVICE_FMRADIO_STEREO_TX;
