@@ -1805,7 +1805,7 @@ status_t AudioHardware::disableFM()
     }
     deleteFromTable(FM_RADIO);
     if(!getNodeByStreamType(VOICE_CALL) && !getNodeByStreamType(LPA_DECODE)
-        && !getNodeByStreamType(PCM_PLAY)) {
+        && !getNodeByStreamType(PCM_PLAY) && !getNodeByStreamType(VOIP_CALL)) {
         if(enableDevice(cur_rx, 0)) {
             LOGV("Disable device[%d] failed errno = %d",DEV_ID(cur_rx),errno);
             return 0;
@@ -1944,7 +1944,8 @@ status_t AudioHardware::AudioSessionOutMSM7xxx::standby()
         return -1;
     }
     deleteFromTable(LPA_DECODE);
-    if (!getNodeByStreamType(VOICE_CALL) && !getNodeByStreamType(PCM_PLAY) && !getNodeByStreamType(FM_RADIO)) {
+    if (!getNodeByStreamType(VOICE_CALL) && !getNodeByStreamType(PCM_PLAY) && !getNodeByStreamType(FM_RADIO)
+        && !getNodeByStreamType(VOIP_CALL)) {
         if (anc_running == false) {
             if (enableDevice(cur_rx, 0)) {
                 LOGE("Disabling device failed for cur_rx %d", cur_rx);
@@ -2223,7 +2224,8 @@ status_t AudioHardware::AudioStreamOutMSM72xx::standby()
         return -1;
     }
     deleteFromTable(PCM_PLAY);
-    if(!getNodeByStreamType(VOICE_CALL) && !getNodeByStreamType(LPA_DECODE) && !getNodeByStreamType(FM_RADIO)) {
+    if(!getNodeByStreamType(VOICE_CALL) && !getNodeByStreamType(LPA_DECODE) && !getNodeByStreamType(FM_RADIO)
+       && !getNodeByStreamType(VOIP_CALL)) {
     //in case if ANC don't disable cur device.
       if (anc_running == false){
         if(enableDevice(cur_rx, 0)) {
@@ -3055,7 +3057,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::standby()
         }
         LOGV("Disable device");
         deleteFromTable(PCM_REC);
-        if(!getNodeByStreamType(VOICE_CALL)) {
+        if(!getNodeByStreamType(VOICE_CALL) && !getNodeByStreamType(VOIP_CALL)) {
             if(enableDevice(cur_tx, 0)) {
                 LOGE("Disabling device failed for cur_tx %d", cur_tx);
                 return 0;
