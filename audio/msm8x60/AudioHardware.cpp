@@ -3944,7 +3944,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::setParameters(const String8& keyVa
         LOGV("set input routing %x", device);
         if (device & (device - 1)) {
             status = BAD_VALUE;
-        } else {
+        } else if (device) {
             mDevices = device;
             status = mHardware->doRouting(this);
         }
