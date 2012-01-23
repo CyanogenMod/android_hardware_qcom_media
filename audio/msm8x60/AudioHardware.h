@@ -227,7 +227,7 @@ private:
                                 uint32_t *pRate);
         virtual uint32_t    sampleRate() const { LOGD(" AudioStreamOutDirect: sampleRate %d\n",mSampleRate); return mSampleRate; }
         virtual size_t      bufferSize() const { LOGD(" AudioStreamOutDirect: bufferSize %d\n",mBufferSize); return mBufferSize; }
-        virtual uint32_t    channels() const {LOGD(" AudioStreamOutDirect: channels\n");  return AudioSystem::CHANNEL_OUT_MONO; }
+        virtual uint32_t    channels() const {LOGD(" AudioStreamOutDirect: channels\n");  return mChannels; }
         virtual int         format() const {LOGD(" AudioStreamOutDirect: format\n"); return AudioSystem::PCM_16_BIT; }
         virtual uint32_t    latency() const { return (1000*AUDIO_HW_NUM_OUT_BUF*(bufferSize()/frameSize()))/sampleRate()+AUDIO_HW_OUT_LATENCY_MS; }
         virtual status_t    setVolume(float left, float right) { return INVALID_OPERATION; }
@@ -350,7 +350,7 @@ private:
                                 uint32_t *pRate,
                                 AudioSystem::audio_in_acoustics acoustics);
         virtual size_t      bufferSize() const { LOGD("AudioStreamInVoip mBufferSize %d ",mBufferSize);return mBufferSize; }
-        virtual uint32_t    channels() const { return AudioSystem::CHANNEL_OUT_MONO; }
+        virtual uint32_t    channels() const { return mChannels; }
         virtual int         format() const { return AUDIO_HW_IN_FORMAT; }
         virtual uint32_t    sampleRate() const { LOGD("AudioStreamInVoip samplerate %d ",mSampleRate);return mSampleRate; }
         virtual status_t    setGain(float gain) { return INVALID_OPERATION; }
