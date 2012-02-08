@@ -19,18 +19,20 @@
 #include <dlfcn.h>
 
 #include <media/stagefright/HardwareAPI.h>
-#include <media/stagefright/MediaDebug.h>
 
 namespace android {
 
 static const char kPrefix[] = "7x30.";
 
-static void AddPrefix(char *name) {
-    CHECK(!strncmp("OMX.qcom.", name, 9));
+static OMX_ERRORTYPE AddPrefix(char *name) {
+    if (strncmp("OMX.qcom.", name, 9)) {
+        return OMX_ErrorUndefined;
+    }
     String8 tmp(name, 9);
     tmp.append(kPrefix);
     tmp.append(&name[9]);
     strcpy(name, tmp.string());
+    return OMX_ErrorNone;
 }
 
 static void RemovePrefix(const char *name, String8 *out) {
@@ -119,9 +121,7 @@ OMX_ERRORTYPE QComOMXPlugin::enumerateComponents(
         return res;
     }
 
-    AddPrefix(name);
-
-    return OMX_ErrorNone;
+    return AddPrefix(name);
 }
 
 OMX_ERRORTYPE QComOMXPlugin::getRolesOfComponent(
@@ -155,12 +155,15 @@ OMX_ERRORTYPE QComOMXPlugin::getRolesOfComponent(
         err = (*mGetRolesOfComponentHandle)(
                 const_cast<OMX_STRING>(name), &numRoles2, array);
 
-        CHECK_EQ(err, OMX_ErrorNone);
-        CHECK_EQ(numRoles, numRoles2);
+        if (err == OMX_ErrorNone && numRoles != numRoles2) {
+            err = OMX_ErrorUndefined;
+        }
 
         for (OMX_U32 i = 0; i < numRoles; ++i) {
-            String8 s((const char *)array[i]);
-            roles->push(s);
+            if (err == OMX_ErrorNone) {
+                String8 s((const char *)array[i]);
+                roles->push(s);
+            }
 
             delete[] array[i];
             array[i] = NULL;
@@ -170,7 +173,7 @@ OMX_ERRORTYPE QComOMXPlugin::getRolesOfComponent(
         array = NULL;
     }
 
-    return OMX_ErrorNone;
+    return err;
 }
 
 }  // namespace android
