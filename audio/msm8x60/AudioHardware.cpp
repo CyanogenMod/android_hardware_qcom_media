@@ -3314,6 +3314,7 @@ LOGE("  write Error \n");
     if (mFd >= 0) {
         ::close(mFd);
         mFd = -1;
+        mHardware->mVoipFd = -1;
     }
     // Simulate audio output timing in case of error
     usleep(bytes * 1000000 / frameSize() / sampleRate());
@@ -4044,6 +4045,9 @@ status_t AudioHardware::AudioStreamInVoip::set(
         LOGV("Check if driver is open");
         if(mHardware->mVoipFd >= 0) {
             mFd = mHardware->mVoipFd;
+            // Increment voip stream count
+            mHardware->mNumVoipStreams++;
+            LOGV("MVS driver is already opened, mHardware->mNumVoipStreams = %d \n", mHardware->mNumVoipStreams);
         }
         else {
             LOGE("open mvs driver");
@@ -4162,6 +4166,7 @@ Error:
     if (mFd >= 0) {
         ::close(mFd);
         mFd = -1;
+        mHardware->mVoipFd = -1;
     }
     LOGE("Error : ret status \n");
     return status;
