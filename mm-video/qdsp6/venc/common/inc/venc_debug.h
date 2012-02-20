@@ -53,7 +53,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define VENC_MSG_ERROR(fmt, ...) LOGE("VENC_ERROR %s::%d "fmt"\n",__FUNCTION__, __LINE__,## __VA_ARGS__)
 #define VENC_MSG_FATAL(fmt, ...) LOGE("VENC_ERROR %s::%d "fmt"\n",__FUNCTION__, __LINE__,## __VA_ARGS__)
 
-#if _ANDROID_LOG_DEBUG
+#ifdef _ANDROID_LOG_DEBUG
 #define VENC_MSG_LOW(fmt, ...) LOGE("%s::%d "fmt"\n",__FUNCTION__, __LINE__,## __VA_ARGS__)
 #define VENC_MSG_MEDIUM(fmt, ...) LOGE("%s::%d "fmt"\n",__FUNCTION__, __LINE__,## __VA_ARGS__)
 #else

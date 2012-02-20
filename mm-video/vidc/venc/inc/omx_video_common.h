@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -34,6 +34,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include<stdlib.h>
 #include <stdio.h>
+#ifdef USE_ION
+#include <linux/ion.h>
+#endif
 
 #define OMX_VIDEO_DEC_NUM_INPUT_BUFFERS   2
 #define OMX_VIDEO_DEC_NUM_OUTPUT_BUFFERS  2
@@ -67,7 +70,14 @@ struct pmem
   unsigned offset;
   unsigned size;
 };
-
+#ifdef USE_ION
+struct venc_ion
+{
+    int ion_device_fd;
+    struct ion_fd_data fd_ion_data;
+    struct ion_allocation_data ion_alloc_data;
+};
+#endif
 #endif // __OMX_VIDEO_COMMON_H__
 
 

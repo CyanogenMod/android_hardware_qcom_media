@@ -373,6 +373,15 @@ int adsp_free_buffers(struct adsp_module *mod, struct adsp_buffer_info bufinfo)
 
 }
 
+int adsp_setproperty(struct adsp_module *mod, struct vdec_property_info *property)
+{
+//   LOGE("Setting priority");
+   int ret = ioctl(mod->fd, VDEC_IOCTL_SETPROPERTY, property);
+   if(ret) {
+      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_FATAL, "Setting priority failed");
+   }
+   return ret;
+}
 int adsp_init(struct adsp_module *mod, struct adsp_init *init)
 {
    struct vdec_init vi;
@@ -501,4 +510,15 @@ int adsp_flush(struct adsp_module *mod, unsigned int port)
    QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_LOW,
            "adsp_flush() Before Flush \n");
    return ioctl(mod->fd, VDEC_IOCTL_FLUSH, &port);
+}
+int adsp_performance_change_request(struct adsp_module *mod, unsigned int request_type)
+{
+   if (NULL == mod) {
+      QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_LOW,
+               "adsp_performance_change_request() mod NULL: 0x%x\n", mod);
+      return -1;
+   }
+   QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_LOW,
+           "adsp_performance_change_request()\n");
+   return ioctl(mod->fd, VDEC_IOCTL_PERFORMANCE_CHANGE_REQ, &request_type);
 }

@@ -223,7 +223,7 @@ namespace venctest
 
           mp4.eProfile = OMX_VIDEO_MPEG4ProfileSimple;
           mp4.eLevel = OMX_VIDEO_MPEG4Level5;
-
+/*
           if (pConfig->nOutputFrameWidth > 176 &&
               pConfig->nOutputFrameHeight > 144)
           {
@@ -233,6 +233,7 @@ namespace venctest
           {
             mp4.eLevel = OMX_VIDEO_MPEG4Level0;
           }
+*/
           mp4.bACPred = OMX_TRUE;
           mp4.bSVH = pConfig->bEnableShortHeader;
           mp4.nHeaderExtension = pConfig->nHECInterval;
@@ -258,7 +259,7 @@ namespace venctest
 
           h263.eProfile = OMX_VIDEO_H263ProfileBaseline;
 
-          h263.eLevel = OMX_VIDEO_H263Level10;
+          h263.eLevel = OMX_VIDEO_H263Level70;
           h263.bPLUSPTYPEAllowed = OMX_FALSE;
           h263.nAllowedPictureTypes = 2;
           h263.bForceRoundingTypeToZero = OMX_TRUE;
@@ -314,7 +315,7 @@ namespace venctest
           avc.nPFrames = pConfig->nIntraPeriod - 1;
           avc.nBFrames = 0;
           avc.eProfile = OMX_VIDEO_AVCProfileBaseline;
-          avc.eLevel = OMX_VIDEO_AVCLevel1;
+          avc.eLevel = OMX_VIDEO_AVCLevel31;
           if (pConfig->nOutputFrameWidth * pConfig->nOutputFrameHeight / 256 < 792)
           {
             avc.eLevel = OMX_VIDEO_AVCLevel21;

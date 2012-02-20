@@ -824,23 +824,16 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
 
    init.seq_header = dec->ctxt->sequenceHeader;
    init.seq_len = dec->ctxt->sequenceHeaderLen;
+   if(init.seq_len > VDEC_MAX_SEQ_HEADER_SIZE)
+     init.seq_len = VDEC_MAX_SEQ_HEADER_SIZE;
 
 #if LOG_INPUT_BUFFERS
-   if(pInputFile && init.seq_header) {
-
-      /* Divx 3.11 & VP6 bit streams need the frame size before every frame */
-      if((MAKEFOURCC('D', 'I', 'V', '3') == dec->ctxt->fourcc ) || !strcmp(dec->ctxt->kind, "OMX.qcom.video.decoder.vp"))
-         fwrite(&init.seq_len, sizeof(init.seq_len), 1,pInputFile);
-
+   if(pInputFile) {
       fwritex((uint8 *) init.seq_header, init.seq_len, pInputFile);
       QTV_MSG_PRIO1(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
                            "seq head length %d\n", init.seq_len);
    }
 #endif
-
-   /* limiting this as DAL packet size is max 512 bytes */
-   if(init.seq_len > VDEC_MAX_SEQ_HEADER_SIZE)
-     init.seq_len = VDEC_MAX_SEQ_HEADER_SIZE;
 
    init.width = dec->ctxt->width;
 
@@ -877,17 +870,10 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
               "vdec: Opening Divx Decoder \n");
       init.order = 1;
-      if(MAKEFOURCC('D', 'I', 'V', '3') == init.fourcc ){
-        init.seq_header = NULL;
-        init.seq_len = 0;
-      }
    }else if (!strcmp(dec->ctxt->kind, "OMX.qcom.video.decoder.h263")) {
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
               "vdec: Opening H263 Decoder \n");
      init.order = 0;
-     init.seq_header = NULL;
-     init.seq_len = 0;
-
    } else if (!strcmp(dec->ctxt->kind, "OMX.qcom.video.decoder.vc1")) {
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
               "vdec: Opening VC1 Decoder \n");
@@ -900,9 +886,6 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
               "vdec: Opening Spark Decoder \n");
      init.order = 0;
-     init.seq_header = NULL;
-     init.seq_len = 0;
-
    } else {
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
               "Incorrect codec kind\n");
@@ -913,6 +896,12 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
       QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
               "Adsp Open Failed\n");
       goto fail_initialize;
+   }
+   if(FLAG_THUMBNAIL_MODE == init.postproc_flag) {
+      struct vdec_property_info property;
+      property.id = VDEC_PRIORITY;
+      property.property.priority = 0;
+      adsp_setproperty((struct adsp_module *)dec->adsp_module, &property);
    }
 
    QPERF_RESET(arm_decode);
@@ -932,6 +921,14 @@ struct VDecoder *vdec_open(struct vdec_context *ctxt)
       dec->ctxt->outputReq.numMinBuffers = init.buf_req->output.bufnum_min;
       dec->ctxt->outputReq.numMaxBuffers = init.buf_req->output.bufnum_max;
    }
+   /*for VC1 QDSP6 requires 4 output buffers, but Android surface flinger
+     holds 2 buffers due to this it is causing some issues, to resolve it
+     arm vdec allocates two more o/p buffers.*/
+   if (!strncmp(dec->ctxt->kind, "OMX.qcom.video.decoder.vc1",OMX_MAX_STRINGNAME_SIZE))
+            dec->ctxt->outputReq.numMinBuffers = init.buf_req->output.bufnum_min+2;
+   else
+            dec->ctxt->outputReq.numMinBuffers = init.buf_req->output.bufnum_min;
+
    dec->ctxt->outputReq.bufferSize = init.buf_req->output.bufsize;
    QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
             "vdec_open input numbuf= %d and bufsize= %d\n",
@@ -1067,11 +1064,6 @@ Vdec_ReturnType vdec_post_input_buffer(struct VDecoder * dec,
    }
 #if LOG_INPUT_BUFFERS
    if(pInputFile) {
-
-      /* Divx 3.11 & VP6 bit streams need the frame size before every frame */
-      if((MAKEFOURCC('D', 'I', 'V', '3') == dec->ctxt->fourcc ) || !strcmp(dec->ctxt->kind, "OMX.qcom.video.decoder.vp"))
-         fwrite(&frame->len, sizeof(frame->len),1,pInputFile);
-
       fwritex((uint8 *) frame->data, frame->len, pInputFile);
       QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
                "vdec: input buffer %d len %d\n", counter++, frame->len);
@@ -1334,4 +1326,15 @@ Vdec_ReturnType vdec_flush_port(struct VDecoder * dec, int *nFlushedFrames,
       }
    }
    return retVal;
+}
+Vdec_ReturnType vdec_performance_change_request(struct VDecoder* dec, unsigned int request_type) {
+  if (NULL == dec || NULL == dec->adsp_module) {
+    QTV_MSG_PRIO2(QTVDIAG_GENERAL, QTVDIAG_PRIO_ERROR,
+      "vdec: error: encountered NULL parameter vdec: 0x%x or adsp_module: 0x%x \n",
+      (unsigned int)dec, dec->adsp_module);
+    return VDEC_EFAILED;
+  }
+  if(adsp_performance_change_request((struct adsp_module *)dec->adsp_module,request_type))
+    return VDEC_EFAILED;
+  return VDEC_SUCCESS;
 }

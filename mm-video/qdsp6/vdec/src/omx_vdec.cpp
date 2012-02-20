@@ -5482,26 +5482,6 @@ OMX_ERRORTYPE omx_vdec::
       m_current_frame->nTimeStamp = -1;
 
    }
-   else if((m_current_arbitrary_bytes_input->nFlags & OMX_BUFFERFLAG_EOS) &&
-                (m_current_arbitrary_bytes_input->nFilledLen == 0) && m_vdec )
-   {  /* If the current ETB came with EOS with size 0 in partial frame mode
-         then declare the previous ETB is complete frame and  post it to QDSP. */
-      unsigned nPortIndex = m_current_frame - ((OMX_BUFFERHEADERTYPE *) m_inp_mem_ptr);
-      add_entry(nPortIndex);
-      m_current_frame = get_free_input_buffer();
-      if (m_current_frame == NULL) {
-      QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_HIGH,
-                "omx_vdec::empty_this_buffer_proxy_arbitrary_bytes, waiting for resource");
-      m_bWaitForResource = true;
-      return OMX_ErrorNone;
-      }
-      m_current_frame->pBuffer = m_current_arbitrary_bytes_input->pBuffer +
-                                 m_current_arbitrary_bytes_input->nOffset;
-      m_current_frame->nOffset = 0;
-      m_current_frame->nFilledLen = 0;
-      m_current_frame->nTimeStamp = -1;
-      m_bPartialFrame = false;
-   }
 
    if (!m_vdec) {
       if (m_vendor_config.pData) {
@@ -7967,11 +7947,8 @@ OMX_ERRORTYPE omx_vdec::
       } else if (strncmp(m_vdec_cfg.kind, "OMX.qcom.video.decoder.divx", 27)
           == 0 ) {
          if(m_codec_format == QOMX_VIDEO_DIVXFormat311) {
-         m_vdec_cfg.sequenceHeader =
-             (byte *) malloc(buffer->nFilledLen);
-         m_vdec_cfg.sequenceHeaderLen = buffer->nFilledLen;
-         memcpy(m_vdec_cfg.sequenceHeader, buffer->pBuffer,
-                m_vdec_cfg.sequenceHeaderLen);
+            m_vdec_cfg.sequenceHeader = NULL;
+            m_vdec_cfg.sequenceHeaderLen = 0;
             m_vdec_cfg.fourcc = MAKEFOURCC('D', 'I', 'V', '3');
          }else {
             m_vdec_cfg.sequenceHeader =
@@ -7987,9 +7964,6 @@ OMX_ERRORTYPE omx_vdec::
           if (strncmp
          (m_vdec_cfg.kind, "OMX.qcom.video.decoder.avc",
           26) == 0) {
-         QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
-            "h.264 clip \n");
-
          m_vdec_cfg.sequenceHeader =
              (byte *) malloc(buffer->nFilledLen);
          m_vdec_cfg.sequenceHeaderLen =
@@ -8008,34 +7982,24 @@ OMX_ERRORTYPE omx_vdec::
           28) == 0) {
          QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
                  "SPARK clip \n");
-         m_vdec_cfg.sequenceHeader =
-             (byte *) malloc(buffer->nFilledLen);
-         m_vdec_cfg.sequenceHeaderLen = buffer->nFilledLen;
-         memcpy(m_vdec_cfg.sequenceHeader, buffer->pBuffer,
-                m_vdec_cfg.sequenceHeaderLen);
+         m_vdec_cfg.sequenceHeaderLen = 0;
+         m_vdec_cfg.sequenceHeader = NULL;
       } else
           if (strncmp
          (m_vdec_cfg.kind, "OMX.qcom.video.decoder.h263",
           27) == 0) {
          QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
                  "H263 clip \n");
-         m_vdec_cfg.sequenceHeader =
-             (byte *) malloc(buffer->nFilledLen);
-         m_vdec_cfg.sequenceHeaderLen = buffer->nFilledLen;
-         memcpy(m_vdec_cfg.sequenceHeader, buffer->pBuffer,
-                m_vdec_cfg.sequenceHeaderLen);
+         m_vdec_cfg.sequenceHeaderLen = 0;
+         m_vdec_cfg.sequenceHeader = NULL;
       } else
           if (strncmp
          (m_vdec_cfg.kind, "OMX.qcom.video.decoder.vp",
           25) == 0) {
          QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
                  "VP6 clip \n");
-         LOGE("seq header len %d",buffer->nFilledLen);
-         m_vdec_cfg.sequenceHeader =
-             (byte *) malloc(buffer->nFilledLen);
-         m_vdec_cfg.sequenceHeaderLen = buffer->nFilledLen;
-         memcpy(m_vdec_cfg.sequenceHeader, buffer->pBuffer,
-                m_vdec_cfg.sequenceHeaderLen);
+         m_vdec_cfg.sequenceHeaderLen = 0;
+         m_vdec_cfg.sequenceHeader = NULL;
       } else
           if (strncmp
          (m_vdec_cfg.kind, "OMX.qcom.video.decoder.vc1",
@@ -8257,6 +8221,9 @@ OMX_ERRORTYPE omx_vdec::
          free(m_vdec_cfg.sequenceHeader);
       }
       return OMX_ErrorHardware;
+   }
+   if(m_bInterlaced) {
+     vdec_performance_change_request(m_vdec, VDEC_PERF_SET_MAX);
    }
 
    if (strncmp(m_vdec_cfg.kind, "OMX.qcom.video.decoder.avc", 26) == 0) {
@@ -8583,19 +8550,6 @@ bool omx_vdec::get_one_complete_frame(OMX_OUT OMX_BUFFERHEADERTYPE * dest) {
       }
       mutex_unlock();
       if (ident == OMX_COMPONENT_GENERATE_ETB_ARBITRARYBYTES) {
-         OMX_BUFFERHEADERTYPE *next_etb_input = (OMX_BUFFERHEADERTYPE *) p2;
-         /* This check avoids the overwrite of current ETB TimeStamp
-            with next ETB TimeStamp if next ETB comes with EOS and
-            zero stream len */
-         if((next_etb_input->nFlags & OMX_BUFFERFLAG_EOS)&&
-            (next_etb_input->nFilledLen == 0))
-         {
-            mutex_lock();
-            m_etb_arbitrarybytes_q.insert_entry(p1, p2, ident);
-            mutex_unlock();
-            m_bPartialFrame = false;
-            break;
-         }
          m_current_arbitrary_bytes_input =
              (OMX_BUFFERHEADERTYPE *) p2;
 
@@ -9976,8 +9930,6 @@ void omx_vdec::fill_extradata(OMX_INOUT OMX_BUFFERHEADERTYPE * pBufHdr,
    /* khronos standardized way of converying interlaced info */
    OMX_STREAMINTERLACEFORMATTYPE *pInterlaceInfo=NULL;
 
-   addr += size;
-   pExtraData = (OMX_OTHER_EXTRADATATYPE *)addr;
    size =
        (OMX_EXTRADATA_HEADER_SIZE + sizeof(OMX_STREAMINTERLACEFORMATTYPE) +
         3) & (~3);

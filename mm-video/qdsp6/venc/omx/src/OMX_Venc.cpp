@@ -85,6 +85,8 @@ static const char pRoleAVC[] = "video_encoder.avc";
 /*----------------------------------------------------------------------------
 * Static Variable Definitions
 * -------------------------------------------------------------------------*/
+Venc* Venc::g_pVencInstance = NULL;
+
 #define VEN_QCIF_DX                 176
 #define VEN_QCIF_DY                 144
 
@@ -122,7 +124,7 @@ static const char pRoleAVC[] = "video_encoder.avc";
 extern "C" {
    void* get_omx_component_factory_fn(void)
    {
-     return new Venc();
+     return Venc::get_instance();
    }
 }
 #define GetLastError() 1
@@ -168,6 +170,7 @@ Venc::Venc() :
 
 Venc::~Venc()
 {
+  g_pVencInstance = NULL;
   QC_OMX_MSG_HIGH("deconstructor (closing driver)");
   sem_destroy(&m_cmd_lock);
   ven_device_close(m_pDevice);
@@ -572,6 +575,18 @@ bail:
     free(m_pComponentName);
   }
   return result;
+}
+
+Venc* Venc::get_instance()
+{
+  QC_OMX_MSG_HIGH("getting instance...");
+  if (g_pVencInstance)
+  {
+    QC_OMX_MSG_ERROR("Singleton Class can't created more than one instance");
+    return NULL;
+  }
+  g_pVencInstance = new Venc();
+  return g_pVencInstance;
 }
 
 OMX_ERRORTYPE Venc::get_component_version(OMX_IN  OMX_HANDLETYPE hComponent,
@@ -1001,7 +1016,7 @@ OMX_ERRORTYPE Venc::translate_profile(unsigned int* pDriverProfile,
         break;
       default:
         QC_OMX_MSG_ERROR("unsupported profile");
-        *pDriverProfile = VEN_PROFILE_MPEG4_SP;
+        result = OMX_ErrorBadParameter;
         break;
     }
   }
@@ -1027,7 +1042,7 @@ OMX_ERRORTYPE Venc::translate_profile(unsigned int* pDriverProfile,
         break;
       default:
         QC_OMX_MSG_ERROR("unsupported profile");
-        *pDriverProfile = VEN_PROFILE_H264_BASELINE;
+        result = OMX_ErrorBadParameter;
         break;
     }
   }
@@ -1077,7 +1092,7 @@ OMX_ERRORTYPE Venc::translate_level(unsigned int* pDriverLevel,
         break;
       default:
         QC_OMX_MSG_ERROR("unsupported level");
-        *pDriverLevel = VEN_LEVEL_MPEG4_0;
+        result = OMX_ErrorBadParameter;
         break;
     }
   }
@@ -1153,7 +1168,7 @@ OMX_ERRORTYPE Venc::translate_level(unsigned int* pDriverLevel,
         break;
       default:
         QC_OMX_MSG_ERROR("unsupported level");
-        *pDriverLevel = VEN_LEVEL_H264_3P1;
+        result = OMX_ErrorBadParameter;
         break;
     }
   }
@@ -1640,13 +1655,8 @@ OMX_ERRORTYPE Venc::update_param_port_fmt(OMX_IN OMX_VIDEO_PARAM_PORTFORMATTYPE*
   return result;
 }
 
-OMX_ERRORTYPE Venc::update_param_port_def(OMX_IN OMX_PARAM_PORTDEFINITIONTYPE* pOrigParam)
+OMX_ERRORTYPE Venc::update_param_port_def(OMX_IN OMX_PARAM_PORTDEFINITIONTYPE* pParam)
 {
-  // The code below tries to write to pParam - keep a local
-  // version instead of writing into the user specified data
-  // (which might be in read-only memory in some cases), and
-  // point pParam to that.
-  OMX_PARAM_PORTDEFINITIONTYPE localParam = *pOrigParam, *pParam = &localParam;
   OMX_ERRORTYPE result = OMX_ErrorNone;
   int rc = 0;
   if (pParam != NULL)
@@ -2644,14 +2654,16 @@ OMX_ERRORTYPE Venc::set_parameter(OMX_IN  OMX_HANDLETYPE hComponent,
       {
         QC_OMX_MSG_HIGH("OMX_IndexParamVideoPortFormat");
         result = update_param_port_fmt(reinterpret_cast<OMX_VIDEO_PARAM_PORTFORMATTYPE*>(pCompParam));
-        result = adjust_profile_level();
+        if (result == OMX_ErrorNone)
+            result = adjust_profile_level();
         break;
       }
     case OMX_IndexParamPortDefinition:
       {
         QC_OMX_MSG_HIGH("OMX_IndexParamPortDefinition");
         result = update_param_port_def(reinterpret_cast<OMX_PARAM_PORTDEFINITIONTYPE*>(pCompParam));
-        result = adjust_profile_level();
+        if (result == OMX_ErrorNone)
+            result = adjust_profile_level();
         break;
       }
     case OMX_IndexParamVideoInit:
@@ -3541,7 +3553,7 @@ OMX_ERRORTYPE Venc::allocate_buffer(OMX_IN OMX_HANDLETYPE hComponent,
           pBufferHdr->pBuffer =(OMX_U8 *)(pPrivateData->sPmemInfo).virt;
           pBufferHdr->nAllocLen = m_sOutPortDef.nBufferSize;
           pBufferHdr->nAllocLen = nSizeBytes;
-          pBufferHdr->pAppPrivate = pAppPrivate;
+          //pBufferHdr->pAppPrivate = pAppPrivate;
           OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* private_info =
             (OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* )malloc(
                 sizeof(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO));
@@ -3616,7 +3628,7 @@ OMX_ERRORTYPE Venc::allocate_buffer(OMX_IN OMX_HANDLETYPE hComponent,
         {
           pBufferHdr->pBuffer = (OMX_U8 *)(pPrivateData->sPmemInfo).virt;
           pBufferHdr->nAllocLen = m_sInPortDef.nBufferSize;
-          pBufferHdr->pAppPrivate = pAppPrivate;
+          //pBufferHdr->pAppPrivate = pAppPrivate;
           OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* private_info =
             (OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* )malloc(
                 sizeof(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO));
@@ -4868,7 +4880,7 @@ OMX_ERRORTYPE Venc::pmem_alloc(struct venc_pmem *pBuf, int size, int pmem_region
   if (pmem_region_id == VENC_PMEM_EBI1)
     pBuf->fd = open("/dev/pmem_adsp", O_RDWR);
   else if (pmem_region_id == VENC_PMEM_SMI)
-    pBuf->fd = open("/dev/pmem_venc", O_RDWR);
+    pBuf->fd = open("/dev/pmem_smipool", O_RDWR);
   else {
     QC_OMX_MSG_ERROR("Pmem region id not supported \n", pmem_region_id);
     return OMX_ErrorBadParameter;

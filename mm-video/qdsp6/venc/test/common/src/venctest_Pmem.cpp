@@ -78,7 +78,7 @@ namespace venctest
     if (pmem_region_id == VENC_PMEM_EBI1)
 	pBuf->fd = open("/dev/pmem_adsp", O_RDWR);
     else if (pmem_region_id == VENC_PMEM_SMI)
-	pBuf->fd = open("/dev/pmem_venc", O_RDWR);
+	pBuf->fd = open("/dev/pmem_smipool", O_RDWR);
     else {
 	QC_OMX_MSG_ERROR("Pmem region id not supported \n", pmem_region_id);
 	return OMX_ErrorBadParameter;

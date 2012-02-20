@@ -55,11 +55,11 @@ mm-venc-test-inc += $(LOCAL_PATH)/omx/inc
 mm-venc-test-inc += $(TARGET_OUT_HEADERS)/mm-core/omxcore
 
 LOCAL_MODULE := mm-venc-omx-test
-LOCAL_MODULE_TAGS := tests
+LOCAL_MODULE_TAGS := optional
 LOCAL_CFLAGS := $(libmm-venc-def)
 LOCAL_C_INCLUDES := $(mm-venc-test-inc)
 LOCAL_PRELINK_MODULE := false
-LOCAL_SHARED_LIBRARIES := libdl libOmxCore libOmxVidEnc libutils
+LOCAL_SHARED_LIBRARIES := libdl libOmxCore libOmxVidEnc
 
 LOCAL_SRC_FILES	:= test/app/src/venctest_App.cpp
 LOCAL_SRC_FILES	+= test/common/src/venctest_Config.cpp

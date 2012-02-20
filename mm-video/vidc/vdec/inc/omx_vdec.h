@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -43,13 +43,26 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include<stdlib.h>
 
 #include <stdio.h>
+#include <inttypes.h>
 
 #ifdef _ANDROID_
+#ifdef USE_ION
+#include <linux/ion.h>
+#include <binder/MemoryHeapIon.h>
+#else
 #include <binder/MemoryHeapBase.h>
+#endif
+#include <ui/android_native_buffer.h>
 extern "C"{
 #include<utils/Log.h>
 }
-//#define LOG_TAG "OMX-VDEC-720P"
+#ifdef MAX_RES_720P
+#define LOG_TAG "OMX-VDEC-720P"
+#elif MAX_RES_1080P
+#define LOG_TAG "OMX-VDEC-1080P"
+#else
+#define LOG_TAG "OMX-VDEC"
+#endif
 #ifdef ENABLE_DEBUG_LOW
 #define DEBUG_PRINT_LOW LOGE
 #else
@@ -65,7 +78,20 @@ extern "C"{
 #else
 #define DEBUG_PRINT_ERROR
 #endif
+
+#else //_ANDROID_
+#define DEBUG_PRINT_LOW printf
+#define DEBUG_PRINT_HIGH printf
+#define DEBUG_PRINT_ERROR printf
 #endif // _ANDROID_
+
+#if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
+#include <media/stagefright/HardwareAPI.h>
+#endif
+
+#if defined (_ANDROID_ICS_)
+#include <gralloc_priv.h>
+#endif
 
 #include <pthread.h>
 #ifndef PC_DEBUG
@@ -73,21 +99,30 @@ extern "C"{
 #endif
 #include "OMX_Core.h"
 #include "OMX_QCOMExtns.h"
-//#include "vdec.h"
 #include "qc_omx_component.h"
-//#include "Map.h"
-//#include "OmxUtils.h"
 #include <linux/msm_vidc_dec.h>
 #include "frameparser.h"
+#ifdef MAX_RES_1080P
+#include "mp4_utils.h"
+#endif
 #include <linux/android_pmem.h>
+#include "extra_data_handler.h"
+#include "ts_parser.h"
 
 extern "C" {
   OMX_API void * get_omx_component_factory_fn(void);
 }
 
-
 #ifdef _ANDROID_
     using namespace android;
+#ifdef USE_ION
+    class VideoHeap : public MemoryHeapIon
+    {
+    public:
+        VideoHeap(int devicefd, size_t size, void* base,struct ion_handle *handle,int mapfd);
+        virtual ~VideoHeap() {}
+    };
+#else
     // local pmem heap object
     class VideoHeap : public MemoryHeapBase
     {
@@ -95,6 +130,7 @@ extern "C" {
         VideoHeap(int fd, size_t size, void* base);
         virtual ~VideoHeap() {}
     };
+#endif
 #endif // _ANDROID_
 //////////////////////////////////////////////////////////////////////////////
 //                       Module specific globals
@@ -129,15 +165,6 @@ extern "C" {
 #define BITMASK_ABSENT(mArray,mIndex) (((mArray)[BITMASK_OFFSET(mIndex)] \
         & BITMASK_FLAG(mIndex)) == 0x0)
 
-#define OMX_VIDEO_DEC_NUM_INPUT_BUFFERS   2
-#define OMX_VIDEO_DEC_NUM_OUTPUT_BUFFERS  2
-
-#ifdef FEATURE_QTV_WVGA_ENABLE
-#define OMX_VIDEO_DEC_INPUT_BUFFER_SIZE   (256*1024)
-#else
-#define OMX_VIDEO_DEC_INPUT_BUFFER_SIZE   (128*1024)
-#endif
-
 #define OMX_CORE_CONTROL_CMDQ_SIZE   100
 #define OMX_CORE_QCIF_HEIGHT         144
 #define OMX_CORE_QCIF_WIDTH          176
@@ -146,22 +173,76 @@ extern "C" {
 #define OMX_CORE_WVGA_HEIGHT         480
 #define OMX_CORE_WVGA_WIDTH          800
 
+#define DESC_BUFFER_SIZE (8192 * 16)
+
+#ifdef _ANDROID_
+#define MAX_NUM_INPUT_OUTPUT_BUFFERS 32
+#endif
+
+#define OMX_FRAMEINFO_EXTRADATA 0x00010000
+#define OMX_INTERLACE_EXTRADATA 0x00020000
+#define OMX_TIMEINFO_EXTRADATA  0x00040000
+#define OMX_PORTDEF_EXTRADATA   0x00080000
+#define DRIVER_EXTRADATA_MASK   0x0000FFFF
+
+#define OMX_INTERLACE_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
+                                       sizeof(OMX_STREAMINTERLACEFORMAT) + 3)&(~3))
+#define OMX_FRAMEINFO_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
+                                       sizeof(OMX_QCOM_EXTRADATA_FRAMEINFO) + 3)&(~3))
+#define OMX_PORTDEF_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
+                                       sizeof(OMX_PARAM_PORTDEFINITIONTYPE) + 3)&(~3))
+
+//  Define next macro with required values to enable default extradata,
+//    VDEC_EXTRADATA_MB_ERROR_MAP
+//    OMX_INTERLACE_EXTRADATA
+//    OMX_FRAMEINFO_EXTRADATA
+//    OMX_TIMEINFO_EXTRADATA
+
+//#define DEFAULT_EXTRADATA (OMX_FRAMEINFO_EXTRADATA|OMX_INTERLACE_EXTRADATA)
+
+enum port_indexes
+{
+    OMX_CORE_INPUT_PORT_INDEX        =0,
+    OMX_CORE_OUTPUT_PORT_INDEX       =1
+};
+#ifdef USE_ION
+struct vdec_ion
+{
+    int ion_device_fd;
+    struct ion_fd_data fd_ion_data;
+    struct ion_allocation_data ion_alloc_data;
+};
+#endif
 
 struct video_driver_context
 {
     int video_driver_fd;
     enum vdec_codec decoder_format;
     enum vdec_output_fromat output_format;
-    struct vdec_picsize video_resoultion;
-    struct vdec_allocatorproperty input_buffer;
-    struct vdec_allocatorproperty output_buffer;
+    enum vdec_interlaced_format interlace;
+    enum vdec_output_order picture_order;
+    struct vdec_picsize video_resolution;
+    struct vdec_allocatorproperty ip_buf;
+    struct vdec_allocatorproperty op_buf;
     struct vdec_bufferpayload *ptr_inputbuffer;
     struct vdec_bufferpayload *ptr_outputbuffer;
     struct vdec_output_frameinfo *ptr_respbuffer;
+#ifdef USE_ION
+    struct vdec_ion *ip_buf_ion_info;
+    struct vdec_ion *op_buf_ion_info;
+    struct vdec_ion h264_mv;
+#endif
+    struct vdec_framerate frame_rate;
+    unsigned extradata;
+    bool timestamp_adjust;
     char kind[128];
+    bool idr_only_decoding;
+    unsigned disable_dmx;
 };
 
-class OmxUtils;
+#ifdef _ANDROID_
+class DivXDrmDecrypt;
+#endif //_ANDROID_
 
 // OMX video decoder class
 class omx_vdec: public qc_omx_component
@@ -274,16 +355,22 @@ public:
                              OMX_U32              bytes,
                              OMX_U8               *buffer);
 
+    OMX_ERRORTYPE  use_input_heap_buffers(
+                          OMX_HANDLETYPE            hComp,
+                          OMX_BUFFERHEADERTYPE** bufferHdr,
+                          OMX_U32                   port,
+                          OMX_PTR                   appData,
+                          OMX_U32                   bytes,
+                          OMX_U8*                   buffer);
 
     OMX_ERRORTYPE use_EGL_image(OMX_HANDLETYPE     hComp,
                                 OMX_BUFFERHEADERTYPE **bufferHdr,
                                 OMX_U32              port,
                                 OMX_PTR              appData,
                                 void *               eglImage);
+    void complete_pending_buffer_done_cbs();
 
-
-
-    struct video_driver_context driver_context;
+    struct video_driver_context drv_ctx;
     int  m_pipe_in;
     int  m_pipe_out;
     pthread_t msg_thread_id;
@@ -313,8 +400,9 @@ private:
         OMX_COMPONENT_OUTPUT_FLUSH_PENDING    =0x9,
         OMX_COMPONENT_INPUT_FLUSH_PENDING    =0xA,
         OMX_COMPONENT_PAUSE_PENDING          =0xB,
-        OMX_COMPONENT_EXECUTE_PENDING        =0xC
-
+        OMX_COMPONENT_EXECUTE_PENDING        =0xC,
+        OMX_COMPONENT_OUTPUT_FLUSH_IN_DISABLE_PENDING =0xD,
+        OMX_COMPONENT_DISABLE_OUTPUT_DEFERRED=0xE
     };
 
     // Deferred callback identifiers
@@ -346,13 +434,11 @@ private:
         OMX_COMPONENT_GENERATE_RESUME_DONE = 0xF,
         OMX_COMPONENT_GENERATE_STOP_DONE = 0x10,
         OMX_COMPONENT_GENERATE_HARDWARE_ERROR = 0x11,
-        OMX_COMPONENT_GENERATE_ETB_ARBITRARY = 0x12
-    };
-
-    enum port_indexes
-    {
-        OMX_CORE_INPUT_PORT_INDEX        =0,
-        OMX_CORE_OUTPUT_PORT_INDEX       =1
+        OMX_COMPONENT_GENERATE_ETB_ARBITRARY = 0x12,
+        OMX_COMPONENT_GENERATE_PORT_RECONFIG = 0x13,
+        OMX_COMPONENT_GENERATE_EOS_DONE = 0x14,
+        OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG = 0x15,
+        OMX_COMPONENT_GENERATE_INFO_FIELD_DROPPED = 0x16,
     };
 
     enum vc1_profile_type
@@ -384,16 +470,41 @@ private:
 
     };
 
-    OMX_ERRORTYPE omx_vdec_check_port_settings(bool *port_setting_changed);
-    OMX_ERRORTYPE omx_vdec_validate_port_param(int height, int width);
+#ifdef _ANDROID_
+    struct ts_entry
+    {
+        OMX_TICKS timestamp;
+        bool valid;
+    };
 
+    struct ts_arr_list
+    {
+        ts_entry m_ts_arr_list[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 
+        ts_arr_list();
+        ~ts_arr_list();
+
+        bool insert_ts(OMX_TICKS ts);
+        bool pop_min_ts(OMX_TICKS &ts);
+        bool reset_ts_list();
+    };
+#endif
+
+    struct desc_buffer_hdr
+    {
+        OMX_U8 *buf_addr;
+        OMX_U32 desc_data_size;
+    };
     bool allocate_done(void);
     bool allocate_input_done(void);
     bool allocate_output_done(void);
 
     OMX_ERRORTYPE free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
+    OMX_ERRORTYPE free_input_buffer(unsigned int bufferindex,
+                                    OMX_BUFFERHEADERTYPE *pmem_bufferHdr);
     OMX_ERRORTYPE free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
+    void free_output_buffer_header();
+    void free_input_buffer_header();
 
     OMX_ERRORTYPE allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
                                              OMX_BUFFERHEADERTYPE **bufferHdr,
@@ -413,24 +524,24 @@ private:
                                          OMX_U32 port,OMX_PTR appData,
                                          OMX_U32              bytes);
 
-    OMX_ERRORTYPE use_input_buffer(OMX_HANDLETYPE hComp,
-                                   OMX_BUFFERHEADERTYPE  **bufferHdr,
-                                   OMX_U32               port,
-                                   OMX_PTR               appData,
-                                   OMX_U32               bytes,
-                                   OMX_U8                *buffer);
-
     OMX_ERRORTYPE use_output_buffer(OMX_HANDLETYPE hComp,
                                    OMX_BUFFERHEADERTYPE   **bufferHdr,
                                    OMX_U32                port,
                                    OMX_PTR                appData,
                                    OMX_U32                bytes,
                                    OMX_U8                 *buffer);
+#ifdef MAX_RES_720P
+    OMX_ERRORTYPE get_supported_profile_level_for_720p(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
+#endif
+#ifdef MAX_RES_1080P
+    OMX_ERRORTYPE get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
+#endif
 
+    OMX_ERRORTYPE allocate_desc_buffer(OMX_U32 index);
+    OMX_ERRORTYPE allocate_output_headers();
     bool execute_omx_flush(OMX_U32);
-    bool execute_output_flush(OMX_U32);
-    bool execute_input_flush(OMX_U32);
-    bool register_output_buffers();
+    bool execute_output_flush();
+    bool execute_input_flush();
     OMX_ERRORTYPE empty_buffer_done(OMX_HANDLETYPE hComp,
                                     OMX_BUFFERHEADERTYPE * buffer);
 
@@ -454,9 +565,39 @@ private:
 
     bool release_output_done();
     bool release_input_done();
+    OMX_ERRORTYPE get_buffer_req(vdec_allocatorproperty *buffer_prop);
+    OMX_ERRORTYPE set_buffer_req(vdec_allocatorproperty *buffer_prop);
+    OMX_ERRORTYPE start_port_reconfig();
+    OMX_ERRORTYPE update_picture_resolution();
+    void adjust_timestamp(OMX_S64 &act_timestamp);
+    void set_frame_rate(OMX_S64 act_timestamp);
+    void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
+    OMX_ERRORTYPE enable_extradata(OMX_U32 requested_extradata, bool enable = true);
+    void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
+    void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+                                    OMX_U32 interlaced_format_type);
+    void append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+                                     OMX_U32 num_conceal_mb,
+                                     OMX_U32 picture_type,
+                                     OMX_S64 timestamp,
+                                     OMX_U32 frame_rate);
+    void append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra);
+    OMX_ERRORTYPE update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn);
+    void append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra);
+    void insert_demux_addr_offset(OMX_U32 address_offset);
+    void extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr);
+    OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
+    OMX_U32 count_MB_in_extradata(OMX_OTHER_EXTRADATATYPE *extra);
 
     bool align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
                             OMX_U32 alignment);
+#ifdef USE_ION
+    int alloc_map_ion_memory(OMX_U32 buffer_size,
+              OMX_U32 alignment, struct ion_allocation_data *alloc_data,
+              struct ion_fd_data *fd_data);
+    void free_ion_memory(struct vdec_ion *buf_ion_info);
+#endif
+
 
     OMX_ERRORTYPE send_command_proxy(OMX_HANDLETYPE  hComp,
                                      OMX_COMMANDTYPE cmd,
@@ -477,16 +618,34 @@ private:
         return x;
     }
 
+#ifdef MAX_RES_1080P
+    OMX_ERRORTYPE vdec_alloc_h264_mv();
+    void vdec_dealloc_h264_mv();
+#endif
+
     inline void omx_report_error ()
     {
-        DEBUG_PRINT_ERROR("\nERROR: Sending OMX_EventError to Client");
         if (m_cb.EventHandler && !m_error_propogated)
         {
+            DEBUG_PRINT_ERROR("\nERROR: Sending OMX_EventError to Client");
             m_error_propogated = true;
             m_cb.EventHandler(&m_cmp,m_app_data,
                   OMX_EventError,OMX_ErrorHardware,0,NULL);
         }
     }
+#ifdef _ANDROID_
+    OMX_ERRORTYPE createDivxDrmContext( OMX_PTR drmHandle );
+#endif //_ANDROID_
+#if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
+    OMX_ERRORTYPE use_android_native_buffer(OMX_IN OMX_HANDLETYPE hComp, OMX_PTR data);
+#endif
+#if defined (_ANDROID_ICS_)
+    struct nativebuffer{
+        native_handle_t *nativehandle;
+        int inuse;
+    };
+    nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
+#endif
 
 
     //*************************************************************
@@ -504,7 +663,6 @@ private:
     OMX_PTR m_app_data;
     // Application callbacks
     OMX_CALLBACKTYPE m_cb;
-    OMX_COLOR_FORMATTYPE  m_color_format;
     OMX_PRIORITYMGMTTYPE m_priority_mgm ;
     OMX_PARAM_BUFFERSUPPLIERTYPE m_buffer_supplier;
     // fill this buffer queue
@@ -516,47 +674,32 @@ private:
     OMX_BUFFERHEADERTYPE  *m_inp_mem_ptr;
     // Output memory pointer
     OMX_BUFFERHEADERTYPE  *m_out_mem_ptr;
+    // number of input bitstream error frame count
+    unsigned int m_inp_err_count;
+#ifdef _ANDROID_
+    // Timestamp list
+    ts_arr_list           m_timestamp_list;
+#endif
 
     bool input_flush_progress;
     bool output_flush_progress;
     bool input_use_buffer;
     bool output_use_buffer;
+    bool ouput_egl_buffers;
+    OMX_BOOL m_use_output_pmem;
+    OMX_BOOL m_out_mem_region_smi;
+    OMX_BOOL m_out_pvt_entry_pmem;
+
     int pending_input_buffers;
     int pending_output_buffers;
-    int m_ineos_reached;
-    int m_outeos_pending;
-    int m_outeos_reached;
     // bitmask array size for output side
     unsigned int m_out_bm_count;
-    // Number of Output Buffers
-    unsigned int m_out_buf_count;
-    unsigned int m_out_buf_count_min;
-    unsigned int m_out_buf_size;
-    // Number of Input Buffers
-    unsigned int m_inp_buf_count;
-    unsigned int m_inp_buf_count_min;
-    // Size of Input Buffers
-    unsigned int m_inp_buf_size;
     // bitmask array size for input side
     unsigned int m_inp_bm_count;
     //Input port Populated
     OMX_BOOL m_inp_bPopulated;
     //Output port Populated
     OMX_BOOL m_out_bPopulated;
-    //Height
-    unsigned int m_height;
-    // Width
-    unsigned int m_width;
-    unsigned int stride;
-    unsigned int scan_lines;
-    // Storage of HxW during dynamic port reconfig
-    unsigned int m_port_height;
-    unsigned int m_port_width;
-
-    unsigned int m_crop_x;
-    unsigned int m_crop_y;
-    unsigned int m_crop_dx;
-    unsigned int m_crop_dy;
     // encapsulate the waiting states.
     unsigned int m_flags;
 
@@ -568,8 +711,7 @@ private:
     OMX_BOOL m_inp_bEnabled;
     // store O/P PORT state
     OMX_BOOL m_out_bEnabled;
-    // to know whether Event Port Settings change has been triggered or not.
-    bool m_event_port_settings_sent;
+    OMX_U32 m_in_alloc_cnt;
     OMX_U8                m_cRole[OMX_MAX_STRINGNAME_SIZE];
     // Platform specific details
     OMX_QCOM_PLATFORM_PRIVATE_LIST      *m_platform_list;
@@ -598,18 +740,54 @@ private:
     int first_frame;
     unsigned char *first_buffer;
     int first_frame_size;
-    unsigned int mp4h263_flags;
-    unsigned int mp4h263_timestamp;
-    bool set_seq_header_done;
-    bool gate_output_buffers;
-    bool gate_input_buffers;
-    bool sent_first_frame;
-    unsigned int m_out_buf_count_recon;
-    unsigned int m_out_buf_count_min_recon;
-    unsigned int m_out_buf_size_recon;
     unsigned char m_hwdevice_name[80];
     FILE *m_device_file_ptr;
     enum vc1_profile_type m_vc1_profile;
+    OMX_S64 h264_last_au_ts;
+    OMX_U32 h264_last_au_flags;
+    OMX_U32 m_demux_offsets[8192];
+    OMX_U32 m_demux_entries;
+
+    OMX_S64 prev_ts;
+    bool rst_prev_ts;
+    OMX_U32 frm_int;
+
+    struct vdec_allocatorproperty op_buf_rcnfg;
+    bool in_reconfig;
+    OMX_NATIVE_WINDOWTYPE m_display_id;
+    h264_stream_parser *h264_parser;
+    OMX_U32 client_extradata;
+#ifdef _ANDROID_
+    bool m_debug_timestamp;
+    bool perf_flag;
+    OMX_U32 proc_frms, latency;
+    perf_metrics fps_metrics;
+    perf_metrics dec_time;
+    bool m_enable_android_native_buffers;
+    bool m_use_android_native_buffers;
+    bool m_debug_extradata;
+    bool m_debug_concealedmb;
+#endif
+#ifdef MAX_RES_1080P
+    MP4_Utils mp4_headerparser;
+#endif
+
+    struct h264_mv_buffer{
+        unsigned char* buffer;
+        int size;
+        int count;
+        int pmem_fd;
+        int offset;
+    };
+    h264_mv_buffer h264_mv_buff;
+	extra_data_handler extra_data_handle;
+#ifdef _ANDROID_
+    DivXDrmDecrypt* iDivXDrmDecrypt;
+#endif //_ANDROID_
+    OMX_PARAM_PORTDEFINITIONTYPE m_port_def;
+    omx_time_stamp_reorder time_stamp_dts;
+    desc_buffer_hdr *m_desc_buffer_ptr;
+    bool secure_mode;
 };
 
 #endif // __OMX_VDEC_H__

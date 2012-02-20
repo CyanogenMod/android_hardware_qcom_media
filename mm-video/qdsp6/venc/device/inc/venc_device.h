@@ -196,13 +196,16 @@ extern "C" {
 /*
  * Different modes for Rate Control.
  */
-#define VEN_RC_OFF               1       /**< Rate Control is OFF.
+#define VEN_RC_OFF               0       /**< Rate Control is OFF.
                                           *   It is not recommended as it will
                                           *   not obey bitrate requirement
                                           */
-#define VEN_RC_VBR_VFR           2       /**< Variable bit rate; Variable frame
+#define VEN_RC_VBR_VFR           1       /**< Variable bit rate; Variable frame
                                           *   rate. i.e frames may be skipped.
                                           *   Mainly used for TODO:
+                                          */
+#define VEN_RC_VBR_VFR_TIGHT     2       /**< Variable bit rate; Variable frame
+                                          *   rate with tighter RC.
                                           */
 #define VEN_RC_VBR_CFR           3       /**< Variable bit rate; Constant frame
                                           *   rate. i.e frames are not skipped.

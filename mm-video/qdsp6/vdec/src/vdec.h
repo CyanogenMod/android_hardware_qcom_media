@@ -500,6 +500,9 @@ typedef enum PostProc_Flags{
  */
 int getExtraDataSize(void);
 
+   Vdec_ReturnType vdec_performance_change_request(struct VDecoder *dec,
+              unsigned int);
+
 #ifdef USE_PMEM_ADSP_CACHED
 /**
   * This method is used to perform cache operations on the pmem region in the decoder.

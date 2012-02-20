@@ -132,6 +132,7 @@ extern "C" {
    void adsp_close(struct adsp_module *mod);
    int adsp_set_buffers(struct adsp_module *mod,
               struct adsp_buffer_info bufinfo);
+   int adsp_setproperty(struct adsp_module *mod, struct vdec_property_info *property);
    int adsp_init(struct adsp_module *mod, struct adsp_init *init);
    int adsp_post_input_buffer(struct adsp_module *mod,
                struct adsp_input_buf input,
@@ -142,6 +143,7 @@ extern "C" {
                struct adsp_buffer_info bufinfo);
    int adsp_get_dec_attr(struct adsp_module *mod,
                struct adsp_dec_attr *attr);
+   int adsp_performance_change_request(struct adsp_module *mod, unsigned int);
 
 #ifdef __cplusplus
 }

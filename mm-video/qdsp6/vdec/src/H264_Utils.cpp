@@ -1167,7 +1167,7 @@ bool H264_Utils::parseHeader(uint8 * encodedBytes,
          }
       }
       // If not currently in a NALU, detect next NALU start code.
-      else if ((cursor & 0xFFFFFF) == 0x000001) {
+      if ((cursor & 0xFFFFFF) == 0x000001) {
          QTV_MSG_PRIO(QTVDIAG_GENERAL, QTVDIAG_PRIO_MED,
                  "H264Parser-->26..here\n");
          inNalu = true;

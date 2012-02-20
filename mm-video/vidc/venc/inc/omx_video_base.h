@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -43,8 +43,12 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include<stdlib.h>
 #include <stdio.h>
+#include <sys/mman.h>
 #ifdef _ANDROID_
   #include <binder/MemoryHeapBase.h>
+#ifdef _ANDROID_ICS_
+  #include "QComOMXMetadata.h"
+#endif
 #endif // _ANDROID_
 #include <pthread.h>
 #include <semaphore.h>
@@ -53,7 +57,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "OMX_QCOMExtns.h"
 #include "qc_omx_component.h"
 #include "omx_video_common.h"
-
+#include "extra_data_handler.h"
 
 #ifdef _ANDROID_
 using namespace android;
@@ -66,7 +70,7 @@ public:
 };
 
 #include <utils/Log.h>
-//#define LOG_TAG "OMX-VENC-720p"
+#define LOG_TAG "OMX-VENC-720p"
 #ifdef ENABLE_DEBUG_LOW
 #define DEBUG_PRINT_LOW LOGE
 #else
@@ -82,7 +86,26 @@ public:
 #else
 #define DEBUG_PRINT_ERROR
 #endif
+
+#else //_ANDROID_
+#define DEBUG_PRINT_LOW
+#define DEBUG_PRINT_HIGH
+#define DEBUG_PRINT_ERROR
 #endif // _ANDROID_
+
+#ifdef USE_ION
+    static const char* MEM_DEVICE = "/dev/ion";
+    #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
+#elif MAX_RES_720P
+static const char* MEM_DEVICE = "/dev/pmem_adsp";
+#elif MAX_RES_1080P_EBI
+static const char* MEM_DEVICE  = "/dev/pmem_adsp";
+#elif MAX_RES_1080P
+static const char* MEM_DEVICE = "/dev/pmem_smipool";
+#else
+#error MEM_DEVICE cannot be determined.
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 //                       Module specific globals
 //////////////////////////////////////////////////////////////////////////////
@@ -116,12 +139,19 @@ public:
         & BITMASK_FLAG(mIndex))
 #define BITMASK_ABSENT(mArray,mIndex) (((mArray)[BITMASK_OFFSET(mIndex)] \
         & BITMASK_FLAG(mIndex)) == 0x0)
-
+#ifdef _ANDROID_ICS_
+#define MAX_NUM_INPUT_BUFFERS 32
+#endif
 void* message_thread(void *);
 // OMX video class
 class omx_video: public qc_omx_component
 {
-
+protected:
+#ifdef _ANDROID_ICS_
+  bool meta_mode_enable;
+  encoder_media_buffer_type meta_buffers[MAX_NUM_INPUT_BUFFERS];
+  OMX_BUFFERHEADERTYPE meta_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
+#endif
 public:
   omx_video();  // constructor
   virtual ~omx_video();  // destructor
@@ -152,8 +182,9 @@ public:
   virtual bool dev_empty_buf(void *, void *) = 0;
   virtual bool dev_fill_buf(void *buffer, void *) = 0;
   virtual bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32) = 0;
-
-
+#ifdef _ANDROID_ICS_
+  void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
+#endif
   OMX_ERRORTYPE component_role_enum(
                                    OMX_HANDLETYPE hComp,
                                    OMX_U8 *role,
@@ -263,6 +294,11 @@ public:
   //int *output_pmem_fd;
   struct pmem *m_pInput_pmem;
   struct pmem *m_pOutput_pmem;
+#ifdef USE_ION
+  struct venc_ion *m_pInput_ion;
+  struct venc_ion *m_pOutput_ion;
+#endif
+
 
 
 public:
@@ -359,7 +395,11 @@ public:
                                       OMX_U32              port,
                                       OMX_PTR              appData,
                                       OMX_U32              bytes);
-
+#ifdef _ANDROID_ICS_
+  OMX_ERRORTYPE allocate_input_meta_buffer(OMX_BUFFERHEADERTYPE **bufferHdr,
+                                      OMX_PTR              appData,
+                                      OMX_U32              bytes);
+#endif
   OMX_ERRORTYPE allocate_output_buffer(OMX_HANDLETYPE       hComp,
                                        OMX_BUFFERHEADERTYPE **bufferHdr,
                                        OMX_U32 port,OMX_PTR appData,
@@ -405,19 +445,18 @@ public:
                    unsigned int p2,
                    unsigned int id
                  );
-
+  OMX_ERRORTYPE get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
   inline void omx_report_error ()
   {
-    m_state = OMX_StateInvalid;
-    if(m_pCallbacks.EventHandler)
+    if(m_pCallbacks.EventHandler && !m_error_propogated)
     {
+      m_error_propogated = true;
       m_pCallbacks.EventHandler(&m_cmp,m_app_data,
                                 OMX_EventError,OMX_ErrorHardware,0,NULL);
-      m_pCallbacks.EventHandler(&m_cmp,m_app_data,
-                                OMX_EventError, OMX_ErrorInvalidState,0, NULL);
     }
   }
 
+  void complete_pending_buffer_done_cbs();
 
   //*************************************************************
   //*******************MEMBER VARIABLES *************************
@@ -425,7 +464,7 @@ public:
 
   pthread_mutex_t       m_lock;
   sem_t                 m_cmd_lock;
-
+  bool              m_error_propogated;
 
   //sem to handle the minimum procesing of commands
 
@@ -461,6 +500,9 @@ public:
   OMX_CONFIG_INTRAREFRESHVOPTYPE m_sConfigIntraRefreshVOP;
   OMX_VIDEO_PARAM_QUANTIZATIONTYPE m_sSessionQuantization;
   OMX_VIDEO_PARAM_AVCSLICEFMO m_sAVCSliceFMO;
+  QOMX_VIDEO_INTRAPERIODTYPE m_sIntraperiod;
+  OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE m_sErrorCorrection;
+  OMX_VIDEO_PARAM_INTRAREFRESHTYPE m_sIntraRefresh;
 
   // fill this buffer queue
   omx_cmd_queue         m_ftb_q;
@@ -491,6 +533,14 @@ public:
   // to know whether Event Port Settings change has been triggered or not.
   bool m_event_port_settings_sent;
   OMX_U8                m_cRole[OMX_MAX_STRINGNAME_SIZE];
+  extra_data_handler extra_data_handle;
+
+private:
+#ifdef USE_ION
+  int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
+                                    struct ion_fd_data *fd_data);
+  void free_ion_memory(struct venc_ion *buf_ion_info);
+#endif
 };
 
 #endif // __OMX_VIDEO_BASE_H__
