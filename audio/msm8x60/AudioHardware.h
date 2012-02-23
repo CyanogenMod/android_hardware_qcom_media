@@ -39,7 +39,7 @@ using android::Mutex;
 // Kernel driver interface
 //
 
-#define SAMP_RATE_INDX_8000	    0
+#define SAMP_RATE_INDX_8000	0
 #define SAMP_RATE_INDX_11025	1
 #define SAMP_RATE_INDX_12000	2
 #define SAMP_RATE_INDX_16000	3
@@ -49,7 +49,7 @@ using android::Mutex;
 #define SAMP_RATE_INDX_44100	7
 #define SAMP_RATE_INDX_48000	8
 
-#define EQ_MAX_BAND_NUM 12
+#define EQ_MAX_BAND_NUM	12
 
 #define ADRC_ENABLE     0x0001
 #define ADRC_DISABLE    0x0000
@@ -58,11 +58,35 @@ using android::Mutex;
 #define RX_IIR_ENABLE   0x0004
 #define RX_IIR_DISABLE  0x0000
 
+/* HTC */
+#define MOD_PLAY 1
+#define MOD_REC  2
+#define MOD_TX   3
+#define MOD_RX   4
+
+#define ACDB_ID_HEADSET_PLAYBACK          10
+#define ACDB_ID_ALT_SPKR_PLAYBACK         601
+
+#define ACDB_ID_HAC_HANDSET_MIC           107
+#define ACDB_ID_HAC_HANDSET_SPKR          207
+#define ACDB_ID_EXT_MIC_REC               307
+#define ACDB_ID_HEADSET_RINGTONE_PLAYBACK 408
+#define ACDB_ID_INT_MIC_REC               507
+#define ACDB_ID_CAMCORDER                 508
+#define ACDB_ID_INT_MIC_VR                509
+#define ACDB_ID_SPKR_PLAYBACK             607
+
 struct eq_filter_type {
     int16_t  gain;
     uint16_t freq;
     uint16_t type;
     uint16_t qf;
+};
+
+struct msm_bt_endpoint {
+    int tx;
+    int rx;
+    char name[64];
 };
 
 struct eqalizer {
@@ -174,7 +198,18 @@ private:
     status_t    dumpInternals(int fd, const Vector<String16>& args);
     uint32_t    getInputSampleRate(uint32_t sampleRate);
     bool        checkOutputStandby();
+    status_t    get_mMode();
+    status_t    set_mRecordState(bool onoff);
+    status_t    get_mRecordState();
+    status_t    get_snd_dev();
     status_t    doRouting(AudioStreamInMSM72xx *input);
+    uint32_t    getACDB(int mode, uint32_t device);
+    status_t    do_aic3254_control(uint32_t device);
+    bool        isAic3254Device(uint32_t device);
+    status_t    aic3254_config(uint32_t device);
+    int         aic3254_ioctl(int cmd, const int argc);
+    void        aic3254_powerdown();
+    int         aic3254_set_volume(int volume);
     status_t    enableFM(int sndDevice);
     status_t    enableComboDevice(uint32_t sndDevice, bool enableOrDisable);
     status_t    disableFM();
@@ -385,11 +420,15 @@ private:
             bool        mBluetoothNrec;
             bool        mBluetoothVGS;
             uint32_t    mBluetoothId;
+            bool        mHACSetting;
+            uint32_t    mBluetoothIdTx;
+            uint32_t    mBluetoothIdRx;
             AudioStreamOutMSM72xx*  mOutput;
             AudioStreamOutDirect*  mDirectOutput;
             SortedVector <AudioStreamInMSM72xx*>   mInputs;
             SortedVector <AudioStreamInVoip*>   mVoipInputs;
-
+            msm_bt_endpoint *mBTEndpoints;
+            int         mNumBTEndpoints;
             int mCurSndDevice;
             int m7xsnddriverfd;
             int mTtyMode;
@@ -398,6 +437,14 @@ private:
             int mVoipFd;
             int mNumVoipStreams;
 
+            uint32_t    mVoiceVolume;
+            int         mNoiseSuppressionState;
+            bool        mDualMicEnabled;
+            bool        mRecordState;
+            char        mCurDspProfile[22];
+            bool        mEffectEnabled;
+            char        mActiveAP[10];
+            char        mEffect[10];
 };
 
 // ----------------------------------------------------------------------------

@@ -32,9 +32,11 @@ class AudioPolicyManager: public AudioPolicyManagerBase
 public:
                 AudioPolicyManager(AudioPolicyClientInterface *clientInterface)
                 : AudioPolicyManagerBase(clientInterface) {
+#ifdef WITH_QCOM_LPA
                     mLPADecodeOutput = -1;
                     mLPAMuted = false;
                     mLPAStreamType = AudioSystem::DEFAULT;
+#endif
                 }
 
         virtual ~AudioPolicyManager() {}
@@ -56,7 +58,7 @@ public:
         //  where conditions are changing (setDeviceConnectionState(), setPhoneState()...) AND
         //  before updateDeviceForStrategy() is called.
         virtual uint32_t getDeviceForStrategy(routing_strategy strategy, bool fromCache = true);
-
+#ifdef WITH_QCOM_LPA
         virtual audio_io_handle_t getSession(AudioSystem::stream_type stream,
                                             uint32_t format,
                                             AudioSystem::output_flags flags,
@@ -64,7 +66,7 @@ public:
         virtual void pauseSession(audio_io_handle_t output, AudioSystem::stream_type stream);
         virtual void resumeSession(audio_io_handle_t output, AudioSystem::stream_type stream);
         virtual void releaseSession(audio_io_handle_t output);
-
+#endif
         virtual status_t startOutput(audio_io_handle_t output, AudioSystem::stream_type stream, int session = 0);
         virtual status_t stopOutput(audio_io_handle_t output, AudioSystem::stream_type stream, int session = 0);
         virtual void setForceUse(AudioSystem::force_use usage, AudioSystem::forced_config config);
@@ -85,11 +87,13 @@ protected:
         virtual uint32_t getDeviceForInputSource(int inputSource);
         // Mute or unmute the stream on the specified output
         void setStreamMute(int stream, bool on, audio_io_handle_t output, int delayMs = 0);
+#ifdef WITH_QCOM_LPA
         audio_io_handle_t mLPADecodeOutput;           // active output handler
         audio_io_handle_t mLPAActiveOuput;           // LPA Output Handler during inactive state
 
         bool    mLPAMuted;
         AudioSystem::stream_type  mLPAStreamType;
         AudioSystem::stream_type  mLPAActiveStreamType;
+#endif
 };
 };

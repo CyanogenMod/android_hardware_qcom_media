@@ -134,6 +134,7 @@ static int ap_init_check(const struct audio_policy *pol)
     return qap->apm->initCheck();
 }
 
+#ifdef WITH_QCOM_LPA
 static audio_io_handle_t ap_get_session(struct audio_policy *pol,
                                        audio_stream_type_t stream,
                                        uint32_t format,
@@ -167,6 +168,7 @@ static void ap_release_session(struct audio_policy *pol, audio_io_handle_t outpu
     struct qcom_audio_policy *qap = to_qap(pol);
     qap->apm->releaseSession(output);
 }
+#endif
 
 static audio_io_handle_t ap_get_output(struct audio_policy *pol,
                                        audio_stream_type_t stream,
@@ -344,10 +346,12 @@ static int create_qcom_ap(const struct audio_policy_device *device,
         ap_set_can_mute_enforced_audible;
     qap->policy.init_check = ap_init_check;
     qap->policy.get_output = ap_get_output;
+#ifdef WITH_QCOM_LPA
     qap->policy.get_session = ap_get_session;
     qap->policy.pause_session = ap_pause_session;
     qap->policy.resume_session = ap_resume_session;
     qap->policy.release_session = ap_release_session;
+#endif
     qap->policy.start_output = ap_start_output;
     qap->policy.stop_output = ap_stop_output;
     qap->policy.release_output = ap_release_output;
