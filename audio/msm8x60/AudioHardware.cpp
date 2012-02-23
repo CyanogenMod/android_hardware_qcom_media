@@ -619,7 +619,7 @@ AudioHardware::AudioHardware() :
     mOutput(0), mBluetoothVGS(false),
     mCurSndDevice(-1),
     mTtyMode(TTY_OFF), mFmFd(-1), mNumPcmRec(0),
-    mVoipFd(-1), mNumVoipStreams(0),
+    mVoipFd(-1), mNumVoipStreams(0), mDirectOutput(0),
     mRecordState(false), mEffectEnabled(false)
 {
 
@@ -981,18 +981,23 @@ AudioStreamOut* AudioHardware::openOutputStream(
 #ifdef QCOM_VOIP
         if(devices == AudioSystem::DEVICE_OUT_DIRECTOUTPUT) {
             // open direct output stream
-            LOGV(" AudioHardware::openOutputStream Direct output stream \n");
-            AudioStreamOutDirect* out = new AudioStreamOutDirect();
-            lStatus = out->set(this, devices, format, channels, sampleRate);
-            if (status) {
-                *status = lStatus;
+            if(mDirectOutput == 0) {
+               LOGV(" AudioHardware::openOutputStream Direct output stream \n");
+               AudioStreamOutDirect* out = new AudioStreamOutDirect();
+               lStatus = out->set(this, devices, format, channels, sampleRate);
+               if (status) {
+                   *status = lStatus;
+               }
+               if (lStatus == NO_ERROR) {
+                   mDirectOutput = out;
+                   LOGV(" \n set sucessful for AudioStreamOutDirect");
+               } else {
+                   LOGE(" \n set Failed for AudioStreamOutDirect");
+                   delete out;
+               }
             }
-            if (lStatus == NO_ERROR) {
-                mDirectOutput = out;
-                LOGV(" \n set sucessful for AudioStreamOutDirect");
-            } else {
-                LOGE(" \n set Failed for AudioStreamOutDirect");
-                delete out;
+            else {
+                   LOGE(" \n AudioHardware::AudioStreamOutDirect is already open");
             }
             return mDirectOutput;
         } else {
