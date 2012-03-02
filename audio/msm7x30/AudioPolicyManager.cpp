@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
- * Copyright (c) 2009-2011, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2009-2012, Code Aurora Forum. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1115,7 +1115,9 @@ uint32_t AudioPolicyManager::getDeviceForInputSource(int inputSource)
     case AUDIO_SOURCE_DEFAULT:
     case AUDIO_SOURCE_MIC:
     case AUDIO_SOURCE_VOICE_RECOGNITION:
+#ifndef WITH_QCOM_VOIP_OVER_MVS
     case AUDIO_SOURCE_VOICE_COMMUNICATION:
+#endif
         if (mForceUse[AudioSystem::FOR_RECORD] == AudioSystem::FORCE_BT_SCO &&
             mAvailableInputDevices & AudioSystem::DEVICE_IN_BLUETOOTH_SCO_HEADSET) {
             device = AudioSystem::DEVICE_IN_BLUETOOTH_SCO_HEADSET;
@@ -1125,6 +1127,12 @@ uint32_t AudioPolicyManager::getDeviceForInputSource(int inputSource)
             device = AudioSystem::DEVICE_IN_BUILTIN_MIC;
         }
         break;
+#ifdef WITH_QCOM_VOIP_OVER_MVS
+    case AUDIO_SOURCE_VOICE_COMMUNICATION:
+        device = AudioSystem::DEVICE_IN_COMMUNICATION;
+        break;
+#endif
+
     case AUDIO_SOURCE_CAMCORDER:
         if (hasBackMicrophone()) {
             device = AudioSystem::DEVICE_IN_BACK_MIC;
