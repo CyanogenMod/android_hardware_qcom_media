@@ -1,7 +1,7 @@
 /*
 ** Copyright 2008, The Android Open-Source Project
-** Copyright (c) 2011, Code Aurora Forum. All rights reserved.
-** Copyright (c) 2011, The CyanogenMod Project
+** Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+** Copyright (c) 2011-2012, The CyanogenMod Project
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -130,6 +130,10 @@ enum tty_modes {
 #define AUDIO_HW_IN_CHANNELS (AudioSystem::CHANNEL_IN_MONO) // Default audio input channel mask
 #define AUDIO_HW_IN_BUFFERSIZE 2048                 // Default audio input buffer size
 #define AUDIO_HW_IN_FORMAT (AudioSystem::PCM_16_BIT)  // Default audio input sample format
+#define AUDIO_HW_VOIP_BUFFERSIZE_8K 320
+#define AUDIO_HW_VOIP_BUFFERSIZE_16K 640
+#define AUDIO_HW_VOIP_SAMPLERATE_8K 8000
+#define AUDIO_HW_VOIP_SAMPLERATE_16K 16000
 
 #define VOICE_VOLUME_MAX        100  /* Maximum voice volume */
 
@@ -309,6 +313,8 @@ class AudioHardware : public  AudioHardwareBase
     class AudioSessionOutMSM7xxx;
 #endif
     class AudioStreamInMSM72xx;
+    class AudioStreamOutDirect;
+    class AudioStreamInVoip;
 
 public:
                         AudioHardware();
@@ -389,6 +395,7 @@ private:
     status_t    disableFM();
 #endif
     AudioStreamInMSM72xx*   getActiveInput_l();
+    AudioStreamInVoip* getActiveVoipInput_l();
     FILE *fp;
 
     class AudioStreamOutMSM72xx : public AudioStreamOut {
@@ -424,7 +431,45 @@ private:
                 bool        mStandby;
                 uint32_t    mDevices;
     };
+    class AudioStreamOutDirect : public AudioStreamOut {
+    public:
+                            AudioStreamOutDirect();
+        virtual             ~AudioStreamOutDirect();
+                status_t    set(AudioHardware* mHardware,
+                                uint32_t devices,
+                                int *pFormat,
+                                uint32_t *pChannels,
+                                uint32_t *pRate);
+        virtual uint32_t    sampleRate() const { LOGE(" AudioStreamOutDirect: sampleRate\n"); return 8000; }
+        // must be 32-bit aligned - driver only seems to like 4800
+        virtual size_t      bufferSize() const { LOGE(" AudioStreamOutDirect: bufferSize\n"); return 320; }
+        virtual uint32_t    channels() const {LOGD(" AudioStreamOutDirect: channels\n"); return mChannels; }
+        virtual int         format() const {LOGE(" AudioStreamOutDirect: format\n"); return AudioSystem::PCM_16_BIT; }
+        virtual uint32_t    latency() const { return (1000*AUDIO_HW_NUM_OUT_BUF*(bufferSize()/frameSize()))/sampleRate()+AUDIO_HW_OUT_LATENCY_MS; }
+        virtual status_t    setVolume(float left, float right) { return INVALID_OPERATION; }
+        virtual ssize_t     write(const void* buffer, size_t bytes);
+        virtual status_t    standby();
+        virtual status_t    dump(int fd, const Vector<String16>& args);
+                bool        checkStandby();
+        virtual status_t    setParameters(const String8& keyValuePairs);
+        virtual String8     getParameters(const String8& keys);
+                uint32_t    devices() { return mDevices; }
+        virtual status_t    getRenderPosition(uint32_t *dspFrames);
 
+    private:
+                AudioHardware* mHardware;
+                int         mFd;
+                int         mStartCount;
+                int         mRetryCount;
+                bool        mStandby;
+                uint32_t    mDevices;
+                int         mSessionId;
+                uint32_t    mChannels;
+                uint32_t    mSampleRate;
+                size_t      mBufferSize;
+                int         mFormat;
+
+    };
 #ifdef WITH_QCOM_LPA
     class AudioSessionOutMSM7xxx : public AudioStreamOut {
     public:
@@ -507,6 +552,51 @@ private:
                 uint32_t	mFmRec;
     };
 
+    class AudioStreamInVoip : public AudioStreamInMSM72xx  { //*/ AudioStreamIn {
+    public:
+        enum input_state {
+            AUDIO_INPUT_CLOSED,
+            AUDIO_INPUT_OPENED,
+            AUDIO_INPUT_STARTED
+        };
+
+                            AudioStreamInVoip();
+        virtual             ~AudioStreamInVoip();
+                status_t    set(AudioHardware* mHardware,
+                                uint32_t devices,
+                                int *pFormat,
+                                uint32_t *pChannels,
+                                uint32_t *pRate,
+                                AudioSystem::audio_in_acoustics acoustics);
+        virtual size_t      bufferSize() const { LOGE("\n AudioStreamInVoip mBufferSize %d  ",mBufferSize); return mBufferSize; } //320; }
+        virtual uint32_t    channels() const {LOGD(" AudioStreamInVoip: channels %d \n",mChannels); return mChannels; }
+        virtual int         format() const { LOGE("\n AudioStreamInVoip mFormat %d",mFormat); return mFormat; }//AUDIO_HW_IN_FORMAT; }
+        virtual uint32_t    sampleRate() const { LOGE("\n AudioStreamInVoip mSampleRate %d ",mSampleRate); return mSampleRate;} //8000; }
+        virtual status_t    setGain(float gain) { return INVALID_OPERATION; }
+        virtual ssize_t     read(void* buffer, ssize_t bytes);
+        virtual status_t    dump(int fd, const Vector<String16>& args);
+        virtual status_t    standby();
+        virtual status_t    setParameters(const String8& keyValuePairs);
+        virtual String8     getParameters(const String8& keys);
+        virtual unsigned int  getInputFramesLost() const { return 0; }
+                uint32_t    devices() { return mDevices; }
+                int         state() const { return mState; }
+
+    private:
+                AudioHardware* mHardware;
+                int         mFd;
+                int         mState;
+                int         mRetryCount;
+                int         mFormat;
+                uint32_t    mChannels;
+                uint32_t    mSampleRate;
+                size_t      mBufferSize;
+                AudioSystem::audio_in_acoustics mAcoustics;
+                uint32_t    mDevices;
+                bool        mFirstread;
+                uint32_t    mFmRec;
+                int         mSessionId;
+    };
             static const uint32_t inputSamplingRates[];
             bool        mInit;
             bool        mMicMute;
@@ -519,12 +609,14 @@ private:
             uint32_t    mBluetoothIdRx;
             AudioStreamOutMSM72xx*  mOutput;
             SortedVector <AudioStreamInMSM72xx*>   mInputs;
+            AudioStreamOutDirect*  mDirectOutput;
             msm_bt_endpoint *mBTEndpoints;
             int         mNumBTEndpoints;
             int mCurSndDevice;
             int m7xsnddriverfd;
             float       mVoiceVolume;
             int         mTtyMode;
+            SortedVector <AudioStreamInVoip*>   mVoipInputs;
             int         mNoiseSuppressionState;
             bool        mDualMicEnabled;
             bool        mRecordState;
@@ -533,8 +625,12 @@ private:
             char        mActiveAP[10];
             char        mEffect[10];
 
-     friend class AudioStreamInMSM72xx;
+            friend class AudioStreamInMSM72xx;
             Mutex       mLock;
+            int mVoipFd;
+            int mNumVoipStreams;
+            int mVoipSession;
+
 };
 
 // ----------------------------------------------------------------------------
