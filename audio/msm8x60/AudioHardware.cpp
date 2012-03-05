@@ -4187,6 +4187,7 @@ ssize_t AudioHardware::AudioStreamInVoip::read( void* buffer, ssize_t bytes)
     if (!mHardware) return -1;
 
     size_t count = bytes;
+    size_t totalBytesRead = 0;
     size_t  aac_framesize= bytes;
     uint8_t* p = static_cast<uint8_t*>(buffer);
     uint32_t* recogPtr = (uint32_t *)p;
@@ -4227,7 +4228,7 @@ ssize_t AudioHardware::AudioStreamInVoip::read( void* buffer, ssize_t bytes)
               memcpy(buffer,&audio_mvs_frame.voc_pkt, count);
               count -= audio_mvs_frame.len;
               p += audio_mvs_frame.len;
-              bytes += audio_mvs_frame.len;
+              totalBytesRead += audio_mvs_frame.len;
               if(!mFirstread) {
                   mFirstread = true;
                   break;
@@ -4240,7 +4241,7 @@ ssize_t AudioHardware::AudioStreamInVoip::read( void* buffer, ssize_t bytes)
               }
       }
   }
-  return bytes;
+  return totalBytesRead;
 }
 
 status_t AudioHardware::AudioStreamInVoip::standby()
