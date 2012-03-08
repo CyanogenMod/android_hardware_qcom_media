@@ -1778,6 +1778,7 @@ static status_t do_route_audio_rpc(uint32_t device,
         LOGD("Ending Voice call");
         msm_end_voice_ext(voice_session_id);
         voice_session_id = 0;
+        voice_session_mute = 0;
 #else
         msm_end_voice();
 #endif
@@ -3356,6 +3357,7 @@ status_t AudioHardware::AudioStreamOutDirect::standby()
            mFd = mHardware->mVoipFd = -1;
            LOGV("driver closed");
            voip_session_id = 0;
+           voip_session_mute = 0;
        }
    }
 #endif
@@ -4287,6 +4289,7 @@ status_t AudioHardware::AudioStreamInVoip::standby()
             LOGV("driver closed");
             isDriverClosed = true;
             voip_session_id = 0;
+            voip_session_mute = 0;
         }
         mState = AUDIO_INPUT_CLOSED;
     }
