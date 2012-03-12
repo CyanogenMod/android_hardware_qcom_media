@@ -3324,6 +3324,20 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
     if (!acoustic)
         return NO_ERROR;
 
+    int (*msm72xx_set_audpre_params)(int, int);
+    msm72xx_set_audpre_params = (int (*)(int, int))::dlsym(acoustic, "msm72xx_set_audpre_params");
+    if ((*msm72xx_set_audpre_params) == 0) {
+        LOGI("msm72xx_set_audpre_params not present");
+        return NO_ERROR;
+    }
+
+    int (*msm72xx_enable_audpre)(int, int, int);
+    msm72xx_enable_audpre = (int (*)(int, int, int))::dlsym(acoustic, "msm72xx_enable_audpre");
+    if ((*msm72xx_enable_audpre) == 0) {
+        LOGI("msm72xx_enable_audpre not present");
+        return NO_ERROR;
+    }
+
     audpre_index = calculate_audpre_table_index(mSampleRate);
     tx_iir_index = (audpre_index * 2) + (hw->checkOutputStandby() ? 0 : 1);
     LOGD("audpre_index = %d, tx_iir_index = %d\n", audpre_index, tx_iir_index);
@@ -3331,14 +3345,10 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
     /**
      * If audio-preprocessing failed, we should not block record.
      */
-    int (*msm72xx_set_audpre_params)(int, int);
-    msm72xx_set_audpre_params = (int (*)(int, int))::dlsym(acoustic, "msm72xx_set_audpre_params");
     status = msm72xx_set_audpre_params(audpre_index, tx_iir_index);
     if (status < 0)
         LOGE("Cannot set audpre parameters");
 
-    int (*msm72xx_enable_audpre)(int, int, int);
-    msm72xx_enable_audpre = (int (*)(int, int, int))::dlsym(acoustic, "msm72xx_enable_audpre");
     mAcoustics = acoustic_flags;
     status = msm72xx_enable_audpre((int)acoustic_flags, audpre_index, tx_iir_index);
     if (status < 0)
