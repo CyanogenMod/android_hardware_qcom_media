@@ -16,7 +16,7 @@
  */
 
 #define LOG_TAG "qcom_audio_policy_hal"
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 
 #include <stdint.h>
 

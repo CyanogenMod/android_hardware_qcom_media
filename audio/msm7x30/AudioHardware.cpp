@@ -18,7 +18,7 @@
 
 #include <math.h>
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 
 #define LOG_TAG "AudioHardwareMSM7X30"
 #include <utils/Log.h>
