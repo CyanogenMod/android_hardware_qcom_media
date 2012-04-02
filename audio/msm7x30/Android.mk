@@ -7,10 +7,6 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
-    LOCAL_CFLAGS += -DQCOM_HARDWARE
-endif
-
 LOCAL_SRC_FILES := \
     AudioHardware.cpp \
     audio_hw_hal.cpp
