@@ -1674,6 +1674,7 @@ static status_t do_route_audio_rpc(uint32_t device, int mode, bool mic_mute)
             // Routing Voice
             if ( (new_rx_device != INVALID_DEVICE) && (new_tx_device != INVALID_DEVICE))
             {
+                initACDB();
                 acdb_loader_send_voice_cal(ACDB_ID(new_rx_device),ACDB_ID(new_tx_device));
                 LOGD("Starting voice on Rx %d and Tx %d device", DEV_ID(new_rx_device), DEV_ID(new_tx_device));
 
