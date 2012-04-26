@@ -87,6 +87,7 @@ protected:
         status_t checkAndSetVolume(int stream, int index, audio_io_handle_t output, uint32_t device, int delayMs = 0, bool force = false);
         // select input device corresponding to requested audio source
         virtual uint32_t getDeviceForInputSource(int inputSource);
+        status_t stopInput(audio_io_handle_t input);
         // Mute or unmute the stream on the specified output
         void setStreamMute(int stream, bool on, audio_io_handle_t output, int delayMs = 0);
 #ifdef WITH_QCOM_LPA
