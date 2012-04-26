@@ -87,6 +87,7 @@ protected:
         virtual uint32_t getDeviceForInputSource(int inputSource);
         // Mute or unmute the stream on the specified output
         void setStreamMute(int stream, bool on, audio_io_handle_t output, int delayMs = 0);
+        status_t stopInput(audio_io_handle_t input);
 #ifdef WITH_QCOM_LPA
         audio_io_handle_t mLPADecodeOutput;           // active output handler
         audio_io_handle_t mLPAActiveOuput;           // LPA Output Handler during inactive state

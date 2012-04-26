@@ -60,6 +60,7 @@ protected:
         status_t checkAndSetVolume(int stream, int index, audio_io_handle_t output, uint32_t device, int delayMs = 0, bool force = false);
         // select input device corresponding to requested audio source
         virtual uint32_t getDeviceForInputSource(int inputSource);
+	status_t stopInput(audio_io_handle_t input);
         // change the route of the specified output
    virtual void setPhoneState(int state);
    virtual void setOutputDevice(audio_io_handle_t output,uint32_t device,bool force = false,int delayMs = 0);

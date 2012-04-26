@@ -390,7 +390,6 @@ status_t AudioPolicyManager::setDeviceConnectionState(AudioSystem::audio_devices
     }
     // handle input devices
     if (AudioSystem::isInputDevice(device)) {
-
         switch (state)
         {
         // handle input device connection
@@ -421,14 +420,13 @@ status_t AudioPolicyManager::setDeviceConnectionState(AudioSystem::audio_devices
         if (activeInput != 0) {
             AudioInputDescriptor *inputDesc = mInputs.valueFor(activeInput);
             uint32_t newDevice = getDeviceForInputSource(inputDesc->mInputSource);
-            if (newDevice != inputDesc->mDevice) {
-                LOGV("setDeviceConnectionState() changing device from %x to %x for input %d",
-                        inputDesc->mDevice, newDevice, activeInput);
-                inputDesc->mDevice = newDevice;
-                AudioParameter param = AudioParameter();
-                param.addInt(String8(AudioParameter::keyRouting), (int)newDevice);
+            LOGV("setDeviceConnectionState() changing device from %x to %x for input %d",
+                inputDesc->mDevice, newDevice, activeInput);
+            inputDesc->mDevice = newDevice;
+            AudioParameter param = AudioParameter();
+            param.addInt(String8(AudioParameter::keyRouting), (int)newDevice);
+            LOGV("String to set param in setDeviceconnection %s\n", param.toString().string());
                 mpClientInterface->setParameters(activeInput, param.toString());
-            }
         }
 
         return NO_ERROR;
@@ -776,6 +774,37 @@ status_t AudioPolicyManager::stopOutput(audio_io_handle_t output, AudioSystem::s
         return INVALID_OPERATION;
     }
 }
+
+status_t AudioPolicyManager::stopInput(audio_io_handle_t input)
+{
+    LOGV("stopInput() input %d", input);
+    uint32_t newDevice = NULL;
+    ssize_t index = mInputs.indexOfKey(input);
+    if (index < 0) {
+        LOGW("stopInput() unknow input %d", input);
+        return BAD_VALUE;
+    }
+    AudioInputDescriptor *inputDesc = mInputs.valueAt(index);
+
+    if (inputDesc->mRefCount == 0) {
+        LOGW("stopInput() input %d already stopped", input);
+        return INVALID_OPERATION;
+    } else {
+        AudioParameter param = AudioParameter();
+        param.addInt(String8(AudioParameter::keyRouting), 0);
+        LOGV("stopInput string to setParam %s\n",  param.toString().string());
+        mpClientInterface->setParameters(input, param.toString());
+        inputDesc->mRefCount = 0;
+
+        newDevice = AudioPolicyManagerBase::getNewDevice(mHardwareOutput);
+        param.addInt(String8(AudioParameter::keyRouting), (int)newDevice);
+        mpClientInterface->setParameters(mHardwareOutput, param.toString());
+        return NO_ERROR;
+    }
+    return NO_ERROR;
+}
+
+
 // ----------------------------------------------------------------------------
 // AudioPolicyManager
 // ----------------------------------------------------------------------------
