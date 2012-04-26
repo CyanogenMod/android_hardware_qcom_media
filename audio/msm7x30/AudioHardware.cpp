@@ -1031,7 +1031,10 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
            return NO_ERROR;
         }
         LOGI("Changed TTY Mode=%s", value.string());
-        doRouting(NULL);
+        if((mMode == AudioSystem::MODE_IN_CALL) &&
+          (cur_rx == DEVICE_HEADSET_RX) &&
+          (cur_tx == DEVICE_HEADSET_TX))
+          doRouting(NULL);
     }
 
     key = String8(ACTIVE_AP);
