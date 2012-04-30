@@ -38,9 +38,11 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
 else ifeq ($(TARGET_BOARD_PLATFORM),qsd8k)
     MM_CORE_TARGET = 8250
 else ifeq ($(TARGET_BOARD_PLATFORM),msm7k)
-    MM_CORE_TARGET = 7627
-else ifeq ($(TARGET_BOARD_PLATFORM),msm7625)
-    MM_CORE_TARGET = 7625
+    ifeq ($(TARGET_ARCH_VARIANT),armv6-vfp)
+        MM_CORE_TARGET = 7627
+    else
+        MM_CORE_TARGET = 7625
+    endif
 else
     $(error Unsupported target platform $(TARGET_BOARD_PLATFORM))
 endif
