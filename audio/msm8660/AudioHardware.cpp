@@ -677,28 +677,28 @@ AudioHardware::AudioHardware() :
         else if(strcmp((char* )name[i],"handset_tx") == 0) {
             index = DEVICE_HANDSET_TX;
         }
-        else if(strcmp((char* )name[i],"speaker_stereo_rx") == 0) {
+        else if((strcmp((char* )name[i],"speaker_stereo_rx") == 0) || (strcmp((char* )name[i],"speaker_rx") == 0)) {
             index = DEVICE_SPEAKER_RX;
         }
-        else if(strcmp((char* )name[i],"speaker_mono_tx") == 0) {
+        else if((strcmp((char* )name[i],"speaker_mono_tx") == 0) || (strcmp((char* )name[i],"speaker_tx") == 0)) {
             index = DEVICE_SPEAKER_TX;
         }
-        else if(strcmp((char* )name[i],"headset_stereo_rx") == 0) {
+        else if((strcmp((char* )name[i],"headset_stereo_rx") == 0) || (strcmp((char* )name[i],"headset_rx") == 0)) {
             index = DEVICE_HEADSET_RX;
         }
-        else if(strcmp((char* )name[i],"headset_mono_tx") == 0) {
+        else if((strcmp((char* )name[i],"headset_mono_tx") == 0) || (strcmp((char* )name[i],"headset_tx") == 0)) {
             index = DEVICE_HEADSET_TX;
         }
         else if(strcmp((char* )name[i],"fmradio_handset_rx") == 0) {
             index = DEVICE_FMRADIO_HANDSET_RX;
         }
-        else if(strcmp((char* )name[i],"fmradio_headset_rx") == 0) {
+        else if((strcmp((char* )name[i],"fmradio_headset_rx") == 0) || (strcmp((char* )name[i],"fm_radio_headset_rx") == 0)) {
             index = DEVICE_FMRADIO_HEADSET_RX;
         }
-        else if(strcmp((char* )name[i],"fmradio_speaker_rx") == 0) {
+        else if((strcmp((char* )name[i],"fmradio_speaker_rx") == 0) || (strcmp((char* )name[i],"fm_radio_speaker_rx") == 0)) {
             index = DEVICE_FMRADIO_SPEAKER_RX;
         }
-        else if(strcmp((char* )name[i],"handset_dual_mic_endfire_tx") == 0) {
+        else if((strcmp((char* )name[i],"handset_dual_mic_endfire_tx") == 0) || (strcmp((char* )name[i],"dualmic_handset_ef_tx") == 0)) {
             if (fluence_mode == FLUENCE_MODE_ENDFIRE) {
                  index = DEVICE_DUALMIC_HANDSET_TX;
             } else {
@@ -706,7 +706,7 @@ AudioHardware::AudioHardware() :
                  continue;
             }
         }
-        else if(strcmp((char* )name[i],"speaker_dual_mic_endfire_tx") == 0) {
+        else if((strcmp((char* )name[i],"speaker_dual_mic_endfire_tx") == 0) || (strcmp((char* )name[i],"dualmic_speaker_ef_tx") == 0)) {
             if (fluence_mode == FLUENCE_MODE_ENDFIRE) {
                  index = DEVICE_DUALMIC_SPEAKER_TX;
             } else {
@@ -730,26 +730,26 @@ AudioHardware::AudioHardware() :
                  continue;
             }
         }
-        else if(strcmp((char* )name[i],"tty_headset_mono_rx") == 0) {
+        else if((strcmp((char* )name[i],"tty_headset_mono_rx") == 0) || (strcmp((char* )name[i],"tty_headset_rx") == 0)) {
             index = DEVICE_TTY_HEADSET_MONO_RX;
         }
-        else if(strcmp((char* )name[i],"tty_headset_mono_tx") == 0) {
+        else if((strcmp((char* )name[i],"tty_headset_mono_tx") == 0) || (strcmp((char* )name[i],"tty_headset_tx") == 0)) {
             index = DEVICE_TTY_HEADSET_MONO_TX;
         }
-        else if(strcmp((char* )name[i],"bt_sco_rx") == 0) {
+        else if((strcmp((char* )name[i],"bt_sco_rx") == 0) || (strcmp((char* )name[i],"bt_sco_mono_rx") == 0)) {
             index = DEVICE_BT_SCO_RX;
         }
-        else if(strcmp((char* )name[i],"bt_sco_tx") == 0) {
+        else if((strcmp((char* )name[i],"bt_sco_tx") == 0) || (strcmp((char* )name[i],"bt_sco_mono_tx") == 0)) {
             index = DEVICE_BT_SCO_TX;
         }
         else if((strcmp((char*)name[i],"headset_stereo_speaker_stereo_rx") == 0) ||
-                (strcmp((char*)name[i],"headset_speaker_stereo_rx") == 0)) {
+                (strcmp((char*)name[i],"headset_speaker_stereo_rx") == 0) || (strcmp((char*)name[i],"speaker_headset_rx") == 0)) {
             index = DEVICE_SPEAKER_HEADSET_RX;
         }
-        else if(strcmp((char*)name[i],"fmradio_stereo_tx") == 0) {
+        else if((strcmp((char*)name[i],"fmradio_stereo_tx") == 0) || (strcmp((char*)name[i],"fm_radio_tx") == 0)) {
             index = DEVICE_FMRADIO_STEREO_TX;
         }
-        else if(strcmp((char*)name[i],"hdmi_stereo_rx") == 0) {
+        else if((strcmp((char*)name[i],"hdmi_stereo_rx") == 0) || (strcmp((char*)name[i],"hdmi_rx") == 0)) {
             index = DEVICE_HDMI_STERO_RX;
         }
         //to check for correct name and ACDB number for ANC
