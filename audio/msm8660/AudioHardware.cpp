@@ -70,8 +70,6 @@ Mutex   mDeviceSwitchLock;
 Mutex   mAIC3254ConfigLock;
 static int audpre_index, tx_iir_index;
 static void * acoustic;
-static void * libacdbloader;
-static void * audiocal;
 const uint32_t AudioHardware::inputSamplingRates[] = {
         8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000
 };
@@ -130,28 +128,6 @@ static const uint32_t DEVICE_ANC_HEADSET_STEREO_RX = 16; //ANC RX
 static const uint32_t DEVICE_BT_SCO_RX             = 17; //bt_sco_rx
 static const uint32_t DEVICE_BT_SCO_TX             = 18; //bt_sco_tx
 static const uint32_t DEVICE_FMRADIO_STEREO_RX     = 19;
-
-/* ACDB ID for 8660 */
-#define INVALID_ACDB_ID 0xff
-
-static uint32_t DEVICE_HANDSET_RX_ACDB_ID	   = 7;  // HANDSET_SPKR
-static uint32_t DEVICE_HANDSET_TX_ACDB_ID          = 4;  // HANDSET_MIC
-static uint32_t DEVICE_SPEAKER_RX_ACDB_ID          = 15; // SPKR_PHONE_SPKR_STEREO
-static uint32_t DEVICE_SPEAKER_TX_ACDB_ID          = 11; // SPKR_PHONE_MIC
-static uint32_t DEVICE_HEADSET_RX_ACDB_ID          = 10; // HEADSET_SPKR_STEREO
-static uint32_t DEVICE_HEADSET_TX_ACDB_ID          = 8;  // HEADSET_MIC
-static uint32_t DEVICE_FMRADIO_HANDSET_RX_ACDB_ID  = INVALID_ACDB_ID; // Not support yet
-static uint32_t DEVICE_FMRADIO_HEADSET_RX_ACDB_ID  = INVALID_ACDB_ID; // Not support yet
-static uint32_t DEVICE_FMRADIO_SPEAKER_RX_ACDB_ID  = INVALID_ACDB_ID; // Not support yet
-static uint32_t DEVICE_DUALMIC_HANDSET_TX_ACDB_ID  = 6;  // HANDSET_MIC_ENDFIRE
-static uint32_t DEVICE_DUALMIC_SPEAKER_TX_ACDB_ID  = 13; // SPKR_PHONE_MIC_ENDFIRE
-static uint32_t DEVICE_TTY_HEADSET_MONO_RX_ACDB_ID = 17; // TTY_HEADSET_SPKR
-static uint32_t DEVICE_TTY_HEADSET_MONO_TX_ACDB_ID = 16; // TTY_HEADSET_MIC
-static uint32_t DEVICE_BT_SCO_RX_ACDB_ID           = 22; // BT_SCO_SPKR
-static uint32_t DEVICE_BT_SCO_TX_ACDB_ID           = 21; // BT_SCO_SPKR
-static uint32_t DEVICE_SPEAKER_HEADSET_RX_ACDB_ID  = INVALID_ACDB_ID; // Not support yet
-static uint32_t DEVICE_FMRADIO_STEREO_TX_ACDB_ID   = INVALID_ACDB_ID; // Not support yet
-static uint32_t DEVICE_HDMI_STEREO_RX_ACDB_ID      = 18; // HDMI_SPKR
 
 static uint32_t FLUENCE_MODE_ENDFIRE   = 0;
 static uint32_t FLUENCE_MODE_BROADSIDE = 1;
