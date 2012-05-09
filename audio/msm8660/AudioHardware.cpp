@@ -825,11 +825,11 @@ AudioHardware::AudioHardware() :
             LOGV("Found device: %s:index = %d,dev_id: %d",( char* )name[i], index,device_list[index].dev_id);
         }
 
-/* Static acdb till we get acdb_mapper_get_acdb_id_from_dev_name to work
-        acdb_mapper_get_acdb_id_from_dev_name((char* )name[i], &device_list[index].acdb_id);
-*/
+#ifdef STATIC_ACDB
         device_list[index].acdb_id = acdb_id;
-
+#else
+        acdb_mapper_get_acdb_id_from_dev_name((char* )name[i], &device_list[index].acdb_id);
+#endif
         device_list[index].class_id = msm_get_device_class(device_list[index].dev_id);
         device_list[index].capability = msm_get_device_capability(device_list[index].dev_id);
         LOGV("acdb ID = %d,class ID = %d,capablity = %d for device %d",device_list[index].acdb_id,
