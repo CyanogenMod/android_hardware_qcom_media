@@ -647,6 +647,12 @@ AudioHardware::AudioHardware() :
        return;
     }
 
+    //End any voice call if it exists. This is to ensure the next request
+    //to voice call after a mediaserver crash or sub system restart
+    //is not ignored by the voice driver.
+    if (msm_end_voice() < 0)
+        LOGE("msm_end_voice() failed");
+
     if(msm_reset_all_device() < 0)
         LOGE("msm_reset_all_device() failed");
 
