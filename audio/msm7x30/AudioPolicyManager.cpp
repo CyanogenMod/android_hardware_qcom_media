@@ -781,6 +781,22 @@ status_t AudioPolicyManager::stopInput(audio_io_handle_t input)
 }
 
 
+bool AudioPolicyManager::needsDirectOuput(AudioSystem::stream_type stream,
+                                          uint32_t samplingRate,
+                                          uint32_t format,
+                                          uint32_t channels,
+                                          AudioSystem::output_flags flags,
+                                          uint32_t device)
+{
+   LOGV("AudioPolicyManager::needsDirectOuput stream = %d mPhoneState = %d,"
+        "channels=%d,samplingRate=%d",stream, mPhoneState,channels,samplingRate);
+
+   return ((flags & AudioSystem::OUTPUT_FLAG_DIRECT) ||
+          (format !=0 && !AudioSystem::isLinearPCM(format)) ||
+          ((stream == AudioSystem::VOICE_CALL) && (channels == AudioSystem::CHANNEL_OUT_MONO)
+          && (samplingRate == 8000 )));
+
+}
 // ----------------------------------------------------------------------------
 // AudioPolicyManager
 // ----------------------------------------------------------------------------
