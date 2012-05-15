@@ -18,7 +18,7 @@
 
 #include <math.h>
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 #define LOG_NDDEBUG 0
 #define LOG_TAG "AudioHardwareMSM8660"
 #include <utils/Log.h>
@@ -1978,7 +1978,7 @@ uint32_t AudioHardware::getACDB(int mode, uint32_t device) {
 }
 
 status_t AudioHardware::do_aic3254_control(uint32_t device) {
-    LOGD("do_aic3254_control device: %d mode: %d record: %d", device, mMode, mRecordState);
+    LOGV("do_aic3254_control: device: %d mode: %d record: %d", device, mMode, mRecordState);
 
     uint32_t new_aic_txmode = UPLINK_OFF;
     uint32_t new_aic_rxmode = DOWNLINK_OFF;
@@ -2069,15 +2069,17 @@ status_t AudioHardware::do_aic3254_control(uint32_t device) {
             }
         }
     }
-    LOGD("aic3254_ioctl: new_aic_rxmode %d cur_aic_rx %d", new_aic_rxmode, cur_aic_rx);
-    if (new_aic_rxmode != cur_aic_rx)
+    if (new_aic_rxmode != cur_aic_rx) {
+        LOGD("aic3254_ioctl: new_aic_rxmode %d cur_aic_rx %d", new_aic_rxmode, cur_aic_rx);
         if (aic3254_ioctl(AIC3254_CONFIG_RX, new_aic_rxmode) >= 0)
             cur_aic_rx = new_aic_rxmode;
+    }
 
-    LOGD("aic3254_ioctl: new_aic_txmode %d cur_aic_tx %d", new_aic_txmode, cur_aic_tx);
-    if (new_aic_txmode != cur_aic_tx)
+    if (new_aic_txmode != cur_aic_tx) {
+        LOGD("aic3254_ioctl: new_aic_txmode %d cur_aic_tx %d", new_aic_txmode, cur_aic_tx);
         if (aic3254_ioctl(AIC3254_CONFIG_TX, new_aic_txmode) >= 0)
             cur_aic_tx = new_aic_txmode;
+    }
 
     if (cur_aic_tx == UPLINK_OFF && cur_aic_rx == DOWNLINK_OFF && aic3254_enabled) {
         strcpy(mCurDspProfile, "\0");
@@ -2112,7 +2114,7 @@ bool AudioHardware::isAic3254Device(uint32_t device) {
 }
 
 status_t AudioHardware::aic3254_config(uint32_t device) {
-    LOGD("aic3254_config: device %d enabled %d", device, aic3254_enabled);
+    LOGV("aic3254_config: device %d enabled %d", device, aic3254_enabled);
     char name[22] = "\0";
     char aap[9] = "\0";
 
@@ -2173,7 +2175,7 @@ status_t AudioHardware::aic3254_config(uint32_t device) {
     }
 
     if (strcasecmp(mCurDspProfile, name)) {
-        LOGD("aic3254_config: loading effect %s", name);
+        LOGV("aic3254_config: loading effect %s", name);
         strcpy(mCurDspProfile, name);
     } else {
         LOGD("aic3254_config: effect %s already loaded", name);
@@ -2193,8 +2195,6 @@ int AudioHardware::aic3254_ioctl(int cmd, const int argc) {
     int rc = -1;
     int (*set_aic3254_ioctl)(int, const int*);
 
-    LOGD("aic3254_ioctl()");
-
     set_aic3254_ioctl = (int (*)(int, const int*))::dlsym(acoustic, "set_aic3254_ioctl");
     if ((*set_aic3254_ioctl) == 0) {
         LOGE("Could not open set_aic3254_ioctl()");
@@ -2204,16 +2204,17 @@ int AudioHardware::aic3254_ioctl(int cmd, const int argc) {
     LOGD("aic3254_ioctl: try ioctl 0x%x with arg %d", cmd, argc);
     rc = set_aic3254_ioctl(cmd, &argc);
     if (rc < 0)
-        LOGE("aic3254_ioctl failed");
+        LOGE("aic3254_ioctl 0x%x failed", cmd);
 
     return rc;
 }
 
 void AudioHardware::aic3254_powerdown() {
-    LOGD("aic3254_powerdown");
     int rc = aic3254_ioctl(AIC3254_POWERDOWN, 0);
     if (rc < 0)
         LOGE("aic3254_powerdown failed");
+    else
+        LOGI("aic3254 powered down");
 }
 
 int AudioHardware::aic3254_set_volume(int volume) {
