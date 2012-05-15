@@ -73,6 +73,12 @@ public:
                                     int session = 0);
         virtual void setForceUse(AudioSystem::force_use usage, AudioSystem::forced_config config);
         status_t startInput(audio_io_handle_t input);
+        virtual bool needsDirectOuput(AudioSystem::stream_type stream,
+                                      uint32_t samplingRate,
+                                      uint32_t format,
+                                      uint32_t channels,
+                                      AudioSystem::output_flags flags,
+                                      uint32_t device);
 
 protected:
         // true is current platform implements a back microphone

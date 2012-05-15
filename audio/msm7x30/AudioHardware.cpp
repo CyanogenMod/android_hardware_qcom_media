@@ -909,7 +909,7 @@ AudioStreamIn* AudioHardware::openInputStream(
     mLock.lock();
 
     AudioStreamIn *in;
-    if(devices == AudioSystem::DEVICE_IN_COMMUNICATION) {
+    if((devices == AudioSystem::DEVICE_IN_COMMUNICATION)&& (*sampleRate == 8000)) {
         LOGE("Create Audio stream Voip \n");
         AudioStreamInVoip* inVoip = new AudioStreamInVoip();
         status_t lStatus = NO_ERROR;
@@ -3154,7 +3154,7 @@ ssize_t AudioHardware::AudioStreamOutDirect::write(const void* buffer, size_t by
             mStandby = false;
         }
     }
-    struct msm_audio_mvs_frame audio_mvs_frame;
+    struct q5v2_msm_audio_mvs_frame audio_mvs_frame;
     audio_mvs_frame.frame_type = 0;
     while (count) {
         audio_mvs_frame.len = mBufferSize;
