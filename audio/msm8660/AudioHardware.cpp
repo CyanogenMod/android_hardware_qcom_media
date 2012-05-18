@@ -1207,6 +1207,7 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
         doRouting(NULL);
     }
 
+#ifdef QCOM_ANC
     key = String8(ANC_KEY);
     if (param.get(key, value) == NO_ERROR) {
         if (value == "true") {
@@ -1215,14 +1216,13 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
         } else {
            LOGE("Disabling ANC setting in the setparameter\n");
            anc_setting= false;
-#ifdef QCOM_VOIP
            //disabling ANC feature.
            enableANC(0,cur_rx);
-#endif
            anc_running = false;
         }
      doRouting(NULL);
     }
+#endif
 
     key = String8(TTY_MODE_KEY);
     if (param.get(key, value) == NO_ERROR) {
