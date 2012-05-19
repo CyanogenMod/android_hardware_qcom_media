@@ -38,7 +38,7 @@ struct qcom_audio_module {
 struct qcom_audio_device {
     struct audio_hw_device device;
 
-    struct AudioHardwareInterface *hwif;
+    class AudioHardwareInterface *hwif;
 };
 
 struct qcom_stream_out {
@@ -639,7 +639,7 @@ err_create_audio_hw:
 }
 
 static struct hw_module_methods_t qcom_audio_module_methods = {
-        open: qcom_adev_open
+    open: qcom_adev_open
 };
 
 struct qcom_audio_module HAL_MODULE_INFO_SYM = {
@@ -652,8 +652,8 @@ struct qcom_audio_module HAL_MODULE_INFO_SYM = {
             name: "QCOM Audio HW HAL",
             author: "Code Aurora Forum",
             methods: &qcom_audio_module_methods,
-            dso : NULL,
-            reserved : {0},
+            dso: NULL,
+            reserved: {0},
         },
     },
 };

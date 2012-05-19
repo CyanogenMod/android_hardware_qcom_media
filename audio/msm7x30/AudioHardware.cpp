@@ -399,7 +399,7 @@ static status_t updateDeviceInfo(int rx_device,int tx_device,
             case LPA_DECODE:
             case FM_RADIO:
                 LOGD("The node type is %d and cur device %d new device %d ", temp_ptr->stream_type, temp_ptr->dev_id, rx_device);
-                if(rx_device == INVALID_DEVICE)
+                if((uint32_t)rx_device == INVALID_DEVICE)
                     return -1;
                 if(rx_device == temp_ptr->dev_id)
                     break;
@@ -422,7 +422,7 @@ static status_t updateDeviceInfo(int rx_device,int tx_device,
             case PCM_REC:
 
                 LOGD("case PCM_REC");
-                if(tx_device == INVALID_DEVICE)
+                if((uint32_t)tx_device == INVALID_DEVICE)
                     return -1;
                 if(tx_device == temp_ptr->dev_id)
                     break;
@@ -443,7 +443,7 @@ static status_t updateDeviceInfo(int rx_device,int tx_device,
                 cur_tx = tx_device ;
                 cur_rx = rx_device ;
 #ifdef WITH_QCOM_VOIPMUTE
-                if((vMicMute == true) && (tx_dev_prev != cur_tx)) {
+                if((vMicMute == true) && ((uint32_t)tx_dev_prev != cur_tx)) {
                     LOGD("REC:device switch with mute enabled :tx_dev_prev %d cur_tx: %d",tx_dev_prev, cur_tx);
                     msm_device_mute(DEV_ID(cur_tx), true);
                 }
@@ -452,7 +452,7 @@ static status_t updateDeviceInfo(int rx_device,int tx_device,
             case VOICE_CALL:
 
                 LOGD("case VOICE_CALL");
-                if(rx_device == INVALID_DEVICE || tx_device == INVALID_DEVICE)
+                if((uint32_t)rx_device == INVALID_DEVICE || (uint32_t)tx_device == INVALID_DEVICE)
                     return -1;
                 if(rx_device == temp_ptr->dev_id && tx_device == temp_ptr->dev_id_tx)
                     break;
@@ -517,11 +517,12 @@ free(device_list);
 // ----------------------------------------------------------------------------
 
 AudioHardware::AudioHardware() :
-    mInit(false), mMicMute(true), mBluetoothNrec(true), mBluetoothId(0),
-    mHACSetting(false), mBluetoothIdTx(0), mBluetoothIdRx(0),
-    mOutput(0), mBluetoothVGS(false), mCurSndDevice(SND_DEVICE_CURRENT),
-    mVoiceVolume(VOICE_VOLUME_MAX), mTtyMode(TTY_OFF), mDualMicEnabled(false),
-    mRecordState(false), mEffectEnabled(false), mFmFd(-1)
+    mInit(false), mMicMute(true), mFmFd(-1), mBluetoothNrec(true),
+    mBluetoothVGS(false), mBluetoothId(0), mHACSetting(false),
+    mBluetoothIdTx(0), mBluetoothIdRx(0), mOutput(0),
+    mCurSndDevice(SND_DEVICE_CURRENT), mVoiceVolume(VOICE_VOLUME_MAX),
+    mTtyMode(TTY_OFF), mDualMicEnabled(false), mRecordState(false),
+    mEffectEnabled(false)
 {
         int (*snd_get_num)();
         int (*snd_get_bt_endpoint)(msm_bt_endpoint *);
@@ -1198,9 +1199,9 @@ status_t AudioHardware::setVoiceVolume(float v)
     LOGV("msm_set_voice_rx_vol(%d) succeeded",vol);
 
     if (mMode == AudioSystem::MODE_IN_CALL &&
-        mCurSndDevice != SND_DEVICE_BT &&
-        mCurSndDevice != SND_DEVICE_CARKIT &&
-        mCurSndDevice != SND_DEVICE_BT_EC_OFF &&
+        (uint32_t)mCurSndDevice != SND_DEVICE_BT &&
+        (uint32_t)mCurSndDevice != SND_DEVICE_CARKIT &&
+        (uint32_t)mCurSndDevice != SND_DEVICE_BT_EC_OFF &&
         isHTCPhone)
     {
         uint32_t new_tx_acdb = getACDB(MOD_TX, mCurSndDevice);
@@ -1367,6 +1368,7 @@ static status_t do_route_audio_rpc(uint32_t device,
                                    bool ear_mute, bool mic_mute,
                                    uint32_t rx_acdb_id, uint32_t tx_acdb_id)
 {
+    // How can this be -1...
     if(device == -1)
         return 0;
 
@@ -1457,15 +1459,15 @@ static status_t do_route_audio_rpc(uint32_t device,
         LOGV("In DEVICE_FMRADIO_STEREO_RX and cur_tx");
     }
 
-    if(new_rx_device != INVALID_DEVICE)
+    if((uint32_t)new_rx_device != INVALID_DEVICE)
         LOGD("new_rx = %d", DEV_ID(new_rx_device));
-    if(new_tx_device != INVALID_DEVICE)
+    if((uint32_t)new_tx_device != INVALID_DEVICE)
         LOGD("new_tx = %d", DEV_ID(new_tx_device));
 
     if (ear_mute == false && !isStreamOn(VOICE_CALL)) {
         LOGV("Going to enable RX/TX device for voice stream");
             // Routing Voice
-            if ( (new_rx_device != INVALID_DEVICE) && (new_tx_device != INVALID_DEVICE))
+            if ( ((uint32_t)new_rx_device != INVALID_DEVICE) && ((uint32_t)new_tx_device != INVALID_DEVICE))
             {
                 LOGD("Starting voice on Rx %d and Tx %d device", DEV_ID(new_rx_device), DEV_ID(new_tx_device));
 
@@ -1479,20 +1481,20 @@ static status_t do_route_audio_rpc(uint32_t device,
                 return -1;
             }
 
-            if(cur_rx == INVALID_DEVICE || new_rx_device == INVALID_DEVICE)
+            if(cur_rx == INVALID_DEVICE || (uint32_t)new_rx_device == INVALID_DEVICE)
                 return -1;
 
-            if(cur_tx == INVALID_DEVICE || new_tx_device == INVALID_DEVICE)
+            if(cur_tx == INVALID_DEVICE || (uint32_t)new_tx_device == INVALID_DEVICE)
                 return -1;
 
            //Enable RX device
-           if(new_rx_device != cur_rx) {
+           if((uint32_t)new_rx_device != cur_rx) {
                enableDevice(cur_rx,0);
            }
            enableDevice(new_rx_device,1);
 
            //Enable TX device
-           if(new_tx_device != cur_tx) {
+           if((uint32_t)new_tx_device != cur_tx) {
                enableDevice(cur_tx,0);
            }
            enableDevice(new_tx_device,1);
@@ -1517,7 +1519,7 @@ static status_t do_route_audio_rpc(uint32_t device,
         msm_end_voice();
         deleteFromTable(VOICE_CALL);
         updateDeviceInfo(new_rx_device,new_tx_device, 0, 0);
-        if(new_rx_device != INVALID_DEVICE && new_tx_device != INVALID_DEVICE) {
+        if((uint32_t)new_rx_device != INVALID_DEVICE && (uint32_t)new_tx_device != INVALID_DEVICE) {
             cur_rx = new_rx_device;
             cur_tx = new_tx_device;
         }
@@ -2025,7 +2027,7 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
         // ignore routing device information when we start a recording in voice
         // call
         // Recording will happen through currently active tx device
-        if((inputDevice == AudioSystem::DEVICE_IN_VOICE_CALL)
+        if(inputDevice == AudioSystem::DEVICE_IN_VOICE_CALL
 #ifdef FM_RADIO
            || (inputDevice == AudioSystem::DEVICE_IN_FM_RX)
            || (inputDevice == AudioSystem::DEVICE_IN_FM_RX_A2DP)
@@ -2135,10 +2137,10 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
     }
 
     if (mDualMicEnabled && mMode == AudioSystem::MODE_IN_CALL) {
-        if (sndDevice == SND_DEVICE_HANDSET) {
+        if ((uint32_t)sndDevice == SND_DEVICE_HANDSET) {
             LOGI("Routing audio to handset with DualMike enabled\n");
             sndDevice = SND_DEVICE_IN_S_SADC_OUT_HANDSET;
-        } else if (sndDevice == SND_DEVICE_SPEAKER) {
+        } else if ((uint32_t)sndDevice == SND_DEVICE_SPEAKER) {
             LOGI("Routing audio to speakerphone with DualMike enabled\n");
             sndDevice = SND_DEVICE_IN_S_SADC_OUT_SPEAKER_PHONE;
         }
@@ -3568,11 +3570,11 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
 
             ssize_t bytesRead = ::read(mFd, p, count);
             if (bytesRead > 0) {
-                LOGV("Number of Bytes read = %d", bytesRead);
+                LOGV("Number of Bytes read = %d", (int)bytesRead);
                 count -= bytesRead;
                 p += bytesRead;
                 bytes += bytesRead;
-                LOGV("Total Number of Bytes read = %d", bytes);
+                LOGV("Total Number of Bytes read = %d", (int)bytes);
 
                 *frameSizePtr =  bytesRead;
                 (*frameCountPtr)++;
@@ -3592,7 +3594,7 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
             }
             else if(bytesRead == 0)
             {
-             LOGI("Bytes Read = %d ,Buffer no longer sufficient",bytesRead);
+             LOGI("Bytes Read = %d ,Buffer no longer sufficient", (int)bytesRead);
              break;
             } else {
                 if (errno != EAGAIN) return bytesRead;
