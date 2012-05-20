@@ -41,6 +41,11 @@ extern void msm_set_device_volume(int dev_id, int volume);
 extern void msm_device_mute(int dev_id, int mute);
 extern int msm_reset_all_device(void);
 extern int msm_enable_anc(int dev_id, int enable);
+int msm_get_voc_session(const char *name);
+int msm_start_voice_ext(int id);
+int msm_end_voice_ext(int id);
+int msm_set_voice_tx_mute_ext(int mute, int id);
+int msm_set_voice_rx_vol_ext(int volume, int id);
 __END_DECLS
 
 #endif
