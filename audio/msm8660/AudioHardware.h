@@ -430,6 +430,7 @@ private:
             msm_bt_endpoint *mBTEndpoints;
             int         mNumBTEndpoints;
             int mCurSndDevice;
+            float mVoiceVolume;
             int m7xsnddriverfd;
             int mTtyMode;
             int mNumPcmRec;
@@ -437,7 +438,6 @@ private:
             int mVoipFd;
             int mNumVoipStreams;
 
-            uint32_t    mVoiceVolume;
             int         mNoiseSuppressionState;
             bool        mDualMicEnabled;
             bool        mRecordState;
