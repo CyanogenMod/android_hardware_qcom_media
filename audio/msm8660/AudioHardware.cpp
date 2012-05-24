@@ -598,7 +598,7 @@ AudioHardware::AudioHardware() :
     mInit(false), mMicMute(true), mBluetoothNrec(true), mBluetoothId(0),
     mHACSetting(false), mBluetoothIdTx(0), mBluetoothIdRx(0),
     mOutput(0), mBluetoothVGS(false),
-    mCurSndDevice(-1),
+    mCurSndDevice(-1), mVoiceVolume(1),
     mTtyMode(TTY_OFF), mFmFd(-1), mNumPcmRec(0),
     mVoipFd(-1), mNumVoipStreams(0), mDirectOutput(0),
     mRecordState(false), mEffectEnabled(false)
@@ -1388,6 +1388,8 @@ status_t AudioHardware::setVoiceVolume(float v)
         v = 1.0;
     }
 
+    mVoiceVolume = v;
+
     if(isStreamOnAndActive(VOICE_CALL)) {
         session_id = voice_session_id;
     } else if (isStreamOnAndActive(VOIP_CALL)) {
@@ -1703,7 +1705,8 @@ static status_t do_route_audio_rpc(uint32_t device, int mode, bool mic_mute)
            msm_start_voice_ext(voice_session_id);
            msm_set_voice_tx_mute_ext(voice_session_mute,voice_session_id);
 #else
-           msm_set_voice_tx_mute(0);
+           if (mic_mute == false)
+               msm_set_voice_tx_mute(0);
 #endif
 
             if(!isDeviceListEmpty())
@@ -1765,12 +1768,12 @@ status_t AudioHardware::doAudioRouteOrMute(uint32_t device)
     }
 #endif
 
-    if (isHTCPhone) {
-        if (device == SND_DEVICE_BT) {
-            if (!mBluetoothNrec)
-                device = SND_DEVICE_BT_EC_OFF;
-        }
+    if (device == SND_DEVICE_BT) {
+        if (!mBluetoothNrec)
+            device = SND_DEVICE_BT_EC_OFF;
+    }
 
+    if (isHTCPhone) {
         if (support_aic3254) {
             aic3254_config(device);
             do_aic3254_control(device);
@@ -1778,6 +1781,12 @@ status_t AudioHardware::doAudioRouteOrMute(uint32_t device)
 
         getACDB(device);
     }
+
+    if (isStreamOnAndActive(VOICE_CALL) && mMicMute == false)
+        msm_set_voice_tx_mute(0);
+
+    if (isInCall())
+        setVoiceVolume(mVoiceVolume);
 
     LOGV("doAudioRouteOrMute() device %x, mMode %d, mMicMute %d", device, mMode, mMicMute);
     return do_route_audio_rpc(device, mMode, mMicMute);
