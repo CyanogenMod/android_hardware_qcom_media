@@ -1502,8 +1502,7 @@ static status_t do_route_audio_rpc(uint32_t device,
             // start Voice call
             LOGD("Starting voice call and UnMuting the call");
             msm_start_voice();
-            if (mic_mute == false)
-                msm_set_voice_tx_mute(0);
+            msm_set_voice_tx_mute(0);
             cur_rx = new_rx_device;
             cur_tx = new_tx_device;
             addToTable(0,cur_rx,cur_tx,VOICE_CALL,true);
