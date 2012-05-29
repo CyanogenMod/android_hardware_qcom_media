@@ -364,7 +364,6 @@ protected:
 
 private:
 
-    status_t    doAudioRouteOrMuteHTC(uint32_t device);
     status_t    doAudioRouteOrMute(uint32_t device);
     status_t    setMicMute_nosync(bool state);
     status_t    checkMicMute();
@@ -523,7 +522,7 @@ private:
             int         mNumBTEndpoints;
             int mCurSndDevice;
             int m7xsnddriverfd;
-            float       mVoiceVolume;
+            uint32_t    mVoiceVolume;
             int         mTtyMode;
             int         mNoiseSuppressionState;
             bool        mDualMicEnabled;
