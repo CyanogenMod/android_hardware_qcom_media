@@ -31,7 +31,7 @@ extern int msm_get_device(const char *name);
 extern int msm_en_device(int device, short enable);
 extern int msm_route_stream(int dir, int dec_id, int dev_id, int set);
 extern int msm_route_voice(int tx, int rx, int set);
-extern int msm_set_volume(int dec_id, int vol);
+extern int msm_set_volume(int dec_id, float vol);
 extern int msm_get_device_class(int dev_id);
 extern int msm_get_device_capability(int dev_id);
 extern int msm_get_device_count(void);
