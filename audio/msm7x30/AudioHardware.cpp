@@ -96,6 +96,7 @@ static const uint32_t SND_DEVICE_HDMI = 15;
 static const uint32_t SND_DEVICE_HEADPHONE_AND_SPEAKER = 16;
 static const uint32_t SND_DEVICE_IN_S_SADC_OUT_HANDSET = 17;
 static const uint32_t SND_DEVICE_IN_S_SADC_OUT_SPEAKER_PHONE = 18;
+static const uint32_t SND_DEVICE_FM_TX_AND_SPEAKER = 19;
 static const uint32_t SND_DEVICE_HANDSET_BACK_MIC = 20;
 static const uint32_t SND_DEVICE_SPEAKER_BACK_MIC = 21;
 static const uint32_t SND_DEVICE_NO_MIC_HEADSET_BACK_MIC = 28;
