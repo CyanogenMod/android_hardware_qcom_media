@@ -44,6 +44,10 @@ LOCAL_C_INCLUDES += hardware/libhardware_legacy/include
 LOCAL_C_INCLUDES += frameworks/base/include
 LOCAL_C_INCLUDES += system/core/include
 
+ifeq ($(BOARD_HAVE_SAMSUNG_AUDIO),true)
+LOCAL_CFLAGS += -DSAMSUNG_AUDIO
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 
