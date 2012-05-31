@@ -1,0 +1,9 @@
+Change-Id: I5a880a20deeec8e1256542e165afb45e1882235c
+Code-Review+2: Steve Kondik <shade@chemlab.org>
+Verified+1: Steve Kondik <shade@chemlab.org>
+Code-Review+1: David Ferguson <ferguson.david@gmail.com>
+Submitted-by: Steve Kondik <shade@chemlab.org>
+Submitted-at: Thu, 31 May 2012 08:01:01 +0400
+Reviewed-on: http://review.cyanogenmod.com/16847
+Project: CyanogenMod/android_hardware_qcom_media
+Branch: refs/heads/ics
