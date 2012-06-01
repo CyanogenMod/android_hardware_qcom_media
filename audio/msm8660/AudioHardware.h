@@ -209,7 +209,6 @@ private:
     status_t    aic3254_config(uint32_t device);
     int         aic3254_ioctl(int cmd, const int argc);
     void        aic3254_powerdown();
-    int         aic3254_set_volume(int volume);
     status_t    enableFM(int sndDevice);
     status_t    enableComboDevice(uint32_t sndDevice, bool enableOrDisable);
     status_t    disableFM();

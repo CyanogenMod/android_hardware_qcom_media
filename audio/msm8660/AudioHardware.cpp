@@ -557,6 +557,7 @@ static status_t updateDeviceInfo(int rx_device,int tx_device) {
                         rx_htc_acdb = ACDB_ID(rx_device);
                     if (tx_htc_acdb == 0)
                         tx_htc_acdb = ACDB_ID(tx_device);
+                    LOGD("acdb_loader_send_voice_cal acdb_rx = %d, acdb_tx = %d", rx_htc_acdb, tx_htc_acdb);
                     acdb_loader_send_voice_cal(rx_htc_acdb, tx_htc_acdb);
                 } else
                     acdb_loader_send_voice_cal(ACDB_ID(rx_device),ACDB_ID(tx_device));
@@ -1753,7 +1754,6 @@ static status_t do_route_audio_rpc(uint32_t device, int mode, bool mic_mute)
 #ifndef QCOM_VOIP
         msm_start_voice();
 #endif
-
         LOGV("Going to enable RX/TX device for voice stream");
             // Routing Voice
             if ( (new_rx_device != INVALID_DEVICE) && (new_tx_device != INVALID_DEVICE))
@@ -1790,8 +1790,7 @@ static status_t do_route_audio_rpc(uint32_t device, int mode, bool mic_mute)
            msm_start_voice_ext(voice_session_id);
            msm_set_voice_tx_mute_ext(voice_session_mute,voice_session_id);
 #else
-           if (mic_mute == false)
-               msm_set_voice_tx_mute(0);
+           msm_set_voice_tx_mute(0);
 #endif
 
             if(!isDeviceListEmpty())
@@ -1806,15 +1805,15 @@ static status_t do_route_audio_rpc(uint32_t device, int mode, bool mic_mute)
         if(temp == NULL)
             return 0;
 
-#ifdef QCOM_VOIP
         // Ending voice call
         LOGD("Ending Voice call");
+#ifdef QCOM_VOIP
         msm_end_voice_ext(voice_session_id);
-        voice_session_id = 0;
-        voice_session_mute = 0;
 #else
         msm_end_voice();
 #endif
+        voice_session_id = 0;
+        voice_session_mute = 0;
 
         if((temp->dev_id != INVALID_DEVICE && temp->dev_id_tx != INVALID_DEVICE) && (!isStreamOn(VOIP_CALL))) {
            enableDevice(temp->dev_id,0);
@@ -1927,8 +1926,8 @@ status_t AudioHardware::do_aic3254_control(uint32_t device) {
 
     Mutex::Autolock lock(mAIC3254ConfigLock);
 
-    if (mMode == AudioSystem::MODE_IN_CALL) {
-        switch (device ) {
+    if (isInCall()) {
+        switch (device) {
             case SND_DEVICE_HEADSET:
                 new_aic_rxmode = CALL_DOWNLINK_EMIC_HEADSET;
                 new_aic_txmode = CALL_UPLINK_EMIC_HEADSET;
@@ -2011,13 +2010,14 @@ status_t AudioHardware::do_aic3254_control(uint32_t device) {
             }
         }
     }
-    LOGD("aic3254_ioctl: new_aic_rxmode %d cur_aic_rx %d", new_aic_rxmode, cur_aic_rx);
+
     if (new_aic_rxmode != cur_aic_rx)
+        LOGD("do_aic3254_control: set aic3254 rx to %d", new_aic_rxmode);
         if (aic3254_ioctl(AIC3254_CONFIG_RX, new_aic_rxmode) >= 0)
             cur_aic_rx = new_aic_rxmode;
 
-    LOGD("aic3254_ioctl: new_aic_txmode %d cur_aic_tx %d", new_aic_txmode, cur_aic_tx);
     if (new_aic_txmode != cur_aic_tx)
+        LOGD("do_aic3254_control: set aic3254 tx to %d", new_aic_txmode);
         if (aic3254_ioctl(AIC3254_CONFIG_TX, new_aic_txmode) >= 0)
             cur_aic_tx = new_aic_txmode;
 
@@ -2065,7 +2065,7 @@ status_t AudioHardware::aic3254_config(uint32_t device) {
 
     Mutex::Autolock lock(mAIC3254ConfigLock);
 
-    if (mMode == AudioSystem::MODE_IN_CALL) {
+    if (isInCall()) {
         strcpy(name, "Phone_Default");
         switch (device) {
             case SND_DEVICE_HANDSET:
@@ -2135,15 +2135,12 @@ int AudioHardware::aic3254_ioctl(int cmd, const int argc) {
     int rc = -1;
     int (*set_aic3254_ioctl)(int, const int*);
 
-    LOGD("aic3254_ioctl()");
-
     set_aic3254_ioctl = (int (*)(int, const int*))::dlsym(acoustic, "set_aic3254_ioctl");
     if ((*set_aic3254_ioctl) == 0) {
         LOGE("Could not open set_aic3254_ioctl()");
         return rc;
     }
 
-    LOGD("aic3254_ioctl: try ioctl 0x%x with arg %d", cmd, argc);
     rc = set_aic3254_ioctl(cmd, &argc);
     if (rc < 0)
         LOGE("aic3254_ioctl failed");
@@ -2152,22 +2149,11 @@ int AudioHardware::aic3254_ioctl(int cmd, const int argc) {
 }
 
 void AudioHardware::aic3254_powerdown() {
-    LOGD("aic3254_powerdown");
     int rc = aic3254_ioctl(AIC3254_POWERDOWN, 0);
     if (rc < 0)
         LOGE("aic3254_powerdown failed");
-}
-
-int AudioHardware::aic3254_set_volume(int volume) {
-    LOGD("aic3254_set_volume = %d", volume);
-
-    if (aic3254_ioctl(AIC3254_CONFIG_VOLUME_L, volume) < 0)
-        LOGE("aic3254_set_volume: could not set aic3254 LEFT volume %d", volume);
-
-    int rc = aic3254_ioctl(AIC3254_CONFIG_VOLUME_R, volume);
-    if (rc < 0)
-        LOGE("aic3254_set_volume: could not set aic3254 RIGHT volume %d", volume);
-    return rc;
+    else
+        LOGI("aic3254 powered off");
 }
 
 status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
@@ -3232,9 +3218,9 @@ ssize_t AudioHardware::AudioStreamOutDirect::write(const void* buffer, size_t by
             // voip calibration
             acdb_loader_send_voice_cal(ACDB_ID(cur_rx),ACDB_ID(cur_tx));
 
-#ifdef QCOM_VOIP
             // start Voip call
             LOGD("Starting voip call and UnMuting the call");
+#ifdef QCOM_VOIP
             msm_start_voice_ext(voip_session_id);
             msm_set_voice_tx_mute_ext(voip_session_mute,voip_session_id);
 #else
@@ -3670,7 +3656,7 @@ AudioHardware::AudioStreamInMSM72xx::~AudioStreamInMSM72xx()
 ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
 {
     unsigned short dec_id = INVALID_DEVICE;
-    LOGV("AudioStreamInMSM72xx::read(%p, %ld)", buffer, bytes);
+//    LOGV("AudioStreamInMSM72xx::read(%p, %ld)", buffer, bytes);
     if (!mHardware) return -1;
 
     size_t count = bytes;
@@ -4095,12 +4081,12 @@ status_t AudioHardware::AudioStreamInVoip::set(
            // voice calibration
            acdb_loader_send_voice_cal(ACDB_ID(cur_rx),ACDB_ID(cur_tx));
 
-#ifdef QCOM_VOIP
            // start Voice call
+           LOGD("Starting voip call and UnMuting the call");
+#ifdef QCOM_VOIP
            if(voip_session_id <= 0) {
                 voip_session_id = msm_get_voc_session(VOIP_SESSION_NAME);
            }
-           LOGD("Starting voip call and UnMuting the call");
            msm_start_voice_ext(voip_session_id);
            msm_set_voice_tx_mute_ext(voip_session_mute,voip_session_id);
 #else
