@@ -28,7 +28,7 @@
 #include <hardware_legacy/AudioHardwareBase.h>
 
 extern "C" {
-#include <linux/msm_audio_7x30.h>
+#include <linux/msm_audio.h>
 #include <linux/msm_audio_aac.h>
 #ifdef WITH_QCOM_SPEECH
 #include <linux/msm_audio_qcp.h>
