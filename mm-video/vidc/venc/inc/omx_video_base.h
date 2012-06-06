@@ -94,6 +94,12 @@ public:
 #define DEBUG_PRINT_ERROR
 #endif // _ANDROID_
 
+#ifdef _MSM8974_
+#define DEBUG_PRINT_LOW
+#define DEBUG_PRINT_HIGH printf
+#define DEBUG_PRINT_ERROR printf
+#endif
+
 #ifdef USE_ION
     static const char* MEM_DEVICE = "/dev/ion";
     #define MEM_HEAP_ID ION_CP_MM_HEAP_ID

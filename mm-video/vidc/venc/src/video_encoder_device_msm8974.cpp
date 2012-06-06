@@ -177,10 +177,10 @@ void* async_venc_message_thread (void *input)
   {
     	rc = poll(&pfd, 1, TIMEOUT);
 		if (!rc) {
-			printf("Poll timedout\n");
+			DEBUG_PRINT_ERROR("Poll timedout\n");
 			break;
 		} else if (rc < 0) {
-			printf("Error while polling: %d\n", rc);
+			DEBUG_PRINT_ERROR("Error while polling: %d\n", rc);
 			break;
 		}
 		if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
@@ -190,7 +190,7 @@ void* async_venc_message_thread (void *input)
 			v4l2_buf.m.planes = &plane;
 			rc = ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf);
 			if (rc) {
-				printf("Failed to dequeue buf: %d from capture capability\n", rc);
+				DEBUG_PRINT_ERROR("Failed to dequeue buf: %d from capture capability\n", rc);
 				break;
 			}
 			venc_msg.msgcode=VEN_MSG_OUTPUT_BUFFER_DONE;
@@ -207,7 +207,7 @@ void* async_venc_message_thread (void *input)
 			v4l2_buf.m.planes = &plane;
 			rc = ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf);
 			if (rc) {
-				printf("Failed to dequeue buf: %d from output capability\n", rc);
+				DEBUG_PRINT_ERROR("Failed to dequeue buf: %d from output capability\n", rc);
 				break;
 			}
                         venc_msg.msgcode=VEN_MSG_INPUT_BUFFER_DONE;
@@ -216,7 +216,7 @@ void* async_venc_message_thread (void *input)
                         venc_msg.buf.clientdata=(void*)omxhdr;
 		} else if (pfd.revents & POLLPRI){
 			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
-			printf("\n Data Recieved = %d \n",dqevent.u.data[0]);
+			DEBUG_PRINT_LOW("\n Data Recieved = %d \n",dqevent.u.data[0]);
 			if(dqevent.u.data[0] == MSM_VIDC_CLOSE_DONE){
 				break;
 			}
@@ -319,7 +319,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 	sub.type=V4L2_EVENT_ALL;
 	ret = ioctl(m_nDriver_fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
 	if (ret) {
-		printf("\n Subscribe Event Failed \n");
+		DEBUG_PRINT_ERROR("\n Subscribe Event Failed \n");
 		return false;
 	}
 	struct v4l2_capability cap;
@@ -329,9 +329,9 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
 		ret = ioctl(m_nDriver_fd, VIDIOC_QUERYCAP, &cap);
 		if (ret) {
-		  printf("Failed to query capabilities\n");
+		  DEBUG_PRINT_ERROR("Failed to query capabilities\n");
 		} else {
-		  printf("Capabilities: driver_name = %s, card = %s, bus_info = %s,"
+		  DEBUG_PRINT_LOW("Capabilities: driver_name = %s, card = %s, bus_info = %s,"
 				" version = %d, capabilities = %x\n", cap.driver, cap.card,
 				cap.bus_info, cap.version, cap.capabilities);
 		}
@@ -340,7 +340,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 		fdesc.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		fdesc.index=0;
 		while (ioctl(m_nDriver_fd, VIDIOC_ENUM_FMT, &fdesc) == 0) {
-			printf("fmt: description: %s, fmt: %x, flags = %x\n", fdesc.description,
+			DEBUG_PRINT_LOW("fmt: description: %s, fmt: %x, flags = %x\n", fdesc.description,
 					fdesc.pixelformat, fdesc.flags);
 			fdesc.index++;
 		}
@@ -348,8 +348,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 		fdesc.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		fdesc.index=0;
 		while (ioctl(m_nDriver_fd, VIDIOC_ENUM_FMT, &fdesc) == 0) {
-
-			printf("fmt: description: %s, fmt: %x, flags = %x\n", fdesc.description,
+			DEBUG_PRINT_LOW("fmt: description: %s, fmt: %x, flags = %x\n", fdesc.description,
 					fdesc.pixelformat, fdesc.flags);
 			fdesc.index++;
 		}
@@ -432,20 +431,20 @@ void venc_dev::venc_close()
 	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
 		/* STREAMOFF will never fail */	
-		printf("\n Failed to call streamoff on OUTPUT Port \n");
+		DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
 		}
 	 btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	 
 	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
 		/* STREAMOFF will never fail */	
-		printf("\n Failed to call streamoff on CAPTURE Port \n");
+		DEBUG_PRINT_ERROR("\n Failed to call streamoff on CAPTURE Port \n");
 		}
         struct v4l2_event_subscription sub;
 	sub.type=V4L2_EVENT_ALL;
 	rc = ioctl(m_nDriver_fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
 	if (rc) {
-		printf("Failed to get control\n");
+		DEBUG_PRINT_ERROR("Failed to get control\n");
 		return ;
 	}
     close(m_nDriver_fd);
@@ -931,7 +930,6 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
         if(!venc_set_inloop_filter (pParam->eLoopFilterMode))
         {
           DEBUG_PRINT_ERROR("\nERROR: Request for setting Inloop filter failed");
-		  printf("\n \n Returned here line line 903 \n \n ");
           return false;
         }
         if(!venc_set_multislice_cfg(OMX_IndexParamVideoAvc, pParam->nSliceHeaderSpacing))
@@ -1403,7 +1401,7 @@ unsigned venc_dev::venc_flush( unsigned port)
 	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
 		/* STREAMOFF should never fail */	
-		printf("\n Failed to call streamoff on OUTPUT Port \n");
+		DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
 		return -1;
 		}
 
@@ -1417,7 +1415,7 @@ unsigned venc_dev::venc_flush( unsigned port)
 	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
 		/* STREAMOFF should never fail  */	
-		printf("\n Failed to call streamoff on OUTPUT Port \n");
+		DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
 		return -1;
 		}
 
@@ -1464,7 +1462,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
 	 rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
                 
 	if (rc) {
-		printf("VIDIOC_PREPARE_BUF Failed at line 1387 \n");
+		DEBUG_PRINT_ERROR("VIDIOC_PREPARE_BUF Failed\n");
 	}
 
     if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER,&ioctl_msg) < */0)
@@ -1490,7 +1488,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
 	rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
 
 	if (rc) {
-		printf("VIDIOC_PREPARE_BUF Failed at line 1414 \n");
+		DEBUG_PRINT_ERROR("VIDIOC_PREPARE_BUF Failed\n");
 	}
 
     if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_OUTPUT_BUFFER,&ioctl_msg) < */0)
@@ -1569,8 +1567,8 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned index,u
 {
   struct pmem *temp_buffer;
 
- struct v4l2_buffer buf;
- struct v4l2_plane plane;
+  struct v4l2_buffer buf = {0};
+  struct v4l2_plane plane = {0};
 	int rc=0;
   struct OMX_BUFFERHEADERTYPE *bufhdr;
   
@@ -1607,11 +1605,12 @@ DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
      plane.data_offset = bufhdr->nOffset;
      buf.m.planes = &plane;
      buf.length = 1;
-
+     buf.flags = bufhdr->nFlags;
+	 buf.timestamp.tv_usec=bufhdr->nTimeStamp;
 
   rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
 	if (rc) {
-		printf("Failed to qbuf to driver");
+		DEBUG_PRINT_ERROR("Failed to qbuf (etb) to driver");
 		return false;
 	}
 
@@ -1624,7 +1623,7 @@ DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
 		int ret;
 	ret = ioctl(m_nDriver_fd, VIDIOC_STREAMON, &buf_type);
 	if (ret) {
-		printf("Failed to call streamon\n");
+		DEBUG_PRINT_ERROR("Failed to call streamon\n");
 	}
 		
 	}
@@ -1692,7 +1691,7 @@ if(pmem_data_buf)
 
 	rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
 	if (rc) {
-		printf("Failed to qbuf to driver");
+		DEBUG_PRINT_ERROR("Failed to qbuf (ftb) to driver");
 		return false;
 	}
 
@@ -1714,25 +1713,25 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U3
 	control.id = V4L2_CID_MPEG_VIDEO_H264_I_FRAME_QP;
 	control.value = i_frame_qp;
 
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 	session_qp.iframeqp = control.value;
 
 	control.id = V4L2_CID_MPEG_VIDEO_H264_P_FRAME_QP;
 	control.value = p_frame_qp;
 
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 	session_qp.pframqp = control.value;
 
@@ -1743,13 +1742,13 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U3
 	control.id = V4L2_CID_MPEG_VIDEO_H264_B_FRAME_QP;
 	control.value = b_frame_qp;
 
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 	session_qp.bframqp = control.value;
 	}
@@ -2012,13 +2011,13 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
 	control.id = V4L2_CID_MPEG_VIDEO_H264_PROFILE;
 	control.value = requested_profile.profile;
 
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 
     if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_CODEC_PROFILE,(void*)&ioctl_msg)< */0)
@@ -2036,13 +2035,13 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
 	struct v4l2_control control;
 	control.id = V4L2_CID_MPEG_VIDEO_H264_LEVEL;
 	control.value = requested_level.level;
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
     if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_PROFILE_LEVEL,(void*)&ioctl_msg)< */0)
     {
@@ -2095,21 +2094,21 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
 
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
         intra_period.num_pframes = control.value;
 	control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_B_FRAMES;
 	control.value = nBFrames;
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 
   if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_INTRA_PERIOD,(void*)&ioctl_msg)< */0)
@@ -2136,13 +2135,13 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
 	  control.value = V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CABAC;
 	  control.id = V4L2_CID_MPEG_VIDEO_H264_ENTROPY_MODE;
 
-	  printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	  DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 	entropy.longentropysel = control.value;
 	  if (i_cabac_level == 0) {
          control.value = V4L2_CID_MPEG_VIDC_VIDEO_H264_CABAC_MODEL_0;
@@ -2156,25 +2155,25 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
 
 	  control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_CABAC_MODEL;
 	  //control.value = entropy_cfg.cabacmodel;
-		printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+		DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 	entropy.longentropysel=control.value;
   }
   else if(!enable){
     control.value =  V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC;
 	control.id = V4L2_CID_MPEG_VIDEO_H264_ENTROPY_MODE;
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 	entropy.longentropysel=control.value;
 	//entropy_cfg.longentropysel = control.value;
     }
@@ -2211,26 +2210,26 @@ bool venc_dev::venc_set_multislice_cfg(OMX_INDEXTYPE Codec, OMX_U32 nSlicesize) 
     //multislice_cfg.mslice_size = 0;
   }
 	control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 	multislice.mslice_mode=control.value;
 
 	if(multislice.mslice_mode!=V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE){
 
 	control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_MB;
 	control.value = nSlicesize;
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 	multislice.mslice_size=control.value;
 
 	}
@@ -2286,21 +2285,21 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
     return false;
   }
 
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control_mode.id, control_mode.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control_mode.id, control_mode.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control_mode);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control_mode.id, control_mode.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control_mode.id, control_mode.value);
 
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control_mbs.id, control_mbs.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control_mbs.id, control_mbs.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control_mbs);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control_mbs.id, control_mbs.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control_mbs.id, control_mbs.value);
 
   if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_INTRA_REFRESH,(void*)&ioctl_msg) < */0)
   {
@@ -2391,32 +2390,32 @@ bool venc_dev::venc_set_inloop_filter(OMX_VIDEO_AVCLOOPFILTERTYPE loopfilter)
 	  control.value=V4L2_MPEG_VIDEO_H264_LOOP_FILTER_MODE_DISABLED_AT_SLICE_BOUNDARY;
   }
 
-	  printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 	dbkfilter.db_mode=control.value;
 
 	control.id=V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_ALPHA;
 	control.value=0;
 
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 	control.id=V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_BETA;
 	control.value=0;
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 
   if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_DEBLOCKING_CFG,(void*)&ioctl_msg)< */0)
@@ -2438,13 +2437,13 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
 	control.id = V4L2_CID_MPEG_VIDEO_BITRATE;
 	control.value = nTargetBitrate/1000;
 
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 
   if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_TARGET_BITRATE,(void*)&ioctl_msg) < */0)
@@ -2472,13 +2471,13 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
 	int rc;
 	control.id = V4L2_CID_MPEG_VIDC_VIDEO_FRAME_RATE;
 	control.value = encode_framerate;
-	printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
   if(//ioctl(m_nDriver_fd, VEN_IOCTL_SET_FRAME_RATE,
       /*(void*)&ioctl_msg) < */0)
   {
@@ -2570,13 +2569,13 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
   if(status)
   {
 
-	  printf("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
+	  DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
-		printf("Failed to set control\n");
+		DEBUG_PRINT_ERROR("Failed to set control\n");
 		return false;
 	}
-	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
+	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 
     if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_RATE_CTRL_CFG,(void*)&ioctl_msg) < */0)

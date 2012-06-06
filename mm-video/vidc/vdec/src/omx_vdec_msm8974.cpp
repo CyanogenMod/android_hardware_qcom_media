@@ -144,10 +144,10 @@ void* async_message_thread (void *input)
   {
 		rc = poll(&pfd, 1, TIMEOUT);
 		if (!rc) {
-			printf("Poll timedout\n");
+			DEBUG_PRINT_ERROR("Poll timedout\n");
 			break;
 		} else if (rc < 0) {
-			printf("Error while polling: %d\n", rc);
+			DEBUG_PRINT_ERROR("Error while polling: %d\n", rc);
 			break;
 		}
 		if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
@@ -158,7 +158,7 @@ void* async_message_thread (void *input)
 			rc = ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf);
 			if (rc) {
 				/*TODO: How to handle this case */
-				printf("Failed to dequeue buf: %d from capture capability\n", rc);
+				DEBUG_PRINT_ERROR("Failed to dequeue buf: %d from capture capability\n", rc);
 				break;
 			}
 			vdec_msg.msgcode=VDEC_MSG_RESP_OUTPUT_BUFFER_DONE;
@@ -174,7 +174,7 @@ void* async_message_thread (void *input)
 			rc = ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf);
 			if (rc) {
 				/*TODO: How to handle this case */
-				printf("Failed to dequeue buf: %d from output capability\n", rc);
+				DEBUG_PRINT_ERROR("Failed to dequeue buf: %d from output capability\n", rc);
 				break;
 			}
             vdec_msg.msgcode=VDEC_MSG_RESP_INPUT_BUFFER_DONE;
@@ -189,11 +189,13 @@ void* async_message_thread (void *input)
 			} else if (dqevent.u.data[0] == MSM_VIDC_DECODER_FLUSH_DONE){
 				vdec_msg.msgcode=VDEC_MSG_RESP_FLUSH_OUTPUT_DONE;
 				vdec_msg.status_code=VDEC_S_SUCCESS;
-				printf("\n VIDC Flush Done Recieved \n");
-			} else
-				printf("\n VIDC Some Event recieved \n");
+				DEBUG_PRINT_HIGH("\n VIDC Flush Done Recieved \n");
+			} else {
+				DEBUG_PRINT_HIGH("\n VIDC Some Event recieved \n");
+				continue;
+			}
 		} else if (pfd.revents & POLLERR){
-			printf("\n async_message_thread Exited \n");
+			DEBUG_PRINT_HIGH("\n async_message_thread Exited \n");
 			break;
 		} else{
 			/*TODO: How to handle this case */		
@@ -201,7 +203,7 @@ void* async_message_thread (void *input)
 		}
 
 		if (omx->async_message_process(input,&vdec_msg) < 0) {
-			printf("\n async_message_thread Exited  \n");
+			DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
 				break;
 		}
   }
@@ -1368,17 +1370,17 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		sub.type=V4L2_EVENT_ALL;
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
 		if (ret) {
-		printf("\n Subscribe Event Failed \n");
-		return OMX_ErrorInsufficientResources;
+			DEBUG_PRINT_ERROR("\n Subscribe Event Failed \n");
+			return OMX_ErrorInsufficientResources;
 		}
 
 		struct v4l2_capability cap;
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_QUERYCAP, &cap);
 		if (ret) {
-		  printf("Failed to query capabilities\n");
+		  DEBUG_PRINT_ERROR("Failed to query capabilities\n");
 		  /*TODO: How to handle this case */		
 		} else {
-		  printf("Capabilities: driver_name = %s, card = %s, bus_info = %s,"
+		  DEBUG_PRINT_HIGH("Capabilities: driver_name = %s, card = %s, bus_info = %s,"
 				" version = %d, capabilities = %x\n", cap.driver, cap.card,
 				cap.bus_info, cap.version, cap.capabilities);
 		}
@@ -1386,7 +1388,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		fdesc.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		fdesc.index=0;
 		while (ioctl(drv_ctx.video_driver_fd, VIDIOC_ENUM_FMT, &fdesc) == 0) {
-			printf("fmt: description: %s, fmt: %x, flags = %x\n", fdesc.description,
+			DEBUG_PRINT_HIGH("fmt: description: %s, fmt: %x, flags = %x\n", fdesc.description,
 					fdesc.pixelformat, fdesc.flags);
 			fdesc.index++;
 		}
@@ -1394,7 +1396,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		fdesc.index=0;
 		while (ioctl(drv_ctx.video_driver_fd, VIDIOC_ENUM_FMT, &fdesc) == 0) {
 
-			printf("fmt: description: %s, fmt: %x, flags = %x\n", fdesc.description,
+			DEBUG_PRINT_HIGH("fmt: description: %s, fmt: %x, flags = %x\n", fdesc.description,
 					fdesc.pixelformat, fdesc.flags);
 			fdesc.index++;
 		}
@@ -1408,9 +1410,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
 		if (ret) {
 			/*TODO: How to handle this case */
-			printf("Failed to set format on capture port\n");
+			DEBUG_PRINT_ERROR("Failed to set format on output port\n");
 				}
-		printf("\n Set Format was successful \n ");
+		DEBUG_PRINT_HIGH("\n Set Format was successful \n ");
 		if (codec_ambiguous) {
 			if (output_capability == V4L2_PIX_FMT_DIVX) {
 				struct v4l2_control divx_ctrl;
@@ -1440,9 +1442,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
 		if (ret) {
 			/*TODO: How to handle this case */	
-			printf("Failed to set format on capture port\n");
+			DEBUG_PRINT_ERROR("Failed to set format on capture port\n");
 				}
-		printf("\n Set Format was successful \n ");
+		DEBUG_PRINT_HIGH("\n Set Format was successful \n ");
 
 		/*Get the Buffer requirements for input and output ports*/
 		drv_ctx.ip_buf.buffer_type = VDEC_BUFFER_TYPE_INPUT;
@@ -1456,7 +1458,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
 		m_state = OMX_StateLoaded;
 		eRet=get_buffer_req(&drv_ctx.ip_buf);
-		printf("Input Buffer Size =%d \n ",drv_ctx.ip_buf.buffer_size);
+		DEBUG_PRINT_HIGH("Input Buffer Size =%d \n ",drv_ctx.ip_buf.buffer_size);
 	
 #ifdef DEFAULT_EXTRADATA
 		if (eRet == OMX_ErrorNone && !secure_mode)
@@ -1753,7 +1755,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         bFlag = 1;
 	    DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
 	    m_state=OMX_StateExecuting;
-	    printf("Stream On CAPTURE Was successful\n");
+	    DEBUG_PRINT_HIGH("Stream On CAPTURE Was successful\n");
       }
       /* Requesting transition from Idle to Idle */
       else if(eState == OMX_StateIdle)
@@ -1830,7 +1832,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
 	 rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
 		 /*TODO: How to handle this case */
-		 printf("\n Failed to call streamoff on OUTPUT Port \n");
+		 DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
 	 } else {
 		 streaming[OUTPUT_PORT] = false;
 	 }
@@ -1838,7 +1840,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
 	 rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
 		 /*TODO: How to handle this case */
-		 printf("\n Failed to call streamoff on CAPTURE Port \n");
+		 DEBUG_PRINT_ERROR("\n Failed to call streamoff on CAPTURE Port \n");
 	 } else {
 		 streaming[CAPTURE_PORT] = false;
 	 }
@@ -1846,7 +1848,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
 		sub.type=V4L2_EVENT_ALL;
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
 		if (ret) {
-		printf("\n Subscribe Event Failed \n");
+		DEBUG_PRINT_ERROR("\n Subscribe Event Failed \n");
 		eRet = OMX_ErrorHardware;
 		}
 	 m_state == OMX_StateIdle;
@@ -4491,7 +4493,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
      rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_PREPARE_BUF, &buf);
     
      if (rc) {
-       printf("Failed to prepare bufs\n");
+       DEBUG_PRINT_ERROR("Failed to prepare bufs\n");
 	   /*TODO: How to handle this case */	
        return OMX_ErrorInsufficientResources;
      }
@@ -5407,7 +5409,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 	unsigned long  print_count;
   if (temp_buffer->buffer_len == 0 || (buffer->nFlags & OMX_BUFFERFLAG_EOS))
   {  buf.flags = V4L2_BUF_FLAG_EOS;
-  printf("\n  INPUT EOS reached \n") ;
+  DEBUG_PRINT_HIGH("\n  INPUT EOS reached \n") ;
   }
 	OMX_ERRORTYPE eRet = OMX_ErrorNone;
 	buf.index = nPortIndex;
@@ -5430,14 +5432,14 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
         DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
 	ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMON,&buf_type);
 	if(!ret) {
-		printf("Streamon on OUTPUT Plane was successful \n");
+		DEBUG_PRINT_HIGH("Streamon on OUTPUT Plane was successful \n");
 		streaming[OUTPUT_PORT] = true;
 		ret = pthread_create(&async_thread_id,0,async_message_thread,this);
 		if(ret < 0)
-			printf("\n Failed to create async_message_thread \n");
+			DEBUG_PRINT_ERROR("\n Failed to create async_message_thread \n");
 	} else{
 		/*TODO: How to handle this case */	
-		printf(" \n Failed to call streamon on OUTPUT \n");
+		DEBUG_PRINT_ERROR(" \n Failed to call streamon on OUTPUT \n");
 	}
 }
   DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%d)",
@@ -5591,7 +5593,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 	rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
 	if (rc) {
 		/*TODO: How to handle this case */
-		printf("Failed to qbuf to driver");
+		DEBUG_PRINT_ERROR("Failed to qbuf to driver");
 	}
 //#ifdef _ANDROID_ICS_
   //  if (m_enable_android_native_buffers)
@@ -7317,7 +7319,7 @@ void omx_vdec::stream_off()
 	rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
 	if (rc) {
 		/*TODO: How to handle this case */
-		printf("\n Failed to call streamoff on OUTPUT Port \n");
+		DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
 	} else {
 		streaming[CAPTURE_PORT] = false;
 	}
@@ -7360,7 +7362,7 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
   {
   buffer_prop->actualcount = bufreq.count;
   buffer_prop->mincount = bufreq.count;
-  printf("Count = %d \n ",bufreq.count);
+  DEBUG_PRINT_HIGH("Count = %d \n ",bufreq.count);
   }
   DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d)",
     buffer_prop->actualcount, buffer_prop->buffer_size);
@@ -7373,7 +7375,7 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
   drv_ctx.video_resolution.frame_height = fmt.fmt.pix_mp.height;
   drv_ctx.video_resolution.frame_width = fmt.fmt.pix_mp.width;
 
-  printf("Buffer Size = %d \n ",fmt.fmt.pix_mp.plane_fmt[0].sizeimage);
+  DEBUG_PRINT_HIGH("Buffer Size = %d \n ",fmt.fmt.pix_mp.plane_fmt[0].sizeimage);
 
   if(ret)
   {
