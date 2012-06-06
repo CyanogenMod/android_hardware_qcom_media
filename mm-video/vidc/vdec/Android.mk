@@ -87,7 +87,11 @@ LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
+ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
+LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
+else
 LOCAL_SRC_FILES         += src/omx_vdec.cpp
+endif
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 include $(BUILD_SHARED_LIBRARY)
 

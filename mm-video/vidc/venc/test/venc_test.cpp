@@ -132,6 +132,10 @@ static const unsigned int mpeg4_profile_level_table[][5]=
     {1200,36000,4000000,OMX_VIDEO_MPEG4Level4a,OMX_VIDEO_MPEG4ProfileSimple},
     {1620,40500,8000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
     {3600,108000,12000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
+    {34560,1036800,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
+#endif
     {0,0,0,0,0},
 
     {99,1485,128000,OMX_VIDEO_MPEG4Level0,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
@@ -140,6 +144,10 @@ static const unsigned int mpeg4_profile_level_table[][5]=
     {396,11880,768000,OMX_VIDEO_MPEG4Level3,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
     {792,23760,3000000,OMX_VIDEO_MPEG4Level4,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
     {1620,48600,8000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
+    {34560,1036800,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
+#endif
     {0,0,0,0,0},
 };
 
@@ -159,6 +167,10 @@ static const unsigned int h264_profile_level_table[][5]=
     {3600,108000,14000000,OMX_VIDEO_AVCLevel31,OMX_VIDEO_AVCProfileBaseline},
     {5120,216000,20000000,OMX_VIDEO_AVCLevel32,OMX_VIDEO_AVCProfileBaseline},
     {8192,245760,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileBaseline},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileBaseline},
+    {34560,1036800,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileBaseline},
+#endif
     {0,0,0,0,0},
 
     {99,1485,64000,OMX_VIDEO_AVCLevel1,OMX_VIDEO_AVCProfileHigh},
@@ -173,6 +185,10 @@ static const unsigned int h264_profile_level_table[][5]=
     {3600,108000,17500000,OMX_VIDEO_AVCLevel31,OMX_VIDEO_AVCProfileHigh},
     {5120,216000,25000000,OMX_VIDEO_AVCLevel32,OMX_VIDEO_AVCProfileHigh},
     {8192,245760,25000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileHigh},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileHigh},
+    {34560,1036800,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileHigh},
+#endif
     {0,0,0,0,0},
 
     {99,1485,64000,OMX_VIDEO_AVCLevel1,OMX_VIDEO_AVCProfileMain},
@@ -187,6 +203,10 @@ static const unsigned int h264_profile_level_table[][5]=
     {3600,108000,14000000,OMX_VIDEO_AVCLevel31,OMX_VIDEO_AVCProfileMain},
     {5120,216000,20000000,OMX_VIDEO_AVCLevel32,OMX_VIDEO_AVCProfileMain},
     {8192,245760,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileMain},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileMain},
+    {34560,1036800,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileMain},
+#endif
     {0,0,0,0,0}
 
 };
@@ -203,8 +223,29 @@ static const unsigned int h263_profile_level_table[][5]=
     {396,19800,4096000,OMX_VIDEO_H263Level50,OMX_VIDEO_H263ProfileBaseline},
     {810,40500,8192000,OMX_VIDEO_H263Level60,OMX_VIDEO_H263ProfileBaseline},
     {1620,81000,16384000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_H263Level60,OMX_VIDEO_H263ProfileBaseline},
+    {34560,1036800,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+#endif
     {0,0,0,0,0}
 };
+#ifdef _MSM8974_
+static const unsigned int VP8_profile_level_table[][5]=
+{
+    /*max mb per frame, max mb per sec, max bitrate, level, profile*/
+    {99,1485,64000,OMX_VIDEO_H263Level10,OMX_VIDEO_H263ProfileBaseline},
+    {396,5940,128000,OMX_VIDEO_H263Level20,OMX_VIDEO_H263ProfileBaseline},
+    {396,11880,384000,OMX_VIDEO_H263Level30,OMX_VIDEO_H263ProfileBaseline},
+    {396,11880,2048000,OMX_VIDEO_H263Level40,OMX_VIDEO_H263ProfileBaseline},
+    {99,1485,128000,OMX_VIDEO_H263Level45,OMX_VIDEO_H263ProfileBaseline},
+    {396,19800,4096000,OMX_VIDEO_H263Level50,OMX_VIDEO_H263ProfileBaseline},
+    {810,40500,8192000,OMX_VIDEO_H263Level60,OMX_VIDEO_H263ProfileBaseline},
+    {1620,81000,16384000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+    {32400,972000,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+    {34560,1036800,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+    {0,0,0,0,0}
+};
+#endif
 
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define FractionToQ16(q,num,den) { OMX_U32 power; Log2(den,power); q = num << (16 - power); }
@@ -221,7 +262,7 @@ struct ProfileType
    OMX_U32 nFrameWidth;
    OMX_U32 nFrameHeight;
    OMX_U32 nFrameBytes;
-#ifdef BADGER
+#ifdef _MSM8974_
    OMX_U32 nFramestride;
    OMX_U32 nFrameScanlines;
    OMX_U32 nFrameRead;
@@ -588,7 +629,12 @@ result = OMX_SetParameter(m_hHandle,
    {
      profile_tbl = (unsigned int const *)h263_profile_level_table;
    }
-
+#ifdef _MSM8974_
+   else if(m_sProfile.eCodec == OMX_VIDEO_CodingVPX)
+   {
+     profile_tbl = (unsigned int const *)VP8_profile_level_table;
+   }
+#endif
    mb_per_frame = ((m_sProfile.nFrameHeight+15)>>4)*
                 ((m_sProfile.nFrameWidth+15)>>4);
 
@@ -1176,6 +1222,16 @@ OMX_ERRORTYPE VencTest_Initialize()
                              &sCallbacks);
       CHK(result);
    }
+#ifdef _MSM8974_
+   else if (m_sProfile.eCodec == OMX_VIDEO_CodingVPX)
+   {
+      result = OMX_GetHandle(&m_hHandle,
+                             "OMX.qcom.video.encoder.vp8",
+                             NULL,
+                             &sCallbacks);
+      CHK(result);
+   }
+#endif
    else
    {
       result = OMX_GetHandle(&m_hHandle,
@@ -1436,11 +1492,8 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
    {
       return OMX_ErrorUndefined;
    }
-#elif BADGER
+#elif _MSM8974_
    int bytes;
-   E("will read YUV now: %d bytes to buffer %p\n", m_sProfile.nFrameRead, pYUVBuffer->pBuffer);
-   E("W: %d H: %d Str: %d scal: %d \n", m_sProfile.nFrameWidth, m_sProfile.nFrameHeight,
-		m_sProfile.nFramestride, m_sProfile.nFrameScanlines);
    bytes = read(m_nInFd, pYUVBuffer->pBuffer, m_sProfile.nFrameRead);
    if (bytes != m_sProfile.nFrameRead) {
 		E("read failed: %d != %d\n", read, m_sProfile.nFrameRead);
@@ -1487,7 +1540,7 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
    D("about to call VencTest_EncodeFrame...");
    pthread_mutex_lock(&m_mutex);
    ++m_nFrameIn;
-#ifdef BADGER
+#ifdef _MSM8974_
    pYUVBuffer->nFilledLen = m_sProfile.nFrameRead;
 #else
    pYUVBuffer->nFilledLen = m_sProfile.nFrameBytes;
@@ -1845,6 +1898,22 @@ void parseArgs(int argc, char** argv)
       m_sProfile.nFrameBytes = 1920*1080*3/2;
       m_sProfile.eLevel = OMX_VIDEO_MPEG4Level1;
    }
+#ifdef _MSM8974_
+   else if (strcmp("4K2K", argv[2]) == 0)
+   {
+      m_sProfile.nFrameWidth = 4096;
+      m_sProfile.nFrameHeight = 2160;
+      m_sProfile.nFrameBytes = 4096*2160*3/2;
+      m_sProfile.eLevel = OMX_VIDEO_MPEG4Level1;
+   }
+   else if (strcmp("2160P", argv[2]) == 0)
+   {
+      m_sProfile.nFrameWidth = 3840;
+      m_sProfile.nFrameHeight = 2160;
+      m_sProfile.nFrameBytes = 3840*2160*3/2;
+      m_sProfile.eLevel = OMX_VIDEO_MPEG4Level1;
+   }
+#endif
    else if (parseWxH(argv[2], &m_sProfile.nFrameWidth, &m_sProfile.nFrameHeight))
    {
       m_sProfile.nFrameBytes = m_sProfile.nFrameWidth*m_sProfile.nFrameHeight*3/2;
@@ -1855,12 +1924,10 @@ void parseArgs(int argc, char** argv)
       usage(argv[0]);
    }
 
-#ifdef BADGER
+#ifdef _MSM8974_
    m_sProfile.nFramestride =  (m_sProfile.nFrameWidth + 31) & (~31);
    m_sProfile.nFrameScanlines = (m_sProfile.nFrameHeight + 31) & (~31);
    m_sProfile.nFrameBytes = ((m_sProfile.nFramestride * m_sProfile.nFrameScanlines * 3/2) + 4095) & (~4095);
-   E("stride: %d, Scanlines: %d, Size: %d",
-     m_sProfile.nFramestride, m_sProfile.nFrameScanlines, m_sProfile.nFrameBytes);
    m_sProfile.nFrameRead = m_sProfile.nFramestride * m_sProfile.nFrameScanlines * 3/2;
 #endif
    if (m_eMode == MODE_DISPLAY ||
@@ -1886,6 +1953,12 @@ void parseArgs(int argc, char** argv)
       {
          m_sProfile.eCodec = OMX_VIDEO_CodingAVC;
       }
+#ifdef _MSM8974_
+      else if ((!strcmp(argv[3], "VP8")) || (!strcmp(argv[3], "vp8")))
+      {
+         m_sProfile.eCodec = OMX_VIDEO_CodingVPX;
+      }
+#endif
       else
       {
          usage(argv[0]);
@@ -2052,8 +2125,7 @@ int main(int argc, char** argv)
    result = OMX_GetParameter(m_hHandle, OMX_IndexParamPortDefinition, &portDef);
    CHK(result);
 
-   D("allocating output buffers");
-   D("Calling UseBuffer for Output port");
+   D("allocating & calling usebuffer for Output port");
    num_out_buffers = portDef.nBufferCountActual;
    for (i = 0; i < portDef.nBufferCountActual; i++)
    {

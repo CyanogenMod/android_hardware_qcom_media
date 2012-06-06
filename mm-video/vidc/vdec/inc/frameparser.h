@@ -41,7 +41,12 @@ enum codec_type
     CODEC_TYPE_H264 = 2,
     CODEC_TYPE_VC1 = 3,
     CODEC_TYPE_MPEG2 = 4,
+#ifdef _MSM8974_
+    CODEC_TYPE_VP8 = 5,
+    CODEC_TYPE_MAX = CODEC_TYPE_VP8
+#else
     CODEC_TYPE_MAX = CODEC_TYPE_MPEG2
+#endif
 };
 
 enum state_start_code_parse

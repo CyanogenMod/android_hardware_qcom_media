@@ -62,6 +62,7 @@ void *get_omx_component_factory_fn(void)
 omx_venc::omx_venc()
 {
 #ifdef _ANDROID_ICS_
+  get_syntaxhdr_enable == false;
   meta_mode_enable = false;
   memset(meta_buffer_hdr,0,sizeof(meta_buffer_hdr));
   memset(meta_buffers,0,sizeof(meta_buffers));
@@ -71,6 +72,7 @@ omx_venc::omx_venc()
 
 omx_venc::~omx_venc()
 {
+  get_syntaxhdr_enable == false;
   //nothing to do
 }
 
@@ -125,6 +127,14 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     strlcpy((char *)m_cRole, "video_encoder.avc",OMX_MAX_STRINGNAME_SIZE);
     codec_type = OMX_VIDEO_CodingAVC;
   }
+#ifdef _MSM8974_
+  else if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.vp8",	\
+                   OMX_MAX_STRINGNAME_SIZE))
+  {
+    strlcpy((char *)m_cRole, "video_encoder.vp8",OMX_MAX_STRINGNAME_SIZE);
+    codec_type = OMX_VIDEO_CodingVPX;
+  }
+#endif
   else
   {
     DEBUG_PRINT_ERROR("\nERROR: Unknown Component\n");
@@ -136,6 +146,9 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   {
     return eRet;
   }
+#ifdef ENABLE_GET_SYNTAX_HDR
+  get_syntaxhdr_enable = true;
+#endif
 
   handle = new venc_dev(this);
 
@@ -810,6 +823,20 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           eRet =OMX_ErrorUnsupportedSetting;
         }
       }
+#ifdef _MSM8974_
+      else if(!strncmp((char*)m_nkind, "OMX.qcom.video.encoder.vp8",OMX_MAX_STRINGNAME_SIZE))
+      {
+        if(!strncmp((const char*)comp_role->cRole,"video_encoder.vp8",OMX_MAX_STRINGNAME_SIZE))
+        {
+          strlcpy((char*)m_cRole,"video_encoder.vp8",OMX_MAX_STRINGNAME_SIZE);
+        }
+        else
+        {
+          DEBUG_PRINT_ERROR("ERROR: Setparameter: unknown Index %s\n", comp_role->cRole);
+          eRet =OMX_ErrorUnsupportedSetting;
+        }
+      }
+#endif
       else
       {
         DEBUG_PRINT_ERROR("ERROR: Setparameter: unknown param %s\n", m_nkind);

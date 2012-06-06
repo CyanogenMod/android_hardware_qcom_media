@@ -564,101 +564,69 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
         {
           return false;
         }
-        if(m_sVenc_cfg.input_height != portDefn->format.video.nFrameHeight ||
-          m_sVenc_cfg.input_width != portDefn->format.video.nFrameWidth)
-        {
-          DEBUG_PRINT_LOW("\n Basic parameter has changed");
-          m_sVenc_cfg.input_height = portDefn->format.video.nFrameHeight;
-          m_sVenc_cfg.input_width = portDefn->format.video.nFrameWidth;
 
-          ioctl_msg.in = (void*)&m_sVenc_cfg;
-          ioctl_msg.out = NULL;
-          if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < 0)
-          {
+        DEBUG_PRINT_LOW("\n Basic parameter has changed");
+        m_sVenc_cfg.input_height = portDefn->format.video.nFrameHeight;
+        m_sVenc_cfg.input_width = portDefn->format.video.nFrameWidth;
+
+        ioctl_msg.in = (void*)&m_sVenc_cfg;
+        ioctl_msg.out = NULL;
+        if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < 0) {
             DEBUG_PRINT_ERROR("\nERROR: Request for setting base config failed");
             return false;
-          }
+        }
 
-          DEBUG_PRINT_LOW("\n Updating the buffer count/size for the new resolution");
-          ioctl_msg.in = NULL;
-          ioctl_msg.out = (void*)&m_sInput_buff_property;
-          if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-          {
+        DEBUG_PRINT_LOW("\n Updating the buffer count/size for the new resolution");
+        ioctl_msg.in = NULL;
+        ioctl_msg.out = (void*)&m_sInput_buff_property;
+        if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
             DEBUG_PRINT_ERROR("\nERROR: Request for getting i/p bufreq failed");
             return false;
-          }
-          DEBUG_PRINT_LOW("\n Got updated m_sInput_buff_property values: "
-                      "datasize = %u, maxcount = %u, actualcnt = %u, "
-                      "mincount = %u", m_sInput_buff_property.datasize,
-                      m_sInput_buff_property.maxcount, m_sInput_buff_property.actualcount,
-                      m_sInput_buff_property.mincount);
+        }
+        DEBUG_PRINT_LOW("\n Got updated m_sInput_buff_property values: "
+                        "datasize = %u, maxcount = %u, actualcnt = %u, "
+                        "mincount = %u", m_sInput_buff_property.datasize,
+                        m_sInput_buff_property.maxcount, m_sInput_buff_property.actualcount,
+                        m_sInput_buff_property.mincount);
 
-          ioctl_msg.in = NULL;
-          ioctl_msg.out = (void*)&m_sOutput_buff_property;
-          if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-          {
+        ioctl_msg.in = NULL;
+        ioctl_msg.out = (void*)&m_sOutput_buff_property;
+        if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
             DEBUG_PRINT_ERROR("\nERROR: Request for getting o/p bufreq failed");
             return false;
-          }
+        }
 
-          DEBUG_PRINT_LOW("\n Got updated m_sOutput_buff_property values: "
-                      "datasize = %u, maxcount = %u, actualcnt = %u, "
-                      "mincount = %u", m_sOutput_buff_property.datasize,
-                      m_sOutput_buff_property.maxcount, m_sOutput_buff_property.actualcount,
-                      m_sOutput_buff_property.mincount);
-          ioctl_msg.in = (void*)&m_sOutput_buff_property;
-          ioctl_msg.out = NULL;
+        DEBUG_PRINT_LOW("\n Got updated m_sOutput_buff_property values: "
+                        "datasize = %u, maxcount = %u, actualcnt = %u, "
+                        "mincount = %u", m_sOutput_buff_property.datasize,
+                        m_sOutput_buff_property.maxcount, m_sOutput_buff_property.actualcount,
+                        m_sOutput_buff_property.mincount);
+        ioctl_msg.in = (void*)&m_sOutput_buff_property;
+        ioctl_msg.out = NULL;
 
-          if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-          {
+        if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
             DEBUG_PRINT_ERROR("\nERROR: Request for setting o/p bufreq failed");
             return false;
-          }
+        }
 
-          if((portDefn->nBufferCountActual >= m_sInput_buff_property.mincount) &&
-           (portDefn->nBufferCountActual <= m_sInput_buff_property.maxcount))
-          {
+        if((portDefn->nBufferCountActual >= m_sInput_buff_property.mincount) &&
+           (portDefn->nBufferCountActual <= m_sInput_buff_property.maxcount)) {
             m_sInput_buff_property.actualcount = portDefn->nBufferCountActual;
             ioctl_msg.in = (void*)&m_sInput_buff_property;
             ioctl_msg.out = NULL;
-            if(ioctl(m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-            {
+            if(ioctl(m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
               DEBUG_PRINT_ERROR("\nERROR: Request for setting i/p buffer requirements failed");
               return false;
             }
-          }
-          if(m_sInput_buff_property.datasize != portDefn->nBufferSize)
-          {
+        }
+        if(m_sInput_buff_property.datasize != portDefn->nBufferSize) {
             DEBUG_PRINT_ERROR("\nWARNING: Requested i/p bufsize[%u],"
                               "Driver's updated i/p bufsize = %u", portDefn->nBufferSize,
                               m_sInput_buff_property.datasize);
-          }
-          m_level_set = false;
-          if(venc_set_profile_level(0, 0))
-          {
-            DEBUG_PRINT_HIGH("\n %s(): Profile/Level setting success", __func__);
-          }
         }
-        else
-        {
-          if((portDefn->nBufferCountActual >= m_sInput_buff_property.mincount) &&
-           (m_sInput_buff_property.maxcount >= portDefn->nBufferCountActual) &&
-            (m_sInput_buff_property.datasize == portDefn->nBufferSize))
-          {
-            m_sInput_buff_property.actualcount = portDefn->nBufferCountActual;
-            ioctl_msg.in = (void*)&m_sInput_buff_property;
-            ioctl_msg.out = NULL;
-            if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-            {
-              DEBUG_PRINT_ERROR("\nERROR: ioctl VEN_IOCTL_SET_INPUT_BUFFER_REQ failed");
-              return false;
-            }
-          }
-          else
-          {
-            DEBUG_PRINT_ERROR("\nERROR: Setting Input buffer requirements failed");
-            return false;
-          }
+        m_level_set = false;
+        if(venc_set_profile_level(0, 0)) {
+          DEBUG_PRINT_HIGH("\n %s(): Profile/Level setting success", __func__);
         }
       }
       else if(portDefn->nPortIndex == PORT_INDEX_OUT)
@@ -1265,8 +1233,12 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
   }
 
   recon_buff[count].alloc_data.len = size;
+#ifdef MAX_RES_720P
+  recon_buff[count].alloc_data.flags = ION_HEAP(MEM_HEAP_ID);
+#else
   recon_buff[count].alloc_data.flags = (ION_HEAP(MEM_HEAP_ID) |
                                         ION_HEAP(ION_IOMMU_HEAP_ID));
+#endif
   recon_buff[count].alloc_data.align = clip2(alignment);
   if (recon_buff[count].alloc_data.align != 8192)
     recon_buff[count].alloc_data.align = 8192;
@@ -1480,6 +1452,22 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
     dev_buffer.offset = pmem_tmp->offset;
     ioctl_msg.in  = (void*)&dev_buffer;
     ioctl_msg.out = NULL;
+
+    if((m_sVenc_cfg.input_height %16 !=0) || (m_sVenc_cfg.input_width%16 != 0))
+    {
+      unsigned long ht = m_sVenc_cfg.input_height;
+      unsigned long wd = m_sVenc_cfg.input_width;
+      unsigned int luma_size, luma_size_2k;
+
+      ht = (ht + 15) & ~15;
+      wd = (wd + 15) & ~15;
+
+      luma_size = ht * wd;
+      luma_size_2k = (luma_size + 2047) & ~2047;
+
+      dev_buffer.sz =  luma_size_2k + luma_size/2;
+      dev_buffer.maped_size = dev_buffer.sz;
+    }
 
     DEBUG_PRINT_LOW("\n venc_use_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \

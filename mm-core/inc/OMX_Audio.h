@@ -89,6 +89,7 @@ typedef enum OMX_AUDIO_CODINGTYPE {
     OMX_AUDIO_CodingWMA,         /**< Any variant of WMA encoded data */
     OMX_AUDIO_CodingRA,          /**< Any variant of RA encoded data */
     OMX_AUDIO_CodingMIDI,        /**< Any variant of MIDI encoded data */
+    OMX_AUDIO_CodingAC3,         /**< Any variant of AC3 encoded data */
     OMX_AUDIO_CodingKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
     OMX_AUDIO_CodingVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
     OMX_AUDIO_CodingMax = 0x7FFFFFFF
