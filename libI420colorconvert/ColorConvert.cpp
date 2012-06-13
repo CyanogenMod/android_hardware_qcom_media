@@ -63,6 +63,10 @@ public:
         inputCP.cropTop = 0;
         inputCP.cropBottom = srcHeight;
         inputCP.colorFormat = YCbCr420Tile;
+        #ifdef TARGET7x27A
+        inputCP.width = ALIGN(srcWidth, 32);
+        inputCP.colorFormat = YCrCb420YT;
+        #endif
         inputCP.data = (uint8_t *)srcBits;
         inputCP.flags = COLOR_CONVERT_ALIGN_NONE;
         inputCP.fd = -1;
