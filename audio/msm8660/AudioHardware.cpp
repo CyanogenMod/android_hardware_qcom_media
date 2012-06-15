@@ -1955,7 +1955,7 @@ status_t AudioHardware::do_aic3254_control(uint32_t device) {
                 break;
         }
     } else {
-        if (checkOutputStandby()) {
+        if (checkOutputStandby() && !isStreamOnAndActive(LPA_DECODE)) {
             if (device == SND_DEVICE_FM_HEADSET) {
                 new_aic_rxmode = FM_OUT_HEADSET;
                 new_aic_txmode = FM_IN_HEADSET;
@@ -2698,6 +2698,10 @@ status_t AudioHardware::AudioSessionOutMSM7xxx::standby()
     }
 
     mStandby = true;
+
+    if (support_aic3254)
+        mHardware->do_aic3254_control(mHardware->get_snd_dev());
+
     return status;
 }
 
