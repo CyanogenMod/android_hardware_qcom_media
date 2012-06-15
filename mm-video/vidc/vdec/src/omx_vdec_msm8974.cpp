@@ -128,7 +128,6 @@ char ouputextradatafilename [] = "/data/extradata";
 void* async_message_thread (void *input)
 {
   struct vdec_ioctl_msg ioctl_msg;
-  struct vdec_msginfo vdec_msg;
   OMX_BUFFERHEADERTYPE *buffer;
   struct v4l2_plane plane;
   struct pollfd pfd;
@@ -150,7 +149,40 @@ void* async_message_thread (void *input)
 			DEBUG_PRINT_ERROR("Error while polling: %d\n", rc);
 			break;
 		}
+		if (pfd.revents & POLLERR){
+			printf("\n async_message_thread Exited \n");
+			break;
+		}
+		if (pfd.revents & POLLPRI){
+			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
+			if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT) {
+				DEBUG_PRINT_HIGH("\n VIDC Sufficinet resources recieved \n");
+				continue;
+			} else if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT) {
+				struct vdec_msginfo vdec_msg;
+				vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
+				vdec_msg.status_code=VDEC_S_SUCCESS;
+				printf("\n VIDC Port Reconfig recieved \n");
+				if (omx->async_message_process(input,&vdec_msg) < 0) {
+					DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+					break;
+				}
+			} else if (dqevent.type == V4L2_EVENT_MSM_VIDC_FLUSH_DONE) {
+				struct vdec_msginfo vdec_msg;
+				vdec_msg.msgcode=VDEC_MSG_RESP_FLUSH_OUTPUT_DONE;
+				vdec_msg.status_code=VDEC_S_SUCCESS;
+				DEBUG_PRINT_HIGH("\n VIDC Flush Done Recieved \n");
+				if (omx->async_message_process(input,&vdec_msg) < 0) {
+					DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+					break;
+				}
+			} else {
+				DEBUG_PRINT_HIGH("\n VIDC Some Event recieved \n");
+				continue;
+			}
+		}
 		if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
+			struct vdec_msginfo vdec_msg;
 			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
 			v4l2_buf.length = 1;
@@ -166,8 +198,13 @@ void* async_message_thread (void *input)
 			vdec_msg.msgdata.output_frame.client_data=(void*)&v4l2_buf;
 			vdec_msg.msgdata.output_frame.len=plane.bytesused;
 			vdec_msg.msgdata.output_frame.bufferaddr=(void*)plane.m.userptr;
+			if (omx->async_message_process(input,&vdec_msg) < 0) {
+				DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+				break;
+			}
 		}
-		else if((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
+		if((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
+			struct vdec_msginfo vdec_msg;
 			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
 			v4l2_buf.m.planes = &plane;
@@ -177,34 +214,13 @@ void* async_message_thread (void *input)
 				DEBUG_PRINT_ERROR("Failed to dequeue buf: %d from output capability\n", rc);
 				break;
 			}
-            vdec_msg.msgcode=VDEC_MSG_RESP_INPUT_BUFFER_DONE;
+			vdec_msg.msgcode=VDEC_MSG_RESP_INPUT_BUFFER_DONE;
 			vdec_msg.status_code=VDEC_S_SUCCESS;
 			vdec_msg.msgdata.input_frame_clientdata=(void*)&v4l2_buf;
-		} else if (pfd.revents & POLLPRI){
-			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
-			if(dqevent.u.data[0] == MSM_VIDC_DECODER_EVENT_CHANGE){
-				vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
-				vdec_msg.status_code=VDEC_S_SUCCESS;
-				printf("\n VIDC Port Reconfig recieved \n");
-			} else if (dqevent.u.data[0] == MSM_VIDC_DECODER_FLUSH_DONE){
-				vdec_msg.msgcode=VDEC_MSG_RESP_FLUSH_OUTPUT_DONE;
-				vdec_msg.status_code=VDEC_S_SUCCESS;
-				DEBUG_PRINT_HIGH("\n VIDC Flush Done Recieved \n");
-			} else {
-				DEBUG_PRINT_HIGH("\n VIDC Some Event recieved \n");
-				continue;
-			}
-		} else if (pfd.revents & POLLERR){
-			DEBUG_PRINT_HIGH("\n async_message_thread Exited \n");
-			break;
-		} else{
-			/*TODO: How to handle this case */		
-			continue;
-		}
-
-		if (omx->async_message_process(input,&vdec_msg) < 0) {
-			DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+			if (omx->async_message_process(input,&vdec_msg) < 0) {
+				DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
 				break;
+			}
 		}
   }
     DEBUG_PRINT_HIGH("omx_vdec: Async thread stop\n");
@@ -569,6 +585,68 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
 
 }
 
+static const int event_type[] = {
+	V4L2_EVENT_MSM_VIDC_FLUSH_DONE,
+	V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT,
+	V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT,
+};
+
+static OMX_ERRORTYPE subscribe_to_events(int fd)
+{
+	OMX_ERRORTYPE eRet = OMX_ErrorNone;
+	struct v4l2_event_subscription sub;
+	int array_sz = sizeof(event_type)/sizeof(int);
+	int i,rc;
+	if (fd < 0) {
+		printf("Invalid input: %d\n", fd);
+		return OMX_ErrorBadParameter;
+	}
+
+	for (i = 0; i < array_sz; ++i) {
+		memset(&sub, 0, sizeof(sub));
+		sub.type = event_type[i];
+		rc = ioctl(fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
+		if (rc) {
+			printf("Failed to subscribe event: 0x%x\n", sub.type);
+			break;
+		}
+	}
+	if (i < array_sz) {
+		for (--i; i >=0 ; i--) {
+			memset(&sub, 0, sizeof(sub));
+			sub.type = event_type[i];
+			rc = ioctl(fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
+			if (rc)
+				printf("Failed to unsubscribe event: 0x%x\n", sub.type);
+		}
+		eRet = OMX_ErrorNotImplemented;
+	}
+	return eRet;
+}
+
+
+static OMX_ERRORTYPE unsubscribe_to_events(int fd)
+{
+	OMX_ERRORTYPE eRet = OMX_ErrorNone;
+	struct v4l2_event_subscription sub;
+	int array_sz = sizeof(event_type)/sizeof(int);
+	int i,rc;
+	if (fd < 0) {
+		printf("Invalid input: %d\n", fd);
+		return OMX_ErrorBadParameter;
+	}
+
+	for (i = 0; i < array_sz; ++i) {
+		memset(&sub, 0, sizeof(sub));
+		sub.type = event_type[i];
+		rc = ioctl(fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
+		if (rc) {
+			printf("Failed to unsubscribe event: 0x%x\n", sub.type);
+			break;
+		}
+	}
+	return eRet;
+}
 
 /* ======================================================================
 FUNCTION
@@ -595,6 +673,7 @@ omx_vdec::~omx_vdec()
   pthread_join(msg_thread_id,NULL);
   DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
   pthread_join(async_thread_id,NULL);
+  unsubscribe_to_events(drv_ctx.video_driver_fd);
   close(drv_ctx.video_driver_fd);
   pthread_mutex_destroy(&m_lock);
   sem_destroy(&m_cmd_lock);
@@ -1170,8 +1249,6 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
 
 }
 
-
-
 /* ======================================================================
 FUNCTION
   omx_vdec::ComponentInit
@@ -1365,10 +1442,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
 		drv_ctx.output_format = VDEC_YUV_FORMAT_TILE_4x2;
 		capture_capability= V4L2_PIX_FMT_NV12;
-
-		struct v4l2_event_subscription sub;
-		sub.type=V4L2_EVENT_ALL;
-		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
+		ret = subscribe_to_events(drv_ctx.video_driver_fd);
 		if (ret) {
 			DEBUG_PRINT_ERROR("\n Subscribe Event Failed \n");
 			return OMX_ErrorInsufficientResources;
@@ -1813,46 +1887,39 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
        DEBUG_PRINT_LOW("\n Command Recieved in OMX_StateExecuting");
        /* Requesting transition from Executing to Idle */
        if(eState == OMX_StateIdle)
-       {
-         /* Since error is None , we will post an event
-         at the end of this function definition
-         */
-         DEBUG_PRINT_LOW("\n send_command_proxy(): Executing --> Idle \n");
-         //BITMASK_SET(&m_flags,OMX_COMPONENT_IDLE_PENDING);
-         if(!sem_posted)
-         {
-           sem_posted = 1;
-           sem_post (&m_cmd_lock);
-           execute_omx_flush(OMX_ALL);
-         }
-         bFlag = 1;
-	 int rc=0;
-	 enum v4l2_buf_type btype;
-	 btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-	 rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
-	 if (rc) {
-		 /*TODO: How to handle this case */
-		 DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
-	 } else {
-		 streaming[OUTPUT_PORT] = false;
-	 }
-	 btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	 rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
-	 if (rc) {
-		 /*TODO: How to handle this case */
-		 DEBUG_PRINT_ERROR("\n Failed to call streamoff on CAPTURE Port \n");
-	 } else {
-		 streaming[CAPTURE_PORT] = false;
-	 }
-		struct v4l2_event_subscription sub;
-		sub.type=V4L2_EVENT_ALL;
-		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
-		if (ret) {
-		DEBUG_PRINT_ERROR("\n Subscribe Event Failed \n");
-		eRet = OMX_ErrorHardware;
-		}
-	 m_state == OMX_StateIdle;
-       }
+	   {
+		   /* Since error is None , we will post an event
+			  at the end of this function definition
+			*/
+		   DEBUG_PRINT_LOW("\n send_command_proxy(): Executing --> Idle \n");
+		   //BITMASK_SET(&m_flags,OMX_COMPONENT_IDLE_PENDING);
+		   if(!sem_posted)
+		   {
+			   sem_posted = 1;
+			   sem_post (&m_cmd_lock);
+			   execute_omx_flush(OMX_ALL);
+		   }
+		   bFlag = 1;
+		   int rc=0;
+		   enum v4l2_buf_type btype;
+		   btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+		   rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
+		   if (rc) {
+			   /*TODO: How to handle this case */
+			   DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
+		   } else {
+			   streaming[OUTPUT_PORT] = false;
+		   }
+		   btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		   rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
+		   if (rc) {
+			   /*TODO: How to handle this case */
+			   DEBUG_PRINT_ERROR("\n Failed to call streamoff on CAPTURE Port \n");
+		   } else {
+			   streaming[CAPTURE_PORT] = false;
+		   }
+		   m_state = OMX_StateIdle;
+	   }
        /* Requesting transition from Executing to Paused */
        else if(eState == OMX_StatePause)
        {
@@ -5428,6 +5495,13 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
   {
 	enum v4l2_buf_type buf_type;
 	int ret,r;
+
+	struct v4l2_control control;
+	control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
+	control.value = 1;
+	ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
+	if(ret)
+		printf("\n Continue data Xfer failed \n");
 	buf_type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
 	ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMON,&buf_type);

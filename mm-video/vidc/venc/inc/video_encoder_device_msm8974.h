@@ -37,7 +37,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_video_encoder.h"
 #include <linux/videodev2.h>
 #include <poll.h>
-#define TIMEOUT 5000
+#define TIMEOUT 5*60*1000
 #define MAX_RECON_BUFFERS 4
 
 void* async_venc_message_thread (void *);

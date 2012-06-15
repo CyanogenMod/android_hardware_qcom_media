@@ -183,6 +183,14 @@ void* async_venc_message_thread (void *input)
 			DEBUG_PRINT_ERROR("Error while polling: %d\n", rc);
 			break;
 		}
+		if (pfd.revents & POLLPRI){
+			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
+			printf("\n Data Recieved = %d \n",dqevent.type);
+			if(dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE){
+				printf("CLOSE DONE\n");
+				break;
+			}
+		}
 		if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
 			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
@@ -201,7 +209,8 @@ void* async_venc_message_thread (void *input)
                 	venc_msg.buf.ptrbuffer = (OMX_U8 *)omx_venc_base->m_pOutput_pmem[v4l2_buf.index].buffer;
 
 			venc_msg.buf.clientdata=(void*)omxhdr;
-		} else if((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
+		}
+		if((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
 			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
 			v4l2_buf.m.planes = &plane;
@@ -214,15 +223,6 @@ void* async_venc_message_thread (void *input)
 			venc_msg.statuscode=VEN_S_SUCCESS;
                         omxhdr=omx_venc_base->m_inp_mem_ptr+v4l2_buf.index;
                         venc_msg.buf.clientdata=(void*)omxhdr;
-		} else if (pfd.revents & POLLPRI){
-			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
-			DEBUG_PRINT_LOW("\n Data Recieved = %d \n",dqevent.u.data[0]);
-			if(dqevent.u.data[0] == MSM_VIDC_CLOSE_DONE){
-				break;
-			}
-		} else {
-			/*TODO: How to handle this case */		
-			continue;
 		}
 
 		if(omx->async_message_process(input,&venc_msg) < 0)
@@ -233,6 +233,42 @@ void* async_venc_message_thread (void *input)
   }
   DEBUG_PRINT_HIGH("omx_venc: Async Thread exit\n");
   return NULL;
+}
+
+static OMX_ERRORTYPE subscribe_to_events(int fd)
+{
+	OMX_ERRORTYPE eRet = OMX_ErrorNone;
+	struct v4l2_event_subscription sub;
+	int event_type[] = {
+		V4L2_EVENT_MSM_VIDC_CLOSE_DONE
+	};
+	int array_sz = sizeof(event_type)/sizeof(int);
+	int i,rc;
+	if (fd < 0) {
+		printf("Invalid input: %d\n", fd);
+		return OMX_ErrorBadParameter;
+	}
+
+	for (i = 0; i < array_sz; ++i) {
+		memset(&sub, 0, sizeof(sub));
+		sub.type = event_type[i];
+		rc = ioctl(fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
+		if (rc) {
+			printf("Failed to subscribe event: 0x%x\n", sub.type);
+			break;
+		}
+	}
+	if (i < array_sz) {
+		for (;i >=0 ; i--) {
+			memset(&sub, 0, sizeof(sub));
+			sub.type = event_type[i];
+			rc = ioctl(fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
+			if (rc)
+				printf("Failed to unsubscribe event: 0x%x\n", sub.type);
+		}
+		eRet = OMX_ErrorNotImplemented;
+	}
+	return eRet;
 }
 
 bool venc_dev::venc_open(OMX_U32 codec)
@@ -315,9 +351,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
   outputBufferFile1 = fopen (outputfilename, "ab");
 #endif
 	int ret;	
-	struct v4l2_event_subscription sub;
-	sub.type=V4L2_EVENT_ALL;
-	ret = ioctl(m_nDriver_fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
+	ret = subscribe_to_events(m_nDriver_fd);
 	if (ret) {
 		DEBUG_PRINT_ERROR("\n Subscribe Event Failed \n");
 		return false;
