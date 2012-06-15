@@ -2065,7 +2065,7 @@ status_t AudioHardware::aic3254_config(uint32_t device) {
 
     Mutex::Autolock lock(mAIC3254ConfigLock);
 
-    if (isInCall()) {
+    if (mMode == AudioSystem::MODE_IN_CALL) {
         strcpy(name, "Phone_Default");
         switch (device) {
             case SND_DEVICE_HANDSET:
