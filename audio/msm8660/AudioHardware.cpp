@@ -2243,12 +2243,12 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                     sndDevice = SND_DEVICE_SPEAKER_TX;
 #endif
                 } else {
-                    LOGI("Routing audio to Handset\n");
-                    sndDevice = SND_DEVICE_HANDSET;
+                    LOGI("Routing audio to Speaker\n");
+                    sndDevice = SND_DEVICE_SPEAKER;
                 }
             } else {
-                LOGI("Routing audio to Handset\n");
-                sndDevice = SND_DEVICE_HANDSET;
+                LOGI("Routing audio to Speaker (default)\n");
+                sndDevice = SND_DEVICE_SPEAKER;
             }
 #ifdef SAMSUNG_AUDIO
             if (input->isForVR()) {
