@@ -2231,9 +2231,9 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                     sndDevice = SND_DEVICE_ANC_HEADSET;
 #endif
             } else if (isStreamOnAndActive(PCM_PLAY) || isStreamOnAndActive(LPA_DECODE)) {
-                if (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER) {
-                    LOGI("Routing audio to Speakerphone\n");
-                    sndDevice = SND_DEVICE_SPEAKER;
+                if (outputDevices & AudioSystem::DEVICE_OUT_EARPIECE) {
+                    LOGI("Routing audio to Handset\n");
+                    sndDevice = SND_DEVICE_HANDSET;
                 } else if (outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADPHONE) {
                     LOGI("Routing audio to Speakerphone\n");
                     sndDevice = SND_DEVICE_NO_MIC_HEADSET;
@@ -2243,12 +2243,12 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                     sndDevice = SND_DEVICE_SPEAKER_TX;
 #endif
                 } else {
-                    LOGI("Routing audio to Handset\n");
-                    sndDevice = SND_DEVICE_HANDSET;
+                    LOGI("Routing audio to Speaker\n");
+                    sndDevice = SND_DEVICE_SPEAKER;
                 }
             } else {
-                LOGI("Routing audio to Handset\n");
-                sndDevice = SND_DEVICE_HANDSET;
+                LOGI("Routing audio to Speaker (default)\n");
+                sndDevice = SND_DEVICE_SPEAKER;
             }
 #ifdef SAMSUNG_AUDIO
             if (input->isForVR()) {
