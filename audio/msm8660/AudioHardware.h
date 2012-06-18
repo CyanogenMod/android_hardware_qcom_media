@@ -351,6 +351,7 @@ private:
                 int         state() const { return mState; }
         virtual status_t    addAudioEffect(effect_interface_s**) { return 0;}
         virtual status_t    removeAudioEffect(effect_interface_s**) { return 0;}
+        virtual int         isForVR() const { return mForVR; }
 
     private:
                 AudioHardware* mHardware;
@@ -365,6 +366,7 @@ private:
                 uint32_t    mDevices;
                 bool        mFirstread;
                 uint32_t    mFmRec;
+                int         mForVR;
     };
 
         class AudioStreamInVoip : public AudioStreamInMSM72xx {
@@ -396,6 +398,7 @@ private:
         virtual unsigned int  getInputFramesLost() const { return 0; }
                 uint32_t    devices() { return mDevices; }
                 int         state() const { return mState; }
+        virtual int         isForVR() const { return 0; }
 
     private:
                 AudioHardware* mHardware;

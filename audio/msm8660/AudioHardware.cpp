@@ -111,6 +111,8 @@ static const uint32_t SND_DEVICE_VOIP_HEADSET               = 52;
 static const uint32_t SND_DEVICE_CALL_HANDSET               = 60;
 static const uint32_t SND_DEVICE_CALL_SPEAKER               = 61;
 static const uint32_t SND_DEVICE_CALL_HEADSET               = 62;
+static const uint32_t SND_DEVICE_VR_SPEAKER                 = 70;
+static const uint32_t SND_DEVICE_VR_HEADSET                 = 71;
 static const uint32_t SND_DEVICE_HAC                        = 252;
 static const uint32_t SND_DEVICE_USB_HEADSET                = 253;
 #endif
@@ -150,6 +152,8 @@ static const uint32_t DEVICE_SPEAKER_CALL_RX       = 62; // speaker_call_rx
 static const uint32_t DEVICE_SPEAKER_CALL_TX       = 63; // speaker_call_tx
 static const uint32_t DEVICE_HEADSET_CALL_RX       = 64; // headset_call_rx
 static const uint32_t DEVICE_HEADSET_CALL_TX       = 65; // headset_call_tx
+static const uint32_t DEVICE_SPEAKER_VR_TX         = 82; // speaker_vr_tx
+static const uint32_t DEVICE_HEADSET_VR_TX         = 83; // headset_vr_tx
 #endif
 
 static uint32_t FLUENCE_MODE_ENDFIRE   = 0;
@@ -811,6 +815,11 @@ AudioHardware::AudioHardware() :
             index = DEVICE_HEADSET_CALL_RX;
         else if(strcmp((char* )name[i], "headset_call_tx") == 0)
             index = DEVICE_HEADSET_CALL_TX;
+        else if(strcmp((char* )name[i], "speaker_vr_tx") == 0)
+            index = DEVICE_SPEAKER_VR_TX;
+        else if(strcmp((char* )name[i], "headset_vr_tx") == 0)
+            index = DEVICE_HEADSET_VR_TX;
+
 #endif
         else
             continue;
@@ -1743,8 +1752,17 @@ static status_t do_route_audio_rpc(uint32_t device, int mode, bool mic_mute)
         new_tx_device = DEVICE_HEADSET_CALL_TX;
         LOGD("In CALL HEADSET");
     }
+    else if(device == SND_DEVICE_VR_SPEAKER) {
+        new_rx_device = DEVICE_SPEAKER_RX;
+        new_tx_device = DEVICE_SPEAKER_VR_TX;
+        LOGV("In VR SPEAKER");
+    }
+    else if(device == SND_DEVICE_VR_HEADSET) {
+        new_rx_device = DEVICE_HEADSET_RX;
+        new_tx_device = DEVICE_HEADSET_VR_TX;
+        LOGV("In VR HEADSET");
+    }
 #endif
-
     if(new_rx_device != INVALID_DEVICE)
         LOGD("new_rx = %d", DEV_ID(new_rx_device));
     if(new_tx_device != INVALID_DEVICE)
@@ -2217,6 +2235,14 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                 LOGI("Routing audio to Handset\n");
                 sndDevice = SND_DEVICE_HANDSET;
             }
+#ifdef SAMSUNG_AUDIO
+            if (input->isForVR()) {
+                if (sndDevice == SND_DEVICE_SPEAKER)
+                    sndDevice = SND_DEVICE_VR_SPEAKER;
+                else if (sndDevice == SND_DEVICE_HEADSET)
+                    sndDevice = SND_DEVICE_VR_HEADSET;
+            }
+#endif
         }
         // if inputDevice == 0, restore output routing
     }
@@ -3409,7 +3435,7 @@ AudioHardware::AudioStreamInMSM72xx::AudioStreamInMSM72xx() :
     mHardware(0), mFd(-1), mState(AUDIO_INPUT_CLOSED), mRetryCount(0),
     mFormat(AUDIO_HW_IN_FORMAT), mChannels(AUDIO_HW_IN_CHANNELS),
     mSampleRate(AUDIO_HW_IN_SAMPLERATE), mBufferSize(AUDIO_HW_IN_BUFFERSIZE),
-    mAcoustics((AudioSystem::audio_in_acoustics)0), mDevices(0)
+    mAcoustics((AudioSystem::audio_in_acoustics)0), mDevices(0), mForVR(0)
 {
 }
 
@@ -3906,6 +3932,9 @@ status_t AudioHardware::AudioStreamInMSM72xx::setParameters(const String8& keyVa
     status_t status = NO_ERROR;
     int device;
     LOGV("AudioStreamInMSM72xx::setParameters() %s", keyValuePairs.string());
+
+    if (param.getInt(String8("vr_mode"), mForVR) == NO_ERROR)
+        LOGV("voice_recognition=%d", mForVR);
 
     if (param.getInt(key, device) == NO_ERROR) {
         LOGV("set input routing %x", device);
