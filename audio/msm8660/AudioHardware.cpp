@@ -103,6 +103,7 @@ static const uint32_t SND_DEVICE_HANDSET_BACK_MIC           = 27;
 static const uint32_t SND_DEVICE_NO_MIC_HEADSET_BACK_MIC    = 28;
 static const uint32_t SND_DEVICE_HEADSET_AND_SPEAKER_BACK_MIC = 30;
 static const uint32_t SND_DEVICE_I2S_SPEAKER                = 32;
+static const uint32_t SND_DEVICE_BACK_MIC_CAMCORDER         = 33;
 static const uint32_t SND_DEVICE_BT_EC_OFF                  = 45;
 #ifdef SAMSUNG_AUDIO
 static const uint32_t SND_DEVICE_VOIP_HANDSET               = 50;
@@ -154,6 +155,7 @@ static const uint32_t DEVICE_HEADSET_CALL_RX       = 64; // headset_call_rx
 static const uint32_t DEVICE_HEADSET_CALL_TX       = 65; // headset_call_tx
 static const uint32_t DEVICE_SPEAKER_VR_TX         = 82; // speaker_vr_tx
 static const uint32_t DEVICE_HEADSET_VR_TX         = 83; // headset_vr_tx
+static const uint32_t DEVICE_CAMCORDER_TX          = 105; // camcoder_tx (misspelled by Samsung)
 #endif
 
 static uint32_t FLUENCE_MODE_ENDFIRE   = 0;
@@ -819,7 +821,8 @@ AudioHardware::AudioHardware() :
             index = DEVICE_SPEAKER_VR_TX;
         else if(strcmp((char* )name[i], "headset_vr_tx") == 0)
             index = DEVICE_HEADSET_VR_TX;
-
+        else if(strcmp((char* )name[i], "camcoder_tx") == 0)
+            index = DEVICE_CAMCORDER_TX;
 #endif
         else
             continue;
@@ -1763,6 +1766,13 @@ static status_t do_route_audio_rpc(uint32_t device, int mode, bool mic_mute)
         LOGV("In VR HEADSET");
     }
 #endif
+#ifdef BACK_MIC_CAMCORDER
+    else if (device == SND_DEVICE_BACK_MIC_CAMCORDER) {
+        new_rx_device = cur_rx;
+        new_tx_device = DEVICE_CAMCORDER_TX;
+        LOGV("In BACK_MIC_CAMCORDER");
+    }
+#endif
     if(new_rx_device != INVALID_DEVICE)
         LOGD("new_rx = %d", DEV_ID(new_rx_device));
     if(new_tx_device != INVALID_DEVICE)
@@ -2200,6 +2210,11 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
             if (inputDevice & AudioSystem::DEVICE_IN_BLUETOOTH_SCO_HEADSET) {
                 LOGI("Routing audio to Bluetooth PCM\n");
                 sndDevice = SND_DEVICE_BT;
+#ifdef BACK_MIC_CAMCORDER
+            } else if (inputDevice & AudioSystem::DEVICE_IN_BACK_MIC) {
+                LOGI("Routing audio to back mic (camcorder)");
+                sndDevice = SND_DEVICE_BACK_MIC_CAMCORDER;
+#endif
             } else if (inputDevice & AudioSystem::DEVICE_IN_WIRED_HEADSET) {
                 if ((outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADSET) &&
                     (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER)) {
