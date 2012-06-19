@@ -74,7 +74,13 @@ public:
 
 protected:
         // true is current platform implements a back microphone
-        virtual bool hasBackMicrophone() const { return false; }
+        virtual bool hasBackMicrophone() const {
+#ifdef BACK_MIC_CAMCORDER
+                return true;
+#else
+                return false;
+#endif
+        }
 #ifdef WITH_A2DP
         // true is current platform supports suplication of notifications and ringtones over A2DP output
         virtual bool a2dpUsedForSonification() const { return true; }
