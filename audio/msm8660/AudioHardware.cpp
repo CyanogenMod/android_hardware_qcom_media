@@ -1269,7 +1269,7 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
 
     key = String8(DUALMIC_KEY);
     if (param.get(key, value) == NO_ERROR) {
-        if (value == "true") {
+        if ((value == "true") || (value == "on")) {
             dualmic_enabled = true;
             LOGI("DualMic feature Enabled");
         } else {
@@ -1642,6 +1642,17 @@ static status_t do_route_audio_rpc(uint32_t device, int mode, bool mic_mute)
         fm_device = DEVICE_FMRADIO_HEADSET_RX;
         LOGV("In FM HEADSET");
     }
+#ifdef SAMSUNG_AUDIO
+    else if(device == SND_DEVICE_IN_S_SADC_OUT_HANDSET) {
+        new_rx_device = DEVICE_HANDSET_CALL_RX;
+        new_tx_device = DEVICE_DUALMIC_HANDSET_TX;
+        LOGV("In DUALMIC_CALL_HANDSET");
+        if(DEV_ID(new_tx_device) == INVALID_DEVICE) {
+            new_tx_device = DEVICE_HANDSET_CALL_TX;
+            LOGV("Falling back to HANDSET_CALL_RX AND HANDSET_CALL_TX as no DUALMIC_HANDSET_TX support found");
+        }
+    }
+#else
     else if(device == SND_DEVICE_IN_S_SADC_OUT_HANDSET) {
         new_rx_device = DEVICE_HANDSET_RX;
         new_tx_device = DEVICE_DUALMIC_HANDSET_TX;
@@ -1651,6 +1662,7 @@ static status_t do_route_audio_rpc(uint32_t device, int mode, bool mic_mute)
             LOGV("Falling back to HANDSET_RX AND HANDSET_TX as no DUALMIC_HANDSET_TX support found");
         }
     }
+#endif
     else if(device == SND_DEVICE_IN_S_SADC_OUT_SPEAKER_PHONE) {
         new_rx_device = DEVICE_SPEAKER_RX;
         new_tx_device = DEVICE_DUALMIC_SPEAKER_TX;
@@ -2353,25 +2365,32 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
     }
 
     if (dualmic_enabled) {
+#ifdef SAMSUNG_AUDIO
         if (sndDevice == SND_DEVICE_HANDSET) {
-            LOGI("Routing audio to handset with DualMike enabled\n");
+            LOGI("Routing audio to Handset with DualMike enabled\n");
+            sndDevice = SND_DEVICE_IN_S_SADC_OUT_HANDSET;
+        }
+#else
+        if (sndDevice == SND_DEVICE_HANDSET) {
+            LOGI("Routing audio to Handset with DualMike enabled\n");
             sndDevice = SND_DEVICE_IN_S_SADC_OUT_HANDSET;
         } else if (sndDevice == SND_DEVICE_SPEAKER) {
-            LOGI("Routing audio to speakerphone with DualMike enabled\n");
+            LOGI("Routing audio to Speakerphone with DualMike enabled\n");
             sndDevice = SND_DEVICE_IN_S_SADC_OUT_SPEAKER_PHONE;
         }
+#endif
     }
 
 #ifdef SAMSUNG_AUDIO
     if (mMode == AudioSystem::MODE_IN_CALL) {
-        if (sndDevice == SND_DEVICE_HANDSET) {
-            LOGD("Routing audio to call handset\n");
+        if ((!dualmic_enabled) && (sndDevice == SND_DEVICE_HANDSET)) {
+            LOGD("Routing audio to Call Handset\n");
             sndDevice = SND_DEVICE_CALL_HANDSET;
         } else if (sndDevice == SND_DEVICE_SPEAKER) {
-            LOGD("Routing audio to call speaker\n");
+            LOGD("Routing audio to Call Speaker\n");
             sndDevice = SND_DEVICE_CALL_SPEAKER;
         } else if (sndDevice == SND_DEVICE_HEADSET) {
-            LOGD("Routing audio to call headset\n");
+            LOGD("Routing audio to Call Headset\n");
             sndDevice = SND_DEVICE_CALL_HEADSET;
         }
 #if 0
