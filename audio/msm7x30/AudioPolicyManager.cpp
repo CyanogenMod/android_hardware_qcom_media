@@ -566,6 +566,10 @@ audio_io_handle_t AudioPolicyManager::getSession(AudioSystem::stream_type stream
         delete outputDesc;
         return 0;
     }
+
+    //reset it here, it will get updated in startoutput
+    outputDesc->mDevice = 0;
+
     mOutputs.add(output, outputDesc);
     mLPADecodeOutput = output;
     mLPAStreamType   = stream;
@@ -838,13 +842,17 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
     ) {
         setStrategyMute(STRATEGY_MEDIA, true, output);
 #ifdef WITH_QCOM_LPA
+        LOGV("setOutputDevice: muting output:%d mLPADecodeOutput:%d mHardwareOutput:%d",output,mLPADecodeOutput,mHardwareOutput);
         // Mute LPA output also if it belongs to STRATEGY_MEDIA
-        if((mLPADecodeOutput != -1 &&
+        if(((mLPADecodeOutput != -1) &&  (mLPADecodeOutput != output) &&
             mOutputs.valueFor(mLPADecodeOutput)->isUsedByStrategy(STRATEGY_MEDIA))) {
-            LOGV("setOutputDevice: Muting mLPADecodeOutput");
             setStrategyMute(STRATEGY_MEDIA, true, mLPADecodeOutput);
-        }
+        } else if (output != mHardwareOutput) {
+#else
+        if (output != mHardwareOutput) {
 #endif
+            setStrategyMute(STRATEGY_MEDIA, true, mHardwareOutput);
+        }
         // wait for the PCM output buffers to empty before proceeding with the rest of the command
         usleep(outputDesc->mLatency*2*1000);
     }
@@ -889,13 +897,17 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
     ) {
         setStrategyMute(STRATEGY_MEDIA, false, output, delayMs);
 #ifdef WITH_QCOM_LPA
+        LOGV("setOutputDevice: Unmuting output:%d mLPADecodeOutput:%d mHardwareOutput:%d",output,mLPADecodeOutput,mHardwareOutput);
         // Unmute LPA output also if it belongs to STRATEGY_MEDIA
-        if((mLPADecodeOutput != -1 &&
+        if(((mLPADecodeOutput != -1) && (mLPADecodeOutput != output) &&
             mOutputs.valueFor(mLPADecodeOutput)->isUsedByStrategy(STRATEGY_MEDIA))) {
-            LOGV("setOutputDevice: Unmuting mLPADecodeOutput");
             setStrategyMute(STRATEGY_MEDIA, false, mLPADecodeOutput, delayMs);
-        }
+        } else if (output != mHardwareOutput) {
+#else
+        if (output != mHardwareOutput) {
 #endif
+            setStrategyMute(STRATEGY_MEDIA, false, mHardwareOutput, delayMs);
+        }
     }
 }
 
