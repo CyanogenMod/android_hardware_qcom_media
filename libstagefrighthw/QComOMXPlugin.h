@@ -18,7 +18,7 @@
 
 #define QCOM_OMX_PLUGIN_H_
 
-#include <OMXPluginBase.h>
+#include <media/hardware/OMXPluginBase.h>
 
 namespace android {
 

@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -87,22 +87,20 @@ int main (int argc, char **argv)
 
   decoder_context = (struct video_decoder_context *) \
                    calloc (sizeof (struct video_decoder_context),1);
-
-  decoder_context->outputBufferFile = NULL;
-    decoder_context->inputBufferFile = NULL;
-  decoder_context->video_driver_fd = -1;
-
   if (decoder_context == NULL)
   {
     return -1;
   }
-
+  decoder_context->outputBufferFile = NULL;
+  decoder_context->inputBufferFile = NULL;
+  decoder_context->video_driver_fd = -1;
   decoder_context->inputBufferFile = file_ptr;
 
   file_ptr = fopen ("/data/output.yuv","wb");
   if (file_ptr == NULL)
   {
     DEBUG_PRINT("\n File can't be created");
+    free (decoder_context);
     return -1;
   }
   decoder_context->outputBufferFile = file_ptr;
@@ -219,7 +217,13 @@ int init_decoder ( struct video_decoder_context *init_decode )
 {
   struct vdec_ioctl_msg ioctl_msg = {NULL,NULL};
   struct video_queue_context *queue_ptr = NULL;
+#ifdef MAX_RES_720P
   enum vdec_output_fromat output_format = VDEC_YUV_FORMAT_NV12;
+#endif
+#ifdef MAX_RES_1080P
+  enum vdec_output_fromat output_format  = VDEC_YUV_FORMAT_TILE_4x2;
+#endif
+
   pthread_mutexattr_t init_values;
 
   DEBUG_PRINT("\n Before calling the open");
@@ -237,8 +241,8 @@ int init_decoder ( struct video_decoder_context *init_decode )
 
 
   /*Initialize Decoder with codec type and resolution*/
-  ioctl_msg.inputparam = &init_decode->decoder_format;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &init_decode->decoder_format;
+  ioctl_msg.out = NULL;
 
   if (ioctl (init_decode->video_driver_fd,VDEC_IOCTL_SET_CODEC,
          (void*)&ioctl_msg) < 0)
@@ -248,8 +252,8 @@ int init_decoder ( struct video_decoder_context *init_decode )
   }
 
   /*Set the output format*/
-  ioctl_msg.inputparam = &output_format;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &output_format;
+  ioctl_msg.out = NULL;
 
   if (ioctl (init_decode->video_driver_fd,VDEC_IOCTL_SET_OUTPUT_FORMAT,
          (void*)&ioctl_msg) < 0)
@@ -258,8 +262,8 @@ int init_decoder ( struct video_decoder_context *init_decode )
     return -1;
   }
 
-  ioctl_msg.inputparam = &init_decode->video_resoultion;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &init_decode->video_resoultion;
+  ioctl_msg.out = NULL;
 
   if (ioctl (init_decode->video_driver_fd,VDEC_IOCTL_SET_PICRES,
          (void*)&ioctl_msg) < 0)
@@ -273,8 +277,8 @@ int init_decoder ( struct video_decoder_context *init_decode )
   /*Get the Buffer requirements for input and output ports*/
 
   init_decode->input_buffer.buffer_type = VDEC_BUFFER_TYPE_INPUT;
-  ioctl_msg.inputparam = NULL;
-  ioctl_msg.outputparam = &init_decode->input_buffer;
+  ioctl_msg.in = NULL;
+  ioctl_msg.out = &init_decode->input_buffer;
 
   if (ioctl (init_decode->video_driver_fd,VDEC_IOCTL_GET_BUFFER_REQ,
          (void*)&ioctl_msg) < 0)
@@ -290,8 +294,8 @@ int init_decoder ( struct video_decoder_context *init_decode )
 
 
   init_decode->input_buffer.buffer_type = VDEC_BUFFER_TYPE_INPUT;
-  ioctl_msg.inputparam = &init_decode->input_buffer;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &init_decode->input_buffer;
+  ioctl_msg.out = NULL;
   init_decode->input_buffer.actualcount = init_decode->input_buffer.mincount + 2;
 
   if (ioctl (init_decode->video_driver_fd,VDEC_IOCTL_SET_BUFFER_REQ,
@@ -304,8 +308,8 @@ int init_decoder ( struct video_decoder_context *init_decode )
 
   DEBUG_PRINT("\n Query output bufffer requirements");
   init_decode->output_buffer.buffer_type = VDEC_BUFFER_TYPE_OUTPUT;
-  ioctl_msg.inputparam = NULL;
-  ioctl_msg.outputparam = &init_decode->output_buffer;
+  ioctl_msg.in = NULL;
+  ioctl_msg.out = &init_decode->output_buffer;
 
   if (ioctl (init_decode->video_driver_fd,VDEC_IOCTL_GET_BUFFER_REQ,
          (void*)&ioctl_msg) < 0)
@@ -488,6 +492,7 @@ int allocate_buffer ( enum vdec_buffer buffer_dir,
     if (decode_context->ptr_respbuffer == NULL)
     {
       DEBUG_PRINT ("\n Allocate failure ptr_respbuffer");
+      return -1;
     }
 
     for (i=0; i< buffercount; i++)
@@ -551,11 +556,11 @@ int allocate_buffer ( enum vdec_buffer buffer_dir,
 
   for (i=0; i< buffercount; i++)
   {
-    ptemp [i]->pmem_fd = open ("/dev/pmem_adsp", O_RDWR | O_SYNC);
+    ptemp [i]->pmem_fd = open ("/dev/pmem_adsp",O_RDWR);
 
     if (ptemp [i]->pmem_fd < 0)
     {
-      DEBUG_PRINT ("\nallocate_buffer: open pmem failed");
+      DEBUG_PRINT ("\nallocate_buffer: open pmem_adsp failed");
       return -1;
     }
 
@@ -575,8 +580,8 @@ int allocate_buffer ( enum vdec_buffer buffer_dir,
     setbuffers.buffer_type = buffer_dir;
     memcpy (&setbuffers.buffer,ptemp [i],sizeof (struct vdec_bufferpayload));
 
-    ioctl_msg.inputparam  = &setbuffers;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in  = &setbuffers;
+    ioctl_msg.out = NULL;
 
     if (ioctl (decode_context->video_driver_fd,VDEC_IOCTL_SET_BUFFER,
          &ioctl_msg) < 0)
@@ -633,8 +638,8 @@ int start_decoding (struct video_decoder_context *decode_context)
                                decode_context->ptr_outputbuffer [i]->pmem_fd;
     fillbuffer.client_data = (void *)decode_context->ptr_respbuffer [i];
     DEBUG_PRINT ("\n Client Data on output = %p",fillbuffer.client_data);
-    ioctl_msg.inputparam = &fillbuffer;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = &fillbuffer;
+    ioctl_msg.out = NULL;
 
     if (ioctl (decode_context->video_driver_fd,
            VDEC_IOCTL_FILL_OUTPUT_BUFFER,&ioctl_msg) < 0)
@@ -669,8 +674,8 @@ int start_decoding (struct video_decoder_context *decode_context)
     frameinfo.client_data = (struct vdec_bufferpayload *)\
                            decode_context->ptr_inputbuffer [i];
     /*TODO: Time stamp needs to be updated*/
-    ioctl_msg.inputparam = &frameinfo;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = &frameinfo;
+    ioctl_msg.out = NULL;
 
     if (ioctl (decode_context->video_driver_fd,VDEC_IOCTL_DECODE_FRAME,
          &ioctl_msg) < 0)
@@ -699,8 +704,8 @@ int stop_decoding  (struct video_decoder_context *decode_context)
     return -1;
   }
 
-  ioctl_msg.inputparam = &flush_dir;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &flush_dir;
+  ioctl_msg.out = NULL;
 
   if (ioctl(decode_context->video_driver_fd,VDEC_IOCTL_CMD_FLUSH,
          &ioctl_msg) < 0)
@@ -713,8 +718,8 @@ int stop_decoding  (struct video_decoder_context *decode_context)
   }
 
   flush_dir = VDEC_FLUSH_TYPE_OUTPUT;
-  ioctl_msg.inputparam = &flush_dir;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &flush_dir;
+  ioctl_msg.out = NULL;
 
   if (ioctl(decode_context->video_driver_fd,VDEC_IOCTL_CMD_FLUSH,
          &ioctl_msg) < 0)
@@ -850,8 +855,8 @@ static void* video_thread (void *context)
           frameinfo.client_data = (struct vdec_bufferpayload *)\
                        tempbuffer;
           /*TODO: Time stamp needs to be updated*/
-          ioctl_msg.inputparam = &frameinfo;
-          ioctl_msg.outputparam = NULL;
+          ioctl_msg.in = &frameinfo;
+          ioctl_msg.out = NULL;
           total_frames++;
           if (ioctl(decode_context->video_driver_fd,VDEC_IOCTL_DECODE_FRAME,
                &ioctl_msg) < 0)
@@ -874,10 +879,13 @@ static void* video_thread (void *context)
          {
            DEBUG_PRINT("\n FATAL ERROR output buffer is bad");
            DEBUG_PRINT("\nValues outputbuffer = %p",outputbuffer);
+           if (outputbuffer != NULL)
+           {
            DEBUG_PRINT("\nValues outputbuffer->bufferaddr = %p",\
                        outputbuffer->bufferaddr);
            DEBUG_PRINT("\nValues outputbuffer->client_data = %p",\
                        outputbuffer->client_data);
+           }
            sem_post (&decode_context->sem_synchronize);
            break;
          }
@@ -910,8 +918,8 @@ static void* video_thread (void *context)
          fillbuffer.buffer.pmem_fd = tempbuffer->pmem_fd;
          fillbuffer.client_data = (void *)outputbuffer;
 
-         ioctl_msg.inputparam = &fillbuffer;
-         ioctl_msg.outputparam = NULL;
+         ioctl_msg.in = &fillbuffer;
+         ioctl_msg.out = NULL;
 
          if (ioctl (decode_context->video_driver_fd,
               VDEC_IOCTL_FILL_OUTPUT_BUFFER,&ioctl_msg) < 0)
@@ -931,18 +939,19 @@ static void* video_thread (void *context)
           DEBUG_PRINT("\n Flush output complete");
                 sem_post (&decode_context->sem_synchronize);
           break;
-         }
+        }
+
+        if (queueitem->cmd == VDEC_MSG_RESP_STOP_DONE)
+        {
+          DEBUG_PRINT("\n Playback has ended thread will exit");
+          return NULL;
+        }
       }
       else
       {
         DEBUG_PRINT("\n Error condition recieved NULL from Queue");
       }
 
-      if (queueitem->cmd == VDEC_MSG_RESP_STOP_DONE)
-      {
-        DEBUG_PRINT("\n Playback has ended thread will exit");
-        return NULL;
-      }
    }
 }
 
@@ -965,12 +974,12 @@ static void* async_thread (void *context)
 
   while (1)
   {
-    ioctl_msg.inputparam = NULL;
+    ioctl_msg.in = NULL;
 
-    ioctl_msg.outputparam = (void*)&vdec_msg;
+    ioctl_msg.out = (void*)&vdec_msg;
     DEBUG_PRINT ("\n Sizeof vdec_msginfo = %d ",sizeof (vdec_msg));
     DEBUG_PRINT("\n Address of Vdec msg in async thread %p",\
-                ioctl_msg.outputparam);
+                ioctl_msg.out);
     if (ioctl (decode_context->video_driver_fd,VDEC_IOCTL_GET_NEXT_MSG,\
          (void*)&ioctl_msg) < 0)
     {
@@ -1063,7 +1072,7 @@ static unsigned int read_frame (unsigned char *dataptr, unsigned int length,
 
   DEBUG_PRINT ("\n Inside the readframe");
 
-  if (dataptr == NULL && length == 0)
+  if (dataptr == NULL || length == 0)
   {
     DEBUG_PRINT ("\n dataptr = %p length = %u",dataptr,length);
     return 0;
@@ -1161,8 +1170,8 @@ static int Read_Buffer_From_DAT_File(unsigned char *dataptr, unsigned int length
   int i=0;
   unsigned char *read_buffer=NULL;
   char c = '1'; //initialize to anything except '\0'(0)
-  char inputFrameSize[10];
-  int count =0; int cnt =0;
+  char inputFrameSize[12];
+  int count =0; char cnt =0;
   memset(temp_buffer, 0, sizeof(temp_buffer));
 
   while (cnt < 10)
@@ -1176,7 +1185,7 @@ static int Read_Buffer_From_DAT_File(unsigned char *dataptr, unsigned int length
   inputFrameSize[cnt]='\0';
   frameSize = atoi(inputFrameSize);
   //length = 0;
-  DEBUG_PRINT ("\n Frame Size is %ld",frameSize);
+  DEBUG_PRINT ("\n Frame Size is %d",frameSize);
 
   /* get the frame length */
   fseek(inputBufferFile, -1, SEEK_CUR);
