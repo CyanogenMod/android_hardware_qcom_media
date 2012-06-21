@@ -1342,6 +1342,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		DEBUG_PRINT_LOW("\n H263 Decoder selected");
 		drv_ctx.decoder_format = VDEC_CODECTYPE_H263;
 		eCompressionFormat = OMX_VIDEO_CodingH263;
+		output_capability = V4L2_PIX_FMT_H263;
 		codec_type_parse = CODEC_TYPE_H263;
 		m_frame_parser.init_start_codes (codec_type_parse);
 #ifdef INPUT_BUFFER_LOG
