@@ -1269,7 +1269,7 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
 
     key = String8(DUALMIC_KEY);
     if (param.get(key, value) == NO_ERROR) {
-        if ((value == "true") || (value == "on")) {
+        if (value == "true") {
             dualmic_enabled = true;
             LOGI("DualMic feature Enabled");
         } else {
