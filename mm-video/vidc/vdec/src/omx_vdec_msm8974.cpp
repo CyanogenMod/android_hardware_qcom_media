@@ -1328,6 +1328,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		strlcpy((char *)m_cRole, "video_decoder.mpeg2",\
 				OMX_MAX_STRINGNAME_SIZE);
 		drv_ctx.decoder_format = VDEC_CODECTYPE_MPEG2;
+		output_capability = V4L2_PIX_FMT_MPEG2;
 		eCompressionFormat = OMX_VIDEO_CodingMPEG2;
 		/*Initialize Start Code for MPEG2*/
 		codec_type_parse = CODEC_TYPE_MPEG2;
