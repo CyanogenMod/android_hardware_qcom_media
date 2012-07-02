@@ -1176,35 +1176,30 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
 
         case OMX_COMPONENT_GENERATE_PORT_RECONFIG:
           DEBUG_PRINT_HIGH("\n Rxd OMX_COMPONENT_GENERATE_PORT_RECONFIG");
-          if (pThis->start_port_reconfig() != OMX_ErrorNone)
-              pThis->omx_report_error();
-          else
+	  pThis->in_reconfig = true;
+
+          if (pThis->m_cb.EventHandler) {
+            pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
+                OMX_EventPortSettingsChanged, OMX_CORE_OUTPUT_PORT_INDEX, 0, NULL );
+          } else {
+            DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
+          }
+
+          if (pThis->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
           {
-            if (pThis->in_reconfig)
-            {
-              if (pThis->m_cb.EventHandler) {
-                pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
-                    OMX_EventPortSettingsChanged, OMX_CORE_OUTPUT_PORT_INDEX, 0, NULL );
-              } else {
-                DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
-              }
-            }
-            if (pThis->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
-            {
-              OMX_INTERLACETYPE format = (OMX_INTERLACETYPE)-1;
-              OMX_EVENTTYPE event = (OMX_EVENTTYPE)OMX_EventIndexsettingChanged;
-              if (pThis->drv_ctx.interlace == VDEC_InterlaceInterleaveFrameTopFieldFirst)
-                  format = OMX_InterlaceInterleaveFrameTopFieldFirst;
-              else if (pThis->drv_ctx.interlace == VDEC_InterlaceInterleaveFrameBottomFieldFirst)
-                  format = OMX_InterlaceInterleaveFrameBottomFieldFirst;
-              else //unsupported interlace format; raise a error
-                  event = OMX_EventError;
-              if (pThis->m_cb.EventHandler) {
-                pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
-                    event, format, 0, NULL );
-              } else {
-                DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
-              }
+            OMX_INTERLACETYPE format = (OMX_INTERLACETYPE)-1;
+            OMX_EVENTTYPE event = (OMX_EVENTTYPE)OMX_EventIndexsettingChanged;
+            if (pThis->drv_ctx.interlace == VDEC_InterlaceInterleaveFrameTopFieldFirst)
+                format = OMX_InterlaceInterleaveFrameTopFieldFirst;
+            else if (pThis->drv_ctx.interlace == VDEC_InterlaceInterleaveFrameBottomFieldFirst)
+                format = OMX_InterlaceInterleaveFrameBottomFieldFirst;
+            else //unsupported interlace format; raise a error
+                event = OMX_EventError;
+            if (pThis->m_cb.EventHandler) {
+              pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
+                  event, format, 0, NULL );
+            } else {
+              DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
             }
           }
         break;
@@ -2280,31 +2275,35 @@ RETURN VALUE
 ========================================================================== */
 bool omx_vdec::execute_omx_flush(OMX_U32 flushType)
 {
-  struct vdec_ioctl_msg ioctl_msg = {NULL, NULL};
-  enum vdec_bufferflush flush_dir;
   bool bRet = false;
+  struct v4l2_plane plane;
+  struct v4l2_buffer v4l2_buf ={0};
+  struct v4l2_decoder_cmd dec;
+  DEBUG_PRINT_LOW("in %s", __func__);
+  dec.cmd = V4L2_DEC_QCOM_CMD_FLUSH;
   switch (flushType)
   {
     case OMX_CORE_INPUT_PORT_INDEX:
       input_flush_progress = true;
-      flush_dir = VDEC_FLUSH_TYPE_INPUT;
+      dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT;
     break;
     case OMX_CORE_OUTPUT_PORT_INDEX:
       output_flush_progress = true;
-      flush_dir = VDEC_FLUSH_TYPE_OUTPUT;
+      dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
     break;
     default:
       input_flush_progress = true;
       output_flush_progress = true;
-      flush_dir = VDEC_FLUSH_TYPE_ALL;
+      dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT |
+		  V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
   }
-  ioctl_msg.in = &flush_dir;
-  ioctl_msg.out = NULL;
-  if (/*ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_CMD_FLUSH, &ioctl_msg) < */0)
+
+  if (ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec))
   {
-    DEBUG_PRINT_ERROR("\n Flush Port (%d) Failed ", (int)flush_dir);
+    DEBUG_PRINT_ERROR("\n Flush Port (%d) Failed ", flushType);
     bRet = false;
   }
+
   return bRet;
 }
 /*=========================================================================
@@ -7533,22 +7532,6 @@ fmt.type =V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
       eRet = OMX_ErrorInsufficientResources;
     }
   }
-  return eRet;
-}
-
-OMX_ERRORTYPE omx_vdec::start_port_reconfig()
-{
-  struct vdec_ioctl_msg ioctl_msg = {NULL, NULL};
-  OMX_ERRORTYPE eRet = OMX_ErrorNone;
-  enum v4l2_buf_type btype;
-  int rc = 0,i;
-  struct v4l2_plane plane;
-  struct v4l2_buffer v4l2_buf ={0};
-  struct v4l2_decoder_cmd dec;
-  dec.cmd = V4L2_DEC_CMD_STOP;
-  rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec);
-  btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-  in_reconfig = true;
   return eRet;
 }
 
