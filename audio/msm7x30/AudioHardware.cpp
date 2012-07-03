@@ -136,7 +136,7 @@ static const uint32_t DEVICE_DUALMIC_SPEAKER_TX = 20;  /* speaker_dual_mic_endfi
 static const uint32_t DEVICE_FMRADIO_STEREO_TX = 21;
 static const uint32_t DEVICE_HDMI_STERO_RX = 22;       /* hdmi_stereo_rx */
 static const uint32_t DEVICE_FMRADIO_STEREO_RX = 23;
-static const uint32_t DEVICE_COUNT = DEVICE_DUALMIC_SPEAKER_TX +1;
+static const uint32_t DEVICE_COUNT = DEVICE_FMRADIO_STEREO_RX +1;
 
 static bool support_aic3254 = true;
 static bool aic3254_enabled = true;
