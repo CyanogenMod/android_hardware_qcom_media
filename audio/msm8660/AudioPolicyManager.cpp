@@ -106,7 +106,7 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
             }
             break;
         }
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         if (mAvailableOutputDevices & AudioSystem::DEVICE_OUT_FM) {
             device |= AudioSystem::DEVICE_OUT_FM;
         }
@@ -174,7 +174,7 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
                 device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_ANC_HEADSET;
             }
 #endif
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
             if (device2 == 0) {
                 device2 = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_FM_TX;
             }
@@ -196,7 +196,7 @@ uint32_t AudioPolicyManager::getDeviceForStrategy(routing_strategy strategy, boo
             device = mAvailableOutputDevices & AudioSystem::DEVICE_OUT_SPEAKER;
             break;
         }
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         if (mAvailableOutputDevices & AudioSystem::DEVICE_OUT_FM) {
             device |= AudioSystem::DEVICE_OUT_FM;
         }
@@ -339,7 +339,7 @@ status_t AudioPolicyManager::setDeviceConnectionState(AudioSystem::audio_devices
             newDevice = AudioPolicyManagerBase::getNewDevice(mLPADecodeOutput, false);
         }
 #endif
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         if(device == AudioSystem::DEVICE_OUT_FM) {
             if (state == AudioSystem::DEVICE_STATE_AVAILABLE) {
                 mOutputs.valueFor(mHardwareOutput)->changeRefCount(AudioSystem::FM, 1);
@@ -684,7 +684,7 @@ status_t AudioPolicyManager::startOutput(audio_io_handle_t output, AudioSystem::
     // NOTE that the usage count is the same for duplicated output and hardware output which is
     // necassary for a correct control of hardware output routing by startOutput() and stopOutput()
     outputDesc->changeRefCount(stream, 1);
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
 #ifdef WITH_QCOM_LPA
     if ((stream == AudioSystem::FM && output == mA2dpOutput) || output == mLPADecodeOutput)
         setOutputDevice(output, AudioPolicyManagerBase::getNewDevice(output), true);
@@ -862,7 +862,7 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_ANC_HEADPHONE)
 #endif
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADPHONE)
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADSET | AudioSystem::DEVICE_OUT_FM)
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADPHONE | AudioSystem::DEVICE_OUT_FM)
         || device == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_FM_TX)
@@ -940,7 +940,7 @@ void AudioPolicyManager::setOutputDevice(audio_io_handle_t output, uint32_t devi
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_ANC_HEADPHONE)
 #endif
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADPHONE)
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADSET | AudioSystem::DEVICE_OUT_FM)
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_WIRED_HEADPHONE | AudioSystem::DEVICE_OUT_FM)
         || prevDevice == (AudioSystem::DEVICE_OUT_SPEAKER | AudioSystem::DEVICE_OUT_FM_TX)
@@ -988,7 +988,7 @@ status_t AudioPolicyManager::checkAndSetVolume(int stream, int index, audio_io_h
     float volume = computeVolume(stream, index, output, device);
     // do not set volume if the float value did not change
     if ((volume != mOutputs.valueFor(output)->mCurVolume[stream]) || (stream == AudioSystem::VOICE_CALL)
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         || (stream == AudioSystem::FM)
 #endif
         || force) {
@@ -1009,7 +1009,7 @@ status_t AudioPolicyManager::checkAndSetVolume(int stream, int index, audio_io_h
             if (voiceVolume >= 0 && output == mHardwareOutput) {
                 mpClientInterface->setVoiceVolume(voiceVolume, delayMs);
             }
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         } else if (stream == AudioSystem::FM) {
             float fmVolume = -1.0;
             fmVolume = computeVolume(stream, index, output, device);
@@ -1183,7 +1183,7 @@ uint32_t AudioPolicyManager::getDeviceForInputSource(int inputSource)
     case AUDIO_SOURCE_VOICE_CALL:
         device = AudioSystem::DEVICE_IN_VOICE_CALL;
         break;
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
    case AUDIO_SOURCE_FM_RX:
         device = AudioSystem::DEVICE_IN_FM_RX;
         break;

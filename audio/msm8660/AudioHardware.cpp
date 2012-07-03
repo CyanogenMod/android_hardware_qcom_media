@@ -2211,7 +2211,7 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
         // call
         // Recording will happen through currently active tx device
         if((inputDevice == AudioSystem::DEVICE_IN_VOICE_CALL)
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
            || (inputDevice == AudioSystem::DEVICE_IN_FM_RX)
            || (inputDevice == AudioSystem::DEVICE_IN_FM_RX_A2DP)
 #endif
@@ -2249,7 +2249,7 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
                 } else if (outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADPHONE) {
                     LOGI("Routing audio to Speakerphone\n");
                     sndDevice = SND_DEVICE_NO_MIC_HEADSET;
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
                 } else if (outputDevices & AudioSystem::DEVICE_OUT_FM_TX) {
                     LOGE("Routing audio_rx to Speaker\n");
                     sndDevice = SND_DEVICE_SPEAKER_TX;
@@ -2313,7 +2313,7 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
             LOGI("Routing audio to Wired Headset and Speaker\n");
             sndDevice = SND_DEVICE_HEADSET_AND_SPEAKER;
             audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         } else if ((outputDevices & AudioSystem::DEVICE_OUT_FM_TX) &&
                    (outputDevices & AudioSystem::DEVICE_OUT_SPEAKER)) {
             LOGI("Routing audio to FM Tx and Speaker\n");
@@ -2351,7 +2351,7 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
             LOGI("Routing audio to Speakerphone\n");
             sndDevice = SND_DEVICE_SPEAKER;
             audProcess = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         }else if (outputDevices & AudioSystem::DEVICE_OUT_FM_TX){
             LOGI("Routing audio to FM Tx Device\n");
             sndDevice = SND_DEVICE_FM_TX;
@@ -2409,7 +2409,7 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
     }
 #endif
 
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
     if ((outputDevices & AudioSystem::DEVICE_OUT_FM) && (mFmFd == -1)){
         enableFM(sndDevice);
     }
@@ -3508,7 +3508,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
     }
     status_t status =0;
     struct msm_voicerec_mode voc_rec_cfg;
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
     if(devices == AudioSystem::DEVICE_IN_FM_RX_A2DP) {
         status = ::open("/dev/msm_pcm_in", O_RDONLY);
         if (status < 0) {
@@ -3661,7 +3661,7 @@ status_t AudioHardware::AudioStreamInMSM72xx::set(
                 goto Error;
             }
         }
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
     }
 #endif
     //mHardware->setMicMute_nosync(false);
@@ -3738,7 +3738,7 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
             hw->mLock.unlock();
             return -1;
         }
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         if((mDevices == AudioSystem::DEVICE_IN_FM_RX) || (mDevices == AudioSystem::DEVICE_IN_FM_RX_A2DP) ){
             if(ioctl(mFd, AUDIO_GET_SESSION_ID, &dec_id)) {
                 LOGE("AUDIO_GET_SESSION_ID failed*********");
@@ -3797,7 +3797,7 @@ ssize_t AudioHardware::AudioStreamInMSM72xx::read( void* buffer, ssize_t bytes)
                  addToTable(dec_id,cur_tx,INVALID_DEVICE,PCM_REC,true);
             }
             mFirstread = false;
-#ifdef FM_RADIO
+#ifdef HAVE_FM_RADIO
         }
 #endif
     }
