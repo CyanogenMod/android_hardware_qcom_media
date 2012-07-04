@@ -955,11 +955,17 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
     const char BT_NREC_KEY[] = "bt_headset_nrec";
     const char BT_NAME_KEY[] = "bt_headset_name";
     const char BT_NREC_VALUE_ON[] = "on";
+#ifdef HAVE_SEMC_FM_RADIO
+    const char FM_NAME_KEY[] = "fm_radio_active";
+    const char FM_VALUE_ON[] = "on";
+    const char FM_VALUE_OFF[] = "off";
+#else
     const char FM_NAME_KEY[] = "FMRadioOn";
     const char FM_VALUE_HANDSET[] = "handset";
     const char FM_VALUE_SPEAKER[] = "speaker";
     const char FM_VALUE_HEADSET[] = "headset";
     const char FM_VALUE_FALSE[] = "false";
+#endif
     const char ACTIVE_AP[] = "active_ap";
     const char EFFECT_ENABLED[] = "sound_effect_enable";
 
@@ -1066,6 +1072,21 @@ status_t AudioHardware::setParameters(const String8& keyValuePairs)
             }
         }
     }
+
+#ifdef HAVE_SEMC_FM_RADIO
+    key = String8(FM_NAME_KEY);
+    if (param.get(key,value) == NO_ERROR) {
+        if (value == FM_VALUE_ON) {
+            LOGI("FM radio enabled");
+            fmState = FM_ON;
+            doRouting(NULL);
+        } else if (value == FM_VALUE_OFF) {
+            LOGI("FM radio disabled");
+            fmState = FM_OFF;
+            doRouting(NULL);
+        }
+    }
+#endif
 
     return NO_ERROR;
 }
@@ -1234,13 +1255,26 @@ status_t AudioHardware::setVoiceVolume(float v)
 #ifdef HAVE_FM_RADIO
 status_t AudioHardware::setFmVolume(float v)
 {
-    int vol = AudioSystem::logToLinear( v );
+    int vol;
+#ifdef HAVE_SEMC_FM_RADIO
+    if (v < 0.0) {
+        LOGW("setFmVolume(%f) under 0.0, assuming 0.0\n", v);
+        v = 0.0;
+    } else if (v > 1.0) {
+        LOGW("setFmVolume(%f) over 1.0, assuming 1.0\n", v);
+        v = 1.0;
+    }
+    vol = lrint(v * 100.0);
+#else
+    vol = AudioSystem::logToLinear( v );
     if ( vol > 100 ) {
         vol = 100;
     }
     else if ( vol < 0 ) {
         vol = 0;
     }
+#endif
+
     LOGV("setFmVolume(%f)\n", v);
     Routing_table* temp = NULL;
     temp = getNodeByStreamType(FM_RADIO);
@@ -2052,6 +2086,9 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
 #ifdef HAVE_FM_RADIO
            || (inputDevice == AudioSystem::DEVICE_IN_FM_RX)
            || (inputDevice == AudioSystem::DEVICE_IN_FM_RX_A2DP)
+#ifdef HAVE_SEMC_FM_RADIO
+           || ((mFmFd != -1) && (fmState == FM_ON))
+#endif
 #endif
           )
             return NO_ERROR;
@@ -2167,12 +2204,26 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
         }
     }
 #ifdef HAVE_FM_RADIO
+#ifdef HAVE_SEMC_FM_RADIO
+    if ((fmState == FM_ON) && (mFmFd == -1) && !isInCall() && (mMode != AudioSystem::MODE_RINGTONE))
+    {
+        /* FIXME force FM audio to HEADSET */
+        LOGI("Routing audio to SEMC FM Wired Headset");
+        sndDevice = SND_DEVICE_HEADSET;
+
+        enableFM(sndDevice);
+    }
+
+    if (((fmState != FM_ON) && (mFmFd != -1)) || isInCall() || (mMode == AudioSystem::MODE_RINGTONE))
+        disableFM();
+#else
     if ((outputDevices & AudioSystem::DEVICE_OUT_FM) && (mFmFd == -1)){
         enableFM(sndDevice);
     }
     if ((mFmFd != -1) && !(outputDevices & AudioSystem::DEVICE_OUT_FM)){
         disableFM();
     }
+#endif
 
     if ((CurrentComboDeviceData.DeviceId == INVALID_DEVICE) &&
         (sndDevice == SND_DEVICE_FM_TX_AND_SPEAKER )){
