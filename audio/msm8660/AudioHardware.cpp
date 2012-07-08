@@ -155,8 +155,9 @@ static const uint32_t DEVICE_HEADSET_CALL_RX       = 64; // headset_call_rx
 static const uint32_t DEVICE_HEADSET_CALL_TX       = 65; // headset_call_tx
 static const uint32_t DEVICE_SPEAKER_VR_TX         = 82; // speaker_vr_tx
 static const uint32_t DEVICE_HEADSET_VR_TX         = 83; // headset_vr_tx
-static const uint32_t DEVICE_CAMCORDER_TX          = 105; // camcoder_tx (misspelled by Samsung)
 #endif
+static const uint32_t DEVICE_CAMCORDER_TX          = 105; // camcoder_tx (misspelled by Samsung)
+                                                          // secondary_mic_tx (sony)
 
 static uint32_t FLUENCE_MODE_ENDFIRE   = 0;
 static uint32_t FLUENCE_MODE_BROADSIDE = 1;
@@ -821,9 +822,14 @@ AudioHardware::AudioHardware() :
             index = DEVICE_SPEAKER_VR_TX;
         else if(strcmp((char* )name[i], "headset_vr_tx") == 0)
             index = DEVICE_HEADSET_VR_TX;
-        else if(strcmp((char* )name[i], "camcoder_tx") == 0)
-            index = DEVICE_CAMCORDER_TX;
 #endif
+        else if((strcmp((char* )name[i], "camcoder_tx") == 0) ||
+#ifdef SONY_AUDIO
+                (strcmp((char* )name[i], "secondary_mic_tx") == 0))
+#else
+                (strcmp((char* )name[i], "camcorder_tx") == 0))
+#endif
+            index = DEVICE_CAMCORDER_TX;
         else
             continue;
         LOGV("index = %d",index);
