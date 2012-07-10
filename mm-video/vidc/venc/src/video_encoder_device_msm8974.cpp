@@ -2357,7 +2357,8 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
    bool status = true;
    struct venc_headerextension hec_cfg;
    struct venc_multiclicecfg multislice_cfg;
-
+   int rc;
+   struct v4l2_control control;
    if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_MPEG4) {
       if (error_resilience->bEnableHEC) {
          hec_cfg.header_extension = 1;
@@ -2400,6 +2401,28 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
         }
    DEBUG_PRINT_LOW("\n %s(): mode = %u, size = %u", __func__, multislice_cfg.mslice_mode,
                    multislice_cfg.mslice_size);
+   if(error_resilience->nResynchMarkerSpacing) {
+    control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
+	control.value =  V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_BYTES;
+	printf("Calling IOCTL set control for id=%x, val=%d\n", control.id, control.value);
+	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+	if (rc) {
+		printf("Failed to set Slice mode control\n");
+		return false;
+	}
+	printf("Success IOCTL set control for id=%x, value=%d\n", control.id, control.value);
+	multislice.mslice_mode=control.value;
+
+	control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_BYTES;
+	control.value = error_resilience->nResynchMarkerSpacing;
+	printf("Calling IOCTL set control for id=%x, val=%d\n", control.id, control.value);
+	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+	if (rc) {
+		printf("Failed to set MAX MB control\n");
+		return false;
+	}
+	printf("Success IOCTL set control for id=%x, value=%d\n", control.id, control.value);
+   }
    if (/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_MULTI_SLICE_CFG,(void*)&ioctl_msg) < */0) {
       DEBUG_PRINT_ERROR("\nERROR: Request for setting multi-slice cfg failed");
       status = false;
