@@ -1521,7 +1521,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
 		fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
-		fmt.fmt.pix_mp.pixelformat = output_capability;
+		fmt.fmt.pix_mp.pixelformat = capture_capability;
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
 		if (ret) {
 			/*TODO: How to handle this case */	
@@ -3324,32 +3324,32 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           {
               QOMX_VIDEO_DECODER_PICTURE_ORDER *pictureOrder =
                   (QOMX_VIDEO_DECODER_PICTURE_ORDER *)paramData;
-              enum vdec_output_order pic_order = VDEC_ORDER_DISPLAY;
+			  struct v4l2_control control;
+			  int pic_order,rc=0;
               DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexParamVideoDecoderPictureOrder %d\n",
                     pictureOrder->eOutputPictureOrder);
-              if (pictureOrder->eOutputPictureOrder == QOMX_VIDEO_DISPLAY_ORDER)
-                  pic_order = VDEC_ORDER_DISPLAY;
-              else if (pictureOrder->eOutputPictureOrder == QOMX_VIDEO_DECODE_ORDER){
-                  pic_order = VDEC_ORDER_DECODE;
+		if (pictureOrder->eOutputPictureOrder == QOMX_VIDEO_DISPLAY_ORDER) {
+			pic_order = V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DISPLAY;
+		  }
+		else if (pictureOrder->eOutputPictureOrder == QOMX_VIDEO_DECODE_ORDER){
+			pic_order = V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DECODE;
                   time_stamp_dts.set_timestamp_reorder_mode(false);
-              }
-              else
-                  eRet = OMX_ErrorBadParameter;
-
-              if (eRet == OMX_ErrorNone && pic_order != drv_ctx.picture_order)
-              {
-                  drv_ctx.picture_order = pic_order;
-		  // ioctl_msg.in = &drv_ctx.picture_order;
-                  //ioctl_msg.out = NULL;
-                  if (/*ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_SET_PICTURE_ORDER,
-                      (void*)&ioctl_msg) < */0)
-                  {
-                      DEBUG_PRINT_ERROR("\n Set picture order failed");
-                      eRet = OMX_ErrorUnsupportedSetting;
-                  }
-              }
-              break;
-          }
+		}
+		else
+		eRet = OMX_ErrorBadParameter;
+		if (eRet == OMX_ErrorNone)
+		{
+			control.id = V4L2_CID_MPEG_VIDC_VIDEO_OUTPUT_ORDER;
+			control.value = pic_order;
+			rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+			if(rc)
+			{
+				DEBUG_PRINT_ERROR("\n Set picture order failed");
+				eRet = OMX_ErrorUnsupportedSetting;
+			}
+		}
+		break;
+	}
     case OMX_QcomIndexParamConcealMBMapExtraData:
       if(!secure_mode)
           eRet = enable_extradata(VDEC_EXTRADATA_MB_ERROR_MAP,
