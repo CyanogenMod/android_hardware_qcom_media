@@ -941,7 +941,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
         (OMX_VIDEO_PARAM_INTRAREFRESHTYPE *)paramData;
       if(intra_refresh->nPortIndex == (OMX_U32) PORT_INDEX_OUT)
       {
-        if(/*venc_set_intra_refresh(intra_refresh->eRefreshMode, intra_refresh->nCirMBs) == */false)
+        if(venc_set_intra_refresh(intra_refresh->eRefreshMode, intra_refresh->nCirMBs) == false)
         {
           DEBUG_PRINT_ERROR("\nERROR: Setting Intra refresh failed");
           return false;
