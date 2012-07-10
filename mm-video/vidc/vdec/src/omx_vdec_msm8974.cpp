@@ -1409,6 +1409,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		drv_ctx.decoder_format = VDEC_CODECTYPE_VC1;
 		eCompressionFormat = OMX_VIDEO_CodingWMV;
 		codec_type_parse = CODEC_TYPE_VC1;
+		output_capability = V4L2_PIX_FMT_VC1_ANNEX_G;
 		m_frame_parser.init_start_codes (codec_type_parse);
 #ifdef INPUT_BUFFER_LOG
 		strcat(inputfilename, "vc1");
@@ -1421,6 +1422,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		drv_ctx.decoder_format = VDEC_CODECTYPE_VC1_RCV;
 		eCompressionFormat = OMX_VIDEO_CodingWMV;
 		codec_type_parse = CODEC_TYPE_VC1;
+		output_capability = V4L2_PIX_FMT_VC1_ANNEX_G;
 		m_frame_parser.init_start_codes (codec_type_parse);
 #ifdef INPUT_BUFFER_LOG
 		strcat(inputfilename, "vc1");
