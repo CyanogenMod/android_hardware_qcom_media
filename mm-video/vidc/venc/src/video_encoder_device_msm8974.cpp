@@ -2530,8 +2530,10 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
 
 	struct v4l2_control control;
 	int rc;
+	struct venc_framerate frame_rate_cfg;
+        Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
 	control.id = V4L2_CID_MPEG_VIDC_VIDEO_FRAME_RATE;
-	control.value = encode_framerate;
+	control.value = frame_rate_cfg.fps_numerator;
 	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
