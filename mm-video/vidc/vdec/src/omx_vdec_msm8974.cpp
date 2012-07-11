@@ -1428,6 +1428,15 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		strcat(inputfilename, "vc1");
 #endif
 	}
+	else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",	\
+				OMX_MAX_STRINGNAME_SIZE))
+	{
+		strlcpy((char *)m_cRole, "video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
+		output_capability=V4L2_PIX_FMT_VP8;
+		eCompressionFormat = OMX_VIDEO_CodingVPX;
+		codec_type_parse = CODEC_TYPE_VP8;
+		arbitrary_bytes = false;
+	}
 	else
 	{
 		DEBUG_PRINT_ERROR("\nERROR:Unknown Component\n");
@@ -2576,6 +2585,10 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
         eRet = OMX_ErrorNoMore;
       }
     }
+    else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE))
+    {
+        eRet = OMX_ErrorNoMore;
+    }
     else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.mpeg2",OMX_MAX_STRINGNAME_SIZE))
     {
       if (profileLevelType->nProfileIndex == 0)
@@ -3227,6 +3240,18 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                   eRet =OMX_ErrorUnsupportedSetting;
               }
           }
+	  else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE))
+          {
+            if(!strncmp((const char*)comp_role->cRole,"video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE))
+            {
+              strlcpy((char*)m_cRole,"video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
+            }
+	    else
+            {
+              DEBUG_PRINT_ERROR("Setparameter: unknown Index %s\n", comp_role->cRole);
+              eRet = OMX_ErrorUnsupportedSetting;
+            }
+	  }
           else
           {
                DEBUG_PRINT_ERROR("Setparameter: unknown param %s\n", drv_ctx.kind);
@@ -6018,6 +6043,19 @@ OMX_ERRORTYPE  omx_vdec::component_role_enum(OMX_IN OMX_HANDLETYPE hComp,
     if((0 == index) && role)
     {
       strlcpy((char *)role, "video_decoder.vc1",OMX_MAX_STRINGNAME_SIZE);
+      DEBUG_PRINT_LOW("component_role_enum: role %s\n",role);
+    }
+    else
+    {
+      DEBUG_PRINT_LOW("\n No more roles \n");
+      eRet = OMX_ErrorNoMore;
+    }
+  }
+  else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE))
+  {
+    if((0 == index) && role)
+    {
+      strlcpy((char *)role, "video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
       DEBUG_PRINT_LOW("component_role_enum: role %s\n",role);
     }
     else
