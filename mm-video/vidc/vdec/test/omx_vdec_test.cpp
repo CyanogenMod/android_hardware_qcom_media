@@ -211,7 +211,12 @@ typedef enum {
   CODEC_FORMAT_VC1,
   CODEC_FORMAT_DIVX,
   CODEC_FORMAT_MPEG2,
+#ifdef _MSM8974_
+  CODEC_FORMAT_VP8,
+  CODEC_FORMAT_MAX = CODEC_FORMAT_VP8
+#else
   CODEC_FORMAT_MAX = CODEC_FORMAT_MPEG2
+#endif
 } codec_format;
 
 typedef enum {
@@ -234,7 +239,13 @@ typedef enum {
   FILE_TYPE_DIVX_311,
 
   FILE_TYPE_START_OF_MPEG2_SPECIFIC = 50,
-  FILE_TYPE_MPEG2_START_CODE = FILE_TYPE_START_OF_MPEG2_SPECIFIC
+  FILE_TYPE_MPEG2_START_CODE = FILE_TYPE_START_OF_MPEG2_SPECIFIC,
+
+#ifdef _MSM8974_
+  FILE_TYPE_START_OF_VP8_SPECIFIC = 60,
+  FILE_TYPE_VP8_START_CODE = FILE_TYPE_START_OF_VP8_SPECIFIC,
+  FILE_TYPE_VP8
+#endif
 
 } file_type;
 
@@ -403,6 +414,9 @@ static int Read_Buffer_From_Mpeg2_Start_Code(OMX_BUFFERHEADERTYPE  *pBufHdr);
 static int Read_Buffer_From_Size_Nal(OMX_BUFFERHEADERTYPE  *pBufHdr);
 static int Read_Buffer_From_RCV_File_Seq_Layer(OMX_BUFFERHEADERTYPE  *pBufHdr);
 static int Read_Buffer_From_RCV_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
+#ifdef _MSM8974_
+static int Read_Buffer_From_VP8_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
+#endif
 static int Read_Buffer_From_VC1_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
 static int Read_Buffer_From_DivX_4_5_6_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
 static int Read_Buffer_From_DivX_311_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
@@ -1283,6 +1297,9 @@ int main(int argc, char **argv)
       printf(" 4--> VC1\n");
       printf(" 5--> DivX\n");
       printf(" 6--> MPEG2\n");
+#ifdef _MSM8974_
+      printf(" 7--> VP8\n");
+#endif
       fflush(stdin);
       fgets(tempbuf,sizeof(tempbuf),stdin);
       sscanf(tempbuf,"%d",&codec_format_option);
@@ -1321,10 +1338,21 @@ int main(int argc, char **argv)
       {
         printf(" 3--> MPEG2 START CODE CLIP (.m2v)\n");
       }
-
+#ifdef _MSM8974_
+      else if (codec_format_option == CODEC_FORMAT_VP8)
+      {
+        printf(" 61--> VP8 START CODE CLIP (.ivf)\n");
+      }
+#endif
       fflush(stdin);
       fgets(tempbuf,sizeof(tempbuf),stdin);
-      sscanf(tempbuf,"%d",&file_type_option);
+      sscanf(tempbuf,"%d",&file_type_option); 
+#ifdef _MSM8974_
+      if (codec_format_option == CODEC_FORMAT_VP8)
+      {
+        file_type_option = FILE_TYPE_VP8;
+      }
+#endif
       fflush(stdin);
       if (codec_format_option == CODEC_FORMAT_H264 && file_type_option == 3)
       {
@@ -1449,6 +1477,10 @@ int main(int argc, char **argv)
         case CODEC_FORMAT_MPEG2:
           file_type_option = (file_type)(FILE_TYPE_START_OF_MPEG2_SPECIFIC + file_type_option - FILE_TYPE_COMMON_CODEC_MAX);
           break;
+#ifdef _MSM8974_
+	case CODEC_FORMAT_VP8:
+	break;
+#endif
         default:
           printf("Error: Unknown code %d\n", codec_format_option);
       }
@@ -1631,6 +1663,11 @@ int run_tests()
   else if(file_type_option == FILE_TYPE_RCV) {
     Read_Buffer = Read_Buffer_From_RCV_File;
   }
+#ifdef _MSM8974_
+  else if(file_type_option == FILE_TYPE_VP8) {
+    Read_Buffer = Read_Buffer_From_VP8_File;
+  }
+#endif
   else if(file_type_option == FILE_TYPE_VC1) {
     Read_Buffer = Read_Buffer_From_VC1_File;
   }
@@ -1646,6 +1683,9 @@ int run_tests()
     case FILE_TYPE_MPEG2_START_CODE:
     case FILE_TYPE_RCV:
     case FILE_TYPE_VC1:
+#ifdef _MSM8974_
+    case FILE_TYPE_VP8:
+#endif
     case FILE_TYPE_DIVX_4_5_6:
 #ifdef MAX_RES_1080P
       case FILE_TYPE_DIVX_311:
@@ -1803,6 +1843,12 @@ int Init_Decoder()
     {
       strlcpy(vdecCompNames, "OMX.qcom.video.decoder.divx", 28);
     }
+#ifdef _MSM8974_
+    else if (codec_format_option == CODEC_FORMAT_VP8)
+    {
+      strlcpy(vdecCompNames, "OMX.qcom.video.decoder.vp8", 27);
+    }
+#endif
 #ifdef MAX_RES_1080P
     else if (file_type_option == FILE_TYPE_DIVX_311)
     {
@@ -1924,7 +1970,13 @@ int Play_Decoder()
         inputPortFmt.nFramePackingFormat = OMX_QCOM_FramePacking_Arbitrary;
         break;
       }
-
+#ifdef _MSM8974_
+      case FILE_TYPE_VP8:
+      {
+        inputPortFmt.nFramePackingFormat = OMX_QCOM_FramePacking_OnlyOneCompleteFrame;
+        break;
+      }
+#endif
       default:
         inputPortFmt.nFramePackingFormat = OMX_QCOM_FramePacking_Unspecified;
     }
@@ -3381,7 +3433,56 @@ static int Read_Buffer_From_DivX_311_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
 
     return n_offset;
 }
+#ifdef _MSM8974_
+static int Read_Buffer_From_VP8_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
+{
+    static OMX_S64 timeStampLfile = 0;
+    char *p_buffer = NULL;
+    bool pkt_ready = false;
+    unsigned int frame_type = 0;
+    unsigned int bytes_read = 0;
+    unsigned int frame_size = 0;
+    unsigned int num_bytes_size = 4;
+    unsigned int num_bytes_frame_type = 1;
+	unsigned long long time_stamp;
+    unsigned int n_offset = pBufHdr->nOffset;
+	static int ivf_header_read;
 
+	if (pBufHdr != NULL)
+    {
+        p_buffer = (char *)pBufHdr->pBuffer + pBufHdr->nOffset;
+    }
+    else
+    {
+        DEBUG_PRINT("\n ERROR:Read_Buffer_From_DivX_311_File: pBufHdr is NULL\n");
+        return 0;
+    }
+
+    if (p_buffer == NULL)
+    {
+        DEBUG_PRINT("\n ERROR:Read_Buffer_From_DivX_311_File: p_bufhdr is NULL\n");
+        return 0;
+    }
+
+	if(ivf_header_read == 0) {
+	bytes_read = read(inputBufferFileFd, p_buffer, 32);
+	ivf_header_read = 1;
+	if(p_buffer[0] == 'D' && p_buffer[1] == 'K' && p_buffer[2] == 'I' && p_buffer[3] == 'F')
+	{
+	printf(" \n IVF header found \n ");
+	} else
+	{
+		printf(" \n No IVF header found \n ");
+		lseek(inputBufferFileFd, -32, SEEK_CUR);
+    }
+	}
+	bytes_read = read(inputBufferFileFd, &frame_size, 4);
+	bytes_read = read(inputBufferFileFd, &time_stamp, 8);
+	n_offset += read(inputBufferFileFd, p_buffer, frame_size);
+	pBufHdr->nTimeStamp = time_stamp;
+	return n_offset;
+}
+#endif
 static int open_video_file ()
 {
     int error_code = 0;
