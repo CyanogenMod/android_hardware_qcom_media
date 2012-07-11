@@ -229,6 +229,23 @@ static const unsigned int h263_profile_level_table[][5]=
 #endif
     {0,0,0,0,0}
 };
+#ifdef _MSM8974_
+static const unsigned int VP8_profile_level_table[][5]=
+{
+    /*max mb per frame, max mb per sec, max bitrate, level, profile*/
+    {99,1485,64000,OMX_VIDEO_H263Level10,OMX_VIDEO_H263ProfileBaseline},
+    {396,5940,128000,OMX_VIDEO_H263Level20,OMX_VIDEO_H263ProfileBaseline},
+    {396,11880,384000,OMX_VIDEO_H263Level30,OMX_VIDEO_H263ProfileBaseline},
+    {396,11880,2048000,OMX_VIDEO_H263Level40,OMX_VIDEO_H263ProfileBaseline},
+    {99,1485,128000,OMX_VIDEO_H263Level45,OMX_VIDEO_H263ProfileBaseline},
+    {396,19800,4096000,OMX_VIDEO_H263Level50,OMX_VIDEO_H263ProfileBaseline},
+    {810,40500,8192000,OMX_VIDEO_H263Level60,OMX_VIDEO_H263ProfileBaseline},
+    {1620,81000,16384000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+    {32400,972000,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+    {34560,1036800,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+    {0,0,0,0,0}
+};
+#endif
 
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define FractionToQ16(q,num,den) { OMX_U32 power; Log2(den,power); q = num << (16 - power); }
@@ -612,7 +629,12 @@ result = OMX_SetParameter(m_hHandle,
    {
      profile_tbl = (unsigned int const *)h263_profile_level_table;
    }
-
+#ifdef _MSM8974_
+   else if(m_sProfile.eCodec == OMX_VIDEO_CodingVPX)
+   {
+     profile_tbl = (unsigned int const *)VP8_profile_level_table;
+   }
+#endif
    mb_per_frame = ((m_sProfile.nFrameHeight+15)>>4)*
                 ((m_sProfile.nFrameWidth+15)>>4);
 
@@ -1200,6 +1222,16 @@ OMX_ERRORTYPE VencTest_Initialize()
                              &sCallbacks);
       CHK(result);
    }
+#ifdef _MSM8974_
+   else if (m_sProfile.eCodec == OMX_VIDEO_CodingVPX)
+   {
+      result = OMX_GetHandle(&m_hHandle,
+                             "OMX.qcom.video.encoder.vp8",
+                             NULL,
+                             &sCallbacks);
+      CHK(result);
+   }
+#endif
    else
    {
       result = OMX_GetHandle(&m_hHandle,
@@ -1921,6 +1953,12 @@ void parseArgs(int argc, char** argv)
       {
          m_sProfile.eCodec = OMX_VIDEO_CodingAVC;
       }
+#ifdef _MSM8974_
+      else if ((!strcmp(argv[3], "VP8")) || (!strcmp(argv[3], "vp8")))
+      {
+         m_sProfile.eCodec = OMX_VIDEO_CodingVPX;
+      }
+#endif
       else
       {
          usage(argv[0]);
