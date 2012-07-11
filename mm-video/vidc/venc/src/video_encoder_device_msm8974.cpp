@@ -352,6 +352,15 @@ bool venc_dev::venc_open(OMX_U32 codec)
     strcat(outputfilename, "264");
 #endif
   }
+if (codec == OMX_VIDEO_CodingVPX)
+	{
+		m_sVenc_cfg.codectype = V4L2_PIX_FMT_VP8;
+		codec_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE;
+		profile_level.level = V4L2_MPEG_VIDEO_H264_LEVEL_1_0;
+#ifdef OUTPUT_BUFFER_LOG
+		strcat(outputfilename, "ivf");
+#endif
+	}
   if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < */0 )
   {
     DEBUG_PRINT_ERROR("\nERROR: Request for setting base configuration failed");
@@ -3029,6 +3038,9 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
         DEBUG_PRINT_LOW("\n Unsupported H.263 profile type %lu", *eProfile);
         return false;
       }
+  } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_VP8) {
+	  DEBUG_PRINT_HIGH("Disregarding profile/level setting for VP8\n");
+	  return true;
   }
   else
   {

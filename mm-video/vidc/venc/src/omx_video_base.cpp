@@ -3670,6 +3670,21 @@ OMX_ERRORTYPE  omx_video::component_role_enum(OMX_IN OMX_HANDLETYPE hComp,
       eRet = OMX_ErrorNoMore;
     }
   }
+#ifdef _MSM8974_
+  else if(!strncmp((char*)m_nkind, "OMX.qcom.video.encoder.vp8",OMX_MAX_STRINGNAME_SIZE))
+  {
+    if((0 == index) && role)
+    {
+      strlcpy((char *)role, "video_encoder.vp8",OMX_MAX_STRINGNAME_SIZE);
+      DEBUG_PRINT_LOW("component_role_enum: role %s\n",role);
+    }
+    else
+    {
+      DEBUG_PRINT_ERROR("\nERROR: No more roles \n");
+      eRet = OMX_ErrorNoMore;
+    }
+  }
+#endif
   else
   {
     DEBUG_PRINT_ERROR("\nERROR: Querying Role on Unknown Component\n");
