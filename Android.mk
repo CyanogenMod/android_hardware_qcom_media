@@ -1,5 +1,9 @@
 QCOM_MEDIA_ROOT := $(call my-dir)
-
-include $(QCOM_MEDIA_ROOT)/mm-video/Android.mk
+ifneq ($(filter msm8960 msm8660 msm7627a,$(TARGET_BOARD_PLATFORM)),)
 include $(QCOM_MEDIA_ROOT)/mm-core/Android.mk
 include $(QCOM_MEDIA_ROOT)/libstagefrighthw/Android.mk
+endif
+
+ifneq ($(filter msm8960 msm8660,$(TARGET_BOARD_PLATFORM)),)
+include $(QCOM_MEDIA_ROOT)/mm-video/Android.mk
+endif
