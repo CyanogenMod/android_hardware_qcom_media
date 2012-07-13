@@ -74,6 +74,7 @@ else
 LOCAL_SRC_FILES   += src/video_encoder_device.cpp
 endif
 
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 LOCAL_SRC_FILES   += ../common/src/extra_data_handler.cpp
 
