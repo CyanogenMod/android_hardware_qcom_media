@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -86,16 +86,13 @@ int main (int argc, char **argv)
 
   encoder_context = (struct video_encoder_context *) \
                    calloc (sizeof (struct video_encoder_context),1);
-
-  encoder_context->outputBufferFile = NULL;
-    encoder_context->inputBufferFile = NULL;
-  encoder_context->video_driver_fd = -1;
-
   if (encoder_context == NULL)
   {
     return -1;
   }
-
+  encoder_context->outputBufferFile = NULL;
+  encoder_context->inputBufferFile = NULL;
+  encoder_context->video_driver_fd = -1;
   encoder_context->inputBufferFile = file_ptr;
   encoder_context->input_width = 176;
   encoder_context->input_height = 144;
@@ -109,6 +106,7 @@ int main (int argc, char **argv)
   if (file_ptr == NULL)
   {
     DEBUG_PRINT("\n File can't be created");
+    free (encoder_context);
     return -1;
   }
   encoder_context->outputBufferFile = file_ptr;
@@ -258,8 +256,8 @@ int init_encoder ( struct video_encoder_context *init_decode )
   basecfg.targetbitrate = init_decode->targetbitrate;
 
   /*Initialize Decoder with codec type and resolution*/
-  ioctl_msg.inputparam = &basecfg;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &basecfg;
+  ioctl_msg.out = NULL;
 
   if (ioctl (init_decode->video_driver_fd,VEN_IOCTL_SET_BASE_CFG,
          (void*)&ioctl_msg) < 0)
@@ -270,8 +268,8 @@ int init_encoder ( struct video_encoder_context *init_decode )
 
   /*Initialize Decoder with codec type and resolution*/
   DEBUG_PRINT ("\n Switch off rate control");
-  ioctl_msg.inputparam = &ratecrl;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &ratecrl;
+  ioctl_msg.out = NULL;
   ratecrl.rcmode = VEN_RC_OFF;
   if (ioctl (init_decode->video_driver_fd,VEN_IOCTL_SET_RATE_CTRL_CFG,
          (void*)&ioctl_msg) < 0)
@@ -283,8 +281,8 @@ int init_encoder ( struct video_encoder_context *init_decode )
   if (basecfg.codectype == VEN_CODEC_H264)
   {
     DEBUG_PRINT ("\n Set the VEN_IOCTL_SET_CODEC_PROFILE High");
-    ioctl_msg.inputparam = &profile;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = &profile;
+    ioctl_msg.out = NULL;
     profile.profile = VEN_PROFILE_H264_BASELINE;
     if (ioctl (init_decode->video_driver_fd,VEN_IOCTL_SET_CODEC_PROFILE,
            (void*)&ioctl_msg) < 0)
@@ -294,8 +292,8 @@ int init_encoder ( struct video_encoder_context *init_decode )
     }
 
     DEBUG_PRINT ("\n Set the VEN_IOCTL_SET_CODEC_PROFILE High");
-    ioctl_msg.inputparam = &profilelevel;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = &profilelevel;
+    ioctl_msg.out = NULL;
     profilelevel.level = VEN_LEVEL_H264_1p1;
     if (ioctl (init_decode->video_driver_fd,VEN_IOCTL_SET_PROFILE_LEVEL,
            (void*)&ioctl_msg) < 0)
@@ -307,8 +305,8 @@ int init_encoder ( struct video_encoder_context *init_decode )
     if (basecfg.input_width > 720)
     {
       DEBUG_PRINT ("\n Set the VEN_IOCTL_SET_CODEC_PROFILE High");
-      ioctl_msg.inputparam = &profile;
-      ioctl_msg.outputparam = NULL;
+      ioctl_msg.in = &profile;
+      ioctl_msg.out = NULL;
       profile.profile = VEN_PROFILE_H264_HIGH;
       if (ioctl (init_decode->video_driver_fd,VEN_IOCTL_SET_CODEC_PROFILE,
              (void*)&ioctl_msg) < 0)
@@ -318,8 +316,8 @@ int init_encoder ( struct video_encoder_context *init_decode )
       }
 
       DEBUG_PRINT ("\n Set the VEN_IOCTL_SET_CODEC_PROFILE High");
-      ioctl_msg.inputparam = &profilelevel;
-      ioctl_msg.outputparam = NULL;
+      ioctl_msg.in = &profilelevel;
+      ioctl_msg.out = NULL;
       profilelevel.level = VEN_LEVEL_H264_3p1;
       if (ioctl (init_decode->video_driver_fd,VEN_IOCTL_SET_PROFILE_LEVEL,
              (void*)&ioctl_msg) < 0)
@@ -335,8 +333,8 @@ int init_encoder ( struct video_encoder_context *init_decode )
 
 
 
-  ioctl_msg.inputparam = NULL;
-  ioctl_msg.outputparam = &init_decode->input_buffer;
+  ioctl_msg.in = NULL;
+  ioctl_msg.out = &init_decode->input_buffer;
 
   if (ioctl (init_decode->video_driver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,
          (void*)&ioctl_msg) < 0)
@@ -351,8 +349,8 @@ int init_encoder ( struct video_encoder_context *init_decode )
               (int)init_decode->input_buffer.actualcount);
 
 
-  ioctl_msg.inputparam = &init_decode->input_buffer;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &init_decode->input_buffer;
+  ioctl_msg.out = NULL;
   init_decode->input_buffer.actualcount = init_decode->input_buffer.mincount + 2;
 
   if (ioctl (init_decode->video_driver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,
@@ -364,8 +362,8 @@ int init_encoder ( struct video_encoder_context *init_decode )
 
 
   DEBUG_PRINT("\n Query output bufffer requirements");
-  ioctl_msg.inputparam = NULL;
-  ioctl_msg.outputparam = &init_decode->output_buffer;
+  ioctl_msg.in = NULL;
+  ioctl_msg.out = &init_decode->output_buffer;
 
   if (ioctl (init_decode->video_driver_fd,VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,
          (void*)&ioctl_msg) < 0)
@@ -571,11 +569,11 @@ int allocate_buffer ( unsigned int buffer_dir,
 
   for (i=0; i< buffercount; i++)
   {
-    ptemp [i]->fd = open ("/dev/pmem_adsp", O_RDWR | O_SYNC);
+    ptemp [i]->fd = open ("/dev/pmem_adsp",O_RDWR);
 
     if (ptemp [i]->fd < 0)
     {
-      DEBUG_PRINT ("\nallocate_buffer: open pmem failed");
+      DEBUG_PRINT ("\nallocate_buffer: open pmem_adsp failed");
       return -1;
     }
 
@@ -589,11 +587,11 @@ int allocate_buffer ( unsigned int buffer_dir,
       DEBUG_PRINT ("\nallocate_buffer: MMAP failed");
       return -1;
     }
-    ptemp [i]->nsize = buffersize;
+    ptemp [i]->sz = buffersize;
     ptemp [i]->maped_size = clp2 (buffersize);
 
-    ioctl_msg.inputparam  = ptemp [i];
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in  = ptemp [i];
+    ioctl_msg.out = NULL;
 
     if (buffer_dir == OUTPUT_BUFFER)
     {
@@ -651,15 +649,15 @@ int start_encoding (struct video_encoder_context *encoder_context)
   {
     enc_buffer.clientdata = (void *)encoder_context->ptr_outputbuffer [i];
     enc_buffer.flags = 0;
-    enc_buffer.size = encoder_context->ptr_outputbuffer [i]->nsize;
+    enc_buffer.sz = encoder_context->ptr_outputbuffer [i]->sz;
     enc_buffer.len = 0;
     enc_buffer.ptrbuffer = encoder_context->ptr_outputbuffer [i]->pbuffer;
     enc_buffer.offset = 0;
     enc_buffer.timestamp = 0;
 
     DEBUG_PRINT ("\n Client Data on output = %p",(void *)enc_buffer.clientdata);
-    ioctl_msg.inputparam = &enc_buffer;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = &enc_buffer;
+    ioctl_msg.out = NULL;
 
     if (ioctl (encoder_context->video_driver_fd,
            VEN_IOCTL_CMD_FILL_OUTPUT_BUFFER,&ioctl_msg) < 0)
@@ -679,7 +677,7 @@ int start_encoding (struct video_encoder_context *encoder_context)
 
     enc_buffer.clientdata = (void *)encoder_context->ptr_inputbuffer [i];
     enc_buffer.flags = 0;
-    enc_buffer.size = encoder_context->ptr_inputbuffer [i]->nsize;
+    enc_buffer.sz = encoder_context->ptr_inputbuffer [i]->sz;
     enc_buffer.len = 0;
     enc_buffer.ptrbuffer = encoder_context->ptr_inputbuffer [i]->pbuffer;
     enc_buffer.offset = 0;
@@ -699,8 +697,8 @@ int start_encoding (struct video_encoder_context *encoder_context)
     DEBUG_PRINT("\n Read  Frame from File szie = %d",(int)data_len);
 
     DEBUG_PRINT ("\n Client Data on output = %p",(void *)enc_buffer.clientdata);
-    ioctl_msg.inputparam = &enc_buffer;
-    ioctl_msg.outputparam = NULL;
+    ioctl_msg.in = &enc_buffer;
+    ioctl_msg.out = NULL;
 
     if (ioctl (encoder_context->video_driver_fd,
            VEN_IOCTL_CMD_ENCODE_FRAME,&ioctl_msg) < 0)
@@ -729,8 +727,8 @@ int stop_encoding  (struct video_encoder_context *encoder_context)
     return -1;
   }
   buffer_flush.flush_mode = VEN_FLUSH_INPUT;
-  ioctl_msg.inputparam = &buffer_flush;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &buffer_flush;
+  ioctl_msg.out = NULL;
 
   if (ioctl(encoder_context->video_driver_fd,VEN_IOCTL_CMD_FLUSH,
          &ioctl_msg) < 0)
@@ -743,8 +741,8 @@ int stop_encoding  (struct video_encoder_context *encoder_context)
   }
 
   buffer_flush.flush_mode = VEN_FLUSH_OUTPUT;
-  ioctl_msg.inputparam = &buffer_flush;
-  ioctl_msg.outputparam = NULL;
+  ioctl_msg.in = &buffer_flush;
+  ioctl_msg.out = NULL;
 
   if (ioctl(encoder_context->video_driver_fd,VEN_IOCTL_CMD_FLUSH,
             &ioctl_msg) < 0)
@@ -864,15 +862,15 @@ static void* video_thread (void *context)
           enc_buffer.clientdata = (void *)tempbuffer;
           enc_buffer.flags = 0;
           enc_buffer.ptrbuffer = tempbuffer->pbuffer;
-          enc_buffer.size = tempbuffer->nsize;
+          enc_buffer.sz = tempbuffer->sz;
           enc_buffer.len = tempbuffer->filled_len;
           enc_buffer.offset = 0;
           enc_buffer.timestamp = total_frames *
                 ((encoder_context->fps_den * 1000000)/encoder_context->fps_num);
 
           /*TODO: Time stamp needs to be updated*/
-          ioctl_msg.inputparam = &enc_buffer;
-          ioctl_msg.outputparam = NULL;
+          ioctl_msg.in = &enc_buffer;
+          ioctl_msg.out = NULL;
           total_frames++;
           if (ioctl(encoder_context->video_driver_fd,VEN_IOCTL_CMD_ENCODE_FRAME,
                &ioctl_msg) < 0)
@@ -906,14 +904,14 @@ static void* video_thread (void *context)
                      tempbuffer->pbuffer);
          enc_buffer.clientdata = (void *)tempbuffer;
          enc_buffer.flags = 0;
-         enc_buffer.size = tempbuffer->nsize;
+         enc_buffer.sz = tempbuffer->sz;
          enc_buffer.len = 0;
          enc_buffer.ptrbuffer = tempbuffer->pbuffer;
          enc_buffer.offset = 0;
          enc_buffer.timestamp = 0;
 
-         ioctl_msg.inputparam = &enc_buffer;
-         ioctl_msg.outputparam = NULL;
+         ioctl_msg.in = &enc_buffer;
+         ioctl_msg.out = NULL;
 
          if (ioctl (encoder_context->video_driver_fd,
               VEN_IOCTL_CMD_FILL_OUTPUT_BUFFER,&ioctl_msg) < 0)
@@ -933,18 +931,19 @@ static void* video_thread (void *context)
           DEBUG_PRINT("\n Flush output complete");
           sem_post (&encoder_context->sem_synchronize);
           break;
-         }
+        }
+
+        if (queueitem->cmd == VEN_MSG_STOP)
+        {
+          DEBUG_PRINT("\n Playback has ended thread will exit");
+          return NULL;
+        }
       }
       else
       {
         DEBUG_PRINT("\n Error condition recieved NULL from Queue");
       }
 
-      if (queueitem->cmd == VEN_MSG_STOP)
-      {
-        DEBUG_PRINT("\n Playback has ended thread will exit");
-        return NULL;
-      }
    }
 }
 
@@ -967,11 +966,11 @@ static void* async_thread (void *context)
 
   while (1)
   {
-    ioctl_msg.inputparam = NULL;
-    ioctl_msg.outputparam = (void*)&venc_msg;
+    ioctl_msg.in = NULL;
+    ioctl_msg.out = (void*)&venc_msg;
     DEBUG_PRINT ("\n Sizeof venc_msginfo = %d ",sizeof (venc_msg));
     DEBUG_PRINT("\n Address of Venc msg in async thread %p",\
-                ioctl_msg.outputparam);
+                ioctl_msg.out);
     if (ioctl (encoder_context->video_driver_fd,VEN_IOCTL_CMD_READ_NEXT_MSG,\
          (void*)&ioctl_msg) < 0)
     {

@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -28,8 +28,13 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __OMX_VENC__H
 #define __OMX_VENC__H
 
+#include <unistd.h>
 #include "omx_video_base.h"
+#ifdef _COPPER_
+#include "video_encoder_device_copper.h"
+#else
 #include "video_encoder_device.h"
+#endif
 
 extern "C" {
   OMX_API void * get_omx_component_factory_fn(void);
@@ -59,12 +64,20 @@ private:
   OMX_U32 dev_start(void);
   OMX_U32 dev_flush(unsigned);
   OMX_U32 dev_resume(void);
-  bool dev_use_buf( void *,unsigned);
+  OMX_U32 dev_start_done(void);
+  OMX_U32 dev_stop_done(void);
+  bool dev_use_buf( void *,unsigned,unsigned);
   bool dev_free_buf( void *,unsigned);
-  bool dev_empty_buf(void *, void *);
-  bool dev_fill_buf(void *, void *);
+  bool dev_empty_buf(void *, void *,unsigned,unsigned);
+  bool dev_fill_buf(void *, void *,unsigned,unsigned);
   bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
   bool dev_set_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
+  bool update_profile_level();
+  bool dev_get_seq_hdr(void *, unsigned, unsigned *);
+  bool dev_loaded_start(void);
+  bool dev_loaded_stop(void);
+  bool dev_loaded_start_done(void);
+  bool dev_loaded_stop_done(void);
 };
 
 #endif //__OMX_VENC__H

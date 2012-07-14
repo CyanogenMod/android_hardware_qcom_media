@@ -25,34 +25,41 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
-/*==========================================================================
+/*============================================================================
                             O p e n M A X   w r a p p e r s
                              O p e n  M A X   C o r e
 
-*//** @file qc_omx_msg.h
-  This module contains the definitions of the OpenMAX core.
+ This module contains a dummy registry table for the QCOM's OpenMAX core
+ with placeholders for actual values
 
 *//*========================================================================*/
 
-#ifndef _QC_OMX_MSG_H_
-#define _QC_OMX_MSG_H_
+#include "qc_omx_core.h"
 
-#ifdef _ENABLE_QC_MSG_LOG_
+omx_core_cb_type core[] =
+{
+  {
+    "OMX.qcom.xxx.yyy.zzz",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
     #ifdef _ANDROID_
-        #include <utils/Log.h>
-        #define DEBUG_PRINT_ERROR ALOGE
-        #define DEBUG_PRINT       ALOGI
-        #define DEBUG_DETAIL      ALOGV
+    "abc.so",
     #else
-        #define DEBUG_PRINT_ERROR printf
-        #define DEBUG_PRINT       printf
-        #define DEBUG_DETAIL      printf
-    #endif // _ANDROID_
-#else
-    #define DEBUG_PRINT_ERROR
-    #define DEBUG_PRINT
-    #define DEBUG_DETAIL
-#endif // _ENABLE_QC_MSG_LOG_
+    "efg.so.1",
+    #endif
+    {
+      "ijk.lmn"
+    }
+  }
+};
+
+const unsigned int SIZE_OF_CORE = sizeof(core) / sizeof(omx_core_cb_type);
 
 
-#endif // _QC_OMX_MSG_H_

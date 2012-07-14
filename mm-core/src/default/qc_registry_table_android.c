@@ -29,49 +29,34 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                             O p e n M A X   w r a p p e r s
                              O p e n  M A X   C o r e
 
-*//** @file QOMX_AudioIndexExtensions.h
-  This module contains the index extensions for Audio
+  This module contains a dummy registry table for the QCOM's OpenMAX core
+  with placeholders for actual values
 
 *//*========================================================================*/
 
 
-#ifndef __H_QOMX_AUDIOINDEXEXTENSIONS_H__
-#define __H_QOMX_AUDIOINDEXEXTENSIONS_H__
+#include "qc_omx_core.h"
 
-/*========================================================================
-
-                     INCLUDE FILES FOR MODULE
-
-========================================================================== */
-#include <OMX_Core.h>
-
-/*========================================================================
-
-                      DEFINITIONS AND DECLARATIONS
-
-========================================================================== */
-
-#if defined( __cplusplus )
-extern "C"
+omx_core_cb_type core[] =
 {
-#endif /* end of macro __cplusplus */
+  {
+    "OMX.qcom.xxx.yyy.zzz",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "abc.so",
+    {
+      "efg.ijk"
+    }
+  }
+};
 
-/**
- * Enumeration used to define Qualcomm's vendor extensions for
- * audio. The audio extensions occupy a range of
- * 0x7F100000-0x7F1FFFFF, inclusive.
- */
-typedef enum QOMX_AUDIO_EXTENSIONS_INDEXTYPE
-{
-    QOMX_IndexParamAudioAmrWbPlus       = 0x7F200000, /**< "OMX.Qualcomm.index.audio.amrwbplus" */
-    QOMX_IndexParamAudioWma10Pro        = 0x7F200001, /**< "OMX.Qualcomm.index.audio.wma10pro" */
-    QOMX_IndexParamAudioSessionId       = 0x7F200002, /**< "OMX.Qualcomm.index.audio.sessionId" */
-    QOMX_IndexParamAudioVoiceRecord     = 0x7F200003, /**< "OMX.Qualcomm.index.audio.VoiceRecord" */
-    QOMX_IndexParamAudioUnused          = 0x7F2FFFFF
-} QOMX_AUDIO_EXTENSIONS_INDEXTYPE;
+const unsigned int SIZE_OF_CORE = sizeof(core) / sizeof(omx_core_cb_type);
 
-#if defined( __cplusplus )
-}
-#endif /* end of macro __cplusplus */
 
-#endif /* end of macro __H_QOMX_AUDIOINDEXEXTENSIONS_H__ */

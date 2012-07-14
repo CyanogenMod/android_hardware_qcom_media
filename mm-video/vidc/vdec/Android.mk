@@ -1,30 +1,4 @@
-#--------------------------------------------------------------------------
-#Copyright (c) 2010, Code Aurora Forum. All rights reserved.
-
-#Redistribution and use in source and binary forms, with or without
-#modification, are permitted provided that the following conditions are met:
-#    * Redistributions of source code must retain the above copyright
-#      notice, this list of conditions and the following disclaimer.
-#    * Redistributions in binary form must reproduce the above copyright
-#      notice, this list of conditions and the following disclaimer in the
-#      documentation and/or other materials provided with the distribution.
-#    * Neither the name of Code Aurora nor
-#      the names of its contributors may be used to endorse or promote
-#      products derived from this software without specific prior written
-#      permission.
-
-#THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-#AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-#IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-#NON-INFRINGEMENT ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-#CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-#EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-#PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-#OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-#WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-#OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-#ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#--------------------------------------------------------------------------
+ifneq ($(BUILD_TINY_ANDROID),true)
 
 ROOT_DIR := $(call my-dir)
 
@@ -47,8 +21,33 @@ libOmxVdec-def += -DNO_ARM_CLZ
 libOmxVdec-def += -UENABLE_DEBUG_LOW
 libOmxVdec-def += -DENABLE_DEBUG_HIGH
 libOmxVdec-def += -DENABLE_DEBUG_ERROR
-libOmxVdec-def += -UMULTI_DEC_INST
+libOmxVdec-def += -UINPUT_BUFFER_LOG
+libOmxVdec-def += -UOUTPUT_BUFFER_LOG
+ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
+libOmxVdec-def += -DMAX_RES_1080P
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -DTEST_TS_FROM_SEI
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
+libOmxVdec-def += -DMAX_RES_1080P
+libOmxVdec-def += -DMAX_RES_1080P_EBI
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
+libOmxVdec-def += -DMAX_RES_1080P
+libOmxVdec-def += -DMAX_RES_1080P_EBI
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -D_COPPER_
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
 libOmxVdec-def += -DMAX_RES_720P
+endif
+
+libOmxVdec-def += -D_ANDROID_ICS_
+
+#ifeq ($(TARGET_USES_ION),true)
+libOmxVdec-def += -DUSE_ION
+#endif
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
@@ -57,19 +56,36 @@ libOmxVdec-def += -DMAX_RES_720P
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
-libmm-vdec-inc	        := $(LOCAL_PATH)/inc
-libmm-vdec-inc	        += $(TARGET_OUT_HEADERS)/mm-core/omxcore
+libmm-vdec-inc          := bionic/libc/include
+libmm-vdec-inc          += bionic/libstdc++/include
+libmm-vdec-inc          += $(LOCAL_PATH)/inc 
+libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
+libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
+#libmm-vdec-inc          += bionic/libc/kernel/common/
+#DRM include - Interface which loads the DRM library
+libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
+libmm-vdec-inc          += hardware/qcom/display/libgralloc
+libmm-vdec-inc          += hardware/qcom/display/libgenlock
+libmm-vdec-inc          += frameworks/native/include/media/openmax
+libmm-vdec-inc          += frameworks/native/include/media/hardware
 
-LOCAL_MODULE		:= libOmxVdec
-LOCAL_CFLAGS		:= $(libOmxVdec-def)
-LOCAL_C_INCLUDES	:= $(libmm-vdec-inc)
+LOCAL_MODULE                    := libOmxVdec
+LOCAL_MODULE_TAGS               := optional
+LOCAL_CFLAGS                    := $(libOmxVdec-def)
+LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
 
-LOCAL_SHARED_LIBRARIES	:= liblog libutils libbinder
+LOCAL_PRELINK_MODULE    := false
+LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils
+
+LOCAL_SHARED_LIBRARIES += libgenlock
+LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
 
 LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
+LOCAL_SRC_FILES         += src/ts_parser.cpp
+LOCAL_SRC_FILES         += src/mp4_utils.cpp
 LOCAL_SRC_FILES         += src/omx_vdec.cpp
-
+LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 include $(BUILD_SHARED_LIBRARY)
 
 # ---------------------------------------------------------------------------------
@@ -77,17 +93,20 @@ include $(BUILD_SHARED_LIBRARY)
 # ---------------------------------------------------------------------------------
 include $(CLEAR_VARS)
 
-mm-vdec-test-inc		:= $(TARGET_OUT_HEADERS)/mm-core/omxcore
-mm-vdec-test-inc		+= $(LOCAL_PATH)/inc
+mm-vdec-test-inc    := hardware/qcom/media/mm-core/inc
+mm-vdec-test-inc    += $(LOCAL_PATH)/inc
+#mm-vdec-test-inc    += bionic/libc/kernel/common/linux
 
-LOCAL_MODULE_TAGS := eng
-LOCAL_MODULE			:= mm-vdec-omx-test
-LOCAL_CFLAGS	  		:= $(libOmxVdec-def)
-LOCAL_C_INCLUDES  		:= $(mm-vdec-test-inc)
-LOCAL_SHARED_LIBRARIES		:= libutils libOmxCore libOmxVdec libbinder
+LOCAL_MODULE                    := mm-vdec-omx-test
+LOCAL_MODULE_TAGS               := optional
+LOCAL_CFLAGS                    := $(libOmxVdec-def)
+LOCAL_C_INCLUDES                := $(mm-vdec-test-inc)
 
-LOCAL_SRC_FILES                 := src/queue.c
-LOCAL_SRC_FILES                 += test/omx_vdec_test.cpp
+LOCAL_PRELINK_MODULE      := false
+LOCAL_SHARED_LIBRARIES    := libutils libOmxCore libOmxVdec libbinder
+
+LOCAL_SRC_FILES           := src/queue.c
+LOCAL_SRC_FILES           += test/omx_vdec_test.cpp
 
 include $(BUILD_EXECUTABLE)
 
@@ -96,15 +115,23 @@ include $(BUILD_EXECUTABLE)
 # ---------------------------------------------------------------------------------
 include $(CLEAR_VARS)
 
-mm-vdec-drv-test-inc		:= $(TARGET_OUT_HEADERS)/mm-core/omxcore
-mm-vdec-drv-test-inc		+= $(LOCAL_PATH)/inc
+mm-vdec-drv-test-inc    := hardware/qcom/media/mm-core/inc
+mm-vdec-drv-test-inc    += $(LOCAL_PATH)/inc
+#mm-vdec-drv-test-inc    += bionic/libc/kernel/common/linux
 
-LOCAL_MODULE_TAGS := eng
-LOCAL_MODULE			:= mm-video-driver-test
-LOCAL_CFLAGS	  		:= $(libOmxVdec-def)
-LOCAL_C_INCLUDES  		:= $(mm-vdec-drv-test-inc)
+LOCAL_MODULE                    := mm-video-driver-test
+LOCAL_MODULE_TAGS               := optional
+LOCAL_CFLAGS                    := $(libOmxVdec-def)
+LOCAL_C_INCLUDES                := $(mm-vdec-drv-test-inc)
+LOCAL_PRELINK_MODULE            := false
 
 LOCAL_SRC_FILES                 := src/message_queue.c
 LOCAL_SRC_FILES                 += test/decoder_driver_test.c
 
 include $(BUILD_EXECUTABLE)
+
+endif #BUILD_TINY_ANDROID
+
+# ---------------------------------------------------------------------------------
+#                END
+# ---------------------------------------------------------------------------------
