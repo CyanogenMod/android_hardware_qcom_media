@@ -2897,6 +2897,14 @@ OMX_ERRORTYPE omx_vdec::use_android_native_buffer(OMX_IN OMX_HANDLETYPE hComp, O
     m_use_android_native_buffers = OMX_TRUE;
     sp<android_native_buffer_t> nBuf = params->nativeBuffer;
     private_handle_t *handle = (private_handle_t *)nBuf->handle;
+
+    if ((OMX_U32)handle->size < drv_ctx.op_buf.buffer_size) {
+        DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
+                          " expected %u, got %lu",
+                          drv_ctx.op_buf.buffer_size, (OMX_U32)handle->size);
+        return OMX_ErrorBadParameter;
+    }
+
     if(OMX_CORE_OUTPUT_PORT_INDEX == params->nPortIndex) {  //android native buffers can be used only on Output port
         OMX_U8 *buffer = NULL;
         if(!secure_mode) {
@@ -3981,24 +3989,34 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
   if (eRet == OMX_ErrorNone) {
 #if defined(_ANDROID_HONEYCOMB_) || defined(_ANDROID_ICS_)
     if(m_enable_android_native_buffers) {
-      if(m_use_android_native_buffers) {
-           UseAndroidNativeBufferParams *params = (UseAndroidNativeBufferParams *)appData;
-           sp<android_native_buffer_t> nBuf = params->nativeBuffer;
-           handle = (private_handle_t *)nBuf->handle;
-           privateAppData = params->pAppPrivate;
+        if (m_use_android_native_buffers) {
+            UseAndroidNativeBufferParams *params = (UseAndroidNativeBufferParams *)appData;
+            sp<android_native_buffer_t> nBuf = params->nativeBuffer;
+            handle = (private_handle_t *)nBuf->handle;
+            privateAppData = params->pAppPrivate;
+        } else {
+            handle = (private_handle_t *)buff;
+            privateAppData = appData;
         }
-        else {
-           handle = (private_handle_t *)buff;
-           if(!secure_mode) {
-	       buff =  (OMX_U8*)mmap(0, handle->size,
-                             PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd, 0);
-               if (buff == MAP_FAILED) {
-                   DEBUG_PRINT_ERROR("Failed to mmap pmem with fd = %d, size = %d", handle->fd, handle->size);
-                   return OMX_ErrorInsufficientResources;
-               }
-	    }
-           privateAppData = appData;
+
+        if ((OMX_U32)handle->size < drv_ctx.op_buf.buffer_size) {
+            DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
+                              " expected %u, got %lu",
+                              drv_ctx.op_buf.buffer_size, (OMX_U32)handle->size);
+            return OMX_ErrorBadParameter;
         }
+
+        if (!m_use_android_native_buffers) {
+            if (!secure_mode) {
+                buff =  (OMX_U8*)mmap(0, handle->size,
+                                      PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd, 0);
+                if (buff == MAP_FAILED) {
+                  DEBUG_PRINT_ERROR("Failed to mmap pmem with fd = %d, size = %d", handle->fd, handle->size);
+                  return OMX_ErrorInsufficientResources;
+                }
+            }
+        }
+
 #if defined(_ANDROID_ICS_)
         native_buffer[i].nativehandle = handle;
 #endif
