@@ -4176,7 +4176,7 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
         if(flag == CACHED) {
              ion_dev_flags = O_RDONLY;
 	} else if(flag == UNCACHED) {
-             ion_dev_flags = O_RDONLY ;//| O_DSYNC;
+             ion_dev_flags = O_RDONLY | O_DSYNC;
         }
         ion_device_fd = open (MEM_DEVICE,ion_dev_flags);
         if(ion_device_fd < 0)
