@@ -621,7 +621,9 @@ void* fbd_thread(void* pArg)
   OMX_S64 base_timestamp = 0, lastTimestamp = 0;
   OMX_BUFFERHEADERTYPE *pBuffer = NULL, *pPrevBuff = NULL;
   pthread_mutex_lock(&eos_lock);
-
+#ifdef _MSM8974_
+  int stride,scanlines,stride_c,i;
+#endif
   DEBUG_PRINT("First Inside %s\n", __FUNCTION__);
   while(currentStatus != ERROR_STATE && !bOutputEosReached)
   {
@@ -727,8 +729,28 @@ void* fbd_thread(void* pArg)
 
       if (takeYuvLog)
       {
-          bytes_written = fwrite((const char *)pBuffer->pBuffer,
+#ifdef _MSM8974_
+
+	  // Write Luma into output file
+
+	  stride = ((width + 31) & (~31));
+	  scanlines = ((height+31) & (~31));
+	  bytes_written = fwrite((const char *)pBuffer->pBuffer,
+                                  stride*scanlines,1,outputBufferFile);
+	  pBuffer->pBuffer += (stride * scanlines);
+
+	  // Write Chroma into output file
+
+	  stride_c = ((width/2 + 31) & (~31))*2;
+	  for(i=0;i<height/2;i++) {
+	  bytes_written += fwrite((const char *)pBuffer->pBuffer,
+                                  width,1,outputBufferFile);
+	  pBuffer->pBuffer+=stride_c;
+	  }
+#else
+	  bytes_written = fwrite((const char *)pBuffer->pBuffer,
                                   pBuffer->nFilledLen,1,outputBufferFile);
+#endif
           if (bytes_written < 0) {
               DEBUG_PRINT("\nFillBufferDone: Failed to write to the file\n");
           }
