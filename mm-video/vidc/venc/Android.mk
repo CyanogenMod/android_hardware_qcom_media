@@ -42,10 +42,9 @@ endif
 
 ifeq ($(TARGET_USES_ION),true)
 libmm-venc-def += -DUSE_ION
-else
-venc-inc       = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 endif
 
+venc-inc       = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 libmm-venc-def += -D_ANDROID_ICS_
 # ---------------------------------------------------------------------------------

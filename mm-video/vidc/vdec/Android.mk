@@ -50,9 +50,9 @@ libOmxVdec-def += -D_ANDROID_ICS_
 
 ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
-else
-vdec-inc          = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 endif
+
+vdec-inc          = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
