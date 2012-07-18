@@ -47,7 +47,6 @@ libmm-venc-inc      += bionic/libstdc++/include
 libmm-venc-inc      := $(LOCAL_PATH)/inc
 libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-venc-inc      += hardware/qcom/media/mm-core/inc
-#libmm-venc-inc      += bionic/libc/kernel/common/linux
 libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
 libmm-venc-inc      += hardware/qcom/display/libgralloc
 libmm-venc-inc      += frameworks/native/include/media/hardware
