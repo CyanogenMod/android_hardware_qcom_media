@@ -7435,7 +7435,7 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
   {
      ion_dev_flag = O_RDONLY;
   } else {
-    ion_dev_flag = (O_RDONLY); /*| O_DSYNC); */ //BIG TBD
+    ion_dev_flag = (O_RDONLY | O_DSYNC);
   }
   fd = open (MEM_DEVICE, ion_dev_flag);
   if (fd < 0) {
