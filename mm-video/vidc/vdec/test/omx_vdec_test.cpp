@@ -29,6 +29,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
     An Open max test application ....
 */
 
+#define LOG_TAG "OMX-VDEC-TEST"
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -52,7 +54,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern "C"{
 #include<utils/Log.h>
 }
-#define LOG_TAG "OMX-VDEC-TEST"
 #define DEBUG_PRINT
 #define DEBUG_PRINT_ERROR ALOGE
 
@@ -1911,7 +1912,7 @@ int Play_Decoder()
         color_fmt = (OMX_COLOR_FORMATTYPE)
            QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka;
     }
-#elif _COPPER_
+#elif _MSM8974_
         color_fmt = OMX_COLOR_FormatYUV420SemiPlanar;
 #else
        color_fmt = (OMX_COLOR_FORMATTYPE)

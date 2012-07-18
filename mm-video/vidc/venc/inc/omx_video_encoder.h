@@ -30,8 +30,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <unistd.h>
 #include "omx_video_base.h"
-#ifdef _COPPER_
-#include "video_encoder_device_copper.h"
+#ifdef _MSM8974_
+#include "video_encoder_device_msm8974.h"
 #else
 #include "video_encoder_device.h"
 #endif

@@ -41,7 +41,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //                             Include Files
 //////////////////////////////////////////////////////////////////////////////
 
-#include<stdlib.h>
+#define LOG_TAG "OMX-VENC-720p"
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/mman.h>
 #ifdef _ANDROID_
@@ -71,7 +72,6 @@ public:
 };
 
 #include <utils/Log.h>
-#define LOG_TAG "OMX-VENC-720p"
 #ifdef ENABLE_DEBUG_LOW
 #define DEBUG_PRINT_LOW ALOGV
 #else
