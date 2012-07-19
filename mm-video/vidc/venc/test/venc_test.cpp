@@ -132,6 +132,10 @@ static const unsigned int mpeg4_profile_level_table[][5]=
     {1200,36000,4000000,OMX_VIDEO_MPEG4Level4a,OMX_VIDEO_MPEG4ProfileSimple},
     {1620,40500,8000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
     {3600,108000,12000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
+    {34560,1036800,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
+#endif
     {0,0,0,0,0},
 
     {99,1485,128000,OMX_VIDEO_MPEG4Level0,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
@@ -140,6 +144,10 @@ static const unsigned int mpeg4_profile_level_table[][5]=
     {396,11880,768000,OMX_VIDEO_MPEG4Level3,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
     {792,23760,3000000,OMX_VIDEO_MPEG4Level4,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
     {1620,48600,8000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
+    {34560,1036800,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
+#endif
     {0,0,0,0,0},
 };
 
@@ -159,6 +167,10 @@ static const unsigned int h264_profile_level_table[][5]=
     {3600,108000,14000000,OMX_VIDEO_AVCLevel31,OMX_VIDEO_AVCProfileBaseline},
     {5120,216000,20000000,OMX_VIDEO_AVCLevel32,OMX_VIDEO_AVCProfileBaseline},
     {8192,245760,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileBaseline},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileBaseline},
+    {34560,1036800,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileBaseline},
+#endif
     {0,0,0,0,0},
 
     {99,1485,64000,OMX_VIDEO_AVCLevel1,OMX_VIDEO_AVCProfileHigh},
@@ -173,6 +185,10 @@ static const unsigned int h264_profile_level_table[][5]=
     {3600,108000,17500000,OMX_VIDEO_AVCLevel31,OMX_VIDEO_AVCProfileHigh},
     {5120,216000,25000000,OMX_VIDEO_AVCLevel32,OMX_VIDEO_AVCProfileHigh},
     {8192,245760,25000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileHigh},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileHigh},
+    {34560,1036800,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileHigh},
+#endif
     {0,0,0,0,0},
 
     {99,1485,64000,OMX_VIDEO_AVCLevel1,OMX_VIDEO_AVCProfileMain},
@@ -187,6 +203,10 @@ static const unsigned int h264_profile_level_table[][5]=
     {3600,108000,14000000,OMX_VIDEO_AVCLevel31,OMX_VIDEO_AVCProfileMain},
     {5120,216000,20000000,OMX_VIDEO_AVCLevel32,OMX_VIDEO_AVCProfileMain},
     {8192,245760,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileMain},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileMain},
+    {34560,1036800,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileMain},
+#endif
     {0,0,0,0,0}
 
 };
@@ -203,6 +223,10 @@ static const unsigned int h263_profile_level_table[][5]=
     {396,19800,4096000,OMX_VIDEO_H263Level50,OMX_VIDEO_H263ProfileBaseline},
     {810,40500,8192000,OMX_VIDEO_H263Level60,OMX_VIDEO_H263ProfileBaseline},
     {1620,81000,16384000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_H263Level60,OMX_VIDEO_H263ProfileBaseline},
+    {34560,1036800,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+#endif
     {0,0,0,0,0}
 };
 
@@ -1842,6 +1866,22 @@ void parseArgs(int argc, char** argv)
       m_sProfile.nFrameBytes = 1920*1080*3/2;
       m_sProfile.eLevel = OMX_VIDEO_MPEG4Level1;
    }
+#ifdef _MSM8974_
+   else if (strcmp("4K2K", argv[2]) == 0)
+   {
+      m_sProfile.nFrameWidth = 4096;
+      m_sProfile.nFrameHeight = 2160;
+      m_sProfile.nFrameBytes = 4096*2160*3/2;
+      m_sProfile.eLevel = OMX_VIDEO_MPEG4Level1;
+   }
+   else if (strcmp("2160P", argv[2]) == 0)
+   {
+      m_sProfile.nFrameWidth = 3840;
+      m_sProfile.nFrameHeight = 2160;
+      m_sProfile.nFrameBytes = 3840*2160*3/2;
+      m_sProfile.eLevel = OMX_VIDEO_MPEG4Level1;
+   }
+#endif
    else if (parseWxH(argv[2], &m_sProfile.nFrameWidth, &m_sProfile.nFrameHeight))
    {
       m_sProfile.nFrameBytes = m_sProfile.nFrameWidth*m_sProfile.nFrameHeight*3/2;
