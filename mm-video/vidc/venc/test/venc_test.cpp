@@ -68,7 +68,7 @@ REFERENCES
 #include "venc_util.h"
 #include "extra_data_handler.h"
 #ifdef USE_ION
-#include <linux/msm_ion.h>
+#include <ion_msm.h>
 #endif
 
 //////////////////////////

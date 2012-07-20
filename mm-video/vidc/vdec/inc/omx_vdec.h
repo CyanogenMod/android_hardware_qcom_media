@@ -58,7 +58,7 @@ static ptrdiff_t x;
 #endif
 
 #ifdef USE_ION
-#include <linux/msm_ion.h>
+#include <ion_msm.h>
 //#include <linux/ion.h> //TBD - uncomment this
 //#include <binder/MemoryHeapIon.h>
 //#else
