@@ -64,7 +64,7 @@ libmm-vdec-inc          += bionic/libstdc++/include
 libmm-vdec-inc          += $(LOCAL_PATH)/inc 
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
-#libmm-vdec-inc          += bionic/libc/kernel/common/
+#libmm-vdec-inc          += bionic/libc/kernel/common/linux
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
 libmm-vdec-inc          += hardware/qcom/display/libgralloc
