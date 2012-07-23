@@ -4162,6 +4162,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
                     profileLevelType->eProfile,profileLevelType->eLevel);
   return eRet;
 }
+#endif
 
 #ifdef USE_ION
 int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
@@ -4227,7 +4228,7 @@ void omx_video::free_ion_memory(struct venc_ion *buf_ion_info)
      buf_ion_info->fd_ion_data.fd = -1;
 }
 #endif
-#endif
+
 #ifdef _ANDROID_ICS_
 void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
 {
