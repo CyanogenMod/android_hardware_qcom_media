@@ -582,7 +582,7 @@ AudioHardware::AudioHardware() :
             LOGE("malloc failed for device list");
             return;
         }
-        for(i = 0;i<dev_cnt;i++)
+        for(i = 0;i<DEVICE_COUNT;i++)
             device_list[i].dev_id = INVALID_DEVICE;
 
         for(i = 0; i < dev_cnt;i++) {
