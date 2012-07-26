@@ -564,101 +564,69 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
         {
           return false;
         }
-        if(m_sVenc_cfg.input_height != portDefn->format.video.nFrameHeight ||
-          m_sVenc_cfg.input_width != portDefn->format.video.nFrameWidth)
-        {
-          DEBUG_PRINT_LOW("\n Basic parameter has changed");
-          m_sVenc_cfg.input_height = portDefn->format.video.nFrameHeight;
-          m_sVenc_cfg.input_width = portDefn->format.video.nFrameWidth;
 
-          ioctl_msg.in = (void*)&m_sVenc_cfg;
-          ioctl_msg.out = NULL;
-          if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < 0)
-          {
+        DEBUG_PRINT_LOW("\n Basic parameter has changed");
+        m_sVenc_cfg.input_height = portDefn->format.video.nFrameHeight;
+        m_sVenc_cfg.input_width = portDefn->format.video.nFrameWidth;
+
+        ioctl_msg.in = (void*)&m_sVenc_cfg;
+        ioctl_msg.out = NULL;
+        if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < 0) {
             DEBUG_PRINT_ERROR("\nERROR: Request for setting base config failed");
             return false;
-          }
+        }
 
-          DEBUG_PRINT_LOW("\n Updating the buffer count/size for the new resolution");
-          ioctl_msg.in = NULL;
-          ioctl_msg.out = (void*)&m_sInput_buff_property;
-          if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-          {
+        DEBUG_PRINT_LOW("\n Updating the buffer count/size for the new resolution");
+        ioctl_msg.in = NULL;
+        ioctl_msg.out = (void*)&m_sInput_buff_property;
+        if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
             DEBUG_PRINT_ERROR("\nERROR: Request for getting i/p bufreq failed");
             return false;
-          }
-          DEBUG_PRINT_LOW("\n Got updated m_sInput_buff_property values: "
-                      "datasize = %u, maxcount = %u, actualcnt = %u, "
-                      "mincount = %u", m_sInput_buff_property.datasize,
-                      m_sInput_buff_property.maxcount, m_sInput_buff_property.actualcount,
-                      m_sInput_buff_property.mincount);
+        }
+        DEBUG_PRINT_LOW("\n Got updated m_sInput_buff_property values: "
+                        "datasize = %u, maxcount = %u, actualcnt = %u, "
+                        "mincount = %u", m_sInput_buff_property.datasize,
+                        m_sInput_buff_property.maxcount, m_sInput_buff_property.actualcount,
+                        m_sInput_buff_property.mincount);
 
-          ioctl_msg.in = NULL;
-          ioctl_msg.out = (void*)&m_sOutput_buff_property;
-          if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-          {
+        ioctl_msg.in = NULL;
+        ioctl_msg.out = (void*)&m_sOutput_buff_property;
+        if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
             DEBUG_PRINT_ERROR("\nERROR: Request for getting o/p bufreq failed");
             return false;
-          }
+        }
 
-          DEBUG_PRINT_LOW("\n Got updated m_sOutput_buff_property values: "
-                      "datasize = %u, maxcount = %u, actualcnt = %u, "
-                      "mincount = %u", m_sOutput_buff_property.datasize,
-                      m_sOutput_buff_property.maxcount, m_sOutput_buff_property.actualcount,
-                      m_sOutput_buff_property.mincount);
-          ioctl_msg.in = (void*)&m_sOutput_buff_property;
-          ioctl_msg.out = NULL;
+        DEBUG_PRINT_LOW("\n Got updated m_sOutput_buff_property values: "
+                        "datasize = %u, maxcount = %u, actualcnt = %u, "
+                        "mincount = %u", m_sOutput_buff_property.datasize,
+                        m_sOutput_buff_property.maxcount, m_sOutput_buff_property.actualcount,
+                        m_sOutput_buff_property.mincount);
+        ioctl_msg.in = (void*)&m_sOutput_buff_property;
+        ioctl_msg.out = NULL;
 
-          if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-          {
+        if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
             DEBUG_PRINT_ERROR("\nERROR: Request for setting o/p bufreq failed");
             return false;
-          }
+        }
 
-          if((portDefn->nBufferCountActual >= m_sInput_buff_property.mincount) &&
-           (portDefn->nBufferCountActual <= m_sInput_buff_property.maxcount))
-          {
+        if((portDefn->nBufferCountActual >= m_sInput_buff_property.mincount) &&
+           (portDefn->nBufferCountActual <= m_sInput_buff_property.maxcount)) {
             m_sInput_buff_property.actualcount = portDefn->nBufferCountActual;
             ioctl_msg.in = (void*)&m_sInput_buff_property;
             ioctl_msg.out = NULL;
-            if(ioctl(m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-            {
+            if(ioctl(m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
               DEBUG_PRINT_ERROR("\nERROR: Request for setting i/p buffer requirements failed");
               return false;
             }
-          }
-          if(m_sInput_buff_property.datasize != portDefn->nBufferSize)
-          {
+        }
+        if(m_sInput_buff_property.datasize != portDefn->nBufferSize) {
             DEBUG_PRINT_ERROR("\nWARNING: Requested i/p bufsize[%u],"
                               "Driver's updated i/p bufsize = %u", portDefn->nBufferSize,
                               m_sInput_buff_property.datasize);
-          }
-          m_level_set = false;
-          if(venc_set_profile_level(0, 0))
-          {
-            DEBUG_PRINT_HIGH("\n %s(): Profile/Level setting success", __func__);
-          }
         }
-        else
-        {
-          if((portDefn->nBufferCountActual >= m_sInput_buff_property.mincount) &&
-           (m_sInput_buff_property.maxcount >= portDefn->nBufferCountActual) &&
-            (m_sInput_buff_property.datasize == portDefn->nBufferSize))
-          {
-            m_sInput_buff_property.actualcount = portDefn->nBufferCountActual;
-            ioctl_msg.in = (void*)&m_sInput_buff_property;
-            ioctl_msg.out = NULL;
-            if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-            {
-              DEBUG_PRINT_ERROR("\nERROR: ioctl VEN_IOCTL_SET_INPUT_BUFFER_REQ failed");
-              return false;
-            }
-          }
-          else
-          {
-            DEBUG_PRINT_ERROR("\nERROR: Setting Input buffer requirements failed");
-            return false;
-          }
+        m_level_set = false;
+        if(venc_set_profile_level(0, 0)) {
+          DEBUG_PRINT_HIGH("\n %s(): Profile/Level setting success", __func__);
         }
       }
       else if(portDefn->nPortIndex == PORT_INDEX_OUT)
