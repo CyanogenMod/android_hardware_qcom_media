@@ -117,7 +117,11 @@ char ouputextradatafilename [] = "/data/extradata";
 
 #ifdef USE_ION
     #define MEM_DEVICE "/dev/ion"
+    #ifdef MAX_RES_720P
+    #define MEM_HEAP_ID ION_CAMERA_HEAP_ID
+    #else
     #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
+    #endif
 #elif MAX_RES_720P
 #define MEM_DEVICE "/dev/pmem_adsp"
 #elif MAX_RES_1080P_EBI
@@ -2846,24 +2850,33 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
     case OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage:
         {
-            DEBUG_PRINT_LOW("get_parameter: OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage\n");
+            DEBUG_PRINT_HIGH("get_parameter: OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage");
             GetAndroidNativeBufferUsageParams* nativeBuffersUsage = (GetAndroidNativeBufferUsageParams *) paramData;
             if(nativeBuffersUsage->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
 #ifdef USE_ION
+#if defined (MAX_RES_720P)
+                nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_CAMERA_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED);
+                DEBUG_PRINT_HIGH("ION:720P: nUsage 0x%x",nativeBuffersUsage->nUsage);
+#else
                 if(secure_mode) {
                         nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PROTECTED |
                                                       GRALLOC_USAGE_PRIVATE_CP_BUFFER | GRALLOC_USAGE_PRIVATE_UNCACHED);
+                        DEBUG_PRINT_HIGH("ION:secure_mode: nUsage 0x%x",nativeBuffersUsage->nUsage);
                 } else {
                         nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP |
                                                          GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+                        DEBUG_PRINT_HIGH("ION:non_secure_mode: nUsage 0x%x",nativeBuffersUsage->nUsage);
                 }
-#else
+#endif //(MAX_RES_720P)
+#else // USE_ION
 #if defined (MAX_RES_720P) ||  defined (MAX_RES_1080P_EBI)
                 nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_ADSP_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED);
+                DEBUG_PRINT_HIGH("720P/1080P_EBI: nUsage 0x%x",nativeBuffersUsage->nUsage);
 #elif MAX_RES_1080P
                 nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_SMI_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED);
+                DEBUG_PRINT_HIGH("1080P: nUsage 0x%x",nativeBuffersUsage->nUsage);
 #endif
-#endif
+#endif // USE_ION
             } else {
                 DEBUG_PRINT_HIGH("get_parameter: OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage failed!\n");
                 eRet = OMX_ErrorBadParameter;
@@ -7458,7 +7471,11 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
   if(secure_mode) {
     alloc_data->flags = (ION_HEAP(MEM_HEAP_ID) | ION_SECURE);
   } else {
+#ifdef MAX_RES_720P
+    alloc_data->flags = ION_HEAP(MEM_HEAP_ID);
+#else
     alloc_data->flags = (ION_HEAP(MEM_HEAP_ID) | ION_HEAP(ION_IOMMU_HEAP_ID));
+#endif
   }
   rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
   if (rc || !alloc_data->handle) {
@@ -7480,7 +7497,10 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
     close(fd);
     fd = -ENOMEM;
   }
-
+  DEBUG_PRINT_HIGH("ION: alloc_data: handle(0x%X), len(%u), align(%u), "
+     "flags(0x%x), fd_data: handle(0x%x), fd(0x%x)",
+     alloc_data->handle, alloc_data->len, alloc_data->align,
+     alloc_data->flags, fd_data->handle, fd_data->fd);
   return fd;
 }
 
@@ -7490,6 +7510,10 @@ void omx_vdec::free_ion_memory(struct vdec_ion *buf_ion_info) {
        DEBUG_PRINT_ERROR("\n ION: free called with invalid fd/allocdata");
        return;
      }
+     DEBUG_PRINT_HIGH("ION: free: handle(0x%X), len(%u), fd(0x%x)",
+       buf_ion_info->ion_alloc_data.handle,
+       buf_ion_info->ion_alloc_data.len,
+       buf_ion_info->fd_ion_data.fd);
      if(ioctl(buf_ion_info->ion_device_fd,ION_IOC_FREE,
              &buf_ion_info->ion_alloc_data.handle)) {
        DEBUG_PRINT_ERROR("\n ION: free failed" );
