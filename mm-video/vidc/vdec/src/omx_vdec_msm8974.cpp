@@ -445,7 +445,7 @@ void *get_omx_component_factory_fn(void)
 VideoHeap::VideoHeap(int devicefd, size_t size, void* base,
                      struct ion_handle *handle, int ionMapfd)
 {
-    ionInit(devicefd, base, size, 0 , MEM_DEVICE,handle,ionMapfd);
+//    ionInit(devicefd, base, size, 0 , MEM_DEVICE,handle,ionMapfd);
 }
 #else
 VideoHeap::VideoHeap(int fd, size_t size, void* base)
