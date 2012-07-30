@@ -9157,6 +9157,7 @@ void omx_vdec::extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr)
   OMX_U32 bytes_to_parse = buf_hdr->nFilledLen;
   OMX_U8 *buf = buf_hdr->pBuffer + buf_hdr->nOffset;
   OMX_U32 index = 0;
+  OMX_U32 prev_sc_index = 0;
 
   m_demux_entries = 0;
 
@@ -9167,12 +9168,18 @@ void omx_vdec::extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr)
          ((buf[index] == 0x00) && (buf[index+1] == 0x00) &&
           (buf[index+2] == 0x01)) )
     {
+      if ((((index+3) - prev_sc_index) <= 4) && m_demux_entries)
+      {
+	 DEBUG_PRINT_ERROR("FOUND Consecutive start Code, Hence skip one");
+         m_demux_entries--;
+      }
       //Found start code, insert address offset
       insert_demux_addr_offset(index);
       if (buf[index+2] == 0x01) // 3 byte start code
         index += 3;
       else                      //4 byte start code
         index += 4;
+      prev_sc_index = index;
     }
     else
       index++;
