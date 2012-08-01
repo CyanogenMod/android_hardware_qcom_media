@@ -356,6 +356,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexParamVideoMaxAllowedBitrateCheck = 0x7F00001E,
 
     OMX_QcomIndexEnableSliceDeliveryMode = 0x7F00001F,
+
+    OMX_QcomIndexEnableExtnUserData = 0x7F000020,
 };
 
 /**
@@ -657,7 +659,9 @@ typedef enum OMX_QCOM_EXTRADATATYPE
    OMX_ExtraDataVideoEncoderSliceInfo = 0x7F000005,
    OMX_ExtraDataConcealMB = 0x7F000006,
    OMX_ExtraDataInterlaceFormat = 0x7F000007,
-   OMX_ExtraDataPortDef = 0x7F000008
+   OMX_ExtraDataPortDef = 0x7F000008,
+   OMX_ExtraDataMP2ExtnData = 0x7F000009,
+   OMX_ExtraDataMP2UserData = 0x7F00000a
 } OMX_QCOM_EXTRADATATYPE;
 
 typedef struct  OMX_STREAMINTERLACEFORMATTYPE {
