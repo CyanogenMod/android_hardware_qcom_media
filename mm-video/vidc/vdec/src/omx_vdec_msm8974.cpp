@@ -149,10 +149,6 @@ void* async_message_thread (void *input)
 			DEBUG_PRINT_ERROR("Error while polling: %d\n", rc);
 			break;
 		}
-		if (pfd.revents & POLLERR){
-			printf("\n async_message_thread Exited \n");
-			break;
-		}
 		if (pfd.revents & POLLPRI){
 			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
 			if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT) {
@@ -176,7 +172,10 @@ void* async_message_thread (void *input)
 					DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
 					break;
 				}
-			} else {
+			} else if (dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE) {
+                                DEBUG_PRINT_HIGH("\n VIDC Close Done Recieved and async_message_thread Exited \n");
+				break;
+                        } else {
 				DEBUG_PRINT_HIGH("\n VIDC Some Event recieved \n");
 				continue;
 			}
@@ -589,6 +588,7 @@ static const int event_type[] = {
 	V4L2_EVENT_MSM_VIDC_FLUSH_DONE,
 	V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT,
 	V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT,
+	V4L2_EVENT_MSM_VIDC_CLOSE_DONE
 };
 
 static OMX_ERRORTYPE subscribe_to_events(int fd)
@@ -664,6 +664,7 @@ RETURN VALUE
 omx_vdec::~omx_vdec()
 {
   m_pmem_info = NULL;
+  struct v4l2_decoder_cmd dec;
   DEBUG_PRINT_HIGH("In OMX vdec Destructor");
   if(m_pipe_in) close(m_pipe_in);
   if(m_pipe_out) close(m_pipe_out);
@@ -672,6 +673,11 @@ omx_vdec::~omx_vdec()
   DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
   pthread_join(msg_thread_id,NULL);
   DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
+  dec.cmd = V4L2_DEC_CMD_STOP;
+  if (ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec))
+  {
+    DEBUG_PRINT_ERROR("\n STOP Command failed\n");
+  }
   pthread_join(async_thread_id,NULL);
   unsubscribe_to_events(drv_ctx.video_driver_fd);
   close(drv_ctx.video_driver_fd);
