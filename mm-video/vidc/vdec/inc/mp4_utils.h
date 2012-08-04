@@ -147,8 +147,6 @@ typedef struct
   VOP_TYPE  vopType;
 } mp4_frame_info_type;
 
-void mp4_fill_aspect_ratio_info(struct vdec_aspectratioinfo *aspect_ratio_info,
-                           OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info);
 class MP4_Utils {
 private:
    struct posInfoType {
