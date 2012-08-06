@@ -177,6 +177,7 @@ public:
   unsigned venc_resume(void);
   unsigned venc_start_done(void);
   unsigned venc_stop_done(void);
+  unsigned venc_set_message_thread_id(pthread_t);
   bool venc_use_buf(void*, unsigned,unsigned);
   bool venc_free_buf(void*, unsigned);
   bool venc_empty_buf(void *, void *,unsigned,unsigned);
@@ -214,6 +215,7 @@ public:
   int recon_buffers_count;
   bool m_max_allowed_bitrate_check;
   int etb_count;
+  pthread_t m_tid;
   class omx_venc *venc_handle;
 private:
   struct msm_venc_basecfg             m_sVenc_cfg;

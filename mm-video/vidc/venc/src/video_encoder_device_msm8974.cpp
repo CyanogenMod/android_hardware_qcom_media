@@ -1201,6 +1201,13 @@ unsigned venc_dev::venc_stop_done(void)
   return 0;
 }
 
+unsigned venc_dev::venc_set_message_thread_id(pthread_t tid)
+{
+ m_tid=tid;
+ return 0;
+}
+
+
 unsigned venc_dev::venc_start(void)
 {
 	enum v4l2_buf_type buf_type;
