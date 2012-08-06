@@ -439,6 +439,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     else
     {
       r = pthread_create(&async_thread_id,0,async_venc_message_thread,this);
+      dev_set_message_thread_id(async_thread_id);
       if(r < 0)
       {
         eRet = OMX_ErrorInsufficientResources;
@@ -1483,6 +1484,11 @@ OMX_U32 omx_venc::dev_start_done(void)
 OMX_U32 omx_venc::dev_stop_done(void)
 {
   return handle->venc_stop_done();
+}
+
+OMX_U32 omx_venc::dev_set_message_thread_id(pthread_t tid)
+{
+  return handle->venc_set_message_thread_id(tid);
 }
 
 bool omx_venc::dev_use_buf(void *buf_addr,unsigned port,unsigned index)

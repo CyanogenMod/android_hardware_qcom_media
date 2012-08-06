@@ -1133,6 +1133,11 @@ unsigned venc_dev::venc_stop_done(void)
   return 0;
 }
 
+unsigned venc_dev::venc_set_message_thread_id(pthread_t)
+{
+  return 0;
+}
+
 unsigned venc_dev::venc_start(void)
 {
   DEBUG_PRINT_HIGH("\n %s(): Check Profile/Level set in driver before start",
