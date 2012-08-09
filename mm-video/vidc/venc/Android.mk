@@ -23,10 +23,12 @@ libmm-venc-def += -UOUTPUT_BUFFER_LOG
 libmm-venc-def += -USINGLE_ENCODER_INSTANCE
 ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
 libmm-venc-def += -DMAX_RES_1080P
+libmm-venc-def += -UENABLE_GET_SYNTAX_HDR
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
 libmm-venc-def += -DMAX_RES_1080P
 libmm-venc-def += -DMAX_RES_1080P_EBI
+libmm-venc-def += -UENABLE_GET_SYNTAX_HDR
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
 libmm-venc-def += -DMAX_RES_1080P

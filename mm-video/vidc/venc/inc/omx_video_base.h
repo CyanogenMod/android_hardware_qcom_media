@@ -159,6 +159,7 @@ class omx_video: public qc_omx_component
 {
 protected:
 #ifdef _ANDROID_ICS_
+  bool get_syntaxhdr_enable;
   bool meta_mode_enable;
   encoder_media_buffer_type meta_buffers[MAX_NUM_INPUT_BUFFERS];
   OMX_BUFFERHEADERTYPE meta_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
