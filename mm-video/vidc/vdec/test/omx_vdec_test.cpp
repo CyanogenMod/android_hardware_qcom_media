@@ -2109,7 +2109,8 @@ int Play_Decoder()
            QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka;
     }
 #elif _MSM8974_
-        color_fmt = OMX_COLOR_FormatYUV420SemiPlanar;
+        color_fmt = (OMX_COLOR_FORMATTYPE)
+		QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
 #else
        color_fmt = (OMX_COLOR_FORMATTYPE)
            QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka;
