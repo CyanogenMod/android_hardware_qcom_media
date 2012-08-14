@@ -205,6 +205,7 @@ void* async_venc_message_thread (void *input)
 				break;
 			}
 		}
+
 		if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
 			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
@@ -219,10 +220,24 @@ void* async_venc_message_thread (void *input)
 			venc_msg.statuscode=VEN_S_SUCCESS;
                         omxhdr=omx_venc_base->m_out_mem_ptr+v4l2_buf.index;
 			venc_msg.buf.len= v4l2_buf.m.planes->bytesused;
-                        venc_msg.buf.offset = v4l2_buf.m.planes->reserved[1];
+                        venc_msg.buf.offset = 0;
+                        venc_msg.buf.flags = 0;
                 	venc_msg.buf.ptrbuffer = (OMX_U8 *)omx_venc_base->m_pOutput_pmem[v4l2_buf.index].buffer;
-
 			venc_msg.buf.clientdata=(void*)omxhdr;
+			venc_msg.buf.timestamp = v4l2_buf.timestamp.tv_sec * 1E6 + v4l2_buf.timestamp.tv_usec;
+
+			/* TODO: ideally report other types of frames as well
+			 * for now it doesn't look like IL client cares about
+			 * other types
+			 */
+			if (v4l2_buf.flags & V4L2_BUF_FLAG_KEYFRAME)
+				venc_msg.buf.flags |= OMX_BUFFERFLAG_SYNCFRAME;
+
+			if(omx->async_message_process(input,&venc_msg) < 0)
+			{
+				DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
+				break;
+			}
 		}
 		if((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
 			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -237,13 +252,13 @@ void* async_venc_message_thread (void *input)
 			venc_msg.statuscode=VEN_S_SUCCESS;
                         omxhdr=omx_venc_base->m_inp_mem_ptr+v4l2_buf.index;
                         venc_msg.buf.clientdata=(void*)omxhdr;
+			if(omx->async_message_process(input,&venc_msg) < 0)
+			{
+				DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
+				break;
+			}
 		}
 
-		if(omx->async_message_process(input,&venc_msg) < 0)
-		{
-			DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
-			break;
-		}
   }
   DEBUG_PRINT_HIGH("omx_venc: Async Thread exit\n");
   return NULL;
@@ -1618,7 +1633,7 @@ DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
      buf.m.planes = &plane;
      buf.length = 1;
      buf.flags = bufhdr->nFlags;
-	 buf.timestamp.tv_usec=bufhdr->nTimeStamp;
+     buf.timestamp.tv_usec=bufhdr->nTimeStamp;
 
   rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
 	if (rc) {
