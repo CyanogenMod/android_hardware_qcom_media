@@ -821,24 +821,22 @@ void* fbd_thread(void* pArg)
       if (takeYuvLog)
       {
 #ifdef _MSM8974_
-
-	  // Write Luma into output file
-
 	  stride = ((width + 31) & (~31));
 	  scanlines = ((height+31) & (~31));
-	  bytes_written = fwrite((const char *)pBuffer->pBuffer,
-                                  stride*scanlines,1,outputBufferFile);
-	  pBuffer->pBuffer += (stride * scanlines);
-
-	  // Write Chroma into output file
-
+	  char *temp = (char *) pBuffer->pBuffer;
+	  for (i = 0; i < height; i++) {
+		  bytes_written = fwrite(temp, width, 1, outputBufferFile);
+		  temp += stride;
+	  }
+	  temp = (char *)pBuffer->pBuffer + stride * scanlines;
 	  stride_c = ((width/2 + 31) & (~31))*2;
-	  for(i=0;i<height/2;i++) {
-	  bytes_written += fwrite((const char *)pBuffer->pBuffer,
-                                  width,1,outputBufferFile);
-	  pBuffer->pBuffer+=stride_c;
+	  for(i = 0; i < height/2; i++) {
+		  bytes_written += fwrite(temp, width, 1, outputBufferFile);
+		  temp += stride_c;
 	  }
 #else
+	  DEBUG_PRINT_ERROR("NOTE: Buffer: %p, len: %d\n", pBuffer->pBuffer,
+			  pBuffer->nFilledLen);
 	  bytes_written = fwrite((const char *)pBuffer->pBuffer,
                                   pBuffer->nFilledLen,1,outputBufferFile);
 #endif
