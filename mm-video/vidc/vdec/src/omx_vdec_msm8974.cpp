@@ -6371,8 +6371,8 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
   {
     if (buffer->nFilledLen > 0)
     {
-      if (client_extradata)
-        handle_extradata(buffer);
+      /*if (client_extradata)
+        handle_extradata(buffer);*/
       if (client_extradata & OMX_TIMEINFO_EXTRADATA)
         // Keep min timestamp interval to handle corrupted bit stream scenario
         set_frame_rate(buffer->nTimeStamp);
