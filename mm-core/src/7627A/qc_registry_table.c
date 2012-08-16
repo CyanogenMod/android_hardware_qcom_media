@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2011,2012 Code Aurora Forum. All rights reserved.
+Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -771,6 +771,38 @@ omx_core_cb_type core[] =
     #endif
     {
       "audio_encoder.evrc"
+    }
+  },
+  {
+    "OMX.qcom.audio.decoder.ac3",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxAc3HwDec.so",
+    {
+      "audio_decoder.ac3"
+    }
+  },
+  {
+    "OMX.qcom.audio.decoder.eac3",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxAc3HwDec.so",
+    {
+      "audio_decoder.eac3"
     }
   },
 };
