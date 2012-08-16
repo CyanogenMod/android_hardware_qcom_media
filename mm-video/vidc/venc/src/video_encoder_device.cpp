@@ -1485,6 +1485,22 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
     ioctl_msg.in  = (void*)&dev_buffer;
     ioctl_msg.out = NULL;
 
+    if((m_sVenc_cfg.input_height %16 !=0) || (m_sVenc_cfg.input_width%16 != 0))
+    {
+      unsigned long ht = m_sVenc_cfg.input_height;
+      unsigned long wd = m_sVenc_cfg.input_width;
+      unsigned int luma_size, luma_size_2k;
+
+      ht = (ht + 15) & ~15;
+      wd = (wd + 15) & ~15;
+
+      luma_size = ht * wd;
+      luma_size_2k = (luma_size + 2047) & ~2047;
+
+      dev_buffer.sz =  luma_size_2k + luma_size/2;
+      dev_buffer.maped_size = dev_buffer.sz;
+    }
+
     DEBUG_PRINT_LOW("\n venc_use_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
                 dev_buffer.fd, \
