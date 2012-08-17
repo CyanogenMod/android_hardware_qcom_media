@@ -3692,7 +3692,7 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
         (OMX_QCOM_EXTRADATA_FRAMEINFO *) configData;
 
       if(m_extradata == NULL){
-          DEBUG_PRINT_ERROR("get_config: m_extradata not set. "
+          DEBUG_PRINT_LOW("get_config: m_extradata not set. "
                             "Aspect Ratio information missing!!");
       }
       else {
