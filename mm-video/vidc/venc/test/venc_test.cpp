@@ -75,7 +75,7 @@ REFERENCES
 // MACROS
 //////////////////////////
 
-#define CHK(result) if (result != OMX_ErrorNone) { E("*************** error *************"); exit(0); }
+#define CHK(result) if ((result != OMX_ErrorNone) && (result != OMX_ErrorNoMore)) { E("*************** error *************"); exit(0); }
 #define TEST_LOG
 #ifdef VENC_SYSLOG
 #include "cutils/log.h"
