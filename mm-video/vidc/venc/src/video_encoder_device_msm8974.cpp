@@ -2518,7 +2518,7 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
 	struct v4l2_control control;
 	int rc;
 	control.id = V4L2_CID_MPEG_VIDEO_BITRATE;
-	control.value = nTargetBitrate/1000;
+	control.value = nTargetBitrate;
 
 	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
@@ -2534,8 +2534,8 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
     DEBUG_PRINT_ERROR("\nERROR: Request for setting bit rate failed");
     return false;
   }
-  m_sVenc_cfg.targetbitrate = control.value*1000;
-  bitrate.target_bitrate = control.value*1000;
+  m_sVenc_cfg.targetbitrate = control.value;
+  bitrate.target_bitrate = control.value;
   if(!config)
   {
     m_level_set = false;
@@ -2555,7 +2555,7 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
 	struct venc_framerate frame_rate_cfg;
         Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
 	control.id = V4L2_CID_MPEG_VIDC_VIDEO_FRAME_RATE;
-	control.value = frame_rate_cfg.fps_numerator;
+	control.value = encode_framerate;
 	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
@@ -2570,8 +2570,8 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
     return false;
   }
 
-  m_sVenc_cfg.fps_den = 1;
-  m_sVenc_cfg.fps_num = control.value;
+  m_sVenc_cfg.fps_den = frame_rate_cfg.fps_denominator;
+  m_sVenc_cfg.fps_num = frame_rate_cfg.fps_numerator;
   if(!config)
   {
     m_level_set = false;
