@@ -125,7 +125,6 @@ char ouputextradatafilename [] = "/data/extradata";
 
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
-
 void* async_message_thread (void *input)
 {
 	struct vdec_ioctl_msg ioctl_msg;
@@ -134,10 +133,10 @@ void* async_message_thread (void *input)
 	struct pollfd pfd;
 	struct v4l2_buffer v4l2_buf ={0};
 	struct v4l2_event dqevent;
-	pfd.events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
 	omx_vdec *omx = reinterpret_cast<omx_vdec*>(input);
+	pfd.events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
 	pfd.fd = omx->drv_ctx.video_driver_fd;
-	int error_code = 0,rc=0;
+	int error_code = 0,rc=0,bytes_read = 0,bytes_written = 0;
 	DEBUG_PRINT_HIGH("omx_vdec: Async thread start\n");
 	prctl(PR_SET_NAME, (unsigned long)"VideoDecCallBackThread", 0, 0, 0);
 	while (1)
@@ -216,7 +215,16 @@ void* async_message_thread (void *input)
 			} else if (dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE) {
 				DEBUG_PRINT_HIGH("\n VIDC Close Done Recieved and async_message_thread Exited \n");
 				break;
-			} else {
+			} else if(dqevent.type == V4L2_EVENT_MSM_VIDC_SYS_ERROR) {
+                                struct vdec_msginfo vdec_msg;
+                                vdec_msg.msgcode=VDEC_MSG_EVT_HW_ERROR;
+                                vdec_msg.status_code=VDEC_S_SUCCESS;
+                                DEBUG_PRINT_HIGH("\n SYS Error Recieved \n");
+                                if (omx->async_message_process(input,&vdec_msg) < 0) {
+                                        DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+                                        break;
+                                }
+                        } else {
 				DEBUG_PRINT_HIGH("\n VIDC Some Event recieved \n");
 				continue;
 			}
@@ -587,7 +595,8 @@ static const int event_type[] = {
 	V4L2_EVENT_MSM_VIDC_FLUSH_DONE,
 	V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT,
 	V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT,
-	V4L2_EVENT_MSM_VIDC_CLOSE_DONE
+	V4L2_EVENT_MSM_VIDC_CLOSE_DONE,
+	V4L2_EVENT_MSM_VIDC_SYS_ERROR
 };
 
 static OMX_ERRORTYPE subscribe_to_events(int fd)
@@ -5600,6 +5609,11 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 	buf.flags |= (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) ? V4L2_QCOM_BUF_FLAG_CODECCONFIG: 0;
 
 	rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
+	if(rc)
+	{
+		DEBUG_PRINT_ERROR("Failed to qbuf Input buffer to driver\n");
+		return OMX_ErrorHardware;
+	}
   if(!streaming[OUTPUT_PORT])
   {
 	enum v4l2_buf_type buf_type;
@@ -5773,7 +5787,8 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 	rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
 	if (rc) {
 		/*TODO: How to handle this case */
-		DEBUG_PRINT_ERROR("Failed to qbuf to driver");
+		DEBUG_PRINT_ERROR("Failed to qbuf Output buffer to driver");
+		return OMX_ErrorHardware;
 	}
 //#ifdef _ANDROID_ICS_
   //  if (m_enable_android_native_buffers)

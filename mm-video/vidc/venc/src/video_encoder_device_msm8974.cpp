@@ -197,7 +197,7 @@ void* async_venc_message_thread (void *input)
 			DEBUG_PRINT_ERROR("Error while polling: %d\n", rc);
 			break;
 		}
-
+		
 		if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
 			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
@@ -264,7 +264,14 @@ void* async_venc_message_thread (void *input)
 					DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
 					break;
 				}
-			}
+			} else if (dqevent.type == V4L2_EVENT_MSM_VIDC_SYS_ERROR){
+                                DEBUG_PRINT_ERROR("\n HW Error recieved \n");
+                                venc_msg.statuscode=VEN_S_EFAIL;
+				if (omx->async_message_process(input,&venc_msg) < 0) {
+                                        DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
+                                        break;
+                                }
+                        }
 		}
   }
   DEBUG_PRINT_HIGH("omx_venc: Async Thread exit\n");
@@ -273,7 +280,8 @@ void* async_venc_message_thread (void *input)
 
 static const int event_type[] = {
 	V4L2_EVENT_MSM_VIDC_FLUSH_DONE,
-	V4L2_EVENT_MSM_VIDC_CLOSE_DONE
+	V4L2_EVENT_MSM_VIDC_CLOSE_DONE,
+	V4L2_EVENT_MSM_VIDC_SYS_ERROR
 };
 
 static OMX_ERRORTYPE subscribe_to_events(int fd)
