@@ -1128,11 +1128,6 @@ unsigned venc_dev::venc_start_done(void)
   return 0;
 }
 
-unsigned venc_dev::venc_stop_done(void)
-{
-  return 0;
-}
-
 unsigned venc_dev::venc_set_message_thread_id(pthread_t)
 {
   return 0;

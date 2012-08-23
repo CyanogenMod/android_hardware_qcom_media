@@ -197,80 +197,89 @@ void* async_venc_message_thread (void *input)
 			DEBUG_PRINT_ERROR("Error while polling: %d\n", rc);
 			break;
 		}
-		if (pfd.revents & POLLPRI){
-			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
-			printf("\n Data Recieved = %d \n",dqevent.type);
-			if(dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE){
-				printf("CLOSE DONE\n");
-				break;
-			}
-		}
 
 		if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
 			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
 			v4l2_buf.length = 1;
 			v4l2_buf.m.planes = &plane;
-			rc = ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf);
-			if (rc) {
-				DEBUG_PRINT_ERROR("Failed to dequeue buf: %d from capture capability\n", rc);
-				break;
-			}
-			venc_msg.msgcode=VEN_MSG_OUTPUT_BUFFER_DONE;
-			venc_msg.statuscode=VEN_S_SUCCESS;
-                        omxhdr=omx_venc_base->m_out_mem_ptr+v4l2_buf.index;
-			venc_msg.buf.len= v4l2_buf.m.planes->bytesused;
-                        venc_msg.buf.offset = 0;
-                        venc_msg.buf.flags = 0;
-                	venc_msg.buf.ptrbuffer = (OMX_U8 *)omx_venc_base->m_pOutput_pmem[v4l2_buf.index].buffer;
-			venc_msg.buf.clientdata=(void*)omxhdr;
-			venc_msg.buf.timestamp = v4l2_buf.timestamp.tv_sec * 1E6 + v4l2_buf.timestamp.tv_usec;
+			while(!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
+				venc_msg.msgcode=VEN_MSG_OUTPUT_BUFFER_DONE;
+				venc_msg.statuscode=VEN_S_SUCCESS;
+				omxhdr=omx_venc_base->m_out_mem_ptr+v4l2_buf.index;
+				venc_msg.buf.len= v4l2_buf.m.planes->bytesused;
+				venc_msg.buf.offset = 0;
+				venc_msg.buf.flags = 0;
+				venc_msg.buf.ptrbuffer = (OMX_U8 *)omx_venc_base->m_pOutput_pmem[v4l2_buf.index].buffer;
+				venc_msg.buf.clientdata=(void*)omxhdr;
+				venc_msg.buf.timestamp = v4l2_buf.timestamp.tv_sec * 1000000 + v4l2_buf.timestamp.tv_usec;
 
-			/* TODO: ideally report other types of frames as well
-			 * for now it doesn't look like IL client cares about
-			 * other types
-			 */
-			if (v4l2_buf.flags & V4L2_BUF_FLAG_KEYFRAME)
-				venc_msg.buf.flags |= OMX_BUFFERFLAG_SYNCFRAME;
+				/* TODO: ideally report other types of frames as well
+				 * for now it doesn't look like IL client cares about
+				 * other types
+				 */
+				if (v4l2_buf.flags & V4L2_BUF_FLAG_KEYFRAME)
+					venc_msg.buf.flags |= OMX_BUFFERFLAG_SYNCFRAME;
+				if(v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_CODECCONFIG)
+					venc_msg.buf.flags |= OMX_BUFFERFLAG_CODECCONFIG;
 
-			if(omx->async_message_process(input,&venc_msg) < 0)
-			{
-				DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
-				break;
+				if(omx->async_message_process(input,&venc_msg) < 0)
+				{
+					DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
+					break;
+				}
 			}
 		}
 		if((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
 			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
 			v4l2_buf.m.planes = &plane;
-			rc = ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf);
-			if (rc) {
-				DEBUG_PRINT_ERROR("Failed to dequeue buf: %d from output capability\n", rc);
-				break;
-			}
-                        venc_msg.msgcode=VEN_MSG_INPUT_BUFFER_DONE;
-			venc_msg.statuscode=VEN_S_SUCCESS;
-                        omxhdr=omx_venc_base->m_inp_mem_ptr+v4l2_buf.index;
-                        venc_msg.buf.clientdata=(void*)omxhdr;
-			if(omx->async_message_process(input,&venc_msg) < 0)
-			{
-				DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
-				break;
+			while(!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
+				venc_msg.msgcode=VEN_MSG_INPUT_BUFFER_DONE;
+				venc_msg.statuscode=VEN_S_SUCCESS;
+				omxhdr=omx_venc_base->m_inp_mem_ptr+v4l2_buf.index;
+				venc_msg.buf.clientdata=(void*)omxhdr;
+				if(omx->async_message_process(input,&venc_msg) < 0)
+				{
+					DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
+					break;
+				}
 			}
 		}
-
+		if (pfd.revents & POLLPRI) {
+			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
+			if(dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE) {
+				DEBUG_PRINT_HIGH("CLOSE DONE\n");
+				break;
+			} else if (dqevent.type == V4L2_EVENT_MSM_VIDC_FLUSH_DONE) {
+				venc_msg.msgcode = VEN_MSG_FLUSH_INPUT_DONE;
+				venc_msg.statuscode = VEN_S_SUCCESS;
+				if (omx->async_message_process(input,&venc_msg) < 0) {
+					DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
+					break;
+				}
+				venc_msg.msgcode = VEN_MSG_FLUSH_OUPUT_DONE;
+				venc_msg.statuscode = VEN_S_SUCCESS;
+				if (omx->async_message_process(input,&venc_msg) < 0) {
+					DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
+					break;
+				}
+			}
+		}
   }
   DEBUG_PRINT_HIGH("omx_venc: Async Thread exit\n");
   return NULL;
 }
 
+static const int event_type[] = {
+	V4L2_EVENT_MSM_VIDC_FLUSH_DONE,
+	V4L2_EVENT_MSM_VIDC_CLOSE_DONE
+};
+
 static OMX_ERRORTYPE subscribe_to_events(int fd)
 {
 	OMX_ERRORTYPE eRet = OMX_ErrorNone;
-	struct v4l2_event_subscription sub;
-	int event_type[] = {
-		V4L2_EVENT_MSM_VIDC_CLOSE_DONE
-	};
+	struct v4l2_event_subscription sub = {0};
 	int array_sz = sizeof(event_type)/sizeof(int);
 	int i,rc;
 	if (fd < 0) {
@@ -288,7 +297,7 @@ static OMX_ERRORTYPE subscribe_to_events(int fd)
 		}
 	}
 	if (i < array_sz) {
-		for (;i >=0 ; i--) {
+		for (--i; i >=0 ; i--) {
 			memset(&sub, 0, sizeof(sub));
 			sub.type = event_type[i];
 			rc = ioctl(fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
@@ -484,41 +493,44 @@ if (codec == OMX_VIDEO_CodingVPX)
         __func__);
   }
   recon_buffers_count = MAX_RECON_BUFFERS;
+  stopped = 0;
   return true;
+}
+
+
+static OMX_ERRORTYPE unsubscribe_to_events(int fd)
+{
+	OMX_ERRORTYPE eRet = OMX_ErrorNone;
+	struct v4l2_event_subscription sub;
+	int array_sz = sizeof(event_type)/sizeof(int);
+	int i,rc;
+	if (fd < 0) {
+		printf("Invalid input: %d\n", fd);
+		return OMX_ErrorBadParameter;
+	}
+
+	for (i = 0; i < array_sz; ++i) {
+		memset(&sub, 0, sizeof(sub));
+		sub.type = event_type[i];
+		rc = ioctl(fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
+		if (rc) {
+			printf("Failed to unsubscribe event: 0x%x\n", sub.type);
+			break;
+		}
+	}
+	return eRet;
 }
 
 void venc_dev::venc_close()
 {
+  struct v4l2_encoder_cmd enc;
   DEBUG_PRINT_LOW("\nvenc_close: fd = %d", m_nDriver_fd);
   if((int)m_nDriver_fd >= 0)
   {
-    DEBUG_PRINT_HIGH("\n venc_close(): Calling VEN_IOCTL_CMD_STOP_READ_MSG");
-    //(void)ioctl(m_nDriver_fd, VEN_IOCTL_CMD_STOP_READ_MSG,
-      //  NULL);
-    DEBUG_PRINT_LOW("\nCalling close()\n");
-
-         int rc=0;
-	 enum v4l2_buf_type btype;
-	 btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
-	 if (rc) {
-		/* STREAMOFF will never fail */	
-		DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
-		}
-	 btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	 
-	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
-	 if (rc) {
-		/* STREAMOFF will never fail */	
-		DEBUG_PRINT_ERROR("\n Failed to call streamoff on CAPTURE Port \n");
-		}
-        struct v4l2_event_subscription sub;
-	sub.type=V4L2_EVENT_ALL;
-	rc = ioctl(m_nDriver_fd, VIDIOC_UNSUBSCRIBE_EVENT, &sub);
-	if (rc) {
-		DEBUG_PRINT_ERROR("Failed to get control\n");
-		return ;
-	}
+    enc.cmd = V4L2_ENC_CMD_STOP;
+    ioctl(m_nDriver_fd, VIDIOC_ENCODER_CMD, &enc);
+    pthread_join(m_tid,NULL);
+    unsubscribe_to_events(m_nDriver_fd);
     close(m_nDriver_fd);
     m_nDriver_fd = -1;
   }
@@ -1169,7 +1181,18 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
 
 unsigned venc_dev::venc_stop( void)
 {
-    pmem_free();
+  struct venc_msg venc_msg;
+  if(!stopped) {
+	  pmem_free();
+	  enum v4l2_buf_type out_type, cap_type;
+	  out_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+	  cap_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	  if(!ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &out_type) &&
+		 !ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &cap_type)) {
+		   venc_stop_done();
+		   stopped = 1;
+	   }
+  }
   return 0;
 }
 
@@ -1186,8 +1209,8 @@ unsigned venc_dev::venc_resume(void)
 unsigned venc_dev::venc_start_done(void)
 {
   struct venc_msg venc_msg;
-  venc_msg.msgcode=VEN_MSG_START;
-  venc_msg.statuscode=VEN_S_SUCCESS;
+  venc_msg.msgcode = VEN_MSG_START;
+  venc_msg.statuscode = VEN_S_SUCCESS;
   venc_handle->async_message_process(venc_handle,&venc_msg);
   return 0;
 }
@@ -1425,41 +1448,19 @@ void venc_dev::venc_config_print()
 
 unsigned venc_dev::venc_flush( unsigned port)
 {
-  struct venc_bufferflush buffer_index;
+  struct v4l2_encoder_cmd enc;
+  DEBUG_PRINT_LOW("in %s", __func__);
 
-  if(port == PORT_INDEX_IN)
+  enc.cmd = V4L2_ENC_QCOM_CMD_FLUSH;
+  enc.flags = V4L2_QCOM_CMD_FLUSH_OUTPUT | V4L2_QCOM_CMD_FLUSH_CAPTURE;
+
+  if (ioctl(m_nDriver_fd, VIDIOC_ENCODER_CMD, &enc))
   {
-	 int rc=0;
-	 enum v4l2_buf_type btype;
-	 btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
-	 if (rc) {
-		/* STREAMOFF should never fail */	
-		DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
-		return -1;
-		}
-
-    return 0;
-  }
-  else if(port == PORT_INDEX_OUT)
-  {
-	 int rc=0;
-	 enum v4l2_buf_type btype;
-	 btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
-	 if (rc) {
-		/* STREAMOFF should never fail  */	
-		DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
-		return -1;
-		}
-
-    return 0;
-
-  }
-  else
-  {
+    DEBUG_PRINT_ERROR("\n Flush Port (%d) Failed ", port);
     return -1;
   }
+  return 0;
+
 }
 
 //allocating I/P memory from pmem and register with the device
@@ -1492,7 +1493,6 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
      buf.m.planes = &plane;
      buf.length = 1;
 
-
 	 rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
                 
 	if (rc) {
@@ -1507,7 +1507,6 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
   }
   else if(port == PORT_INDEX_OUT)
   {
-
      buf.index = index;
      buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
      buf.memory = V4L2_MEMORY_USERPTR;
@@ -1546,8 +1545,6 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
   struct venc_bufferpayload dev_buffer = {0};
 
   pmem_tmp = (struct pmem *)buf_addr;
-
-  DEBUG_PRINT_LOW("\n venc_use_buf:: pmem_tmp = %p", pmem_tmp);
 
   if(port == PORT_INDEX_IN)
   {
@@ -1597,17 +1594,16 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
   return true;
 }
 
-bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned index,unsigned fd)
+bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index, unsigned fd)
 {
   struct pmem *temp_buffer;
 
   struct v4l2_buffer buf = {0};
   struct v4l2_plane plane = {0};
-	int rc=0;
+  int rc=0;
   struct OMX_BUFFERHEADERTYPE *bufhdr;
-  
+  encoder_media_buffer_type * meta_buf = NULL;
   temp_buffer = (struct pmem *)buffer;
-  
 
   if(buffer == NULL)
   {
@@ -1616,57 +1612,64 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned index,u
   }
   bufhdr = (OMX_BUFFERHEADERTYPE *)buffer;
 
-DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
+  DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
 
   if(pmem_data_buf)
   {
     DEBUG_PRINT_LOW("\n Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
     plane.m.userptr = (unsigned long)pmem_data_buf;
+	plane.data_offset = bufhdr->nOffset;
+	plane.length = bufhdr->nAllocLen;
+	plane.bytesused = bufhdr->nFilledLen;
   }
   else
   {
     DEBUG_PRINT_LOW("\n Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
-    plane.m.userptr = (unsigned long)bufhdr->pBuffer;
-  }
-
-     buf.index = index;
-     buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-     buf.memory = V4L2_MEMORY_USERPTR;
-     plane.length = bufhdr->nAllocLen;
-     plane.bytesused = bufhdr->nFilledLen;
-     plane.reserved[0] = fd;
-     plane.reserved[1] = 0;
-     plane.data_offset = bufhdr->nOffset;
-     buf.m.planes = &plane;
-     buf.length = 1;
-     buf.flags = bufhdr->nFlags;
-     buf.timestamp.tv_usec=bufhdr->nTimeStamp;
-
-  rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
-	if (rc) {
-		DEBUG_PRINT_ERROR("Failed to qbuf (etb) to driver");
+	meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
+	if (!meta_buf) {
 		return false;
 	}
+	plane.m.userptr = index;
+	plane.data_offset = meta_buf->meta_handle->data[1];
+	plane.length = meta_buf->meta_handle->data[2];
+	plane.bytesused = meta_buf->meta_handle->data[2];
+  }
 
-	etb_count++;
+  buf.index = index;
+  buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+  buf.memory = V4L2_MEMORY_USERPTR;
+  plane.reserved[0] = fd;
+  plane.reserved[1] = 0;
+  buf.m.planes = &plane;
+  buf.length = 1;
+  buf.flags = bufhdr->nFlags;
+  buf.timestamp.tv_sec = bufhdr->nTimeStamp / 1000000;
+  buf.timestamp.tv_usec = (bufhdr->nTimeStamp % 1000000);
 
-	if(etb_count == 1)
-	{
-	enum v4l2_buf_type buf_type;
-	buf_type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-		int ret;
-	ret = ioctl(m_nDriver_fd, VIDIOC_STREAMON, &buf_type);
-	if (ret) {
-		DEBUG_PRINT_ERROR("Failed to call streamon\n");
-	}
-		
-	}
+  rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
+  if (rc) {
+	  DEBUG_PRINT_ERROR("Failed to qbuf (etb) to driver");
+	  return false;
+  }
+
+  etb_count++;
+
+  if(etb_count == 1)
+  {
+	  enum v4l2_buf_type buf_type;
+	  buf_type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+	  int ret;
+	  ret = ioctl(m_nDriver_fd, VIDIOC_STREAMON, &buf_type);
+	  if (ret) {
+		  DEBUG_PRINT_ERROR("Failed to call streamon\n");
+	  }
+  }
 
   if(/*ioctl(m_nDriver_fd,VEN_IOCTL_CMD_ENCODE_FRAME,&ioctl_msg) < */0)
   {
-    /*Generate an async error and move to invalid state*/
-    return false;
-  }
+	  /*Generate an async error and move to invalid state*/
+	  return false;
+	}
 #ifdef INPUT_BUFFER_LOG
 
   int y_size = 0;
@@ -1712,23 +1715,22 @@ if(pmem_data_buf)
     plane.m.userptr = (unsigned long)bufhdr->pBuffer;
   }
 
-     buf.index = index;
-     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-     buf.memory = V4L2_MEMORY_USERPTR;
-     plane.length = bufhdr->nAllocLen;
-     plane.bytesused = bufhdr->nFilledLen;
-     plane.reserved[0] = fd;
-     plane.reserved[1] = 0;
-     plane.data_offset = bufhdr->nOffset;
-     buf.m.planes = &plane;
-     buf.length = 1;
+  buf.index = index;
+  buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+  buf.memory = V4L2_MEMORY_USERPTR;
+  plane.length = bufhdr->nAllocLen;
+  plane.bytesused = bufhdr->nFilledLen;
+  plane.reserved[0] = fd;
+  plane.reserved[1] = 0;
+  plane.data_offset = bufhdr->nOffset;
+  buf.m.planes = &plane;
+  buf.length = 1;
 
-	rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
-	if (rc) {
-		DEBUG_PRINT_ERROR("Failed to qbuf (ftb) to driver");
-		return false;
-	}
-
+  rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
+  if (rc) {
+	  DEBUG_PRINT_ERROR("Failed to qbuf (ftb) to driver");
+	  return false;
+  }
 
   if(/*ioctl (m_nDriver_fd,VEN_IOCTL_CMD_FILL_OUTPUT_BUFFER,&ioctl_msg) < */0)
   {

@@ -956,7 +956,6 @@ OMX_ERRORTYPE  omx_video::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         BITMASK_SET(&m_flags,OMX_COMPONENT_IDLE_PENDING);
         execute_omx_flush(OMX_ALL);
         bFlag = 0;
-	dev_stop_done();
       }
       /* Requesting transition from Executing to Paused */
       else if(eState == OMX_StatePause)
@@ -1286,6 +1285,19 @@ bool omx_video::execute_omx_flush(OMX_U32 flushType)
 {
   bool bRet = false;
   DEBUG_PRINT_LOW("\n execute_omx_flush -  %d\n", flushType);
+#ifdef _MSM8974_
+  if(flushType == OMX_ALL)
+  {
+    input_flush_progress = true;
+    output_flush_progress = true;
+    bRet = execute_flush_all();
+  }
+  else
+  {
+    DEBUG_PRINT_ERROR("Invalid index (%d) for flush\n", flushType);
+    return bRet;
+  }
+#else
   if(flushType == 0 || flushType == OMX_ALL)
   {
     input_flush_progress = true;
@@ -1298,6 +1310,7 @@ bool omx_video::execute_omx_flush(OMX_U32 flushType)
     output_flush_progress = true;
     bRet = execute_output_flush();
   }
+#endif
   return bRet;
 }
 /*=========================================================================
@@ -1395,6 +1408,74 @@ bool omx_video::execute_input_flush(void)
   return bRet;
 }
 
+
+/*=========================================================================
+FUNCTION : execute_flush
+
+DESCRIPTION
+  Executes the OMX flush at INPUT & OUTPUT PORT.
+
+PARAMETERS
+  None.
+
+RETURN VALUE
+  true/false
+==========================================================================*/
+#ifdef _MSM8974_
+bool omx_video::execute_flush_all(void)
+{
+  unsigned      p1 = 0; // Parameter - 1
+  unsigned      p2 = 0; // Parameter - 2
+  unsigned      ident = 0;
+  bool bRet = true;
+
+  DEBUG_PRINT_LOW("\n execute_flush_all\n");
+
+  /*Generate EBD for all Buffers in the ETBq*/
+  pthread_mutex_lock(&m_lock);
+  while(m_etb_q.m_size)
+  {
+    m_etb_q.pop_entry(&p1,&p2,&ident);
+    if(ident == OMX_COMPONENT_GENERATE_ETB)
+    {
+      pending_input_buffers++;
+      empty_buffer_done(&m_cmp,(OMX_BUFFERHEADERTYPE *)p2);
+    }
+    else if(ident == OMX_COMPONENT_GENERATE_EBD)
+    {
+      empty_buffer_done(&m_cmp,(OMX_BUFFERHEADERTYPE *)p1);
+    }
+  }
+
+  /*Generate FBD for all Buffers in the FTBq*/
+  DEBUG_PRINT_LOW("\n execute_output_flush\n");
+  while(m_ftb_q.m_size)
+  {
+    m_ftb_q.pop_entry(&p1,&p2,&ident);
+
+    if(ident == OMX_COMPONENT_GENERATE_FTB )
+    {
+      pending_output_buffers++;
+      fill_buffer_done(&m_cmp,(OMX_BUFFERHEADERTYPE *)p2);
+    }
+    else if(ident == OMX_COMPONENT_GENERATE_FBD)
+    {
+      fill_buffer_done(&m_cmp,(OMX_BUFFERHEADERTYPE *)p1);
+    }
+  }
+
+  pthread_mutex_unlock(&m_lock);
+
+  /*Check if there are buffers with the Driver*/
+  if(dev_flush(PORT_INDEX_BOTH))
+  {
+    DEBUG_PRINT_ERROR("\nERROR: dev_flush() Failed");
+    return false;
+  }
+  return bRet;
+}
+
+#endif
 
 /* ======================================================================
 FUNCTION
@@ -3056,7 +3137,7 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
   OMX_ERRORTYPE eRet = OMX_ErrorNone;
   unsigned int nPortIndex;
 
-  DEBUG_PRINT_LOW("In for decoder free_buffer \n");
+  DEBUG_PRINT_LOW("In for encoder free_buffer \n");
 
   if(m_state == OMX_StateIdle &&
      (BITMASK_PRESENT(&m_flags ,OMX_COMPONENT_LOADING_PENDING)))
@@ -3074,7 +3155,6 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     post_event(OMX_EventError,
                OMX_ErrorPortUnpopulated,
                OMX_COMPONENT_GENERATE_EVENT);
-
     return eRet;
   }
   else
@@ -3220,6 +3300,9 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
       BITMASK_CLEAR((&m_flags),OMX_COMPONENT_LOADING_PENDING);
       post_event(OMX_CommandStateSet, OMX_StateLoaded,
                  OMX_COMPONENT_GENERATE_EVENT);
+    } else {
+      DEBUG_PRINT_ERROR("in free buffer, release not done, need to free more buffers input 0x%x output 0x%x",
+                       m_out_bm_count, m_inp_bm_count);
     }
   }
 
@@ -3315,15 +3398,15 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
   int push_cnt = 0;
   unsigned nBufIndex = 0;
   OMX_ERRORTYPE ret = OMX_ErrorNone;
-
+#ifdef _MSM8974_
+  int fd = 0;
+#endif
   DEBUG_PRINT_LOW("\n ETBProxy: buffer->pBuffer[%p]\n", buffer->pBuffer);
-
   if(buffer == NULL)
   {
     DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Invalid buffer[%p]\n", buffer);
     return OMX_ErrorBadParameter;
   }
-
   nBufIndex = buffer - ((OMX_BUFFERHEADERTYPE *)m_inp_mem_ptr);
 
   if(nBufIndex >= m_sInPortDef.nBufferCountActual)
@@ -3340,6 +3423,10 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
     DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Input flush in progress");
     return OMX_ErrorNone;
   }
+#ifdef _MSM8974_
+  if(!meta_mode_enable)
+    fd = m_pInput_pmem[nBufIndex].fd;
+#endif
 #ifdef _ANDROID_ICS_
   if(meta_mode_enable)
   {
@@ -3373,18 +3460,19 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
       post_event ((unsigned int)buffer,0,OMX_COMPONENT_GENERATE_EBD);
       return OMX_ErrorBadParameter;
     }
-
     struct pmem Input_pmem_info;
     if(media_buffer->buffer_type == kMetadataBufferTypeCameraSource)
     {
       Input_pmem_info.buffer = media_buffer;
       Input_pmem_info.fd = media_buffer->meta_handle->data[0];
+#ifdef _MSM8974_
+      fd = Input_pmem_info.fd;
+#endif
       Input_pmem_info.offset = media_buffer->meta_handle->data[1];
       Input_pmem_info.size = media_buffer->meta_handle->data[2];
       DEBUG_PRINT_LOW("ETB fd = %d, offset = %d, size = %d",Input_pmem_info.fd,
                         Input_pmem_info.offset,
                         Input_pmem_info.size);
-
     } else {
       private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
       Input_pmem_info.buffer = media_buffer;
@@ -3405,13 +3493,12 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
   {
     DEBUG_PRINT_LOW("\n Heap UseBuffer case, so memcpy the data");
     pmem_data_buf = (OMX_U8 *)m_pInput_pmem[nBufIndex].buffer;
-
     memcpy (pmem_data_buf, (buffer->pBuffer + buffer->nOffset),
             buffer->nFilledLen);
     DEBUG_PRINT_LOW("memcpy() done in ETBProxy for i/p Heap UseBuf");
   }
 #ifdef _MSM8974_
-  if(dev_empty_buf(buffer, pmem_data_buf,nBufIndex,m_pInput_pmem[nBufIndex].fd) != true)
+  if(dev_empty_buf(buffer, pmem_data_buf,nBufIndex,fd) != true)
 #else
   if(dev_empty_buf(buffer, pmem_data_buf,0,0) != true)
 #endif
