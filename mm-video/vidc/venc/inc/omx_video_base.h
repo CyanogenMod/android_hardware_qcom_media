@@ -94,12 +94,6 @@ public:
 #define DEBUG_PRINT_ERROR
 #endif // _ANDROID_
 
-#ifdef _MSM8974_
-#define DEBUG_PRINT_LOW
-#define DEBUG_PRINT_HIGH printf
-#define DEBUG_PRINT_ERROR printf
-#endif
-
 #ifdef USE_ION
     static const char* MEM_DEVICE = "/dev/ion";
     #ifdef MAX_RES_720P
@@ -191,7 +185,6 @@ public:
   virtual OMX_U32 dev_flush(unsigned) = 0;
   virtual OMX_U32 dev_resume(void) = 0;
   virtual OMX_U32 dev_start_done(void) = 0;
-  virtual OMX_U32 dev_stop_done(void) = 0;
   virtual OMX_U32 dev_set_message_thread_id(pthread_t) = 0;
   virtual bool dev_use_buf(void *,unsigned,unsigned) = 0;
   virtual bool dev_free_buf(void *,unsigned) = 0;
@@ -445,6 +438,9 @@ public:
   bool execute_omx_flush(OMX_U32);
   bool execute_output_flush(void);
   bool execute_input_flush(void);
+#ifdef _MSM8974_
+  bool execute_flush_all(void);
+#endif
   OMX_ERRORTYPE empty_buffer_done(OMX_HANDLETYPE hComp,
                                   OMX_BUFFERHEADERTYPE * buffer);
 
