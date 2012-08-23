@@ -145,14 +145,6 @@ char ouputextradatafilename [] = "/data/extradata";
 #endif//_ANDROID_
 */
 
-#undef DEBUG_PRINT_LOW
-#undef DEBUG_PRINT_HIGH
-#undef DEBUG_PRINT_ERROR
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_HIGH ALOGE
-#define DEBUG_PRINT_ERROR ALOGE
-
 #ifndef _ANDROID_
 #include <glib.h>
 #define strlcpy g_strlcpy
@@ -2664,7 +2656,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       eRet = update_portdef(portDefn);
       if (eRet == OMX_ErrorNone)
           m_port_def = *portDefn;
-      DEBUG_PRINT_HIGH("Get_parameter: OMX_IndexParamPortDefinition: "
+      DEBUG_PRINT_LOW("Get_parameter: OMX_IndexParamPortDefinition: "
         "nPortIndex (%d), nFrameWidth (%d), nFrameHeight (%d), "
         "nStride (%d), nSliceHeight (%d), nBitrate (%d), xFramerate (0x%x), "
         "nBufferSize (%d), nBufferCountMin (%d), nBufferCountActual (%d), "
@@ -2732,7 +2724,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                           (int)portFmt->nPortIndex);
         eRet = OMX_ErrorBadPortIndex;
       }
-      DEBUG_PRINT_HIGH("Get_parameter: OMX_IndexParamVideoPortFormat: "
+      DEBUG_PRINT_LOW("Get_parameter: OMX_IndexParamVideoPortFormat: "
           "nPortIndex (%d), nIndex (%d), eCompressionFormat (0x%x), "
           "eColorFormat (0x%x), xFramerate (0x%x)", (int)portFmt->nPortIndex,
           (int)portFmt->nIndex, (int)portFmt->eCompressionFormat,
