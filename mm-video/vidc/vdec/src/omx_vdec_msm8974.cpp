@@ -3112,11 +3112,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             else if (portFmt->nFramePackingFormat ==
                 OMX_QCOM_FramePacking_OnlyOneCompleteFrame)
             {
-               DEBUG_PRINT_ERROR("setparameter: cannot set to frame by frame  mode (disabled temporarily)");
-               eRet = OMX_ErrorUnsupportedSetting;
-#if 0
                arbitrary_bytes = false;
-#endif
             }
             else
             {
@@ -5567,6 +5563,8 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 	//assumption is that timestamp is in milliseconds
 	buf.timestamp.tv_sec = frameinfo.timestamp / 1000000;
 	buf.timestamp.tv_usec = (frameinfo.timestamp % 1000000);
+	buf.flags |= (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) ? V4L2_QCOM_BUF_FLAG_CODECCONFIG: 0;
+
 	rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
   if(!streaming[OUTPUT_PORT])
   {
