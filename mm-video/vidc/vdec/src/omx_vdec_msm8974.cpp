@@ -128,20 +128,20 @@ char ouputextradatafilename [] = "/data/extradata";
 
 void* async_message_thread (void *input)
 {
-  struct vdec_ioctl_msg ioctl_msg;
-  OMX_BUFFERHEADERTYPE *buffer;
-  struct v4l2_plane plane;
-  struct pollfd pfd;
-  struct v4l2_buffer v4l2_buf ={0};
-   struct v4l2_event dqevent;
-  pfd.events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
-  omx_vdec *omx = reinterpret_cast<omx_vdec*>(input);
-  pfd.fd = omx->drv_ctx.video_driver_fd;
-  int error_code = 0,rc=0;
-  DEBUG_PRINT_HIGH("omx_vdec: Async thread start\n");
-  prctl(PR_SET_NAME, (unsigned long)"VideoDecCallBackThread", 0, 0, 0);
-  while (1)
-  {
+	struct vdec_ioctl_msg ioctl_msg;
+	OMX_BUFFERHEADERTYPE *buffer;
+	struct v4l2_plane plane;
+	struct pollfd pfd;
+	struct v4l2_buffer v4l2_buf ={0};
+	struct v4l2_event dqevent;
+	pfd.events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
+	omx_vdec *omx = reinterpret_cast<omx_vdec*>(input);
+	pfd.fd = omx->drv_ctx.video_driver_fd;
+	int error_code = 0,rc=0;
+	DEBUG_PRINT_HIGH("omx_vdec: Async thread start\n");
+	prctl(PR_SET_NAME, (unsigned long)"VideoDecCallBackThread", 0, 0, 0);
+	while (1)
+	{
 		rc = poll(&pfd, 1, POLL_TIMEOUT);
 		if (!rc) {
 			DEBUG_PRINT_ERROR("Poll timedout\n");
@@ -149,6 +149,41 @@ void* async_message_thread (void *input)
 		} else if (rc < 0) {
 			DEBUG_PRINT_ERROR("Error while polling: %d\n", rc);
 			break;
+		}
+		if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
+			struct vdec_msginfo vdec_msg;
+			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
+			v4l2_buf.length = 1;
+			v4l2_buf.m.planes = &plane;
+			while(!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
+				vdec_msg.msgcode=VDEC_MSG_RESP_OUTPUT_BUFFER_DONE;
+				vdec_msg.status_code=VDEC_S_SUCCESS;
+				vdec_msg.msgdata.output_frame.client_data=(void*)&v4l2_buf;
+				vdec_msg.msgdata.output_frame.len=plane.bytesused;
+				vdec_msg.msgdata.output_frame.bufferaddr=(void*)plane.m.userptr;
+				vdec_msg.msgdata.output_frame.time_stamp= (v4l2_buf.timestamp.tv_sec * 1000000) +
+					v4l2_buf.timestamp.tv_usec;
+				if (omx->async_message_process(input,&vdec_msg) < 0) {
+					DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+					break;
+				}
+			}
+		}
+		if((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
+			struct vdec_msginfo vdec_msg;
+			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
+			v4l2_buf.m.planes = &plane;
+			while(!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
+				vdec_msg.msgcode=VDEC_MSG_RESP_INPUT_BUFFER_DONE;
+				vdec_msg.status_code=VDEC_S_SUCCESS;
+				vdec_msg.msgdata.input_frame_clientdata=(void*)&v4l2_buf;
+				if (omx->async_message_process(input,&vdec_msg) < 0) {
+					DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+					break;
+				}
+			}
 		}
 		if (pfd.revents & POLLPRI){
 			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
@@ -173,60 +208,24 @@ void* async_message_thread (void *input)
 					DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
 					break;
 				}
+				vdec_msg.msgcode=VDEC_MSG_RESP_FLUSH_INPUT_DONE;
+				vdec_msg.status_code=VDEC_S_SUCCESS;
+				DEBUG_PRINT_HIGH("\n VIDC Flush Done Recieved \n");
+				if (omx->async_message_process(input,&vdec_msg) < 0) {
+					DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+					break;
+				}
 			} else if (dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE) {
-                                DEBUG_PRINT_HIGH("\n VIDC Close Done Recieved and async_message_thread Exited \n");
+				DEBUG_PRINT_HIGH("\n VIDC Close Done Recieved and async_message_thread Exited \n");
 				break;
-                        } else {
+			} else {
 				DEBUG_PRINT_HIGH("\n VIDC Some Event recieved \n");
 				continue;
 			}
 		}
-		if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
-			struct vdec_msginfo vdec_msg;
-			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
-			v4l2_buf.length = 1;
-			v4l2_buf.m.planes = &plane;
-			rc = ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf);
-			if (rc) {
-				/*TODO: How to handle this case */
-				DEBUG_PRINT_ERROR("Failed to dequeue buf: %d from capture capability\n", rc);
-				break;
-			}
-			vdec_msg.msgcode=VDEC_MSG_RESP_OUTPUT_BUFFER_DONE;
-			vdec_msg.status_code=VDEC_S_SUCCESS;
-			vdec_msg.msgdata.output_frame.client_data=(void*)&v4l2_buf;
-			vdec_msg.msgdata.output_frame.len=plane.bytesused;
-			vdec_msg.msgdata.output_frame.bufferaddr=(void*)plane.m.userptr;
-			vdec_msg.msgdata.output_frame.time_stamp= (v4l2_buf.timestamp.tv_sec * 1000000) +
-								v4l2_buf.timestamp.tv_usec;
-			if (omx->async_message_process(input,&vdec_msg) < 0) {
-				DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
-				break;
-			}
-		}
-		if((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
-			struct vdec_msginfo vdec_msg;
-			v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-			v4l2_buf.memory = V4L2_MEMORY_USERPTR;
-			v4l2_buf.m.planes = &plane;
-			rc = ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf);
-			if (rc) {
-				/*TODO: How to handle this case */
-				DEBUG_PRINT_ERROR("Failed to dequeue buf: %d from output capability\n", rc);
-				break;
-			}
-			vdec_msg.msgcode=VDEC_MSG_RESP_INPUT_BUFFER_DONE;
-			vdec_msg.status_code=VDEC_S_SUCCESS;
-			vdec_msg.msgdata.input_frame_clientdata=(void*)&v4l2_buf;
-			if (omx->async_message_process(input,&vdec_msg) < 0) {
-				DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
-				break;
-			}
-		}
-  }
-    DEBUG_PRINT_HIGH("omx_vdec: Async thread stop\n");
-  return NULL;
+	}
+	DEBUG_PRINT_HIGH("omx_vdec: Async thread stop\n");
+	return NULL;
 }
 
 void* message_thread(void *input)
