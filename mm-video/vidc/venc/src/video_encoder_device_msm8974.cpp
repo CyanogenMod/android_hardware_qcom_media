@@ -44,6 +44,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define H264_BP_START 0
 #define H264_HP_START (H264_BP_START + 13)
 #define H264_MP_START (H264_BP_START + 26)
+#define POLL_TIMEOUT 0x7fffffff
 
 /* MPEG4 profile and level table*/
 static const unsigned int mpeg4_profile_level_table[][5]=
@@ -188,7 +189,7 @@ void* async_venc_message_thread (void *input)
   int error_code = 0,rc=0;
   while(1)
   {
-    	rc = poll(&pfd, 1, TIMEOUT);
+	  rc = poll(&pfd, 1, POLL_TIMEOUT);
 		if (!rc) {
 			DEBUG_PRINT_ERROR("Poll timedout\n");
 			break;

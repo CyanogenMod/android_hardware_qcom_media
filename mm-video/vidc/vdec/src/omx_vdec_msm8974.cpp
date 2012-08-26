@@ -112,6 +112,7 @@ char ouputextradatafilename [] = "/data/extradata";
 #define VC1_STRUCT_A_POS            12
 #define VC1_STRUCT_B_POS            24
 #define VC1_SEQ_LAYER_SIZE          36
+#define POLL_TIMEOUT 0x7fffffff
 
 #define MEM_DEVICE "/dev/ion"
 #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
@@ -141,7 +142,7 @@ void* async_message_thread (void *input)
   prctl(PR_SET_NAME, (unsigned long)"VideoDecCallBackThread", 0, 0, 0);
   while (1)
   {
-		rc = poll(&pfd, 1, TIMEOUT);
+		rc = poll(&pfd, 1, POLL_TIMEOUT);
 		if (!rc) {
 			DEBUG_PRINT_ERROR("Poll timedout\n");
 			break;
