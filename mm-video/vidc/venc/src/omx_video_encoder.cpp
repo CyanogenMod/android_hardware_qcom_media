@@ -62,17 +62,17 @@ void *get_omx_component_factory_fn(void)
 omx_venc::omx_venc()
 {
 #ifdef _ANDROID_ICS_
-  get_syntaxhdr_enable == false;
   meta_mode_enable = false;
   memset(meta_buffer_hdr,0,sizeof(meta_buffer_hdr));
   memset(meta_buffers,0,sizeof(meta_buffers));
   mUseProxyColorFormat = false;
+  get_syntaxhdr_enable = false;
 #endif
 }
 
 omx_venc::~omx_venc()
 {
-  get_syntaxhdr_enable == false;
+  get_syntaxhdr_enable = false;
   //nothing to do
 }
 
@@ -148,6 +148,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   }
 #ifdef ENABLE_GET_SYNTAX_HDR
   get_syntaxhdr_enable = true;
+  DEBUG_PRINT_HIGH("Get syntax header enabled");
 #endif
 
   handle = new venc_dev(this);

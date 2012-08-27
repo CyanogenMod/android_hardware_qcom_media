@@ -1778,8 +1778,8 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
        }
        if (get_syntaxhdr_enable == false)
        {
-         DEBUG_PRINT_ERROR("ERROR: get_parameter: unknown param %08x\n", paramIndex);
-         eRet =OMX_ErrorUnsupportedIndex;
+         DEBUG_PRINT_ERROR("ERROR: get_parameter: Get syntax header disabled");
+         eRet = OMX_ErrorUnsupportedIndex;
          break;
        }
        BITMASK_SET(&m_flags, OMX_COMPONENT_LOADED_START_PENDING);
