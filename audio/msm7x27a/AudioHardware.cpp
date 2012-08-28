@@ -154,6 +154,7 @@ AudioHardware::AudioHardware() :
                 CHECK_FOR(FM_DIGITAL_BT_A2DP_HEADSET);
                 CHECK_FOR(FM_ANALOG_STEREO_HEADSET);
                 CHECK_FOR(FM_ANALOG_STEREO_HEADSET_CODEC);
+                CHECK_FOR(NO_MIC_HEADSET);
 #undef CHECK_FOR
             }
         }
@@ -1437,7 +1438,11 @@ status_t AudioHardware::doRouting(AudioStreamInMSM72xx *input)
             LOGI("Routing audio to Handset\n");
             new_snd_device = SND_DEVICE_HANDSET;
             new_post_proc_feature_mask = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
-        }
+        } else if ((outputDevices & AudioSystem::DEVICE_OUT_WIRED_HEADPHONE)) {
+            LOGI("Routing audio to No microphone Wired Headset (%d,%x)\n", mMode, outputDevices);
+            new_snd_device = SND_DEVICE_NO_MIC_HEADSET;
+            new_post_proc_feature_mask = (ADRC_ENABLE | EQ_ENABLE | RX_IIR_ENABLE | MBADRC_ENABLE);
+	}
     }
 
     if (mDualMicEnabled && mMode == AudioSystem::MODE_IN_CALL) {
