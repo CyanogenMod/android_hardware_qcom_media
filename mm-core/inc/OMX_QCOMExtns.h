@@ -358,6 +358,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexEnableSliceDeliveryMode = 0x7F00001F,
 
     OMX_QcomIndexEnableExtnUserData = 0x7F000020,
+
+    /*"OMX.QCOM.index.param.video.EnableSmoothStreaming"*/
+    OMX_QcomIndexParamEnableSmoothStreaming = 0x7F000021,
 };
 
 /**
