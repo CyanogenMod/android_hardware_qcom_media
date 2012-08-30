@@ -1438,6 +1438,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
   struct venc_ioctl_msg ioctl_msg = {NULL,NULL};
   struct pmem *pmem_tmp;
   struct venc_bufferpayload dev_buffer = {0};
+  struct venc_allocatorproperty buff_alloc_property = {0};
 
   pmem_tmp = (struct pmem *)buf_addr;
 
@@ -1450,8 +1451,6 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
     dev_buffer.maped_size = pmem_tmp->size;
     dev_buffer.sz = pmem_tmp->size;
     dev_buffer.offset = pmem_tmp->offset;
-    ioctl_msg.in  = (void*)&dev_buffer;
-    ioctl_msg.out = NULL;
 
     if((m_sVenc_cfg.input_height %16 !=0) || (m_sVenc_cfg.input_width%16 != 0))
     {
@@ -1465,9 +1464,30 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
       luma_size = ht * wd;
       luma_size_2k = (luma_size + 2047) & ~2047;
 
-      dev_buffer.sz =  luma_size_2k + luma_size/2;
+      dev_buffer.sz = luma_size_2k + ((luma_size/2 + 2047) & ~2047);
+#ifdef USE_ION
+      ioctl_msg.in = NULL;
+      ioctl_msg.out = (void*)&buff_alloc_property;
+      if(ioctl (m_nDriver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
+      {
+         DEBUG_PRINT_ERROR("\nERROR: venc_use_buf:get input buffer failed ");
+         return false;
+      }
+      if(buff_alloc_property.alignment < 4096)
+      {
+         dev_buffer.sz = ((dev_buffer.sz + 4095) & ~4095);
+      }
+      else
+      {
+         dev_buffer.sz = ((dev_buffer.sz + (buff_alloc_property.alignment - 1)) &
+                                           ~(buff_alloc_property.alignment - 1));
+      }
+#endif
       dev_buffer.maped_size = dev_buffer.sz;
     }
+
+    ioctl_msg.in  = (void*)&dev_buffer;
+    ioctl_msg.out = NULL;
 
     DEBUG_PRINT_LOW("\n venc_use_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
