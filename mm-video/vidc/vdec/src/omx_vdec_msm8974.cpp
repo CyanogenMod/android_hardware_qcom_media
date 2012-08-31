@@ -1909,33 +1909,14 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
 			  at the end of this function definition
 			*/
 		   DEBUG_PRINT_LOW("\n send_command_proxy(): Executing --> Idle \n");
-		   //BITMASK_SET(&m_flags,OMX_COMPONENT_IDLE_PENDING);
+		   BITMASK_SET(&m_flags,OMX_COMPONENT_IDLE_PENDING);
 		   if(!sem_posted)
 		   {
 			   sem_posted = 1;
 			   sem_post (&m_cmd_lock);
 			   execute_omx_flush(OMX_ALL);
 		   }
-		   bFlag = 1;
-		   int rc=0;
-		   enum v4l2_buf_type btype;
-		   btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-		   rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
-		   if (rc) {
-			   /*TODO: How to handle this case */
-			   DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
-		   } else {
-			   streaming[OUTPUT_PORT] = false;
-		   }
-		   btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-		   rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
-		   if (rc) {
-			   /*TODO: How to handle this case */
-			   DEBUG_PRINT_ERROR("\n Failed to call streamoff on CAPTURE Port \n");
-		   } else {
-			   streaming[CAPTURE_PORT] = false;
-		   }
-		   m_state = OMX_StateIdle;
+		   bFlag = 0;
 	   }
        /* Requesting transition from Executing to Paused */
        else if(eState == OMX_StatePause)
@@ -6639,6 +6620,30 @@ int omx_vdec::async_message_process (void *context, void* message)
                      OMX_COMPONENT_GENERATE_EVENT_INPUT_FLUSH);
     break;
   case VDEC_MSG_RESP_FLUSH_OUTPUT_DONE:
+    if(BITMASK_PRESENT(&omx->m_flags,OMX_COMPONENT_IDLE_PENDING)) {
+         int rc=0;
+                   enum v4l2_buf_type btype;
+                   btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+                   rc = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
+                   if (rc) {
+                           //TODO: How to handle this case /
+                           DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
+                   } else {
+                           omx->streaming[OUTPUT_PORT] = false;
+                   }
+                   btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+                   rc = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
+                   if (rc) {
+                           //TODO: How to handle this case /
+                           DEBUG_PRINT_ERROR("\n Failed to call streamoff on CAPTURE Port \n");
+                   } else {
+                           omx->streaming[CAPTURE_PORT] = false;
+                   }
+
+       omx->post_event (NULL,vdec_msg->status_code,\
+                     OMX_COMPONENT_GENERATE_STOP_DONE);
+    }
+   else
     omx->post_event (NULL,vdec_msg->status_code,\
                      OMX_COMPONENT_GENERATE_EVENT_OUTPUT_FLUSH);
     break;
