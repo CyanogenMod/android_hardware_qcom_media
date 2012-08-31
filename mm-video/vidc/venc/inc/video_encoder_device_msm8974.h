@@ -48,7 +48,6 @@ struct msm_venc_switch{
 
 struct msm_venc_allocatorproperty{
 	unsigned long	 mincount;
-	unsigned long	 maxcount;
 	unsigned long	 actualcount;
 	unsigned long	 datasize;
 	unsigned long	 suffixsize;
