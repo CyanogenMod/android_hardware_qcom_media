@@ -3018,7 +3018,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
     else
     {
       DEBUG_PRINT_ERROR("\nERROR: All o/p buffers are allocated, invalid allocate buf call"
-                        "for index [%d]\n", i);
+                        "for index [%d] actual: %d\n", i, m_sOutPortDef.nBufferCountActual);
     }
   }
 
