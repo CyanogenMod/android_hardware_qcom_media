@@ -380,8 +380,9 @@ size_t C2DColorConverter::calcStride(ColorConvertFormat format, size_t width)
         case RGBA8888:
             return ALIGN(width, ALIGN32) * 4;
         case YCbCr420SP:
-        case NV12_2K:
             return ALIGN(width, ALIGN32);
+        case NV12_2K:
+            return ALIGN(width, ALIGN16);
         case YCbCr420P:
             return width;
         case YCrCb420P:
@@ -400,8 +401,11 @@ size_t C2DColorConverter::calcYSize(ColorConvertFormat format, size_t width, siz
             return width * height;
         case YCrCb420P:
             return ALIGN(width, ALIGN16) * height;
-        case NV12_2K:
-            return ALIGN(ALIGN(width, ALIGN32) * height, ALIGN2K);
+        case NV12_2K: {
+            size_t alignedw = ALIGN(width, ALIGN16);
+            size_t lumaSize = ALIGN(alignedw * height, ALIGN2K);
+            return lumaSize;
+        }
         default:
             return 0;
     }
@@ -434,9 +438,11 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
             size = ALIGN((alignedw * height) + (ALIGN(width/2, ALIGN16) * (height/2) * 2), ALIGN4K);
             break;
         case NV12_2K: {
-            alignedw = ALIGN(width, ALIGN32);
+            alignedw = ALIGN(width, ALIGN16);
             size_t lumaSize = ALIGN(alignedw * height, ALIGN2K);
-            size = ALIGN(lumaSize + (ALIGN(width/2, ALIGN32) * (height/2) * 2), ALIGN4K);
+            size_t chromaSize = ALIGN((alignedw * height)/2, ALIGN2K);
+            size = ALIGN(lumaSize + chromaSize, ALIGN4K);
+            ALOGV("NV12_2k, width = %d, height = %d, size = %d", width, height, size);
             }
             break;
         default:
