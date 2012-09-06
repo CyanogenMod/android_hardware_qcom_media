@@ -451,28 +451,22 @@ if (codec == OMX_VIDEO_CodingVPX)
 		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
 		fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
 		fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
-		
+
 		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
-		//printf(" \n VIDIOC_S_FMT CAPTURE Successful \n ");
 		m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
-		//printf("m_sOutput_buff_property.datasize = %d\n",m_sOutput_buff_property.datasize);
-//		struct v4l2_requestbuffers bufreq;	
 
 		bufreq.memory = V4L2_MEMORY_USERPTR;
 		bufreq.count = 2;
 
 		bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
-		m_sInput_buff_property.mincount=m_sInput_buff_property.maxcount=m_sInput_buff_property.actualcount=bufreq.count;
-		//printf(" \n VIDIOC_REQBUFS OUTPUT Successful \n ");
-		//printf("m_sInput_buff_property.datasize = %d\n",m_sInput_buff_property.datasize);
-		//printf("m_sInput_buff_property.mincount = %d\n",m_sInput_buff_property.mincount);
+		m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
+
 		bufreq.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		bufreq.count = 2;
 		ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
-		m_sOutput_buff_property.mincount=m_sOutput_buff_property.maxcount=m_sOutput_buff_property.actualcount=bufreq.count;
-		//printf(" \n VIDIOC_REQBUFS CAPTURE Successful  \n ");
-		//printf("m_sInput_buff_property.mincount = %d\n",m_sOutput_buff_property.mincount);
+		m_sOutput_buff_property.mincount = m_sOutput_buff_property.actualcount = bufreq.count;
+
 
   if(/*ioctl (m_nDriver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < */0)
   {
@@ -631,17 +625,15 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
 	fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
 	fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
 	fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
-		ret = ioctl(m_nDriver_fd, VIDIOC_G_FMT, &fmt);
-		//printf(" \n VIDIOC_S_FMT OUTPUT Successful \n ");
-		m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
+	ret = ioctl(m_nDriver_fd, VIDIOC_G_FMT, &fmt);
+	m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
 
-bufreq.memory = V4L2_MEMORY_USERPTR;
-		bufreq.count = 2;
+	bufreq.memory = V4L2_MEMORY_USERPTR;
+	bufreq.count = 2;
 
-		bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-		ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
-		m_sInput_buff_property.mincount=m_sInput_buff_property.maxcount=m_sInput_buff_property.actualcount=bufreq.count;
-		
+	bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+	ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
+	m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
 
     *min_buff_count = m_sInput_buff_property.mincount;
     *actual_buff_count = m_sInput_buff_property.actualcount;
@@ -649,8 +641,7 @@ bufreq.memory = V4L2_MEMORY_USERPTR;
     // For ION memory allocations of the allocated buffer size
     // must be 4k aligned, hence aligning the input buffer
     // size to 4k.
-    m_sInput_buff_property.datasize = (m_sInput_buff_property.datasize + 4095)
-                                       & (~4095);
+    m_sInput_buff_property.datasize = (m_sInput_buff_property.datasize + 4095) & (~4095);
 #endif
     *buff_size = m_sInput_buff_property.datasize;
   }
@@ -714,38 +705,40 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
           DEBUG_PRINT_LOW("\n Basic parameter has changed");
           m_sVenc_cfg.input_height = portDefn->format.video.nFrameHeight;
           m_sVenc_cfg.input_width = portDefn->format.video.nFrameWidth;
-		fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
-		fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
-		fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
-		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
-		m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
-		bufreq.memory = V4L2_MEMORY_USERPTR;
-		bufreq.count = 2;
-		bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-		ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
-		if(ret)
-			printf("\n VIDIOC_REQBUFS OUTPUT_MPLANE Failed \n ");
-		m_sInput_buff_property.mincount=m_sInput_buff_property.maxcount=m_sInput_buff_property.actualcount=bufreq.count;
-		fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
-		fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
-		fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
-		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
-		m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
-		struct v4l2_requestbuffers bufreq;
-		bufreq.memory = V4L2_MEMORY_USERPTR;
-		bufreq.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-		bufreq.count = 2;
-		ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
-		if(ret)
-			printf("\n VIDIOC_REQBUFS CAPTURE_MPLANE Failed \n ");
-		m_sOutput_buff_property.mincount=m_sOutput_buff_property.maxcount=m_sOutput_buff_property.actualcount=bufreq.count;
-
+		  fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+		  fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
+		  fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+		  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
+		  if(ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
+			  DEBUG_PRINT_ERROR("\n VIDIOC_S_FMT OUTPUT_MPLANE Failed \n ");
+			  return false;
+		  }
+		  m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
+		  bufreq.memory = V4L2_MEMORY_USERPTR;
+		  bufreq.count = portDefn->nBufferCountActual;
+		  bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+		  if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
+			  DEBUG_PRINT_ERROR("\n VIDIOC_REQBUFS OUTPUT_MPLANE Failed \n ");
+			  return false;
+		  }
+		  if(bufreq.count == portDefn->nBufferCountActual)
+			  m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
+		  if(portDefn->nBufferCountActual >= m_sInput_buff_property.mincount)
+			  m_sInput_buff_property.actualcount = portDefn->nBufferCountActual;
         }
       }
       else if(portDefn->nPortIndex == PORT_INDEX_OUT)
       {
+		  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		  fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
+		  fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+		  fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
+		  if(ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
+			  DEBUG_PRINT_ERROR("\n VIDIOC_S_FMT CAPTURE_MPLANE Failed \n ");
+			  return false;
+		  }
+		  m_sOutput_buff_property.datasize = fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
+
         if(!venc_set_encode_framerate(portDefn->format.video.xFramerate, 0))
         {
           return false;
@@ -756,14 +749,23 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
           return false;
         }
 
-        if( (portDefn->nBufferCountActual >= m_sOutput_buff_property.mincount)
-            &&
-            (m_sOutput_buff_property.maxcount >= portDefn->nBufferCountActual)
-            &&
-            (m_sOutput_buff_property.datasize == portDefn->nBufferSize)
-          )
+        if((portDefn->nBufferCountActual >= m_sOutput_buff_property.mincount)
+            && (m_sOutput_buff_property.datasize == portDefn->nBufferSize))
         {
           m_sOutput_buff_property.actualcount = portDefn->nBufferCountActual;
+		  bufreq.memory = V4L2_MEMORY_USERPTR;
+		  bufreq.count = portDefn->nBufferCountActual;
+		  bufreq.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		  if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq))
+		  {
+			  DEBUG_PRINT_ERROR("\nERROR: Request for setting o/p buffer count failed: requested: %d, current: %d",
+								portDefn->nBufferCountActual, m_sOutput_buff_property.actualcount);
+			  return false;
+		  }
+		  if(bufreq.count == portDefn->nBufferCountActual)
+			  m_sOutput_buff_property.mincount = m_sOutput_buff_property.actualcount = bufreq.count;
+		  if(portDefn->nBufferCountActual >= m_sOutput_buff_property.mincount)
+			  m_sOutput_buff_property.actualcount = portDefn->nBufferCountActual;
           if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < */0)
           {
             DEBUG_PRINT_ERROR("\nERROR: ioctl VEN_IOCTL_SET_OUTPUT_BUFFER_REQ failed");
