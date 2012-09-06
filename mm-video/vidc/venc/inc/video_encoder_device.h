@@ -104,6 +104,7 @@ public:
   int m_eLevel;
   int etb_count;
 private:
+  class omx_venc *venc_encoder;
   struct venc_basecfg             m_sVenc_cfg;
   struct venc_ratectrlcfg         rate_ctrl;
   struct venc_targetbitrate       bitrate;

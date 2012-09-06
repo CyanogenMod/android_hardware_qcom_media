@@ -247,12 +247,13 @@ omx_video::omx_video(): m_state(OMX_StateInvalid),
                         m_input_msg_id(OMX_COMPONENT_GENERATE_ETB),
                         psource_frame(NULL),
                         pdest_frame(NULL),
-                        c2d_opened(false)
+                        c2d_opened(false),
+                        secure_session(false)
 {
   DEBUG_PRINT_HIGH("\n omx_video(): Inside Constructor()");
   memset(&m_cmp,0,sizeof(m_cmp));
   memset(&m_pCallbacks,0,sizeof(m_pCallbacks));
-
+  secure_color_format = (int) OMX_COLOR_FormatYUV420SemiPlanar;
   pthread_mutex_init(&m_lock, NULL);
   sem_init(&m_cmd_lock,0,0);
 }
@@ -1524,7 +1525,11 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         {
           portDefn->nBufferSize = sizeof(encoder_media_buffer_type);
         }
-        if (mUseProxyColorFormat) {
+        if(secure_session) {
+          portDefn->format.video.eColorFormat =
+            (OMX_COLOR_FORMATTYPE)secure_color_format;
+        }
+        else if (mUseProxyColorFormat) {
             portDefn->format.video.eColorFormat =
               (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque;
         }
@@ -2040,7 +2045,7 @@ OMX_ERRORTYPE  omx_video::use_input_buffer(
   unsigned char *buf_addr = NULL;
 
   DEBUG_PRINT_HIGH("use_input_buffer: port = %d appData = %p bytes = %d buffer = %p",port,appData,bytes,buffer);
-  if(bytes != m_sInPortDef.nBufferSize)
+  if(bytes != m_sInPortDef.nBufferSize || secure_session)
   {
     DEBUG_PRINT_ERROR("\nERROR: use_input_buffer: Size Mismatch!! "
                       "bytes[%d] != Port.nBufferSize[%d]", bytes, m_sInPortDef.nBufferSize);
@@ -2215,7 +2220,7 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
   unsigned char *buf_addr = NULL;
 
   DEBUG_PRINT_HIGH("\n Inside use_output_buffer()");
-  if(bytes != m_sOutPortDef.nBufferSize)
+  if(bytes != m_sOutPortDef.nBufferSize || secure_session)
   {
     DEBUG_PRINT_ERROR("\nERROR: use_output_buffer: Size Mismatch!! "
                       "bytes[%d] != Port.nBufferSize[%d]", bytes, m_sOutPortDef.nBufferSize);
@@ -2557,7 +2562,8 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
     if(m_pOutput_pmem[index].fd > 0 && output_use_buffer == false )
     {
       DEBUG_PRINT_LOW("\n FreeBuffer:: o/p AllocateBuffer case");
-      munmap (m_pOutput_pmem[index].buffer,m_pOutput_pmem[index].size);
+      if(!secure_session)
+        munmap (m_pOutput_pmem[index].buffer,m_pOutput_pmem[index].size);
       close (m_pOutput_pmem[index].fd);
 #ifdef USE_ION
       free_ion_memory(&m_pOutput_ion[index]);
@@ -2662,7 +2668,7 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
   unsigned   i = 0;
 
   DEBUG_PRINT_HIGH("\n allocate_input_buffer()::");
-  if(bytes != m_sInPortDef.nBufferSize)
+  if(bytes != m_sInPortDef.nBufferSize || secure_session)
   {
     DEBUG_PRINT_ERROR("\nERROR: Buffer size mismatch error: bytes[%u] != nBufferSize[%u]\n",
       bytes, m_sInPortDef.nBufferSize);
@@ -2907,20 +2913,27 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
 #endif
       m_pOutput_pmem[i].size = m_sOutPortDef.nBufferSize;
       m_pOutput_pmem[i].offset = 0;
-      m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,m_pOutput_pmem[i].size,PROT_READ|PROT_WRITE,
-                                                       MAP_SHARED,m_pOutput_pmem[i].fd,0);
-      if(m_pOutput_pmem[i].buffer == MAP_FAILED)
-      {
-        DEBUG_PRINT_ERROR("\nERROR: MMAP_FAILED in o/p alloc buffer");
-        close (m_pOutput_pmem[i].fd);
+      if(!secure_session) {
+          m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,m_pOutput_pmem[i].size,PROT_READ|PROT_WRITE,
+                  MAP_SHARED,m_pOutput_pmem[i].fd,0);
+          if(m_pOutput_pmem[i].buffer == MAP_FAILED)
+          {
+              DEBUG_PRINT_ERROR("\nERROR: MMAP_FAILED in o/p alloc buffer");
+              close (m_pOutput_pmem[i].fd);
 #ifdef USE_ION
-        free_ion_memory(&m_pOutput_ion[i]);
+              free_ion_memory(&m_pOutput_ion[i]);
 #endif
-        return OMX_ErrorInsufficientResources;
+              return OMX_ErrorInsufficientResources;
+          }
       }
 
       *bufferHdr = (m_out_mem_ptr + i );
-      (*bufferHdr)->pBuffer = (OMX_U8 *)m_pOutput_pmem[i].buffer;
+      if(!secure_session)
+        (*bufferHdr)->pBuffer = (OMX_U8 *)m_pOutput_pmem[i].buffer;
+      else {
+        m_pOutput_pmem[i].buffer = (OMX_U8 *)(i + 12345);
+        (*bufferHdr)->pBuffer = (OMX_U8 *)(i + 12345);
+      }
       (*bufferHdr)->pAppPrivate = appData;
 
       BITMASK_SET(&m_out_bm_count,i);
@@ -3383,6 +3396,11 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
 
     } else {
       private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
+      if(handle->format != HAL_PIXEL_FORMAT_NV12_ENCODEABLE) {
+        DEBUG_PRINT_ERROR("\n Incorrect pixel format");
+        post_event ((unsigned int)buffer,0,OMX_COMPONENT_GENERATE_EBD);
+        return OMX_ErrorBadParameter;
+      }
       Input_pmem_info.buffer = media_buffer;
       Input_pmem_info.fd = handle->fd;
       Input_pmem_info.offset = 0;
@@ -3946,10 +3964,12 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
   }
 
   pending_output_buffers--;
+  if(!secure_session)
+  {
+    extra_data_handle.create_extra_data(buffer);
+  }
 
-  extra_data_handle.create_extra_data(buffer);
-
-  if (m_sDebugSliceinfo) {
+  if (!secure_session && m_sDebugSliceinfo) {
     if(buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
        DEBUG_PRINT_HIGH("parsing extradata");
        extra_data_handle.parse_extra_data(buffer);
@@ -4241,15 +4261,15 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
 int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
                                     struct ion_fd_data *fd_data,int flag)
 {
-        struct venc_ion buf_ion_info;
-        int ion_device_fd =-1,rc=0,ion_dev_flags = 0;
-        if (size <=0 || !alloc_data || !fd_data) {
-		DEBUG_PRINT_ERROR("\nInvalid input to alloc_map_ion_memory");
-		return -EINVAL;
+  struct venc_ion buf_ion_info;
+  int ion_device_fd =-1,rc=0,ion_dev_flags = 0;
+  if (size <=0 || !alloc_data || !fd_data) {
+    DEBUG_PRINT_ERROR("\nInvalid input to alloc_map_ion_memory");
+    return -EINVAL;
 	}
-        if(flag == CACHED) {
+        if(!secure_session && flag == CACHED) {
              ion_dev_flags = O_RDONLY;
-	} else if(flag == UNCACHED) {
+	} else {
              ion_dev_flags = O_RDONLY | O_DSYNC;
         }
         ion_device_fd = open (MEM_DEVICE,ion_dev_flags);
@@ -4260,8 +4280,13 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
         }
         alloc_data->len = size;
         alloc_data->align = 4096;
-        alloc_data->flags = (ION_HEAP(MEM_HEAP_ID) |
-                              ION_HEAP(ION_IOMMU_HEAP_ID));
+
+        if (secure_session)
+           alloc_data->flags = (ION_HEAP(MEM_HEAP_ID) | ION_SECURE);
+        else
+           alloc_data->flags = (ION_HEAP(MEM_HEAP_ID) |
+                ION_HEAP(ION_IOMMU_HEAP_ID));
+
         rc = ioctl(ion_device_fd,ION_IOC_ALLOC,alloc_data);
         if(rc || !alloc_data->handle) {
            DEBUG_PRINT_ERROR("\n ION ALLOC memory failed ");
@@ -4288,7 +4313,7 @@ void omx_video::free_ion_memory(struct venc_ion *buf_ion_info)
 {
      if (!buf_ion_info) {
         DEBUG_PRINT_ERROR("\n Invalid input to free_ion_memory");
-	return;
+        return;
      }
      if (ioctl(buf_ion_info->ion_device_fd,ION_IOC_FREE,
               &buf_ion_info->ion_alloc_data.handle)) {

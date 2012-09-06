@@ -126,6 +126,13 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     strlcpy((char *)m_cRole, "video_encoder.avc",OMX_MAX_STRINGNAME_SIZE);
     codec_type = OMX_VIDEO_CodingAVC;
   }
+  else if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.avc.secure",\
+                   OMX_MAX_STRINGNAME_SIZE))
+  {
+    strlcpy((char *)m_cRole, "video_encoder.avc",OMX_MAX_STRINGNAME_SIZE);
+    codec_type = OMX_VIDEO_CodingAVC;
+    secure_session = true;
+  }
   else
   {
     DEBUG_PRINT_ERROR("\nERROR: Unknown Component\n");
@@ -513,15 +520,19 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         if (portDefn->format.video.eColorFormat == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque) {
             m_sInPortDef.format.video.eColorFormat =
                 OMX_COLOR_FormatYUV420SemiPlanar;
-            if(!mUseProxyColorFormat){
+            if(secure_session) {
+              secure_color_format = (int) QOMX_COLOR_FormatAndroidOpaque;
+              mUseProxyColorFormat = false;
+              m_input_msg_id = OMX_COMPONENT_GENERATE_ETB;
+            } else if(!mUseProxyColorFormat){
               if (!c2d_conv.init()) {
                 DEBUG_PRINT_ERROR("\n C2D init failed");
                 return OMX_ErrorUnsupportedSetting;
               }
               DEBUG_PRINT_ERROR("\nC2D init is successful");
+              mUseProxyColorFormat = true;
+              m_input_msg_id = OMX_COMPONENT_GENERATE_ETB_OPQ;
             }
-            mUseProxyColorFormat = true;
-            m_input_msg_id = OMX_COMPONENT_GENERATE_ETB_OPQ;
         } else
           mUseProxyColorFormat = false;
 #endif
@@ -589,15 +600,19 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         if (portFmt->eColorFormat ==
             (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque) {
             m_sInPortFormat.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
-            if(!mUseProxyColorFormat){
+            if(secure_session) {
+              secure_color_format = (int) QOMX_COLOR_FormatAndroidOpaque;
+              mUseProxyColorFormat = false;
+              m_input_msg_id = OMX_COMPONENT_GENERATE_ETB;
+            } else if(!mUseProxyColorFormat){
               if (!c2d_conv.init()) {
                 DEBUG_PRINT_ERROR("\n C2D init failed");
                 return OMX_ErrorUnsupportedSetting;
               }
               DEBUG_PRINT_ERROR("\nC2D init is successful");
+              mUseProxyColorFormat = true;
+              m_input_msg_id = OMX_COMPONENT_GENERATE_ETB_OPQ;
             }
-            mUseProxyColorFormat = true;
-            m_input_msg_id = OMX_COMPONENT_GENERATE_ETB_OPQ;
         }
         else
 #endif
@@ -1668,4 +1683,8 @@ int omx_venc::async_message_process (void *context, void* message)
     break;
   }
   return 0;
+}
+bool omx_venc::is_secure_session()
+{
+  return secure_session;
 }

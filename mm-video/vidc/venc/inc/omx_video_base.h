@@ -158,6 +158,8 @@ protected:
   bool mUseProxyColorFormat;
   OMX_BUFFERHEADERTYPE  *psource_frame;
   OMX_BUFFERHEADERTYPE  *pdest_frame;
+  bool secure_session;
+  int secure_color_format;
   class omx_c2d_conv {
   public:
     omx_c2d_conv();
@@ -217,6 +219,7 @@ public:
   virtual bool dev_loaded_stop(void) = 0;
   virtual bool dev_loaded_start_done(void) = 0;
   virtual bool dev_loaded_stop_done(void) = 0;
+  virtual bool is_secure_session(void) = 0;
 #ifdef _ANDROID_ICS_
   void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif
