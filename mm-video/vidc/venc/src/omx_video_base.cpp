@@ -4598,6 +4598,13 @@ OMX_ERRORTYPE omx_video::convert_queue_buffer(OMX_HANDLETYPE hComp,
             ret = OMX_ErrorBadParameter;
           else {
             pdest_frame->nOffset = 0;
+            if(!buf_size || buf_size > pdest_frame->nAllocLen) {
+              DEBUG_PRINT_ERROR("\n convert_queue_buffer buffer"
+               "size mismatch buf size %d alloc size %d",
+                      buf_size, pdest_frame->nAllocLen);
+              ret = OMX_ErrorBadParameter;
+              buf_size = 0;
+            }
             pdest_frame->nFilledLen = buf_size;
             pdest_frame->nTimeStamp = psource_frame->nTimeStamp;
             pdest_frame->nFlags = psource_frame->nFlags;
@@ -4608,7 +4615,8 @@ OMX_ERRORTYPE omx_video::convert_queue_buffer(OMX_HANDLETYPE hComp,
          munmap(uva,Input_pmem_info.size);
       }
     }
-    if(dev_use_buf(&m_pInput_pmem[index],PORT_INDEX_IN,0) != true) {
+    if((ret == OMX_ErrorNone) &&
+       dev_use_buf(&m_pInput_pmem[index],PORT_INDEX_IN,0) != true) {
       DEBUG_PRINT_ERROR("\nERROR: in dev_use_buf");
       post_event ((unsigned int)pdest_frame,0,OMX_COMPONENT_GENERATE_EBD);
       ret = OMX_ErrorBadParameter;
