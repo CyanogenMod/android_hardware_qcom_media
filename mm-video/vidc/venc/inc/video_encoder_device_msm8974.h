@@ -213,6 +213,7 @@ public:
 
   recon_buffer recon_buff[MAX_RECON_BUFFERS];
   int recon_buffers_count;
+  int stopped;
   bool m_max_allowed_bitrate_check;
   int etb_count;
   pthread_t m_tid;

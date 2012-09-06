@@ -65,7 +65,6 @@ private:
   OMX_U32 dev_flush(unsigned);
   OMX_U32 dev_resume(void);
   OMX_U32 dev_start_done(void);
-  OMX_U32 dev_stop_done(void);
   OMX_U32 dev_set_message_thread_id(pthread_t);
   bool dev_use_buf( void *,unsigned,unsigned);
   bool dev_free_buf( void *,unsigned);
