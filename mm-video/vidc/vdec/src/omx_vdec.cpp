@@ -4098,7 +4098,8 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
 
 #if defined(_ANDROID_ICS_)
         if (drv_ctx.interlace != VDEC_InterlaceFrameProgressive) {
-            setMetaData(handle, PP_PARAM_INTERLACED, 1);
+            int enable = 1;
+            setMetaData(handle, PP_PARAM_INTERLACED, (void*)&enable);
         }
 #endif
     } else
