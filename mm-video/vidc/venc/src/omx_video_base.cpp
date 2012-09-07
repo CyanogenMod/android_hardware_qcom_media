@@ -4249,6 +4249,7 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
         alloc_data->len = size;
         alloc_data->align = 4096;
 #ifdef MAX_RES_720P
+        alloc_data->len = (size + (alloc_data->align - 1)) & ~(alloc_data->align - 1);
         alloc_data->flags = ION_HEAP(MEM_HEAP_ID);
 #else
         alloc_data->flags = (ION_HEAP(MEM_HEAP_ID) |
