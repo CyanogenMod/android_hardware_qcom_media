@@ -358,7 +358,7 @@ uint32_t C2DColorConverter::getC2DFormat(ColorConvertFormat format)
         case RGB565:
             return C2D_COLOR_FORMAT_565_RGB;
         case RGBA8888:
-            return C2D_COLOR_FORMAT_8888_RGBA;
+            return C2D_COLOR_FORMAT_8888_RGBA | C2D_FORMAT_SWAP_ENDIANNESS;
         case YCbCr420SP:
         case NV12_2K:
             return C2D_COLOR_FORMAT_420_NV12;
