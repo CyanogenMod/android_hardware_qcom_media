@@ -35,7 +35,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include<stdlib.h>
 #include <stdio.h>
 #ifdef USE_ION
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #endif
 
 #define OMX_VIDEO_DEC_NUM_INPUT_BUFFERS   2
