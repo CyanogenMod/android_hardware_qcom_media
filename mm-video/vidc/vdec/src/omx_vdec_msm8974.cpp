@@ -187,18 +187,16 @@ void* async_message_thread (void *input)
 		}
 		if (pfd.revents & POLLPRI){
 			rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
-			if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT) {
-				DEBUG_PRINT_HIGH("\n VIDC Sufficinet resources recieved \n");
-				continue;
-			} else if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT) {
+			if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT ||
+				dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT ) {
 				struct vdec_msginfo vdec_msg;
-				vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
-				vdec_msg.status_code=VDEC_S_SUCCESS;
-				printf("\n VIDC Port Reconfig recieved \n");
-				if (omx->async_message_process(input,&vdec_msg) < 0) {
-					DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
-					break;
-				}
+                                vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
+                                vdec_msg.status_code=VDEC_S_SUCCESS;
+                                printf("\n VIDC Port Reconfig recieved \n");
+                                if (omx->async_message_process(input,&vdec_msg) < 0) {
+                                        DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+                                        break;
+                                }
 			} else if (dqevent.type == V4L2_EVENT_MSM_VIDC_FLUSH_DONE) {
 				struct vdec_msginfo vdec_msg;
 				vdec_msg.msgcode=VDEC_MSG_RESP_FLUSH_OUTPUT_DONE;
@@ -5573,7 +5571,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 
 	struct v4l2_control control;
 	control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
-	control.value = 1;
+	control.value = 0;
 	ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
 	if(ret)
 		printf("\n Continue data Xfer failed \n");
