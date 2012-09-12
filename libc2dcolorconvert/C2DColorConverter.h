@@ -69,6 +69,7 @@ namespace android {
 
 enum ColorConvertFormat {
     RGB565 = 1,
+    YCbCr420Tile,
     YCbCr420SP,
     YCbCr420P,
     YCrCb420P,
