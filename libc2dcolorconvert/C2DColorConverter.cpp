@@ -498,7 +498,7 @@ int32_t C2DColorConverter::getBuffReq(int32_t port, C2DBuffReq *req) {
         req->sizeAlign = calcSizeAlign(mSrcFormat);
         req->size = calcSize(mSrcFormat, mSrcWidth, mSrcHeight);
         //add bpp?
-        ALOGI("input req->size = %d\n", req->size);
+        ALOGV("input req->size = %d\n", req->size);
     } else if (port == C2D_OUTPUT) {
         req->width = mDstWidth;
         req->height = mDstHeight;
@@ -507,7 +507,7 @@ int32_t C2DColorConverter::getBuffReq(int32_t port, C2DBuffReq *req) {
         req->lumaAlign = calcLumaAlign(mDstFormat);
         req->sizeAlign = calcSizeAlign(mDstFormat);
         req->size = calcSize(mDstFormat, mDstWidth, mDstHeight);
-        ALOGI("output req->size = %d\n", req->size);
+        ALOGV("output req->size = %d\n", req->size);
     }
     return 0;
 }
