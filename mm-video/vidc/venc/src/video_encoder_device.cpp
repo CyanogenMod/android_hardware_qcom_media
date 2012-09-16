@@ -34,7 +34,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_video_encoder.h"
 #include <linux/android_pmem.h>
 #ifdef USE_ION
-#include <linux/ion.h>
+#include <linux/msm_ion.h>
 #endif
 
 #define MPEG4_SP_START 0
