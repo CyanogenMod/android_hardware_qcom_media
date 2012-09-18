@@ -1515,7 +1515,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 				}
 
 				divx_ctrl.value = V4L2_CID_MPEG_VIDC_VIDEO_DIVX_FORMAT;
-				ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &fmt);
+				ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &divx_ctrl);
 				if (ret) {
 					DEBUG_PRINT_ERROR("Failed to set divx version\n");
 				}
