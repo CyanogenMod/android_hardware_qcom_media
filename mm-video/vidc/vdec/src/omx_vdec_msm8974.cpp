@@ -1429,7 +1429,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		drv_ctx.decoder_format = VDEC_CODECTYPE_VC1_RCV;
 		eCompressionFormat = OMX_VIDEO_CodingWMV;
 		codec_type_parse = CODEC_TYPE_VC1;
-		output_capability = V4L2_PIX_FMT_VC1_ANNEX_G;
+		output_capability = V4L2_PIX_FMT_VC1_ANNEX_L;
 		m_frame_parser.init_start_codes (codec_type_parse);
 #ifdef INPUT_BUFFER_LOG
 		strcat(inputfilename, "vc1");
@@ -2907,7 +2907,8 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
     struct vdec_ioctl_msg ioctl_msg = {NULL,NULL};
-
+    int ret=0;
+    struct v4l2_format fmt;
     if(m_state == OMX_StateInvalid)
     {
         DEBUG_PRINT_ERROR("Set Param in Invalid State\n");
@@ -3009,8 +3010,17 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                drv_ctx.video_resolution.frame_width =
                  drv_ctx.video_resolution.stride =
                  portDefn->format.video.nFrameWidth;
-               ioctl_msg.in = &drv_ctx.video_resolution;
-               ioctl_msg.out = NULL;
+		if(output_capability == V4L2_PIX_FMT_VC1_ANNEX_L ||
+			output_capability == V4L2_PIX_FMT_DIVX_311 ||
+			output_capability == V4L2_PIX_FMT_VC1_ANNEX_G)
+		{
+			fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+			fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
+			fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+			fmt.fmt.pix_mp.pixelformat = output_capability;
+			DEBUG_PRINT_LOW("\n fmt.fmt.pix_mp.height = %d , fmt.fmt.pix_mp.width = %d \n",fmt.fmt.pix_mp.height,fmt.fmt.pix_mp.width);
+			ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+		}
                if (/*ioctl (drv_ctx.video_driver_fd, VDEC_IOCTL_SET_PICRES,
                             (void*)&ioctl_msg) < */0)
                {
