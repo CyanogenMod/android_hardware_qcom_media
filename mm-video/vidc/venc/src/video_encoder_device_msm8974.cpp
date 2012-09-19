@@ -695,6 +695,10 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
       DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamPortDefinition\n");
       if(portDefn->nPortIndex == PORT_INDEX_IN)
       {
+		if(!venc_set_encode_framerate(portDefn->format.video.xFramerate, 0))
+        {
+          return false;
+        }
         if(!venc_set_color_format(portDefn->format.video.eColorFormat))
         {
           return false;
@@ -738,11 +742,6 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 			  return false;
 		  }
 		  m_sOutput_buff_property.datasize = fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
-
-        if(!venc_set_encode_framerate(portDefn->format.video.xFramerate, 0))
-        {
-          return false;
-        }
 
         if(!venc_set_target_bitrate(portDefn->format.video.nBitrate, 0))
         {
@@ -2580,7 +2579,7 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
 	struct v4l2_control control;
 	int rc;
 	struct venc_framerate frame_rate_cfg;
-        Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
+	Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
 	control.id = V4L2_CID_MPEG_VIDC_VIDEO_FRAME_RATE;
 	control.value = encode_framerate;
 	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
