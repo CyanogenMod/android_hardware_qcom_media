@@ -28,6 +28,19 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mp4_utils.h"
 #include "omx_vdec.h"
 # include <stdio.h>
+#ifdef _ANDROID_
+    extern "C"{
+        #include<utils/Log.h>
+    }
+#endif//_ANDROID_
+
+#undef DEBUG_PRINT_LOW
+#undef DEBUG_PRINT_HIGH
+#undef DEBUG_PRINT_ERROR
+
+#define DEBUG_PRINT_LOW ALOGV
+#define DEBUG_PRINT_HIGH ALOGV
+#define DEBUG_PRINT_ERROR ALOGE
 
 MP4_Utils::MP4_Utils()
 {

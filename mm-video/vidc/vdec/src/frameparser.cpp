@@ -43,13 +43,20 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 
 #include "frameparser.h"
-#include "omx_vdec.h"
 
 #ifdef _ANDROID_
     extern "C"{
         #include<utils/Log.h>
     }
 #endif//_ANDROID_
+
+#undef DEBUG_PRINT_LOW
+#undef DEBUG_PRINT_HIGH
+#undef DEBUG_PRINT_ERROR
+
+#define DEBUG_PRINT_LOW ALOGV
+#define DEBUG_PRINT_HIGH ALOGV
+#define DEBUG_PRINT_ERROR ALOGE
 
 static unsigned char H264_mask_code[4] = {0xFF,0xFF,0xFF,0xFF};
 static unsigned char H264_start_code[4] = {0x00,0x00,0x00,0x01};

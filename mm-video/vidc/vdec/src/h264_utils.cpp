@@ -46,13 +46,17 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ========================================================================== */
 #include "h264_utils.h"
-#include "omx_vdec.h"
+#include "extra_data_handler.h"
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <sys/time.h>
 #ifdef _ANDROID_
 #include <cutils/properties.h>
+    extern "C"{
+        #include<utils/Log.h>
+    }
+
 #endif
 
 /* =======================================================================
@@ -374,7 +378,7 @@ bool H264_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
 {
     NALU nal_unit;
     uint16 first_mb_in_slice = 0;
-    uint32 numBytesInRBSP = 0;
+    OMX_IN OMX_U32 numBytesInRBSP = 0;
     OMX_IN OMX_U8 *buffer = p_buf_hdr->pBuffer;
     OMX_IN OMX_U32 buffer_length = p_buf_hdr->nFilledLen;
     bool eRet = true;
