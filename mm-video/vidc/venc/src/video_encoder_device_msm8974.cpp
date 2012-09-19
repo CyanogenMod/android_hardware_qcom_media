@@ -312,7 +312,8 @@ static OMX_ERRORTYPE subscribe_to_events(int fd)
 bool venc_dev::venc_open(OMX_U32 codec)
 {
   int r;
-  unsigned int   alignment = 0,buffer_size = 0, temp =0;
+  unsigned int alignment = 0,buffer_size = 0, temp =0;
+  struct v4l2_control control;
 
   m_nDriver_fd = open ("/dev/video33",O_RDWR);
   if(m_nDriver_fd == 0)
@@ -488,6 +489,13 @@ if (codec == OMX_VIDEO_CodingVPX)
   }
   stopped = 0;
   metadatamode = 0;
+
+  control.id = V4L2_CID_QCOM_VIDEO_SYNC_FRAME_SEQ_HDR;
+  control.value = 0;
+
+  DEBUG_PRINT_LOW("Calling IOCTL to disable seq_hdr in sync_frame id=%d, val=%d\n", control.id, control.value);
+  if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control))
+	  DEBUG_PRINT_ERROR("Failed to set control\n");
   return true;
 }
 
