@@ -267,6 +267,7 @@ private:
 	  return x;
   }
 #endif
+int metadatamode;
 };
 
 enum instance_state {

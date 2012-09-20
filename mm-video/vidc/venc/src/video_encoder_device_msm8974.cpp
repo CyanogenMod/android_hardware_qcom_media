@@ -488,6 +488,7 @@ if (codec == OMX_VIDEO_CodingVPX)
   }
   recon_buffers_count = MAX_RECON_BUFFERS;
   stopped = 0;
+  metadatamode = 0;
   return true;
 }
 
@@ -726,6 +727,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 		  if(portDefn->nBufferCountActual >= m_sInput_buff_property.mincount)
 			  m_sInput_buff_property.actualcount = portDefn->nBufferCountActual;
         }
+		DEBUG_PRINT_LOW("input: actual: %d, min: %d, count_req: %d\n",
+			  portDefn->nBufferCountActual, m_sInput_buff_property.mincount, bufreq.count);
       }
       else if(portDefn->nPortIndex == PORT_INDEX_OUT)
       {
@@ -777,6 +780,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
           DEBUG_PRINT_ERROR("\nERROR: Setting Output buffer requirements failed");
           return false;
         }
+		DEBUG_PRINT_LOW("Output: actual: %d, min: %d, count_req: %d\n",
+			  portDefn->nBufferCountActual, m_sOutput_buff_property.mincount, bufreq.count);
       }
       else
       {
@@ -1599,7 +1604,6 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
 bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index, unsigned fd)
 {
   struct pmem *temp_buffer;
-
   struct v4l2_buffer buf = {0};
   struct v4l2_plane plane = {0};
   int rc=0;
@@ -1627,14 +1631,23 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
   else
   {
     DEBUG_PRINT_LOW("\n Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
-	meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
-	if (!meta_buf) {
-		return false;
+	if (metadatamode) {
+		meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
+		if (!meta_buf) {
+			return false;
+		}
+		plane.m.userptr = index;
+		plane.data_offset = meta_buf->meta_handle->data[1];
+		plane.length = meta_buf->meta_handle->data[2];
+		plane.bytesused = meta_buf->meta_handle->data[2];
 	}
-	plane.m.userptr = index;
-	plane.data_offset = meta_buf->meta_handle->data[1];
-	plane.length = meta_buf->meta_handle->data[2];
-	plane.bytesused = meta_buf->meta_handle->data[2];
+	else
+	{
+		plane.m.userptr = (unsigned long) bufhdr->pBuffer;
+		plane.data_offset = bufhdr->nOffset;
+		plane.length = bufhdr->nAllocLen;
+		plane.bytesused = bufhdr->nFilledLen;
+	}
   }
 
   buf.index = index;
@@ -1647,7 +1660,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
   buf.flags = bufhdr->nFlags;
   buf.timestamp.tv_sec = bufhdr->nTimeStamp / 1000000;
   buf.timestamp.tv_usec = (bufhdr->nTimeStamp % 1000000);
-
   rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
   if (rc) {
 	  DEBUG_PRINT_ERROR("Failed to qbuf (etb) to driver");
@@ -1666,12 +1678,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 		  DEBUG_PRINT_ERROR("Failed to call streamon\n");
 	  }
   }
-
-  if(/*ioctl(m_nDriver_fd,VEN_IOCTL_CMD_ENCODE_FRAME,&ioctl_msg) < */0)
-  {
-	  /*Generate an async error and move to invalid state*/
-	  return false;
-	}
 #ifdef INPUT_BUFFER_LOG
 
   int y_size = 0;
@@ -3130,11 +3136,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
 #ifdef _ANDROID_ICS_
 bool venc_dev::venc_set_meta_mode(bool mode)
 {
-  if(/*ioctl(m_nDriver_fd,VEN_IOCTL_SET_METABUFFER_MODE,&ioctl_msg) < */0)
-  {
-    DEBUG_PRINT_ERROR(" Set meta buffer mode failed");
-    return false;
-  }
-  return true;
+	metadatamode = 1;
+	return true;
 }
 #endif
