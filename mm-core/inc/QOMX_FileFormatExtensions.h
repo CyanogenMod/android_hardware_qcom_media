@@ -52,8 +52,12 @@ when       who     what, where, why
 /* :OMX.QCOM.index.param.container.info*/
 #define QOMX_QcomIndexParamContainerInfo 0x7F000009
 
+/**<OMX.Qualcomm.index.video.param.encrypttypeconfigparameters*/
+#define QOMX_FilemuxIndexEncryptionTypeConfigParameters 0x7F00000A
+
 #define QOMX_INDEX_CONTAINER_INFO_STRING    "QOMX.Qualcomm.index.param.containerinfo"
 #define OMX_QCOM_INDEX_FILE_FORMAT          "OMX.QCOM.index.config.FileFormat"
+#define QOMX_INDEX_CONFIG_ENCRYPT_TYPE      "QOMX.Qualcomm.index.config.EncryptType"
 
 /**-----------------------------------------------------------------------------
             OMX.QCOM.index.param.container.info 
@@ -134,4 +138,18 @@ typedef struct QOMX_RECORDINGSTATISTICSTYPE {
     OMX_U64  nSpaceLeft;/** space left in bytes*/
 } QOMX_RECORDINGSTATISTICSTYPE;
 
+/**QOMX_ENCRYPT_TYPE indicates the type of encryption */
+typedef enum QOMX_ENCRYPT_TYPE {
+    QOMX_ENCRYPT_TYPE_HDCP,
+    QOMX_ENCRYPT_TYPE_INVALID
+}QOMX_ENCRYPT_TYPE;
+
+/**QOMX_ENCRYPTIONTYPE indicates the encrypt type */
+typedef struct QOMX_ENCRYPTIONTYPE {
+    OMX_U32            nSize;  /**< size of the structure in bytes */
+    OMX_VERSIONTYPE    nVersion; /**< OMX specification version information */
+    OMX_BOOL           nStreamEncrypted;  /** stream is encrypted or not */
+    QOMX_ENCRYPT_TYPE  nType;  /** type of Encryption */
+    OMX_U32            nEncryptVersion; /** Encrypt version */
+} QOMX_ENCRYPTIONTYPE;
 #endif /*__QOMX_FILE_FORMAT_EXTENSIONS_H__*/
