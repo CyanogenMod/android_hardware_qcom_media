@@ -425,7 +425,7 @@ omx_core_cb_type core[] =
     }
   },
   {
-    "drm.play",
+    "AIV.play",
     NULL, // Create instance function
     // Unique instance handle
     {
@@ -435,9 +435,9 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,  // Shared object library handle
-    "libDrmPlay.so",
+    "libAivPlay.so",
     {
-      "drm.play"
+      "AIV.play.101"
     }
   },
   {
