@@ -294,6 +294,14 @@ void* C2DColorConverter::getDummySurfaceDef(ColorConvertFormat format, size_t wi
         surfaceDef->plane1 = (void *)0xaaaaaaaa;
         surfaceDef->phys1 = (void *)0xaaaaaaaa;
         surfaceDef->stride1 = calcStride(format, width);
+
+        if (format == YCbCr420P ||
+            format == YCrCb420P) {
+          printf("half stride for Cb Cr planes \n");
+          surfaceDef->stride1 = calcStride(format, width) / 2;
+          surfaceDef->phys2 = (void *)0xaaaaaaaa;
+          surfaceDef->stride2 = calcStride(format, width) / 2;
+        }
         mC2DCreateSurface(isSource ? &mSrcSurface : &mDstSurface, isSource ? C2D_SOURCE : C2D_TARGET,
                         (C2D_SURFACE_TYPE)(C2D_SURFACE_YUV_HOST | C2D_SURFACE_WITH_PHYS | C2D_SURFACE_WITH_PHYS_DUMMY),
                         &(*surfaceDef));
@@ -321,6 +329,9 @@ C2D_STATUS C2DColorConverter::updateYUVSurfaceDef(int fd, void * data, bool isSo
         srcSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mSrcSize);
         srcSurfaceDef->plane1 = (uint8_t *)data + mSrcYSize;
         srcSurfaceDef->phys1  = (uint8_t *)srcSurfaceDef->phys0 + mSrcYSize;
+        srcSurfaceDef->plane2 = (uint8_t *)srcSurfaceDef->plane1 + mSrcYSize/4;
+        srcSurfaceDef->phys2  = (uint8_t *)srcSurfaceDef->phys1 + mSrcYSize/4;
+
         return mC2DUpdateSurface(mSrcSurface, C2D_SOURCE,
                         (C2D_SURFACE_TYPE)(C2D_SURFACE_YUV_HOST | C2D_SURFACE_WITH_PHYS),
                         &(*srcSurfaceDef));
@@ -330,6 +341,9 @@ C2D_STATUS C2DColorConverter::updateYUVSurfaceDef(int fd, void * data, bool isSo
         dstSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mDstSize);
         dstSurfaceDef->plane1 = (uint8_t *)data + mDstYSize;
         dstSurfaceDef->phys1  = (uint8_t *)dstSurfaceDef->phys0 + mDstYSize;
+        dstSurfaceDef->plane2 = (uint8_t *)dstSurfaceDef->plane1 + mDstYSize/4;
+        dstSurfaceDef->phys2  = (uint8_t *)dstSurfaceDef->phys1 + mDstYSize/4;
+
         return mC2DUpdateSurface(mDstSurface, C2D_TARGET,
                         (C2D_SURFACE_TYPE)(C2D_SURFACE_YUV_HOST | C2D_SURFACE_WITH_PHYS),
                         &(*dstSurfaceDef));
@@ -587,13 +601,37 @@ int32_t C2DColorConverter::dumpOutput(char * filename, char mode) {
         base += stride;
       }
 
-      /* dump chroma */
-      base = (uint8_t *)dstSurfaceDef->plane1;
-      stride = dstSurfaceDef->stride1;
-      for (size_t i = 0; i < sliceHeight/2;i++) { //will work only for the 420 ones
-        ret = write(fd, base, mDstWidth);
-        if (ret < 0) goto cleanup;
-        base += stride;
+      if (mDstFormat == YCbCr420P ||
+          mDstFormat == YCrCb420P) {
+          printf("Dump Cb and Cr separately for Planar\n");
+          //dump Cb/Cr
+          base = (uint8_t *)dstSurfaceDef->plane1;
+          stride = dstSurfaceDef->stride1;
+          for (size_t i = 0; i < sliceHeight/2;i++) { //will work only for the 420 ones
+            ret = write(fd, base, mDstWidth/2);
+            if (ret < 0) goto cleanup;
+            base += stride;
+          }
+
+          //dump Cr/Cb
+          base = (uint8_t *)dstSurfaceDef->plane2;
+          stride = dstSurfaceDef->stride2;
+
+          for (size_t i = 0; i < sliceHeight/2;i++) { //will work only for the 420 ones
+            ret = write(fd, base, mDstWidth/2);
+            if (ret < 0) goto cleanup;
+            base += stride;
+          }
+
+      } else {
+          /* dump chroma */
+          base = (uint8_t *)dstSurfaceDef->plane1;
+          stride = dstSurfaceDef->stride1;
+          for (size_t i = 0; i < sliceHeight/2;i++) { //will work only for the 420 ones
+            ret = write(fd, base, mDstWidth);
+            if (ret < 0) goto cleanup;
+            base += stride;
+          }
       }
     } else {
       C2D_RGB_SURFACE_DEF * dstSurfaceDef = (C2D_RGB_SURFACE_DEF *)mDstSurfaceDef;
