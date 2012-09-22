@@ -150,6 +150,8 @@ char ouputextradatafilename [] = "/data/extradata";
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
 
+bool omx_vdec::m_secure_display = false;
+
 void* async_message_thread (void *input)
 {
   struct vdec_ioctl_msg ioctl_msg;
@@ -1183,6 +1185,13 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       role = "OMX.qcom.video.decoder.avc";
       device_name =  "/dev/msm_vidc_dec_sec";
   }
+
+  if (secure_mode) {
+    if (secureDisplay(qService::IQService::START) < 0) {
+      DEBUG_PRINT_HIGH("Sending message to start securing display failed");
+    }
+  }
+
   DEBUG_PRINT_HIGH("\n omx_vdec::component_init(): Start of New Playback : role  = %s : DEVICE = %s",
         role, device_name);
 
@@ -1198,7 +1207,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
   if(drv_ctx.video_driver_fd < 0)
   {
       DEBUG_PRINT_ERROR("Omx_vdec::Comp Init Returning failure, errno %d\n", errno);
-      return OMX_ErrorInsufficientResources;
+      eRet = OMX_ErrorInsufficientResources;
+      goto cleanup;
   }
   drv_ctx.frame_rate.fps_numerator = DEFAULT_FPS;
   drv_ctx.frame_rate.fps_denominator = 1;
@@ -1272,7 +1282,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
      OMX_ERRORTYPE err = createDivxDrmContext();
      if( err != OMX_ErrorNone ) {
          DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-         return err;
+         eRet = err;
+         goto cleanup;
      }
 #endif //_ANDROID_
   }
@@ -1289,7 +1300,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
      OMX_ERRORTYPE err = createDivxDrmContext();
      if( err != OMX_ErrorNone ) {
          DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-         return err;
+         eRet = err;
+         goto cleanup;
      }
 #endif //_ANDROID_
   }
@@ -1306,7 +1318,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
      OMX_ERRORTYPE err = createDivxDrmContext();
      if( err != OMX_ErrorNone ) {
          DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-         return err;
+         eRet = err;
+         goto cleanup;
      }
 #endif //_ANDROID_
   }
@@ -1326,7 +1339,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
      OMX_ERRORTYPE err = createDivxDrmContext();
      if( err != OMX_ErrorNone ) {
          DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-         return err;
+         eRet = err;
+         goto cleanup;
      }
 #endif //_ANDROID_
   }
@@ -1581,6 +1595,15 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
   }
 
   memset(&h264_mv_buff,0,sizeof(struct h264_mv_buffer));
+
+cleanup:
+
+  if (secure_mode && (eRet == OMX_ErrorNone)) {
+    if (secureDisplay(qService::IQService::END) < 0) {
+      DEBUG_PRINT_HIGH("sending message to stop securing display failed");
+    }
+  }
+
   return eRet;
 }
 
@@ -5897,6 +5920,12 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
       DEBUG_PRINT_HIGH("\n Playback Ended - PASSED");
     }
 
+    if (secure_mode) {
+      if (unsecureDisplay(qService::IQService::START) < 0) {
+        DEBUG_PRINT_HIGH("Failed to send message to unsecure display START");
+      }
+    }
+
     /*Check if the output buffers have to be cleaned up*/
     if(m_out_mem_ptr)
     {
@@ -6003,6 +6032,13 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
 #ifdef OUTPUT_EXTRADATA_LOG
     fclose (outputExtradataFile);
 #endif
+
+    if (secure_mode) {
+      if (unsecureDisplay(qService::IQService::END) < 0) {
+        DEBUG_PRINT_HIGH("Failed to send message to unsecure display STOP");
+      }
+    }
+
   DEBUG_PRINT_HIGH("\n omx_vdec::component_deinit() complete");
   return OMX_ErrorNone;
 }
@@ -9199,4 +9235,45 @@ bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE
       dest_color_format = OMX_COLOR_FormatYUV420Planar;
   }
   return status;
+}
+
+int omx_vdec::secureDisplay(int mode) {
+    if (m_secure_display == true) {
+        return 0;
+    }
+
+    sp<IServiceManager> sm = defaultServiceManager();
+    sp<qService::IQService> displayBinder =
+        interface_cast<qService::IQService>(sm->getService(String16("display.qservice")));
+
+    if (displayBinder != NULL) {
+        displayBinder->securing(mode);
+        if (mode == qService::IQService::END) {
+            m_secure_display = true;
+        }
+    }
+    else {
+        DEBUG_PRINT_ERROR("secureDisplay(%d) display.qservice unavailable", mode);
+    }
+    return 0;
+}
+
+int omx_vdec::unsecureDisplay(int mode) {
+    if (m_secure_display == false) {
+        return 0;
+    }
+
+    if (mode == qService::IQService::END) {
+        m_secure_display = false;
+    }
+
+    sp<IServiceManager> sm = defaultServiceManager();
+    sp<qService::IQService> displayBinder =
+        interface_cast<qService::IQService>(sm->getService(String16("display.qservice")));
+
+    if (displayBinder != NULL)
+        displayBinder->unsecuring(mode);
+    else
+        DEBUG_PRINT_ERROR("unsecureDisplay(%d) display.qservice unavailable", mode);
+    return 0;
 }
