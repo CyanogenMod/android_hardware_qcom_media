@@ -486,7 +486,6 @@ if (codec == OMX_VIDEO_CodingVPX)
     DEBUG_PRINT_HIGH("\n %s(): Init Profile/Level setting success",
         __func__);
   }
-  recon_buffers_count = MAX_RECON_BUFFERS;
   stopped = 0;
   return true;
 }
@@ -1185,7 +1184,6 @@ unsigned venc_dev::venc_stop( void)
 {
   struct venc_msg venc_msg;
   if(!stopped) {
-	  pmem_free();
 	  enum v4l2_buf_type out_type, cap_type;
 	  out_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	  cap_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -1251,16 +1249,8 @@ unsigned venc_dev::venc_start(void)
   }
   venc_config_print();
 
-
-  if((codec_profile.profile == V4L2_MPEG_VIDEO_MPEG4_PROFILE_SIMPLE) ||
-     (codec_profile.profile == V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE) ||
-     (codec_profile.profile == VEN_PROFILE_H263_BASELINE))
-    recon_buffers_count = MAX_RECON_BUFFERS - 2;
-  else
-    recon_buffers_count = MAX_RECON_BUFFERS;
-
-	buf_type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-        DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
+  buf_type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+  DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
 
 	ret=ioctl(m_nDriver_fd, VIDIOC_STREAMON,&buf_type);
 
@@ -1272,151 +1262,6 @@ unsigned venc_dev::venc_start(void)
 	}
 }
 
-OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
-{
-  OMX_U32 pmem_fd = -1;
-  OMX_U32 width, height;
-  void *buf_addr = NULL;
-  struct venc_recon_addr recon_addr;
-  int rc = 0;
-#ifndef USE_ION
-  struct pmem_allocation allocation;
-#endif
-
-#ifdef USE_ION
-  recon_buff[count].ion_device_fd = open (MEM_DEVICE,O_RDONLY|O_DSYNC);
-  if(recon_buff[count].ion_device_fd < 0)
-  {
-      DEBUG_PRINT_ERROR("\nERROR: ION Device open() Failed");
-      return -1;
-  }
-
-  recon_buff[count].alloc_data.len = size;
-  recon_buff[count].alloc_data.flags = 0x1 << MEM_HEAP_ID;
-  recon_buff[count].alloc_data.align = clip2(alignment);
-  if (recon_buff[count].alloc_data.align != 8192)
-    recon_buff[count].alloc_data.align = 8192;
-
-  rc = ioctl(recon_buff[count].ion_device_fd,ION_IOC_ALLOC,&recon_buff[count].alloc_data);
-  if(rc || !recon_buff[count].alloc_data.handle) {
-         DEBUG_PRINT_ERROR("\n ION ALLOC memory failed ");
-         recon_buff[count].alloc_data.handle=NULL;
-         return -1;
-  }
-
-  recon_buff[count].ion_alloc_fd.handle = recon_buff[count].alloc_data.handle;
-  rc = ioctl(recon_buff[count].ion_device_fd,ION_IOC_MAP,&recon_buff[count].ion_alloc_fd);
-  if(rc) {
-        DEBUG_PRINT_ERROR("\n ION MAP failed ");
-        recon_buff[count].ion_alloc_fd.fd =-1;
-        recon_buff[count].ion_alloc_fd.fd =-1;
-        return -1;
-  }
-  pmem_fd = recon_buff[count].ion_alloc_fd.fd;
-#else
-  pmem_fd = open(MEM_DEVICE, O_RDWR);
-
-  if ((int)(pmem_fd) < 0)
-  {
-	DEBUG_PRINT_ERROR("\n Failed to get an pmem handle");
-	return -1;
-  }
-
-  allocation.size = size;
-  allocation.align = clip2(alignment);
-
-  if (allocation.align != 8192)
-    allocation.align = 8192;
-
-  if (ioctl(pmem_fd, PMEM_ALLOCATE_ALIGNED, &allocation) < 0)
-  {
-    DEBUG_PRINT_ERROR("\n Aligment(%u) failed with pmem driver Sz(%lu)",
-      allocation.align, allocation.size);
-    return -1;
-  }
-#endif
-  buf_addr = mmap(NULL, size,
-               PROT_READ | PROT_WRITE,
-               MAP_SHARED, pmem_fd, 0);
-
-  if (buf_addr == (void*) MAP_FAILED)
-  {
-    close(pmem_fd);
-    pmem_fd = -1;
-    DEBUG_PRINT_ERROR("Error returned in allocating recon buffers buf_addr: %p\n",buf_addr);
-#ifdef USE_ION
-    if(ioctl(recon_buff[count].ion_device_fd,ION_IOC_FREE,
-       &recon_buff[count].alloc_data.handle)) {
-      DEBUG_PRINT_ERROR("ion recon buffer free failed");
-    }
-    recon_buff[count].alloc_data.handle = NULL;
-    recon_buff[count].ion_alloc_fd.fd =-1;
-    close(recon_buff[count].ion_device_fd);
-    recon_buff[count].ion_device_fd =-1;
-#endif
-    return -1;
-  }
-
-  DEBUG_PRINT_HIGH("\n Allocated virt:%p, FD: %d of size %d \n", buf_addr, pmem_fd, size);
-
-  recon_addr.buffer_size = size;
-  recon_addr.pmem_fd = pmem_fd;
-  recon_addr.offset = 0;
-  recon_addr.pbuffer = (unsigned char *)buf_addr;
-
-
-  if (/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_RECON_BUFFER, (void*)&ioctl_msg) < */0)
-  {
-    DEBUG_PRINT_ERROR("Failed to set the Recon_buffers\n");
-    return -1;
-  }
-
-  recon_buff[count].virtual_address = (unsigned char *) buf_addr;
-  recon_buff[count].size = size;
-  recon_buff[count].offset = 0;
-  recon_buff[count].pmem_fd = pmem_fd;
-
-  DEBUG_PRINT_ERROR("\n Allocated virt:%p, FD: %d of size %d at index: %d\n", recon_buff[count].virtual_address,
-                     recon_buff[count].pmem_fd, recon_buff[count].size, count);
-  return 0;
-}
-
-OMX_U32 venc_dev::pmem_free()
-{
-  int cnt = 0;
-  struct venc_recon_addr recon_addr;
-  for (cnt = 0; cnt < recon_buffers_count; cnt++)
-  {
-    if(recon_buff[cnt].pmem_fd)
-    {
-      recon_addr.pbuffer = recon_buff[cnt].virtual_address;
-      recon_addr.offset = recon_buff[cnt].offset;
-      recon_addr.pmem_fd = recon_buff[cnt].pmem_fd;
-      recon_addr.buffer_size = recon_buff[cnt].size;
-      if(/*ioctl(m_nDriver_fd, VEN_IOCTL_FREE_RECON_BUFFER ,&ioctl_msg) < */0)
-        DEBUG_PRINT_ERROR("VEN_IOCTL_FREE_RECON_BUFFER failed");
-      munmap(recon_buff[cnt].virtual_address, recon_buff[cnt].size);
-      close(recon_buff[cnt].pmem_fd);
-#ifdef USE_ION
-      if(ioctl(recon_buff[cnt].ion_device_fd,ION_IOC_FREE,
-         &recon_buff[cnt].alloc_data.handle)) {
-        DEBUG_PRINT_ERROR("ion recon buffer free failed");
-      }
-      recon_buff[cnt].alloc_data.handle = NULL;
-      recon_buff[cnt].ion_alloc_fd.fd =-1;
-      close(recon_buff[cnt].ion_device_fd);
-      recon_buff[cnt].ion_device_fd =-1;
-#endif
-      DEBUG_PRINT_LOW("\n cleaning Index %d of size %d \n",cnt,recon_buff[cnt].size);
-      recon_buff[cnt].pmem_fd = -1;
-      recon_buff[cnt].virtual_address = NULL;
-      recon_buff[cnt].offset = 0;
-      recon_buff[cnt].alignment = 0;
-      recon_buff[cnt].size = 0;
-    }
-  }
-  return 0;
-}
 void venc_dev::venc_config_print()
 {
 
