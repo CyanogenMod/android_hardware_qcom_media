@@ -564,7 +564,6 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
   memset (&drv_ctx,0,sizeof(drv_ctx));
   memset (&h264_scratch,0,sizeof (OMX_BUFFERHEADERTYPE));
   memset (m_hwdevice_name,0,sizeof(m_hwdevice_name));
-  memset(&op_buf_rcnfg, 0 ,sizeof(vdec_allocatorproperty));
   memset(m_demux_offsets, 0, ( sizeof(OMX_U32) * 8192) );
   m_demux_entries = 0;
 #ifdef _ANDROID_ICS_
@@ -691,6 +690,18 @@ omx_vdec::~omx_vdec()
   DEBUG_PRINT_HIGH("Exit OMX vdec Destructor");
 }
 
+int release_buffers(omx_vdec* obj, enum vdec_buffer buffer_type) {
+	struct v4l2_requestbuffers bufreq;
+	int rc = 0;
+	if (buffer_type == VDEC_BUFFER_TYPE_OUTPUT){
+		bufreq.memory = V4L2_MEMORY_USERPTR;
+		bufreq.count = 0;
+		bufreq.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		rc = ioctl(obj->drv_ctx.video_driver_fd,VIDIOC_REQBUFS, &bufreq);
+	}
+	return rc;
+}
+
 /* ======================================================================
 FUNCTION
   omx_vdec::OMXCntrlProcessMsgCb
@@ -803,10 +814,11 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                 }
                 if (p2 == OMX_CORE_OUTPUT_PORT_INDEX && pThis->in_reconfig)
                 {
-                  pThis->op_buf_rcnfg.buffer_type = VDEC_BUFFER_TYPE_OUTPUT;
 				  OMX_ERRORTYPE eRet = OMX_ErrorNone;
 				  pThis->stream_off();
-				  OMX_ERRORTYPE eRet1 = pThis->get_buffer_req(&pThis->op_buf_rcnfg);
+				  if(release_buffers(pThis, VDEC_BUFFER_TYPE_OUTPUT))
+					  DEBUG_PRINT_HIGH("Failed to release output buffers\n");
+				  OMX_ERRORTYPE eRet1 = pThis->get_buffer_req(&pThis->drv_ctx.op_buf);
 				  pThis->in_reconfig = false;
                   if(eRet !=  OMX_ErrorNone)
                   {
@@ -7529,9 +7541,6 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
     DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d)",
     buffer_prop->actualcount, buffer_prop->buffer_size);
 	bufreq.memory = V4L2_MEMORY_USERPTR;
-	if(in_reconfig == true)
-	bufreq.count = 0;
-	else
 	bufreq.count = 2;
    if(buffer_prop->buffer_type == VDEC_BUFFER_TYPE_INPUT){
     bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -7729,19 +7738,9 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
   else if (1 == portDefn->nPortIndex)
   {
     portDefn->eDir =  OMX_DirOutput;
-    eRet=get_buffer_req(&drv_ctx.op_buf);
-    if (in_reconfig)
-    {
-      portDefn->nBufferCountActual = op_buf_rcnfg.actualcount;
-      portDefn->nBufferCountMin    = op_buf_rcnfg.mincount;
-      portDefn->nBufferSize        = op_buf_rcnfg.buffer_size;
-    }
-    else
-    {
-      portDefn->nBufferCountActual = drv_ctx.op_buf.actualcount;
-      portDefn->nBufferCountMin    = drv_ctx.op_buf.mincount;
-      portDefn->nBufferSize        = drv_ctx.op_buf.buffer_size;
-    }
+	portDefn->nBufferCountActual = drv_ctx.op_buf.actualcount;
+	portDefn->nBufferCountMin    = drv_ctx.op_buf.mincount;
+	portDefn->nBufferSize        = drv_ctx.op_buf.buffer_size;
     portDefn->format.video.eCompressionFormat = OMX_VIDEO_CodingUnused;
     portDefn->bEnabled   = m_out_bEnabled;
     portDefn->bPopulated = m_out_bPopulated;
