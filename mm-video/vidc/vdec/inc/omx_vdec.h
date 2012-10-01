@@ -525,7 +525,7 @@ private:
     OMX_ERRORTYPE free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
     void free_output_buffer_header();
     void free_input_buffer_header();
-
+    OMX_ERRORTYPE update_color_format(OMX_COLOR_FORMATTYPE eColorFormat);
     OMX_ERRORTYPE allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
                                              OMX_BUFFERHEADERTYPE **bufferHdr,
                                              OMX_U32              port,

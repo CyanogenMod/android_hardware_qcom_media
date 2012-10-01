@@ -3008,7 +3008,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
              (int)portDefn->format.video.nFrameWidth);
       if(OMX_DirOutput == portDefn->eDir)
       {
-          DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port\n");
+          eRet = update_color_format(portDefn->format.video.eColorFormat);
+          if (eRet != OMX_ErrorNone) {
+            DEBUG_PRINT_ERROR("\n Setparam: color format failed for %u",
+                              portDefn->format.video.eColorFormat);
+            break;
+          }
+          DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port");
           m_display_id = portDefn->format.video.pNativeWindow;
           unsigned int buffer_size;
           if (!client_buffers.get_buffer_req(buffer_size)) {
@@ -3127,40 +3133,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
               portFmt->eColorFormat);
 
       if(1 == portFmt->nPortIndex)
-      {
-         enum vdec_output_fromat op_format;
-         if(portFmt->eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)
-           op_format = VDEC_YUV_FORMAT_NV12;
-         else if(portFmt->eColorFormat ==
-           QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka ||
-            portFmt->eColorFormat == OMX_COLOR_FormatYUV420Planar)
-           op_format = VDEC_YUV_FORMAT_TILE_4x2;
-         else
-           eRet = OMX_ErrorBadParameter;
+          eRet = update_color_format(portFmt->eColorFormat);
 
-         if(eRet == OMX_ErrorNone && drv_ctx.output_format != op_format)
-         {
-           /*Set the output format*/
-           drv_ctx.output_format = op_format;
-           ioctl_msg.in = &drv_ctx.output_format;
-           ioctl_msg.out = NULL;
-           if (ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_SET_OUTPUT_FORMAT,
-                 (void*)&ioctl_msg) < 0)
-           {
-             DEBUG_PRINT_ERROR("\n Set output format failed");
-             eRet = OMX_ErrorUnsupportedSetting;
-           }
-           else {
-             eRet = get_buffer_req(&drv_ctx.op_buf);
-           }
-         }
-         if (eRet == OMX_ErrorNone){
-           if (!client_buffers.set_color_format(portFmt->eColorFormat)) {
-             DEBUG_PRINT_ERROR("\n Set color format failed");
-             eRet = OMX_ErrorBadParameter;
-           }
-         }
-       }
+      DEBUG_PRINT_HIGH("Set_parameter: OMX_IndexParamVideoPortFormat: "
+          "nPortIndex (%d), nIndex (%d), eCompressionFormat (0x%x), "
+          "eColorFormat (0x%x), xFramerate (0x%x)", (int)portFmt->nPortIndex,
+          (int)portFmt->nIndex, (int)portFmt->eCompressionFormat,
+          (int)portFmt->eColorFormat, (int)portFmt->xFramerate);
     }
     break;
 
@@ -8998,11 +8977,11 @@ bool omx_vdec::allocate_color_convert_buf::set_color_format(
     status = false;
   }
   if (status && (drv_color_format != dest_color_format)) {
-    DEBUG_PRINT_ERROR("");
     if (dest_color_format != OMX_COLOR_FormatYUV420Planar) {
       DEBUG_PRINT_ERROR("\n Unsupported color format for c2d");
       status = false;
     } else {
+      DEBUG_PRINT_HIGH("\n Planar color format set");
       ColorFormat = OMX_COLOR_FormatYUV420Planar;
       if (enabled)
         c2d.destroy();
@@ -9275,4 +9254,45 @@ int omx_vdec::unsecureDisplay(int mode) {
     else
         DEBUG_PRINT_ERROR("unsecureDisplay(%d) display.qservice unavailable", mode);
     return 0;
+}
+
+OMX_ERRORTYPE omx_vdec::update_color_format(OMX_COLOR_FORMATTYPE eColorFormat)
+{
+   struct vdec_ioctl_msg ioctl_msg = {NULL,NULL};
+   OMX_ERRORTYPE eRet = OMX_ErrorNone;
+   enum vdec_output_fromat op_format;
+   if(eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)
+     op_format = VDEC_YUV_FORMAT_NV12;
+   else if(eColorFormat ==
+           QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka ||
+           eColorFormat == OMX_COLOR_FormatYUV420Planar)
+      op_format = VDEC_YUV_FORMAT_TILE_4x2;
+   else
+      eRet = OMX_ErrorBadParameter;
+
+   if(eRet == OMX_ErrorNone && drv_ctx.output_format != op_format) {
+      /*Set the output format*/
+      drv_ctx.output_format = op_format;
+      ioctl_msg.in = &drv_ctx.output_format;
+      ioctl_msg.out = NULL;
+      if (ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_SET_OUTPUT_FORMAT,
+              (void*)&ioctl_msg) < 0) {
+        DEBUG_PRINT_ERROR("\n Set output format failed for %u with err %s",
+                          eColorFormat, strerror(errno));
+        eRet = OMX_ErrorUnsupportedSetting;
+      }
+      else
+         eRet = get_buffer_req(&drv_ctx.op_buf);
+   }
+   if (eRet == OMX_ErrorNone){
+      if (!client_buffers.set_color_format(eColorFormat)) {
+          DEBUG_PRINT_ERROR("\n Set color format failed for %u", eColorFormat);
+          eRet = OMX_ErrorBadParameter;
+       }
+    }
+   if (!client_buffers.update_buffer_req()) {
+      DEBUG_PRINT_ERROR("\n Update bufreq in color format failed for %u", eColorFormat);
+      eRet = OMX_ErrorBadParameter;
+   }
+   return eRet;
 }
