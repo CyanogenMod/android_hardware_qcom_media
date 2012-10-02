@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -749,6 +749,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       {
         return OMX_ErrorUnsupportedSetting;
       }
+
       memcpy(&m_sParamAVC,pParam, sizeof(struct OMX_VIDEO_PARAM_AVCTYPE));
       break;
     }
@@ -1102,6 +1103,16 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       break;
     }
 #endif
+  case OMX_QcomIndexParamSequenceHeaderWithIDR:
+    {
+      if(!handle->venc_set_param(paramData,
+            (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR))
+      {
+        DEBUG_PRINT_ERROR("ERROR: Request for setting inband sps/pps failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      break;
+    }
   case OMX_IndexParamVideoSliceFMO:
   default:
     {
