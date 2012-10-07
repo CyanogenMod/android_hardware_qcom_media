@@ -39,7 +39,7 @@ libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_MSM8974_
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
+ifeq ($(TARGET_BOARD_PLATFORM),msm7x27a)
 libOmxVdec-def += -DMAX_RES_720P
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
@@ -102,7 +102,6 @@ include $(CLEAR_VARS)
 
 mm-vdec-test-inc    := hardware/qcom/media/mm-core/inc
 mm-vdec-test-inc    += $(LOCAL_PATH)/inc
-#mm-vdec-test-inc    += bionic/libc/kernel/common/linux
 
 LOCAL_MODULE                    := mm-vdec-omx-test
 LOCAL_MODULE_TAGS               := optional
@@ -124,7 +123,6 @@ include $(CLEAR_VARS)
 
 mm-vdec-drv-test-inc    := hardware/qcom/media/mm-core/inc
 mm-vdec-drv-test-inc    += $(LOCAL_PATH)/inc
-#mm-vdec-drv-test-inc    += bionic/libc/kernel/common/linux
 
 LOCAL_MODULE                    := mm-video-driver-test
 LOCAL_MODULE_TAGS               := optional

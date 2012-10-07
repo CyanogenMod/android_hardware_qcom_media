@@ -36,15 +36,17 @@ libmm-venc-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libmm-venc-def += -D_MSM8974_
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
+ifeq ($(TARGET_BOARD_PLATFORM),msm7x27a)
 libmm-venc-def += -DMAX_RES_720P
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
 libmm-venc-def += -DMAX_RES_720P
 endif
+
 ifeq ($(TARGET_USES_ION),true)
 libmm-venc-def += -DUSE_ION
 endif
+
 libmm-venc-def += -D_ANDROID_ICS_
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVenc)
@@ -57,7 +59,6 @@ libmm-venc-inc      += bionic/libstdc++/include
 libmm-venc-inc      += $(LOCAL_PATH)/inc
 libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-venc-inc      += hardware/qcom/media/mm-core/inc
-#libmm-venc-inc      += bionic/libc/kernel/common/linux
 libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
 libmm-venc-inc      += hardware/qcom/display/libgralloc
 libmm-venc-inc      += frameworks/native/include/media/hardware
@@ -101,7 +102,6 @@ LOCAL_MODULE                    := mm-venc-omx-test720p
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(mm-venc-test720p-inc)
-#LOCAL_ADDITIONAL_DEPENDENCIES   := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 LOCAL_PRELINK_MODULE            := false
 LOCAL_SHARED_LIBRARIES          := libmm-omxcore libOmxVenc libbinder
 
@@ -126,7 +126,6 @@ LOCAL_MODULE_TAGS               := optional
 LOCAL_C_INCLUDES                := $(venc-test-inc)
 LOCAL_C_INCLUDES                += hardware/qcom/media/mm-core/inc
 
-#LOCAL_ADDITIONAL_DEPENDENCIES   := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 LOCAL_PRELINK_MODULE            := false
 
 LOCAL_SRC_FILES                 := test/video_encoder_test.c
