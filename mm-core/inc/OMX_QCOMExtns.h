@@ -169,6 +169,14 @@ typedef struct OMX_QCOM_PARAM_PORTDEFINITIONTYPE {
 
 } OMX_QCOM_PARAM_PORTDEFINITIONTYPE;
 
+typedef struct OMX_QCOM_VIDEO_PARAM_QPRANGETYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 minQP;
+    OMX_U32 maxQP;
+} OMX_QCOM_VIDEO_PARAM_QPRANGETYPE;
+
 #define OMX_QCOM_PLATFORMPVT_EXTN   "OMX.QCOM.index.param.platformprivate"
 /** Allowed APIs on the above Index: OMX_SetParameter() */
 
@@ -364,6 +372,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.QCOM.index.param.video.EnableSmoothStreaming"*/
     OMX_QcomIndexParamEnableSmoothStreaming = 0x7F000022,
+
+    /*"OMX.QCOM.index.param.video.QPRange" */
+    OMX_QcomIndexParamVideoQPRange = 0x7F000023,
 };
 
 /**
