@@ -7536,7 +7536,8 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
     alloc_data->align = 4096;
   }
   if(secure_mode) {
-    alloc_data->heap_mask = (ION_HEAP(MEM_HEAP_ID) | ION_SECURE);
+    alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
+    alloc_data->flags |= ION_SECURE;
   } else {
 #ifdef MAX_RES_720P
     alloc_data->len = (buffer_size + (alloc_data->align - 1)) & ~(alloc_data->align - 1);
