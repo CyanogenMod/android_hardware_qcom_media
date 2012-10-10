@@ -637,8 +637,10 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
 	m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
 
 	bufreq.memory = V4L2_MEMORY_USERPTR;
-	bufreq.count = 2;
-
+	if (*actual_buff_count)
+		bufreq.count = *actual_buff_count;
+	else
+		bufreq.count = 2;
 	bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
 	m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
