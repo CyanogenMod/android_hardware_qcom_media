@@ -1319,6 +1319,12 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	drv_ctx.frame_rate.fps_numerator = DEFAULT_FPS;
 	drv_ctx.frame_rate.fps_denominator = 1;
 
+    ret = pthread_create(&async_thread_id,0,async_message_thread,this);
+    if(ret < 0) {
+	  close(drv_ctx.video_driver_fd);
+	  DEBUG_PRINT_ERROR("\n Failed to create async_message_thread \n");
+	  return OMX_ErrorInsufficientResources;
+   }
 
 #ifdef INPUT_BUFFER_LOG
 	strcpy(inputfilename, INPUT_BUFFER_FILE_NAME);
@@ -5611,9 +5617,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 	if(!ret) {
 		DEBUG_PRINT_HIGH("Streamon on OUTPUT Plane was successful \n");
 		streaming[OUTPUT_PORT] = true;
-		ret = pthread_create(&async_thread_id,0,async_message_thread,this);
-		if(ret < 0)
-			DEBUG_PRINT_ERROR("\n Failed to create async_message_thread \n");
 	} else{
 		/*TODO: How to handle this case */	
 		DEBUG_PRINT_ERROR(" \n Failed to call streamon on OUTPUT \n");
