@@ -1533,14 +1533,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 				struct v4l2_control divx_ctrl;
 
 				if (drv_ctx.decoder_format == VDEC_CODECTYPE_DIVX_4) {
-					divx_ctrl.id = V4L2_MPEG_VIDC_VIDEO_DIVX_FORMAT_4;
+					divx_ctrl.value = V4L2_MPEG_VIDC_VIDEO_DIVX_FORMAT_4;
 				} else if (drv_ctx.decoder_format == VDEC_CODECTYPE_DIVX_5) {
-					divx_ctrl.id = V4L2_MPEG_VIDC_VIDEO_DIVX_FORMAT_5;
+					divx_ctrl.value = V4L2_MPEG_VIDC_VIDEO_DIVX_FORMAT_5;
 				} else {
-					divx_ctrl.id = V4L2_MPEG_VIDC_VIDEO_DIVX_FORMAT_5;
+					divx_ctrl.value = V4L2_MPEG_VIDC_VIDEO_DIVX_FORMAT_6;
 				}
 
-				divx_ctrl.value = V4L2_CID_MPEG_VIDC_VIDEO_DIVX_FORMAT;
+				divx_ctrl.id = V4L2_CID_MPEG_VIDC_VIDEO_DIVX_FORMAT;
 				ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &divx_ctrl);
 				if (ret) {
 					DEBUG_PRINT_ERROR("Failed to set divx version\n");
