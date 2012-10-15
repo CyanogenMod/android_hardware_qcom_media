@@ -2357,7 +2357,7 @@ bool omx_vdec::execute_input_flush()
       DEBUG_PRINT_LOW("\n Flush Input Heap Buffer %p",(OMX_BUFFERHEADERTYPE *)p2);
       m_cb.EmptyBufferDone(&m_cmp ,m_app_data, (OMX_BUFFERHEADERTYPE *)p2);
     }
-    else if(ident == m_fill_output_msg)
+    else if(ident == OMX_COMPONENT_GENERATE_ETB)
     {
       pending_input_buffers++;
       DEBUG_PRINT_LOW("\n Flush Input OMX_COMPONENT_GENERATE_ETB %p, pending_input_buffers %d",
@@ -2474,7 +2474,7 @@ bool omx_vdec::post_event(unsigned int p1,
   }
 
   bRet = true;
-  DEBUG_PRINT_LOW("\n Value of this pointer in post_event %p",this);
+  DEBUG_PRINT_LOW("\n Value of this pointer in post_event 0x%x", p2);
   post_message(this, id);
 
   pthread_mutex_unlock(&m_lock);
