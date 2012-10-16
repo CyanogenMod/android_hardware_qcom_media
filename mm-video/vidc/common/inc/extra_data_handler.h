@@ -43,12 +43,12 @@ extern "C"{
 #include<utils/Log.h>
 }
 #ifdef ENABLE_DEBUG_LOW
-#define DEBUG_PRINT_LOW ALOGV
+#define DEBUG_PRINT_LOW ALOGE
 #else
 #define DEBUG_PRINT_LOW
 #endif
 #ifdef ENABLE_DEBUG_HIGH
-#define DEBUG_PRINT_HIGH ALOGV
+#define DEBUG_PRINT_HIGH ALOGE
 #else
 #define DEBUG_PRINT_HIGH
 #endif

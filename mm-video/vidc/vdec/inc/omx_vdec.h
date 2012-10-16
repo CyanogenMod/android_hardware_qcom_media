@@ -70,21 +70,6 @@ extern "C"{
 #include <linux/videodev2.h>
 #include <poll.h>
 #define TIMEOUT 5000
-#ifdef ENABLE_DEBUG_LOW
-#define DEBUG_PRINT_LOW ALOGE
-#else
-#define DEBUG_PRINT_LOW
-#endif
-#ifdef ENABLE_DEBUG_HIGH
-#define DEBUG_PRINT_HIGH ALOGE
-#else
-#define DEBUG_PRINT_HIGH
-#endif
-#ifdef ENABLE_DEBUG_ERROR
-#define DEBUG_PRINT_ERROR ALOGE
-#else
-#define DEBUG_PRINT_ERROR
-#endif
 
 #else //_ANDROID_
 #define DEBUG_PRINT_LOW printf

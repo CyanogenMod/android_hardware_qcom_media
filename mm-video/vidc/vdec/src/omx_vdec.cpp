@@ -146,14 +146,6 @@ char ouputextradatafilename [] = "/data/extradata";
 #endif//_ANDROID_
 */
 
-#undef DEBUG_PRINT_LOW
-#undef DEBUG_PRINT_HIGH
-#undef DEBUG_PRINT_ERROR
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_HIGH ALOGE
-#define DEBUG_PRINT_ERROR ALOGE
-
 #ifndef _ANDROID_
 #include <glib.h>
 #define strlcpy g_strlcpy

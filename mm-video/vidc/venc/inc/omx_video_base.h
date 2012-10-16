@@ -72,21 +72,6 @@ public:
 };
 
 #include <utils/Log.h>
-#ifdef ENABLE_DEBUG_LOW
-#define DEBUG_PRINT_LOW ALOGV
-#else
-#define DEBUG_PRINT_LOW
-#endif
-#ifdef ENABLE_DEBUG_HIGH
-#define DEBUG_PRINT_HIGH  ALOGV
-#else
-#define DEBUG_PRINT_HIGH
-#endif
-#ifdef ENABLE_DEBUG_ERROR
-#define DEBUG_PRINT_ERROR ALOGE
-#else
-#define DEBUG_PRINT_ERROR
-#endif
 
 #else //_ANDROID_
 #define DEBUG_PRINT_LOW
