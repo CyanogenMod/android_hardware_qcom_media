@@ -5941,7 +5941,8 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     fclose (inputBufferFile1);
 #endif
 #ifdef OUTPUT_BUFFER_LOG
-    fclose (outputBufferFile1);
+    if (outputBufferFile1)
+		fclose (outputBufferFile1);
 #endif
 #ifdef OUTPUT_EXTRADATA_LOG
     fclose (outputExtradataFile);
@@ -6430,10 +6431,24 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
 
   DEBUG_PRINT_LOW("\n In fill Buffer done call address %p ",buffer);
 #ifdef OUTPUT_BUFFER_LOG
-  if (outputBufferFile1)
+  if (outputBufferFile1 && buffer->nFilledLen)
   {
-    fwrite (buffer->pBuffer,1,buffer->nFilledLen,
-                  outputBufferFile1);
+	  int buf_index = buffer - m_out_mem_ptr;
+	  int stride = ((drv_ctx.video_resolution.frame_width + 31) & (~31));
+	  int scanlines = ((drv_ctx.video_resolution.frame_height+31) & (~31));
+	  char *temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr;
+	  int i;
+	  int bytes_written = 0;
+	  for (i = 0; i < drv_ctx.video_resolution.frame_height; i++) {
+		  bytes_written = fwrite(temp, drv_ctx.video_resolution.frame_width, 1, outputBufferFile1);
+		  temp += stride;
+	  }
+	  temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr + stride * scanlines;
+	  int stride_c = ((drv_ctx.video_resolution.frame_width/2 + 31) & (~31))*2;
+	  for(i = 0; i < drv_ctx.video_resolution.frame_height/2; i++) {
+		  bytes_written += fwrite(temp, drv_ctx.video_resolution.frame_width, 1, outputBufferFile1);
+		  temp += stride_c;
+	  }
   }
 #endif
 
