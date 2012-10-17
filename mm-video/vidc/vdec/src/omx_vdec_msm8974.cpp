@@ -3294,7 +3294,8 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           }
 	  else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE))
           {
-            if(!strncmp((const char*)comp_role->cRole,"video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE))
+            if(!strncmp((const char*)comp_role->cRole,"video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE) ||
+               (!strncmp((const char*)comp_role->cRole,"video_decoder.vpx",OMX_MAX_STRINGNAME_SIZE)))
             {
               strlcpy((char*)m_cRole,"video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
             }
@@ -3471,15 +3472,28 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       break;
     case OMX_QcomIndexParamVideoSyncFrameDecodingMode:
       {
-          DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexParamVideoSyncFrameDecodingMode");
-          DEBUG_PRINT_HIGH("set idr only decoding for thumbnail mode");
-          drv_ctx.idr_only_decoding = 1;
-          int rc; //= ioctl(drv_ctx.video_driver_fd,
-               //       VDEC_IOCTL_SET_IDR_ONLY_DECODING);
-          if(rc < 0) {
-              DEBUG_PRINT_ERROR("Failed to set IDR only decoding on driver.");
-              eRet = OMX_ErrorHardware;
-          }
+        DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexParamVideoSyncFrameDecodingMode");
+        DEBUG_PRINT_HIGH("set idr only decoding for thumbnail mode");
+        struct v4l2_control control;
+        int rc;
+        drv_ctx.idr_only_decoding = 1;
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_OUTPUT_ORDER;
+        control.value = V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DECODE;
+        rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+        if(rc)
+        {
+          DEBUG_PRINT_ERROR("\n Set picture order failed");
+          eRet = OMX_ErrorUnsupportedSetting;
+        } else {
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_SYNC_FRAME_DECODE;
+            control.value = V4L2_MPEG_VIDC_VIDEO_SYNC_FRAME_DECODE_ENABLE;
+            rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+            if(rc)
+            {
+              DEBUG_PRINT_ERROR("\n Sync frame setting failed");
+              eRet = OMX_ErrorUnsupportedSetting;
+            }
+        }
       }
       break;
 
@@ -7677,7 +7691,7 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
     DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d)",
     buffer_prop->actualcount, buffer_prop->buffer_size);
 	bufreq.memory = V4L2_MEMORY_USERPTR;
-	bufreq.count = 2;
+	bufreq.count = 1;
    if(buffer_prop->buffer_type == VDEC_BUFFER_TYPE_INPUT){
     bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	fmt.type =V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
