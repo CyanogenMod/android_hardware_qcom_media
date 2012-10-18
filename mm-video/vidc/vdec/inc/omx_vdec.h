@@ -54,6 +54,7 @@ static ptrdiff_t x;
 #endif
 #include <binder/MemoryHeapBase.h>
 #include <ui/ANativeObjectBase.h>
+#include <binder/IServiceManager.h>
 extern "C"{
 #include<utils/Log.h>
 }
@@ -97,6 +98,7 @@ extern "C"{
 
 #if defined (_ANDROID_ICS_)
 #include <gralloc_priv.h>
+#include <IQService.h>
 #endif
 
 #include <pthread.h>
@@ -867,6 +869,9 @@ private:
         struct vidc_heap m_heap_ptr[MAX_COUNT];
     };
     allocate_color_convert_buf client_buffers;
+    static bool m_secure_display; //For qservice
+    int secureDisplay(int mode);
+    int unsecureDisplay(int mode);
 };
 
 #ifdef _COPPER_
