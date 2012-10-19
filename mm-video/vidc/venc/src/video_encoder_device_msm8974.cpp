@@ -437,6 +437,15 @@ if (codec == OMX_VIDEO_CodingVPX)
 		//printf(" \n VIDIOC_ENUM_FMT OUTPUT Successful \n ");
 		
 		m_sOutput_buff_property.alignment=m_sInput_buff_property.alignment=4096;
+		fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
+		fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+		fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
+
+		/*TODO: Return values not handled properly in this function anywhere.
+		 * Need to handle those.*/
+		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
+		m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
 
 		fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
@@ -444,17 +453,7 @@ if (codec == OMX_VIDEO_CodingVPX)
 		fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
 		
 		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
-		//printf(" \n VIDIOC_S_FMT OUTPUT Successful \n ");
 		m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
-		//printf("m_sInput_buff_property.datasize = %d\n",m_sInput_buff_property.datasize);
-
-		fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
-		fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
-		fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
-
-		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
-		m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
 
 		bufreq.memory = V4L2_MEMORY_USERPTR;
 		bufreq.count = 2;
