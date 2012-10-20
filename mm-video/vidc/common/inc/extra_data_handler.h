@@ -98,6 +98,8 @@ private:
   OMX_U32 create_sei(OMX_U8 *buffer);
   OMX_S32 parse_sliceinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
      OMX_OTHER_EXTRADATATYPE *pExtra);
+  OMX_S32 parse_ltrinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
+     OMX_OTHER_EXTRADATATYPE *pExtra);
 };
   
 #endif  
