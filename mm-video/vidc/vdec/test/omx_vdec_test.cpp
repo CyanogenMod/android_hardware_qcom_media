@@ -3642,13 +3642,13 @@ static int open_video_file ()
         }
     }
 #ifdef _MSM8974_
-    if (!crcFile) {
+    /*if (!crcFile) {
 	    crcFile = fopen(crclogname, "ab");
 	    if (!crcFile) {
 		    printf("Failed to open CRC file\n");
 		    error_code = -1;
 	    }
-    }
+    }*/
 #endif
     return error_code;
 }
