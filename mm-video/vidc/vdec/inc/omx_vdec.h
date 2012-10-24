@@ -218,6 +218,18 @@ struct vdec_ion
 };
 #endif
 
+#ifdef _MSM8974_
+struct extradata_buffer_info {
+	int buffer_size;
+	char* uaddr;
+	int count;
+	int size;
+#ifdef USE_ION
+	struct vdec_ion ion;
+#endif
+};
+#endif
+
 struct video_driver_context
 {
     int video_driver_fd;
@@ -242,6 +254,10 @@ struct video_driver_context
     char kind[128];
     bool idr_only_decoding;
     unsigned disable_dmx;
+#ifdef _MSM8974_
+	struct extradata_buffer_info extradata_info;
+	int num_planes;
+#endif
 };
 
 #ifdef _ANDROID_
@@ -374,6 +390,10 @@ public:
                                 void *               eglImage);
     void complete_pending_buffer_done_cbs();
     struct video_driver_context drv_ctx;
+#ifdef _MSM8974_
+    OMX_ERRORTYPE allocate_extradata();
+	void free_extradata();
+#endif
     int  m_pipe_in;
     int  m_pipe_out;
     pthread_t msg_thread_id;
@@ -660,6 +680,7 @@ private:
 #if defined (_ANDROID_ICS_)
     struct nativebuffer{
         native_handle_t *nativehandle;
+	private_handle_t *privatehandle;
         int inuse;
     };
     nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
