@@ -198,12 +198,20 @@ void* async_message_thread (void *input)
     }
     if (pfd.revents & POLLPRI){
       rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
-      if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT ||
-          dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT ) {
+      if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT ) {
         struct vdec_msginfo vdec_msg;
         vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
         vdec_msg.status_code=VDEC_S_SUCCESS;
-        printf("\n VIDC Port Reconfig recieved \n");
+        DEBUG_PRINT_HIGH("\n VIDC Port Reconfig recieved \n");
+        if (omx->async_message_process(input,&vdec_msg) < 0) {
+          DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+          break;
+        }
+      } else if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT ) {
+        struct vdec_msginfo vdec_msg;
+        vdec_msg.msgcode=VDEC_MSG_EVT_INFO_CONFIG_CHANGED;
+        vdec_msg.status_code=VDEC_S_SUCCESS;
+        DEBUG_PRINT_HIGH("\n VIDC Port Reconfig recieved \n");
         if (omx->async_message_process(input,&vdec_msg) < 0) {
           DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
           break;
@@ -3058,17 +3066,12 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                drv_ctx.video_resolution.frame_width =
                  drv_ctx.video_resolution.stride =
                  portDefn->format.video.nFrameWidth;
-		if(output_capability == V4L2_PIX_FMT_VC1_ANNEX_L ||
-			output_capability == V4L2_PIX_FMT_DIVX_311 ||
-			output_capability == V4L2_PIX_FMT_VC1_ANNEX_G)
-		{
 			fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 			fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
 			fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
 			fmt.fmt.pix_mp.pixelformat = output_capability;
 			DEBUG_PRINT_LOW("\n fmt.fmt.pix_mp.height = %d , fmt.fmt.pix_mp.width = %d \n",fmt.fmt.pix_mp.height,fmt.fmt.pix_mp.width);
 			ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
-		}
                if (/*ioctl (drv_ctx.video_driver_fd, VDEC_IOCTL_SET_PICRES,
                             (void*)&ioctl_msg) < */0)
                {
@@ -3495,7 +3498,19 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
          }
        }
       break;
-
+    case OMX_QcomIndexParamEnableSmoothStreaming:
+      {
+	      struct v4l2_control control;
+	      struct v4l2_format fmt;
+	      control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
+	      control.value = 1;
+	      int rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
+	      if(rc < 0) {
+		      DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
+		      eRet = OMX_ErrorHardware;
+	      }
+      }
+     break;
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
       /* Need to allow following two set_parameters even in Idle
        * state. This is ANDROID architecture which is not in sync
@@ -5711,12 +5726,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 	enum v4l2_buf_type buf_type;
 	int ret,r;
 
-	struct v4l2_control control;
-	control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
-	control.value = 0;
-	ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
-	if(ret)
-		printf("\n Continue data Xfer failed \n");
 	buf_type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
 	ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMON,&buf_type);
@@ -6644,6 +6653,14 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
 #endif
     m_cb.FillBufferDone (hComp,m_app_data,buffer);
     DEBUG_PRINT_LOW("\n After Fill Buffer Done callback %d",pPMEMInfo->pmem_fd);
+    if(BITMASK_PRESENT(&m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING) && pending_output_buffers == 0) {
+	m_cb.EventHandler(&m_cmp, m_app_data,
+                (OMX_EVENTTYPE)OMX_EventIndexsettingChanged, OMX_CORE_OUTPUT_PORT_INDEX, 0, NULL );
+	pthread_mutex_lock(&m_lock);
+	BITMASK_CLEAR(&m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING);
+	output_flush_progress = false;
+    pthread_mutex_unlock(&m_lock);
+  }
   }
   else
   {
@@ -6763,12 +6780,25 @@ int omx_vdec::async_message_process (void *context, void* message)
   break;
 
   case VDEC_MSG_RESP_FLUSH_INPUT_DONE:
+   if(BITMASK_ABSENT(&omx->m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING)) {
     omx->post_event (NULL,vdec_msg->status_code,\
                      OMX_COMPONENT_GENERATE_EVENT_INPUT_FLUSH);
+   }
     break;
   case VDEC_MSG_RESP_FLUSH_OUTPUT_DONE:
+   if(BITMASK_PRESENT(&omx->m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING)) {
+	if(omx->pending_output_buffers == 0) {
+		omx->post_event (NULL,vdec_msg->status_code,\
+			OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG);
+		pthread_mutex_lock(&omx->m_lock);
+		BITMASK_CLEAR(&omx->m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING);
+		omx->output_flush_progress = false;
+		pthread_mutex_unlock(&omx->m_lock);
+	}
+    } else {
     omx->post_event (NULL,vdec_msg->status_code,\
                      OMX_COMPONENT_GENERATE_EVENT_OUTPUT_FLUSH);
+  }
     break;
   case VDEC_MSG_RESP_INPUT_FLUSHED:
   case VDEC_MSG_RESP_INPUT_BUFFER_DONE:
@@ -6871,10 +6901,18 @@ int omx_vdec::async_message_process (void *context, void* message)
     DEBUG_PRINT_HIGH("\n Port settings changed info");
     // get_buffer_req and populate port defn structure
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
+    struct v4l2_format fmt;
+    int ret;
+    fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+    ret = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+    omx->drv_ctx.video_resolution.scan_lines = omx->drv_ctx.video_resolution.frame_height = fmt.fmt.pix_mp.height;
+    omx->drv_ctx.video_resolution.stride = omx->drv_ctx.video_resolution.frame_width = fmt.fmt.pix_mp.width;
     omx->m_port_def.nPortIndex = 1;
     eRet = omx->update_portdef(&(omx->m_port_def));
-    omx->post_event ((unsigned int)omxhdr,vdec_msg->status_code,
-                     OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG);
+    pthread_mutex_lock(&omx->m_lock);
+    BITMASK_SET(&omx->m_flags, OMX_COMPONENT_INTERNAL_FLUSH_PENDING);
+    pthread_mutex_lock(&omx->m_lock);
+    omx->execute_omx_flush(OMX_CORE_OUTPUT_PORT_INDEX);
     break;
   }
   default:
