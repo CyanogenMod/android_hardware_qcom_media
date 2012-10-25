@@ -222,6 +222,8 @@ void* async_venc_message_thread (void *input)
 					venc_msg.buf.flags |= OMX_BUFFERFLAG_SYNCFRAME;
 				if(v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_CODECCONFIG)
 					venc_msg.buf.flags |= OMX_BUFFERFLAG_CODECCONFIG;
+				if(v4l2_buf.flags & V4L2_BUF_FLAG_EOS)
+					venc_msg.buf.flags |= OMX_BUFFERFLAG_EOS;
 
 				if(omx->async_message_process(input,&venc_msg) < 0)
 				{
@@ -1518,7 +1520,8 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
   plane.reserved[1] = 0;
   buf.m.planes = &plane;
   buf.length = 1;
-  buf.flags = bufhdr->nFlags;
+  if (bufhdr->nFlags & OMX_BUFFERFLAG_EOS)
+	  buf.flags = V4L2_BUF_FLAG_EOS;
   buf.timestamp.tv_sec = bufhdr->nTimeStamp / 1000000;
   buf.timestamp.tv_usec = (bufhdr->nTimeStamp % 1000000);
   rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
