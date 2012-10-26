@@ -6911,7 +6911,7 @@ int omx_vdec::async_message_process (void *context, void* message)
     eRet = omx->update_portdef(&(omx->m_port_def));
     pthread_mutex_lock(&omx->m_lock);
     BITMASK_SET(&omx->m_flags, OMX_COMPONENT_INTERNAL_FLUSH_PENDING);
-    pthread_mutex_lock(&omx->m_lock);
+    pthread_mutex_unlock(&omx->m_lock);
     omx->execute_omx_flush(OMX_CORE_OUTPUT_PORT_INDEX);
     break;
   }
