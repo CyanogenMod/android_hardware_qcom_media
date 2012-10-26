@@ -466,6 +466,8 @@ static bool align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
                                   OMX_U32 alignment);
 #endif
 void getFreePmem();
+static int overlay_vsync_ctrl(int enable);
+
 static  int clip2(int x)
     {
         x = x -1;
@@ -3703,6 +3705,19 @@ int drawBG(void)
     return 0;
 }
 
+static int overlay_vsync_ctrl(int enable)
+{
+    int ret;
+    int vsync_en = enable;
+    ret = ioctl(fb_fd, MSMFB_OVERLAY_VSYNC_CTRL, &vsync_en);
+    if (ret)
+       printf("\n MSMFB_OVERLAY_VSYNC_CTRL failed! (Line %d)\n",
+               __LINE__);
+    return ret;
+}
+
+
+
 void overlay_set()
 {
     overlayp = &overlay;
@@ -3759,6 +3774,8 @@ void overlay_set()
     overlayp->is_fg = 0;
 
     overlayp->id = MSMFB_NEW_REQUEST;
+
+    overlay_vsync_ctrl(OMX_TRUE);
     vid_buf_front_id = ioctl(fb_fd, MSMFB_OVERLAY_SET, overlayp);
     if (vid_buf_front_id < 0)
     {
@@ -3820,6 +3837,7 @@ int overlay_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
         printf("ERROR: FBIOPAN_DISPLAY failed! line=%d\n", __LINE__);
         return -1;
     }
+
     DEBUG_PRINT("\nMSMFB_OVERLAY_PLAY successfull");
     return 0;
 }
@@ -4254,6 +4272,7 @@ int open_display()
 void close_display()
 {
   overlay_unset();
+  overlay_vsync_ctrl(OMX_FALSE);
   close(fb_fd);
   fb_fd = -1;
 }
