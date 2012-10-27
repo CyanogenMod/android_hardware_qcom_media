@@ -845,7 +845,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                 if (p2 == OMX_CORE_OUTPUT_PORT_INDEX && pThis->in_reconfig)
                 {
 				  OMX_ERRORTYPE eRet = OMX_ErrorNone;
-				  pThis->stream_off();
+				  pThis->stream_off(OMX_CORE_OUTPUT_PORT_INDEX);
 				  if(release_buffers(pThis, VDEC_BUFFER_TYPE_OUTPUT))
 					  DEBUG_PRINT_HIGH("Failed to release output buffers\n");
 				  OMX_ERRORTYPE eRet1 = pThis->get_buffer_req(&pThis->drv_ctx.op_buf);
@@ -1000,9 +1000,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                 if (BITMASK_PRESENT(&pThis->m_flags,
                                          OMX_COMPONENT_IDLE_PENDING))
                 {
-                   enum v4l2_buf_type btype;
-                   btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-                   if(ioctl(pThis->drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype)) {
+                   if(pThis->stream_off(OMX_CORE_INPUT_PORT_INDEX)) {
                            DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
 						   pThis->omx_report_error ();
 				   } else {
@@ -1072,9 +1070,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
 
                 if (BITMASK_PRESENT(&pThis->m_flags ,OMX_COMPONENT_IDLE_PENDING))
                 {
-                   enum v4l2_buf_type btype;
-                   btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-                   if(ioctl(pThis->drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype)) {
+                   if(pThis->stream_off(OMX_CORE_OUTPUT_PORT_INDEX)) {
                            DEBUG_PRINT_ERROR("\n Failed to call streamoff on CAPTURE Port \n");
 						   pThis->omx_report_error ();
 						   break;
@@ -7676,18 +7672,47 @@ void omx_vdec::free_input_buffer_header()
     }
 #endif
 }
-void omx_vdec::stream_off()
+
+int omx_vdec::stream_off(OMX_U32 port)
 {
-	int rc=0;
 	enum v4l2_buf_type btype;
-	btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	int rc = 0;
+	enum v4l2_ports v4l2_port;
+
+	if (port == OMX_CORE_INPUT_PORT_INDEX) {
+		btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+		v4l2_port = OUTPUT_PORT;
+	} else if (port == OMX_CORE_OUTPUT_PORT_INDEX) {
+		btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		v4l2_port = CAPTURE_PORT;
+	} else if (port == OMX_ALL) {
+		int rc_input = stream_off(OMX_CORE_INPUT_PORT_INDEX);
+		int rc_output = stream_off(OMX_CORE_OUTPUT_PORT_INDEX);
+
+		if (!rc_input)
+			return rc_input;
+		else
+			return rc_output;
+	}
+
+	if (!streaming[v4l2_port]) {
+		// already streamed off, warn and move on
+		DEBUG_PRINT_HIGH("Warning: Attempting to stream off on %d port,"
+				" which is already streamed off", v4l2_port);
+		return 0;
+	}
+
+	DEBUG_PRINT_HIGH("Streaming off %d port", v4l2_port);
+
 	rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMOFF, &btype);
 	if (rc) {
 		/*TODO: How to handle this case */
-		DEBUG_PRINT_ERROR("\n Failed to call streamoff on OUTPUT Port \n");
+		DEBUG_PRINT_ERROR("Failed to call streamoff on %d Port \n", v4l2_port);
 	} else {
-		streaming[CAPTURE_PORT] = false;
+		streaming[v4l2_port] = false;
 	}
+
+	return rc;
 }
 
 OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
