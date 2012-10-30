@@ -6668,14 +6668,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
 #endif
     m_cb.FillBufferDone (hComp,m_app_data,buffer);
     DEBUG_PRINT_LOW("\n After Fill Buffer Done callback %d",pPMEMInfo->pmem_fd);
-    if(BITMASK_PRESENT(&m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING) && pending_output_buffers == 0) {
-	m_cb.EventHandler(&m_cmp, m_app_data,
-                (OMX_EVENTTYPE)OMX_EventIndexsettingChanged, OMX_CORE_OUTPUT_PORT_INDEX, 0, NULL );
-	pthread_mutex_lock(&m_lock);
-	BITMASK_CLEAR(&m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING);
-	output_flush_progress = false;
-    pthread_mutex_unlock(&m_lock);
-  }
   }
   else
   {
@@ -6795,25 +6787,12 @@ int omx_vdec::async_message_process (void *context, void* message)
   break;
 
   case VDEC_MSG_RESP_FLUSH_INPUT_DONE:
-   if(BITMASK_ABSENT(&omx->m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING)) {
     omx->post_event (NULL,vdec_msg->status_code,\
                      OMX_COMPONENT_GENERATE_EVENT_INPUT_FLUSH);
-   }
     break;
   case VDEC_MSG_RESP_FLUSH_OUTPUT_DONE:
-   if(BITMASK_PRESENT(&omx->m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING)) {
-	if(omx->pending_output_buffers == 0) {
-		omx->post_event (NULL,vdec_msg->status_code,\
-			OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG);
-		pthread_mutex_lock(&omx->m_lock);
-		BITMASK_CLEAR(&omx->m_flags ,OMX_COMPONENT_INTERNAL_FLUSH_PENDING);
-		omx->output_flush_progress = false;
-		pthread_mutex_unlock(&omx->m_lock);
-	}
-    } else {
     omx->post_event (NULL,vdec_msg->status_code,\
                      OMX_COMPONENT_GENERATE_EVENT_OUTPUT_FLUSH);
-  }
     break;
   case VDEC_MSG_RESP_INPUT_FLUSHED:
   case VDEC_MSG_RESP_INPUT_BUFFER_DONE:
@@ -6924,10 +6903,8 @@ int omx_vdec::async_message_process (void *context, void* message)
     omx->drv_ctx.video_resolution.stride = omx->drv_ctx.video_resolution.frame_width = fmt.fmt.pix_mp.width;
     omx->m_port_def.nPortIndex = 1;
     eRet = omx->update_portdef(&(omx->m_port_def));
-    pthread_mutex_lock(&omx->m_lock);
-    BITMASK_SET(&omx->m_flags, OMX_COMPONENT_INTERNAL_FLUSH_PENDING);
-    pthread_mutex_unlock(&omx->m_lock);
-    omx->execute_omx_flush(OMX_CORE_OUTPUT_PORT_INDEX);
+    omx->post_event (NULL,vdec_msg->status_code,\
+                OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG);
     break;
   }
   default:
