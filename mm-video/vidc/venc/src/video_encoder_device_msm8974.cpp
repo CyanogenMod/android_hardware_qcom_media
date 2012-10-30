@@ -490,8 +490,8 @@ if (codec == OMX_VIDEO_CodingVPX)
   stopped = 0;
   metadatamode = 0;
 
-  control.id = V4L2_CID_QCOM_VIDEO_SYNC_FRAME_SEQ_HDR;
-  control.value = 0;
+  control.id = V4L2_CID_MPEG_VIDEO_HEADER_MODE;
+  control.value = V4L2_MPEG_VIDEO_HEADER_MODE_SEPARATE;
 
   DEBUG_PRINT_LOW("Calling IOCTL to disable seq_hdr in sync_frame id=%d, val=%d\n", control.id, control.value);
   if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control))
