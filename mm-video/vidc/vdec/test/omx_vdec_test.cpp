@@ -3768,7 +3768,7 @@ void overlay_set()
     printf("overlayp->dst_rect.w = %u \n", overlayp->dst_rect.w);
     printf("overlayp->dst_rect.h = %u \n", overlayp->dst_rect.h);
 
-    overlayp->alpha = 0x0;
+    overlayp->alpha = 0xff;
     overlayp->transp_mask = 0xFFFFFFFF;
     overlayp->flags = 0;
     overlayp->is_fg = 0;
