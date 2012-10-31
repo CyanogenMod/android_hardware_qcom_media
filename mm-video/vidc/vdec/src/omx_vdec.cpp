@@ -1,29 +1,31 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c)2010- 2012, The Linux Foundation. All rights reserved.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions
+  are met:
+
     * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
-      the names of its contributors may be used to endorse or promote
-      products derived from this software without specific prior written
-      permission.
+  notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+  copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+    * Neither the name of The Linux Foundation nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NON-INFRINGEMENT ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
+ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 
 /*============================================================================
@@ -45,6 +47,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include "power_module.h"
 #include "omx_vdec.h"
 #include <fcntl.h>
 #include <limits.h>
@@ -496,6 +499,7 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
 #endif
                     ,m_desc_buffer_ptr(NULL)
                     ,m_extradata(NULL)
+                    ,m_power_hinted(false)
 {
   /* Assumption is that , to begin with , we have all the frames with decoder */
   DEBUG_PRINT_HIGH("In OMX vdec Constructor");
@@ -1134,6 +1138,10 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
           } else {
             DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
           }
+
+          //update power HAL with new width, height and bitrate
+          pThis->power_module_deregister();
+          pThis->power_module_register();
         }
         default:
           break;
@@ -1186,7 +1194,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       arbitrary_bytes = false;
       role = "OMX.qcom.video.decoder.avc";
       device_name =  "/dev/msm_vidc_dec_sec";
-	  is_secure = 1;
+      is_secure = 1;
   }
   DEBUG_PRINT_HIGH("omx_vdec::component_init(): Start of New Playback : role  = %s : DEVICE = %s",
         role, device_name);
@@ -1201,13 +1209,13 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
   }
 
   if(is_secure && drv_ctx.video_driver_fd < 0) {
-	  do {
-		  usleep(100 * 1000);
-		  drv_ctx.video_driver_fd = open(device_name, O_RDWR | O_NONBLOCK);
-		  if (drv_ctx.video_driver_fd > 0) {
-			  break;
-		  }
-	  } while(i++ < 50);
+      do {
+          usleep(100 * 1000);
+          drv_ctx.video_driver_fd = open(device_name, O_RDWR | O_NONBLOCK);
+          if (drv_ctx.video_driver_fd > 0) {
+              break;
+          }
+      } while(i++ < 50);
   }
   if(drv_ctx.video_driver_fd < 0)
   {
@@ -1799,6 +1807,8 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
           DEBUG_PRINT_ERROR("\n VDEC_IOCTL_CMD_START FAILED");
           omx_report_error ();
           eRet = OMX_ErrorHardware;
+        } else {
+          power_module_register();
         }
       }
       /* Requesting transition from Idle to Idle */
@@ -3941,7 +3951,7 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage;
     }
 #endif
-	else {
+    else {
         DEBUG_PRINT_ERROR("Extension: %s not implemented\n", paramName);
         return OMX_ErrorNotImplemented;
     }
@@ -4707,7 +4717,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
  drv_ctx.ip_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
                     drv_ctx.ip_buf.buffer_size,drv_ctx.op_buf.alignment,
                     &drv_ctx.ip_buf_ion_info[i].ion_alloc_data,
-		    &drv_ctx.ip_buf_ion_info[i].fd_ion_data,ION_FLAG_CACHED);
+                    &drv_ctx.ip_buf_ion_info[i].fd_ion_data,ION_FLAG_CACHED);
     if(drv_ctx.ip_buf_ion_info[i].ion_device_fd < 0) {
         return OMX_ErrorInsufficientResources;
      }
@@ -4900,9 +4910,9 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     if(m_out_mem_ptr && pPtr && drv_ctx.ptr_outputbuffer
        && drv_ctx.ptr_respbuffer
 #ifdef _ANDROID_
-	   && m_heap_ptr
+       && m_heap_ptr
 #endif
-	   )
+       )
     {
       drv_ctx.ptr_outputbuffer[0].mmaped_size =
         (drv_ctx.op_buf.buffer_size *
@@ -5001,7 +5011,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
 #ifdef USE_ION
     if (drv_ctx.op_buf_ion_info) {
         DEBUG_PRINT_LOW("Free o/p ion context");
-	free(drv_ctx.op_buf_ion_info);
+        free(drv_ctx.op_buf_ion_info);
         drv_ctx.op_buf_ion_info = NULL;
     }
 #endif
@@ -5994,7 +6004,7 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     if (h264_parser)
     {
         delete h264_parser;
-	h264_parser = NULL;
+        h264_parser = NULL;
     }
 
     if(m_platform_list)
@@ -6052,6 +6062,7 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
 #ifdef OUTPUT_EXTRADATA_LOG
     fclose (outputExtradataFile);
 #endif
+  power_module_deregister();
   DEBUG_PRINT_HIGH("omx_vdec::component_deinit() complete");
   return OMX_ErrorNone;
 }
@@ -7498,7 +7509,7 @@ bool omx_vdec::align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
 #ifdef USE_ION
 int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
               OMX_U32 alignment, struct ion_allocation_data *alloc_data,
-	      struct ion_fd_data *fd_data,int flag)
+              struct ion_fd_data *fd_data,int flag)
 {
   int fd = -EINVAL;
   int rc = -EINVAL;
@@ -7617,7 +7628,7 @@ void omx_vdec::free_output_buffer_header()
 #ifdef USE_ION
     if (drv_ctx.op_buf_ion_info) {
         DEBUG_PRINT_LOW("Free o/p ion context");
-	free(drv_ctx.op_buf_ion_info);
+        free(drv_ctx.op_buf_ion_info);
         drv_ctx.op_buf_ion_info = NULL;
     }
 #endif
@@ -7664,7 +7675,7 @@ void omx_vdec::free_input_buffer_header()
 #ifdef USE_ION
     if (drv_ctx.ip_buf_ion_info) {
         DEBUG_PRINT_LOW("Free ion context");
-	free(drv_ctx.ip_buf_ion_info);
+        free(drv_ctx.ip_buf_ion_info);
         drv_ctx.ip_buf_ion_info = NULL;
     }
 #endif
@@ -7774,7 +7785,7 @@ OMX_ERRORTYPE omx_vdec::start_port_reconfig()
         DEBUG_PRINT_HIGH("Interlace format detected (%x)!", drv_ctx.interlace);
         if(!secure_mode)
             client_extradata |= OMX_INTERLACE_EXTRADATA;
-	else {
+        else {
             DEBUG_PRINT_ERROR("secure mode interlaced format not supported");
             eRet = OMX_ErrorUnsupportedSetting;
         }
@@ -7784,6 +7795,13 @@ OMX_ERRORTYPE omx_vdec::start_port_reconfig()
       eRet = get_buffer_req(&op_buf_rcnfg);
     }
   }
+
+  if (eRet == OMX_ErrorNone) {
+      //update power HAL with new width, height and bitrate
+      power_module_deregister();
+      power_module_register();
+  }
+
   return eRet;
 }
 
@@ -8016,7 +8034,7 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
 #ifdef USE_ION
     if (drv_ctx.op_buf_ion_info) {
         DEBUG_PRINT_LOW("Free o/p ion context");
-	free(drv_ctx.op_buf_ion_info);
+        free(drv_ctx.op_buf_ion_info);
         drv_ctx.op_buf_ion_info = NULL;
     }
 #endif
@@ -8703,7 +8721,7 @@ void omx_vdec::extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr)
     {
       if ((((index+3) - prev_sc_index) <= 4) && m_demux_entries)
       {
-	 DEBUG_PRINT_ERROR("FOUND Consecutive start Code, Hence skip one");
+         DEBUG_PRINT_ERROR("FOUND Consecutive start Code, Hence skip one");
          m_demux_entries--;
       }
       //Found start code, insert address offset
@@ -8966,3 +8984,68 @@ OMX_ERRORTYPE omx_vdec::createDivxDrmContext()
 }
 #endif //_ANDROID_
 
+OMX_ERRORTYPE omx_vdec::power_module_register()
+{
+    char powerHintMetadata[512];
+
+    if (m_power_hinted) {
+        return OMX_ErrorBadParameter; //need a proper error code
+    }
+
+    PowerModule * pm = PowerModule::getInstance();
+
+    if (pm == NULL) {
+        DEBUG_PRINT_ERROR("failed to get power module instance");
+        return OMX_ErrorBadParameter;
+    }
+
+    power_module_t * ph = pm->getPowerModuleHandle();
+
+    if (ph == NULL) {
+        DEBUG_PRINT_ERROR("failed to get power module handle");
+        return OMX_ErrorBadParameter;
+    }
+
+    if (ph->powerHint) {
+        snprintf(powerHintMetadata, sizeof(powerHintMetadata) - 1,
+                 "state=1;framewidth=%u;frameheight=%u;bitrate=%u",
+                 m_port_def.format.video.nFrameWidth, m_port_def.format.video.nFrameHeight,
+                 m_port_def.format.video.nBitrate);
+        powerHintMetadata[sizeof(powerHintMetadata) - 1] = '\0';
+
+        ph->powerHint(ph, POWER_HINT_VIDEO_DECODE, (void *)powerHintMetadata);
+        m_power_hinted = true;
+    } else {
+        DEBUG_PRINT_ERROR("No hint called for register");
+    }
+    return OMX_ErrorNone;
+}
+
+OMX_ERRORTYPE omx_vdec::power_module_deregister()
+{
+    if (!m_power_hinted) {
+        return OMX_ErrorBadParameter; //need a proper error code
+    }
+
+    PowerModule * pm = PowerModule::getInstance();
+
+    if (pm == NULL) {
+        DEBUG_PRINT_ERROR("failed to get power module instance");
+        return OMX_ErrorBadParameter;
+    }
+
+    power_module_t * ph = pm->getPowerModuleHandle();
+
+    if (ph == NULL) {
+        DEBUG_PRINT_ERROR("failed to get power module handle");
+        return OMX_ErrorBadParameter;
+    }
+
+    if (ph->powerHint) {
+        ph->powerHint(ph, POWER_HINT_VIDEO_DECODE, (void *)"state=0");
+        m_power_hinted = false;
+    } else {
+        DEBUG_PRINT_ERROR("No hint called for deregister");
+    }
+    return OMX_ErrorNone;
+}
