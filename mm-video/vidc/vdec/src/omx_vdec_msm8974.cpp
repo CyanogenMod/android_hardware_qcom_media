@@ -4489,10 +4489,10 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
             DEBUG_PRINT_LOW("\n unmap the output buffer fd = %d",
                     drv_ctx.ptr_outputbuffer[0].pmem_fd);
             DEBUG_PRINT_LOW("\n unmap the ouput buffer size=%d  address = %d",
-                    drv_ctx.ptr_outputbuffer[0].mmaped_size,
+                    drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
                     drv_ctx.ptr_outputbuffer[0].bufferaddr);
             munmap (drv_ctx.ptr_outputbuffer[0].bufferaddr,
-                    drv_ctx.ptr_outputbuffer[0].mmaped_size);
+                    drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount);
           close (drv_ctx.ptr_outputbuffer[0].pmem_fd);
           drv_ctx.ptr_outputbuffer[0].pmem_fd = -1;
 #ifdef USE_ION
