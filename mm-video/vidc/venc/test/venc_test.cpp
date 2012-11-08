@@ -363,7 +363,11 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
       return NULL;
 
 #ifdef USE_ION
+#ifdef USE_NEW_ION_HEAP_MASK
+  ion_data.ion_device_fd = open (PMEM_DEVICE,O_RDONLY);
+#else
   ion_data.ion_device_fd = open (PMEM_DEVICE,O_RDONLY | O_DSYNC);
+#endif
   if(ion_data.ion_device_fd < 0)
   {
       E("\nERROR: ION Device open() Failed");
@@ -371,8 +375,14 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
   }
   nSize = (nSize + 4095) & (~4095);
   ion_data.alloc_data.len = nSize;
+#ifdef USE_NEW_ION_HEAP_MASK
+  ion_data.alloc_data.heap_mask = 0x1 << ION_CP_MM_HEAP_ID;
+  ion_data.alloc_data.align = 4096;
+  ion_data.alloc_data.flags = 0;
+#else
   ion_data.alloc_data.flags = 0x1 << ION_CP_MM_HEAP_ID;
   ion_data.alloc_data.align = 4096;
+#endif
 
   rc = ioctl(ion_data.ion_device_fd,ION_IOC_ALLOC,&ion_data.alloc_data);
   if(rc || !ion_data.alloc_data.handle) {
