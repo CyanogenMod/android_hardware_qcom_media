@@ -265,6 +265,7 @@ int C2DColorConverter::convertC2D(int srcFd, void * srcData, int dstFd, void * d
 bool C2DColorConverter::isYUVSurface(ColorConvertFormat format)
 {
     switch (format) {
+        case YCbCr420Tile:
         case YCbCr420SP:
         case YCbCr420P:
         case YCrCb420P:
@@ -359,6 +360,8 @@ uint32_t C2DColorConverter::getC2DFormat(ColorConvertFormat format)
             return C2D_COLOR_FORMAT_565_RGB;
         case RGBA8888:
             return C2D_COLOR_FORMAT_8888_RGBA | C2D_FORMAT_SWAP_ENDIANNESS;
+        case YCbCr420Tile:
+            return (C2D_COLOR_FORMAT_420_NV12 | C2D_FORMAT_MACROTILED);
         case YCbCr420SP:
         case NV12_2K:
             return C2D_COLOR_FORMAT_420_NV12;
@@ -379,6 +382,8 @@ size_t C2DColorConverter::calcStride(ColorConvertFormat format, size_t width)
             return ALIGN(width, ALIGN32) * 2; // RGB565 has width as twice
         case RGBA8888:
             return ALIGN(width, ALIGN32) * 4;
+        case YCbCr420Tile:
+            return ALIGN(width, ALIGN128);
         case YCbCr420SP:
             return ALIGN(width, ALIGN32);
         case NV12_2K:
@@ -401,6 +406,8 @@ size_t C2DColorConverter::calcYSize(ColorConvertFormat format, size_t width, siz
             return width * height;
         case YCrCb420P:
             return ALIGN(width, ALIGN16) * height;
+        case YCbCr420Tile:
+            return ALIGN(ALIGN(width, ALIGN128) * ALIGN(height, ALIGN32), ALIGN8K);
         case NV12_2K: {
             size_t alignedw = ALIGN(width, ALIGN16);
             size_t lumaSize = ALIGN(alignedw * height, ALIGN2K);
@@ -436,6 +443,11 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
         case YCrCb420P:
             alignedw = ALIGN(width, ALIGN16);
             size = ALIGN((alignedw * height) + (ALIGN(width/2, ALIGN16) * (height/2) * 2), ALIGN4K);
+            break;
+        case YCbCr420Tile:
+            alignedw = ALIGN(width, ALIGN128);
+            alignedh = ALIGN(height, ALIGN32);
+            size = ALIGN(alignedw * alignedh, ALIGN8K) + ALIGN(alignedw * ALIGN(height/2, ALIGN32), ALIGN8K);
             break;
         case NV12_2K: {
             alignedw = ALIGN(width, ALIGN16);
