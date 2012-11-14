@@ -158,6 +158,12 @@ struct msm_venc_headerextension{
 	 unsigned long	header_extension;
 };
 
+enum v4l2_ports {
+	CAPTURE_PORT,
+	OUTPUT_PORT,
+	MAX_PORT
+};
+
 class venc_dev
 {
 public:
@@ -267,7 +273,8 @@ private:
 	  return x;
   }
 #endif
-int metadatamode;
+  int metadatamode;
+  bool streaming[MAX_PORT];
 };
 
 enum instance_state {
