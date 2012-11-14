@@ -1467,6 +1467,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     if ( (codec_type_parse == CODEC_TYPE_VC1) ||
         (codec_type_parse == CODEC_TYPE_H264)) //add CP check here
     {
+#if defined(QCOM_NO_DMX_SUPPORT)
+      // support for legacy kernels without VDEC_IOCTL_GET_DISABLE_DMX_SUPPORT support
+      drv_ctx.disable_dmx = false;
+#else
       //Check if dmx can be disabled
       struct vdec_ioctl_msg ioctl_msg = {NULL, NULL};
       OMX_ERRORTYPE eRet = OMX_ErrorNone;
@@ -1494,6 +1498,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
           drv_ctx.disable_dmx = false;
         }
       }
+#endif
     }
     if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
     {
