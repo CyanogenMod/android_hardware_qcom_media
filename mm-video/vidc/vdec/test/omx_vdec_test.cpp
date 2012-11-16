@@ -3733,6 +3733,9 @@ void overlay_set()
 #ifdef MAX_RES_1080P
     overlayp->src.format = MDP_Y_CBCR_H2V2_TILE;
 #endif
+#ifdef _MSM8974_
+    overlayp->src.format = MDP_Y_CBCR_H2V2_VENUS;
+#endif
     overlayp->src_rect.x = 0;
     overlayp->src_rect.y = 0;
     overlayp->src_rect.w = width;
@@ -3816,7 +3819,8 @@ int overlay_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     vheap = (MemoryHeapBase*)pPMEMInfo->pmem_fd;
 #endif
 
-#if defined(_ANDROID_) && !defined(USE_EGL_IMAGE_TEST_APP) && !defined(USE_EXTERN_PMEM_BUF)
+
+#if defined(_ANDROID_) && !defined(USE_EGL_IMAGE_TEST_APP) && !defined(USE_EXTERN_PMEM_BUF) && !defined(_MSM8974_)
     ov_front.data.memory_id = vheap->getHeapID();
 #else
     ov_front.data.memory_id = pPMEMInfo->pmem_fd;
