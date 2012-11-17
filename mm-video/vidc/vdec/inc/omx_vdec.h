@@ -606,7 +606,7 @@ private:
     OMX_ERRORTYPE set_buffer_req(vdec_allocatorproperty *buffer_prop);
     OMX_ERRORTYPE start_port_reconfig();
     OMX_ERRORTYPE update_picture_resolution();
-	void stream_off();
+    int stream_off(OMX_U32 port);
     void adjust_timestamp(OMX_S64 &act_timestamp);
     void set_frame_rate(OMX_S64 act_timestamp);
     void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
