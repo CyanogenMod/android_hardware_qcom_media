@@ -27,6 +27,9 @@
 #include <utils/Log.h>
 #include <cutils/atomic.h>
 #include <media/stagefright/foundation/ADebug.h>
+#ifdef TARGET8974
+#include <msm_media_info.h>
+#endif
 
 #define ALIGN( num, to ) (((num) + (to-1)) & (~(to-1)))
 
@@ -63,6 +66,9 @@ public:
         inputCP.cropTop = 0;
         inputCP.cropBottom = srcHeight;
         inputCP.colorFormat = YCbCr420Tile;
+        #ifdef TARGET8974
+        inputCP.colorFormat = YCbCr420SP32M;
+        #endif
         #ifdef TARGET7x27A
         inputCP.width = ALIGN(srcWidth, 32);
         inputCP.colorFormat = YCrCb420YT;
@@ -128,6 +134,9 @@ public:
         outputCP.cropTop = 0;
         outputCP.cropBottom = dstHeight;
         outputCP.colorFormat = YCbCr420SP;
+        #ifdef TARGET8974
+        outputCP.colorFormat = YCbCr420SP32M;
+        #endif
         outputCP.flags = COLOR_CONVERT_ALIGN_2048;
         outputCP.data = (uint8_t *)dstBits;
         outputCP.fd = -1;
@@ -151,7 +160,9 @@ public:
         unsigned long sizeY = ALIGN(actualWidth*actualHeight,2048);
         unsigned long sizeU = ALIGN(actualWidth*actualHeight/2, 2048);
         unsigned long size  = sizeY + sizeU;
-
+        #ifdef TARGET8974
+        size = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, actualWidth, actualHeight);
+        #endif
         *encoderBufferSize = (size);
 
         return 0;
