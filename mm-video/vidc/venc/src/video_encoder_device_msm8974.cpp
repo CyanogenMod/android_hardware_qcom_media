@@ -158,9 +158,12 @@ char outputfilename [] = "/data/output-bitstream.\0\0\0\0";
 //constructor
 venc_dev::venc_dev(class omx_venc *venc_class)
 {
-//nothing to do
-venc_handle = venc_class;
-etb_count=0;
+	//nothing to do
+	int i = 0;
+	venc_handle = venc_class;
+	etb_count=0;
+	for (i = 0; i < MAX_PORT; i++)
+		streaming[i] = false;
 }
 
 venc_dev::~venc_dev()
@@ -1205,18 +1208,34 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
 
 unsigned venc_dev::venc_stop( void)
 {
-  struct venc_msg venc_msg;
-  if(!stopped) {
-	  enum v4l2_buf_type out_type, cap_type;
-	  out_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-	  cap_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	  if(!ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &out_type) &&
-		 !ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &cap_type)) {
-		   venc_stop_done();
-		   stopped = 1;
-	   }
-  }
-  return 0;
+	struct venc_msg venc_msg;
+	int rc = 0;
+	if(!stopped) {
+		enum v4l2_buf_type out_type, cap_type;
+		if (streaming[OUTPUT_PORT]) {
+			cap_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+			rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &cap_type);
+			if (rc) {
+				DEBUG_PRINT_ERROR("Failed to call streamoff on driver: capability: %d, %d\n",
+						out_type, rc);
+			} else
+				streaming[OUTPUT_PORT] = false;
+		}
+		if (!rc && streaming[CAPTURE_PORT]) {
+			cap_type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+			rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &cap_type);
+			if (rc) {
+				DEBUG_PRINT_ERROR("Failed to call streamoff on driver: capability: %d, %d\n",
+						cap_type, rc);
+			} else
+				streaming[CAPTURE_PORT] = false;
+		}
+		if (!rc) {
+			venc_stop_done();
+			stopped = 1;
+		}
+	}
+	return rc;
 }
 
 unsigned venc_dev::venc_pause(void)
@@ -1277,12 +1296,11 @@ unsigned venc_dev::venc_start(void)
 
 	ret=ioctl(m_nDriver_fd, VIDIOC_STREAMON,&buf_type);
 
-	if (ret) {
+	if (ret)
 		return -1;
-	}
-	else {
-		return 0;
-	}
+
+	streaming[CAPTURE_PORT] = true;
+	return 0;
 }
 
 void venc_dev::venc_config_print()
@@ -1540,7 +1558,9 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 	  ret = ioctl(m_nDriver_fd, VIDIOC_STREAMON, &buf_type);
 	  if (ret) {
 		  DEBUG_PRINT_ERROR("Failed to call streamon\n");
-	  }
+	  } else {
+			streaming[OUTPUT_PORT] = true;
+		}
   }
 #ifdef INPUT_BUFFER_LOG
 
