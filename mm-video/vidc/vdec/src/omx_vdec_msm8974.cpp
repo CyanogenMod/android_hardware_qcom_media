@@ -124,6 +124,9 @@ char ouputextradatafilename [] = "/data/extradata";
     }
 #endif//_ANDROID_
 
+#define SZ_4K 0x1000
+#define SZ_1M 0x100000
+
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
@@ -1328,6 +1331,13 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	bool codec_ambiguous = false;
 	OMX_STRING device_name = "/dev/video32";
 
+	if(!strncmp(role, "OMX.qcom.video.decoder.avc.secure",OMX_MAX_STRINGNAME_SIZE)){
+		struct v4l2_control control;
+		secure_mode = true;
+		arbitrary_bytes = false;
+		role = "OMX.qcom.video.decoder.avc";
+	}
+
 	drv_ctx.video_driver_fd = open("/dev/video32", O_RDWR);
 
 	DEBUG_PRINT_HIGH("\n omx_vdec::component_init(): Open returned fd %d, errno %d",
@@ -1364,6 +1374,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
 	// Copy the role information which provides the decoder kind
 	strlcpy(drv_ctx.kind,role,128);
+
 	if(!strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.mpeg4",\
 				OMX_MAX_STRINGNAME_SIZE))
 	{
@@ -1586,12 +1597,29 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 			DEBUG_PRINT_ERROR("Failed to set format on capture port\n");
 				}
 		DEBUG_PRINT_HIGH("\n Set Format was successful \n ");
+		if(secure_mode){
+			struct v4l2_control control;
+			control.id = V4L2_CID_MPEG_VIDC_VIDEO_SECURE;
+			control.value = 1;
+			DEBUG_PRINT_LOW("Omx_vdec:: calling to open secure device %d\n", ret);
+			ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
+			if (ret) {
+				DEBUG_PRINT_ERROR("Omx_vdec:: Unable to open secure device %d\n", ret);
+				close(drv_ctx.video_driver_fd);
+				return OMX_ErrorInsufficientResources;
+			}
+		}
 
 		/*Get the Buffer requirements for input and output ports*/
 		drv_ctx.ip_buf.buffer_type = VDEC_BUFFER_TYPE_INPUT;
 		drv_ctx.op_buf.buffer_type = VDEC_BUFFER_TYPE_OUTPUT;
-		drv_ctx.op_buf.alignment=4096;
-		drv_ctx.ip_buf.alignment=4096;
+		if (secure_mode) {
+			drv_ctx.op_buf.alignment=SZ_1M;
+			drv_ctx.ip_buf.alignment=SZ_1M;
+		} else {
+			drv_ctx.op_buf.alignment=SZ_4K;
+			drv_ctx.ip_buf.alignment=SZ_4K;
+		}
 		drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
 		drv_ctx.extradata = 0;
 		drv_ctx.picture_order = VDEC_ORDER_DECODE;
@@ -1687,7 +1715,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	{
 		DEBUG_PRINT_HIGH("\n omx_vdec::component_init() success");
 	}
-
 	//memset(&h264_mv_buff,0,sizeof(struct h264_mv_buffer));
 	return eRet;
 }
@@ -4083,7 +4110,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
         drv_ctx.op_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
                 drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.alignment,
                 &drv_ctx.op_buf_ion_info[i].ion_alloc_data,
-                &drv_ctx.op_buf_ion_info[i].fd_ion_data, 0);
+                &drv_ctx.op_buf_ion_info[i].fd_ion_data, secure_mode ? ION_SECURE : 0);
         if(drv_ctx.op_buf_ion_info[i].ion_device_fd < 0) {
           DEBUG_PRINT_ERROR("ION device fd is bad %d\n", drv_ctx.op_buf_ion_info[i].ion_device_fd);
           return OMX_ErrorInsufficientResources;
@@ -4699,7 +4726,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
  drv_ctx.ip_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
                     drv_ctx.ip_buf.buffer_size,drv_ctx.op_buf.alignment,
                     &drv_ctx.ip_buf_ion_info[i].ion_alloc_data,
-		    &drv_ctx.ip_buf_ion_info[i].fd_ion_data, 0);
+		    &drv_ctx.ip_buf_ion_info[i].fd_ion_data, secure_mode ? ION_SECURE : 0);
     if(drv_ctx.ip_buf_ion_info[i].ion_device_fd < 0) {
         return OMX_ErrorInsufficientResources;
      }
@@ -4878,7 +4905,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
  ion_device_fd = alloc_map_ion_memory(
                     drv_ctx.op_buf.buffer_size * drv_ctx.op_buf.actualcount,
                     drv_ctx.op_buf.alignment,
-                    &ion_alloc_data, &fd_ion_data, 0);
+                    &ion_alloc_data, &fd_ion_data, secure_mode ? ION_SECURE : 0);
     if (ion_device_fd < 0) {
         return OMX_ErrorInsufficientResources;
     }
@@ -4994,6 +5021,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         bufHdr->pPlatformPrivate = pPlatformList;
 
         drv_ctx.ptr_outputbuffer[i].pmem_fd = pmem_fd;
+        m_pmem_info[i].pmem_fd = pmem_fd;
 #ifdef USE_ION
         drv_ctx.op_buf_ion_info[i].ion_device_fd = ion_device_fd;
         drv_ctx.op_buf_ion_info[i].ion_alloc_data = ion_alloc_data;
@@ -7534,12 +7562,10 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
   {
     alloc_data->align = 4096;
   }
-  if(secure_mode) {
-    alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
-    alloc_data->flags |= ION_SECURE;
-  } else {
-    alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
-  }
+  if ((secure_mode) && (flag & ION_SECURE))
+      alloc_data->flags |= ION_SECURE;
+
+  alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
   rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
   if (rc || !alloc_data->handle) {
     DEBUG_PRINT_ERROR("\n ION ALLOC memory failed ");
