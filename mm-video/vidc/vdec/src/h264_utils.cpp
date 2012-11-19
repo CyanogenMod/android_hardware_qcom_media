@@ -1027,23 +1027,23 @@ void h264_stream_parser::sei_pan_scan()
 
 void h264_stream_parser::print_pan_data(h264_pan_scan *pan_scan_param)
 {
-  ALOGV("@@print_pan_data: IN");
+  ALOGE("@@print_pan_data: IN");
 
-  ALOGV("-->rect_id            : %u", pan_scan_param->rect_id);
-  ALOGV("-->rect_cancel_flag   : %u", pan_scan_param->rect_cancel_flag);
+  ALOGE("-->rect_id            : %u", pan_scan_param->rect_id);
+  ALOGE("-->rect_cancel_flag   : %u", pan_scan_param->rect_cancel_flag);
 
-  ALOGV("-->cnt                : %u", pan_scan_param->cnt);
+  ALOGE("-->cnt                : %u", pan_scan_param->cnt);
 
   for (int i = 0; i < pan_scan_param->cnt; i++)
   {
-    ALOGV("-->rect_left_offset   : %d", pan_scan_param->rect_left_offset[i]);
-    ALOGV("-->rect_right_offset  : %d", pan_scan_param->rect_right_offset[i]);
-    ALOGV("-->rect_top_offset    : %d", pan_scan_param->rect_top_offset[i]);
-    ALOGV("-->rect_bottom_offset : %d", pan_scan_param->rect_bottom_offset[i]);
+    ALOGE("-->rect_left_offset   : %d", pan_scan_param->rect_left_offset[i]);
+    ALOGE("-->rect_right_offset  : %d", pan_scan_param->rect_right_offset[i]);
+    ALOGE("-->rect_top_offset    : %d", pan_scan_param->rect_top_offset[i]);
+    ALOGE("-->rect_bottom_offset : %d", pan_scan_param->rect_bottom_offset[i]);
   }
-  ALOGV("-->repetition_period  : %u", pan_scan_param->rect_repetition_period);
+  ALOGE("-->repetition_period  : %u", pan_scan_param->rect_repetition_period);
 
-  ALOGV("@@print_pan_data: OUT");
+  ALOGE("@@print_pan_data: OUT");
 }
 
 void h264_stream_parser::parse_sps()
