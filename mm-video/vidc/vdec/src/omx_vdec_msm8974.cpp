@@ -139,6 +139,7 @@ typedef enum INTERLACE_TYPE {
   INTERLACE_FRAME_BOTTOMFIELDFIRST = 0x10,
 };
 
+#define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 void* async_message_thread (void *input)
 {
   struct vdec_ioctl_msg ioctl_msg;
@@ -1628,10 +1629,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		m_state = OMX_StateLoaded;
 		eRet=get_buffer_req(&drv_ctx.ip_buf);
 		DEBUG_PRINT_HIGH("Input Buffer Size =%d \n ",drv_ctx.ip_buf.buffer_size);
-	
 #ifdef DEFAULT_EXTRADATA
-		if (eRet == OMX_ErrorNone && !secure_mode)
-			eRet = enable_extradata(DEFAULT_EXTRADATA);
+    if (eRet == OMX_ErrorNone && !secure_mode)
+      enable_extradata(DEFAULT_EXTRADATA, 1);
 #endif
 		if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
 		{
@@ -7795,6 +7795,9 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
     extra_idx = EXTRADATA_IDX(drv_ctx.num_planes);
     if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
       extra_data_size =  fmt.fmt.pix_mp.plane_fmt[extra_idx].sizeimage;
+      /*Temporary workaround for FW bug*/
+      extra_data_size += 128;
+      client_extra_data_size += 128;
     } else if (extra_idx >= VIDEO_MAX_PLANES) {
       DEBUG_PRINT_ERROR("Extradata index is more than allowed: %d\n", extra_idx);
       return OMX_ErrorBadParameter;
@@ -7806,7 +7809,6 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
     }
     if (client_extradata & OMX_INTERLACE_EXTRADATA)
     {
-      DEBUG_PRINT_HIGH("Interlace extra data enabled!");
       client_extra_data_size += OMX_INTERLACE_EXTRADATA_SIZE;
     }
     if (client_extradata & OMX_PORTDEF_EXTRADATA)
@@ -8282,7 +8284,6 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     EXTRADATA_INDEX = 0x7F100002,
     EXTRADATA_METADATA_FILLER = 0x7FE00002,
   };
-
   OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL;
   OMX_U32 num_conceal_MB = 0;
   OMX_S64 ts_in_sei = 0;
@@ -8337,6 +8338,7 @@ unrecognized_extradata:
 OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata, bool enable)
 {
   OMX_ERRORTYPE ret = OMX_ErrorNone;
+  struct v4l2_control control;
   if(m_state != OMX_StateLoaded)
   {
      DEBUG_PRINT_ERROR("ERROR: enable extradata allowed in Loaded state only");
@@ -8349,7 +8351,17 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata, bool enabl
     client_extradata |= requested_extradata;
   else
     client_extradata = client_extradata & ~requested_extradata;
-  /*TODO: set extradata on driver*/
+
+  if (enable) {
+    if (requested_extradata & OMX_INTERLACE_EXTRADATA) {
+      control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+      control.value = V4L2_MPEG_VIDC_EXTRADATA_INTERLACE_VIDEO;
+      if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_HIGH("Failed to set interlaced extradata."
+            " Quality of interlaced clips might be impacted.\n");
+      }
+    }
+  }
   return ret;
 }
 
