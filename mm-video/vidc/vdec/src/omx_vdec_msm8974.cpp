@@ -3122,11 +3122,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
              }
          }
          else if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
-                  && portDefn->nBufferSize == drv_ctx.ip_buf.buffer_size)
+                  || portDefn->nBufferSize != drv_ctx.ip_buf.buffer_size)
          {
+             vdec_allocatorproperty *buffer_prop = &drv_ctx.ip_buf;
              drv_ctx.ip_buf.actualcount = portDefn->nBufferCountActual;
-             drv_ctx.ip_buf.buffer_size = portDefn->nBufferSize;
-             eRet = set_buffer_req(&drv_ctx.ip_buf);
+             drv_ctx.ip_buf.buffer_size = (portDefn->nBufferSize + buffer_prop->alignment - 1) &
+                      (~(buffer_prop->alignment - 1));
+             eRet = set_buffer_req(buffer_prop);
          }
          else
          {
