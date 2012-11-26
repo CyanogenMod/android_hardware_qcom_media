@@ -42,7 +42,10 @@ endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm7630_surf)
 libmm-venc-def += -DMAX_RES_720P
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm8910)
+ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
+libmm-venc-def += -DMAX_RES_720P
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
 libmm-venc-def += -DMAX_RES_720P
 endif
 
