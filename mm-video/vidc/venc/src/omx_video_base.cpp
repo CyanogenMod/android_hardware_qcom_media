@@ -1954,7 +1954,8 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
   char *extns[] = {
     "OMX.QCOM.index.param.SliceDeliveryMode",
     "OMX.google.android.index.storeMetaDataInBuffers",
-    "OMX.google.android.index.prependSPSPPSToIDRFrames"
+    "OMX.google.android.index.prependSPSPPSToIDRFrames",
+    "OMX.google.android.index.setVUIStreamRestrictFlag"
   };
 
   if(m_state == OMX_StateInvalid)
@@ -1974,6 +1975,9 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         return OMX_ErrorNone;
   } else if (!strncmp(paramName, extns[2], strlen(extns[2]))) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR;
+        return OMX_ErrorNone;
+  } else if (!strncmp(paramName, extns[3], strlen(extns[3]))) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamEnableVUIStreamRestrictFlag;
         return OMX_ErrorNone;
   }
 #endif
