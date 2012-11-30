@@ -1432,6 +1432,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		codec_type_parse = CODEC_TYPE_DIVX;
 		m_frame_parser.init_start_codes (codec_type_parse);
 
+		eRet = createDivxDrmContext();
+		if (eRet != OMX_ErrorNone) {
+			DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
+			return eRet;
+		}
 	}
 	else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx4",\
 				OMX_MAX_STRINGNAME_SIZE))
@@ -1445,6 +1450,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		codec_ambiguous = true;
 		m_frame_parser.init_start_codes (codec_type_parse);
 
+		eRet = createDivxDrmContext();
+		if (eRet != OMX_ErrorNone) {
+			DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
+			return eRet;
+		}
 	}
 	else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx",\
 				OMX_MAX_STRINGNAME_SIZE))
@@ -1457,6 +1467,12 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		codec_type_parse = CODEC_TYPE_DIVX;
 		codec_ambiguous = true;
 		m_frame_parser.init_start_codes (codec_type_parse);
+
+		eRet = createDivxDrmContext();
+		if (eRet != OMX_ErrorNone) {
+			DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
+			return eRet;
+		}
 
 	}
 	else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",\
@@ -3466,10 +3482,6 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
     case OMX_QcomIndexParamVideoDivx:
       {
         QOMX_VIDEO_PARAM_DIVXTYPE* divXType = (QOMX_VIDEO_PARAM_DIVXTYPE *) paramData;
-
-#if 0
-         createDivxDrmContext( divXType->pDrmHandle );
-#endif
       }
       break;
     case OMX_QcomIndexPlatformPvt:
@@ -8725,31 +8737,22 @@ OMX_ERRORTYPE omx_vdec::handle_demux_data(OMX_BUFFERHEADERTYPE *p_buf_hdr)
   return OMX_ErrorNone;
 }
 
-#if 0
-OMX_ERRORTYPE omx_vdec::createDivxDrmContext( OMX_PTR drmHandle )
+OMX_ERRORTYPE omx_vdec::createDivxDrmContext()
 {
      OMX_ERRORTYPE err = OMX_ErrorNone;
-     if( drmHandle == NULL ) {
-        DEBUG_PRINT_HIGH("\n This clip is not DRM encrypted");
-        iDivXDrmDecrypt = NULL;
-        return err;
-     }
-
-     iDivXDrmDecrypt = DivXDrmDecrypt::Create( drmHandle );
+     iDivXDrmDecrypt = DivXDrmDecrypt::Create();
      if (iDivXDrmDecrypt) {
-          DEBUG_PRINT_LOW("\nCreated DIVX DRM, now calling Init");
           OMX_ERRORTYPE err = iDivXDrmDecrypt->Init();
           if(err!=OMX_ErrorNone) {
-            DEBUG_PRINT_ERROR("\nERROR:iDivXDrmDecrypt->Init %d", err);
+            DEBUG_PRINT_ERROR("\nERROR :iDivXDrmDecrypt->Init %d", err);
             delete iDivXDrmDecrypt;
             iDivXDrmDecrypt = NULL;
           }
      }
      else {
           DEBUG_PRINT_ERROR("\nUnable to Create DIVX DRM");
-          return OMX_ErrorUndefined;
+          err = OMX_ErrorUndefined;
      }
      return err;
 }
-#endif
 
