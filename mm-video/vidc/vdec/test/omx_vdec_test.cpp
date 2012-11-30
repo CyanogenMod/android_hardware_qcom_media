@@ -45,6 +45,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <semaphore.h>
 #include "OMX_QCOMExtns.h"
 #include <sys/time.h>
+#include <cutils/properties.h>
 
 #include <linux/android_pmem.h>
 
@@ -715,11 +716,15 @@ void* fbd_thread(void* pArg)
   int canDisplay = 1, contigous_drop_frame = 0, bytes_written = 0, ret = 0;
   OMX_S64 base_timestamp = 0, lastTimestamp = 0;
   OMX_BUFFERHEADERTYPE *pBuffer = NULL, *pPrevBuff = NULL;
+  char value[PROPERTY_VALUE_MAX] = {0};
+  OMX_U32 aspectratio_prop = 0;
   pthread_mutex_lock(&eos_lock);
 #ifdef _MSM8974_
   int stride,scanlines,stride_c,i;
 #endif
   DEBUG_PRINT("First Inside %s\n", __FUNCTION__);
+  property_get("vidc.vdec.debug.aspectratio", value, "0");
+  aspectratio_prop = atoi(value);
   while(currentStatus != ERROR_STATE && !bOutputEosReached)
   {
     pthread_mutex_unlock(&eos_lock);
@@ -894,7 +899,12 @@ void* fbd_thread(void* pArg)
               DEBUG_PRINT("OMX_ExtraDataFrameInfo: Buf(%p) TSmp(%lld) PicType(%u) IntT(%u) ConMB(%u)",
                 pBuffer->pBuffer, pBuffer->nTimeStamp, frame_info->ePicType,
                 frame_info->interlaceType, frame_info->nConcealedMacroblocks);
-              DEBUG_PRINT(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) ",
+              if (aspectratio_prop)
+                DEBUG_PRINT_ERROR(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) ",
+                frame_info->nFrameRate, frame_info->aspectRatio.aspectRatioX,
+                frame_info->aspectRatio.aspectRatioY);
+              else
+                DEBUG_PRINT(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) ",
                 frame_info->nFrameRate, frame_info->aspectRatio.aspectRatioX,
                 frame_info->aspectRatio.aspectRatioY);
               DEBUG_PRINT("PANSCAN numWindows(%d)", frame_info->panScan.numWindows);

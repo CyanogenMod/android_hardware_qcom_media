@@ -483,6 +483,8 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                       h264_last_au_ts(LLONG_MAX),
                       h264_last_au_flags(0),
                       m_inp_err_count(0),
+                      m_disp_hor_size(0),
+                      m_disp_vert_size(0),
 #ifdef _ANDROID_
                       m_heap_ptr(NULL),
                       m_heap_count(0),
@@ -6929,7 +6931,6 @@ int omx_vdec::async_message_process (void *context, void* message)
         output_respbuf->aspect_ratio_info =
            vdec_msg->msgdata.output_frame.aspect_ratio_info;
 
-
         if (omx->output_use_buffer)
           memcpy ( omxhdr->pBuffer,
                    (vdec_msg->msgdata.output_frame.bufferaddr +
@@ -8244,7 +8245,6 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 
   OMX_U32 index = p_buf_hdr - m_out_mem_ptr;
   OMX_U8* pBuffer = (OMX_U8 *)drv_ctx.ptr_outputbuffer[index].bufferaddr;
-
   p_extra = (OMX_OTHER_EXTRADATATYPE *)
            ((unsigned)(pBuffer + p_buf_hdr->nOffset +
             p_buf_hdr->nFilledLen + 3)&(~3));
@@ -8300,8 +8300,24 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       }
       else if (p_extra->eType == VDEC_EXTRADATA_EXT_DATA)
       {
+        OMX_U8 *data_ptr = (OMX_U8*)p_extra->data;
+        OMX_U32 value = 0;
         p_extn_user[extn_user_data_cnt] = p_extra;
         extn_user_data_cnt++;
+        if((*data_ptr & 0xf0) == 0x20)
+        {
+          value = ((*data_ptr) & 0x01);
+          data_ptr++;
+          if (value)
+            data_ptr += 3;
+          value = *((OMX_U32*)data_ptr);
+          value = ((value << 24) | (((value >> 8)<<24)>>8) |
+                        (((value >> 16)<<24)>>16) | (value >> 24));
+          m_disp_hor_size = (value & 0xfffc0000)>>18;
+          m_disp_vert_size = (value & 0x0001fff8)>>3;
+          DEBUG_PRINT_LOW("Display Vertical Size = %d Display Horizontal Size = %d",
+                                     m_disp_vert_size, m_disp_hor_size);
+        }
       }
       else if (p_extra->eType == VDEC_EXTRADATA_USER_DATA)
       {
@@ -8682,8 +8698,74 @@ void omx_vdec::fill_aspect_ratio_info(
                        OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info)
 {
   m_extradata = frame_info;
-  m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width;
-  m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height;
+  if(drv_ctx.decoder_format == VDEC_CODECTYPE_MPEG2)
+  {
+    switch(aspect_ratio_info->aspect_ratio)
+    {
+      case 1:
+        m_extradata->aspectRatio.aspectRatioX = 1;
+        m_extradata->aspectRatio.aspectRatioY = 1;
+      break;
+      case 2:
+        if (m_disp_hor_size && m_disp_vert_size)
+        {
+          m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width *
+                                                  m_disp_vert_size;
+          m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height *
+                                                  m_disp_hor_size;
+        }
+        else
+        {
+          m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width *
+                                                   drv_ctx.video_resolution.frame_height;
+          m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height *
+                                                  drv_ctx.video_resolution.frame_width;
+        }
+      break;
+      case 3:
+        if (m_disp_hor_size && m_disp_vert_size)
+        {
+          m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width *
+                                                  m_disp_vert_size;
+          m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height *
+                                                  m_disp_hor_size;
+        }
+        else
+        {
+          m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width *
+                                                   drv_ctx.video_resolution.frame_height;
+          m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height *
+                                                  drv_ctx.video_resolution.frame_width;
+        }
+      break;
+      case 4:
+        if (m_disp_hor_size && m_disp_vert_size)
+        {
+          m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width *
+                                                  m_disp_vert_size;
+          m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height *
+                                                  m_disp_hor_size;
+        }
+        else
+        {
+          m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width *
+                                                   drv_ctx.video_resolution.frame_height;
+          m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height *
+                                                  drv_ctx.video_resolution.frame_width;
+        }
+      break;
+      default:
+        m_extradata->aspectRatio.aspectRatioX = 1;
+        m_extradata->aspectRatio.aspectRatioY = 1;
+    }
+  }
+  else
+  {
+    m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width;
+    m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height;
+  }
+  DEBUG_PRINT_LOW("aspectRatioX %d aspectRatioX %d", m_extradata->aspectRatio.aspectRatioX,
+                                                     m_extradata->aspectRatio.aspectRatioY);
 }
 
 void omx_vdec::append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra)
