@@ -801,6 +801,8 @@ private:
     OMX_U32 h264_last_au_flags;
     OMX_U32 m_demux_offsets[8192];
     OMX_U32 m_demux_entries;
+    OMX_U32 m_disp_hor_size;
+    OMX_U32 m_disp_vert_size;
 
     OMX_S64 prev_ts;
     bool rst_prev_ts;
