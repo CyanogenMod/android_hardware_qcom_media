@@ -1,0 +1,10 @@
+Change-Id: If21cb9fa574674808c499fbe565a0555d73286bc
+Code-Review+1: Ricardo Cerqueira <cyanogenmod@cerqueira.org>
+Verified+1: Ricardo Cerqueira <cyanogenmod@cerqueira.org>
+Code-Review+2: Steve Kondik <shade@chemlab.org>
+Verified+1: Steve Kondik <shade@chemlab.org>
+Submitted-by: Steve Kondik <shade@chemlab.org>
+Submitted-at: Wed, 05 Dec 2012 12:26:32 -0800
+Reviewed-on: http://review.cyanogenmod.org/27311
+Project: CyanogenMod/android_hardware_qcom_media
+Branch: refs/heads/mr1-staging
