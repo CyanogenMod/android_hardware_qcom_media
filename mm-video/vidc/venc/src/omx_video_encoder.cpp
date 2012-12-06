@@ -1139,6 +1139,28 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       break;
     }
 #endif
+  case OMX_QcomIndexEnableH263PlusPType:
+    {
+      QOMX_EXTNINDEX_PARAMTYPE* pParam =
+         (QOMX_EXTNINDEX_PARAMTYPE*)paramData;
+      DEBUG_PRINT_LOW("OMX_QcomIndexEnableH263PlusPType");
+      if(pParam->nPortIndex == PORT_INDEX_OUT)
+      {
+        if(!handle->venc_set_param(paramData,
+              (OMX_INDEXTYPE)OMX_QcomIndexEnableH263PlusPType))
+        {
+          DEBUG_PRINT_ERROR("ERROR: Request for setting PlusPType failed");
+          return OMX_ErrorUnsupportedSetting;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("ERROR: OMX_QcomIndexEnableH263PlusPType "
+           "called on wrong port(%d)", pParam->nPortIndex);
+        return OMX_ErrorBadPortIndex;
+      }
+      break;
+    }
   case OMX_IndexParamVideoSliceFMO:
   default:
     {

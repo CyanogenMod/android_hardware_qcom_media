@@ -1011,6 +1011,27 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
        }
        break;
     }
+  case OMX_QcomIndexEnableH263PlusPType:
+    {
+       QOMX_EXTNINDEX_PARAMTYPE* pParam =
+          (QOMX_EXTNINDEX_PARAMTYPE*)paramData;
+       DEBUG_PRINT_LOW("OMX_QcomIndexEnableH263PlusPType");
+       if(pParam->nPortIndex == PORT_INDEX_OUT)
+       {
+         if(venc_set_plusptype(pParam->bEnable) == false)
+         {
+           DEBUG_PRINT_ERROR("Setting PlusPType failed for H263");
+           return OMX_ErrorUnsupportedSetting;
+         }
+       }
+       else
+       {
+         DEBUG_PRINT_ERROR("OMX_QcomIndexEnableH263PlusPType "
+            "called on wrong port(%d)", pParam->nPortIndex);
+         return OMX_ErrorBadPortIndex;
+       }
+       break;
+    }
   case OMX_IndexParamVideoSliceFMO:
   default:
 	  DEBUG_PRINT_ERROR("\nERROR: Unsupported parameter in venc_set_param: %u",
@@ -1772,6 +1793,22 @@ bool venc_dev::venc_set_slice_delivery_mode(OMX_BOOL enable)
   {
     DEBUG_PRINT_ERROR("WARNING: slice_mode[%d] is not VEN_MSLICE_CNT_MB to set "
        "slice delivery mode to the driver.", multislice.mslice_mode);
+  }
+  return true;
+}
+
+bool venc_dev::venc_set_plusptype(OMX_BOOL enable)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  struct venc_plusptype plusptype = {0};
+  DEBUG_PRINT_LOW("Set plusptype: %d", enable);
+  plusptype.plusptype_enable = enable;
+  ioctl_msg.in = (void*)&plusptype;
+  ioctl_msg.out = NULL;
+  if(ioctl(m_nDriver_fd, VEN_IOCTL_SET_H263_PLUSPTYPE,(void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("Request for setting plusptype for h263 failed");
+    return false;
   }
   return true;
 }

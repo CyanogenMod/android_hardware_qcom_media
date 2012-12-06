@@ -143,6 +143,7 @@ private:
   bool venc_set_voptiming_cfg(OMX_U32 nTimeIncRes);
   void venc_config_print();
   bool venc_set_slice_delivery_mode(OMX_BOOL enable);
+  bool venc_set_plusptype(OMX_BOOL enable);
 #ifdef MAX_RES_1080P
   OMX_U32 pmem_free();
   OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
