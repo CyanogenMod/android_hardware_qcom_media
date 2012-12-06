@@ -103,6 +103,7 @@ extern "C"{
 #include "OMX_QCOMExtns.h"
 #include "qc_omx_component.h"
 #include <linux/msm_vidc_dec.h>
+#include <media/msm_vidc.h>
 #include "frameparser.h"
 #ifdef MAX_RES_1080P
 #include "mp4_utils.h"
@@ -616,6 +617,11 @@ private:
                                     OMX_U32 interlaced_format_type);
     OMX_ERRORTYPE enable_extradata(OMX_U32 requested_extradata, bool is_internal,
 		 bool enable = true);
+    void append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+                               OMX_U32 num_conceal_mb,
+                               OMX_U32 picture_type,
+                               OMX_U32 frame_rate,
+                               struct msm_vidc_panscan_window_payload *panscan_payload);
 #else
     void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
                                     OMX_U32 interlaced_format_type, OMX_U32 buf_index);
