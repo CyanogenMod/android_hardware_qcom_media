@@ -373,6 +373,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.QCOM.index.param.video.QPRange" */
     OMX_QcomIndexParamVideoQPRange = 0x7F000022,
+
+    OMX_QcomIndexEnableH263PlusPType = 0x7F000023,
 };
 
 /**
