@@ -1331,7 +1331,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	int r,ret=0;
 	bool codec_ambiguous = false;
 	OMX_STRING device_name = "/dev/video32";
-
 	if(!strncmp(role, "OMX.qcom.video.decoder.avc.secure",OMX_MAX_STRINGNAME_SIZE)){
 		struct v4l2_control control;
 		secure_mode = true;
@@ -1647,7 +1646,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		DEBUG_PRINT_HIGH("Input Buffer Size =%d \n ",drv_ctx.ip_buf.buffer_size);
 #ifdef DEFAULT_EXTRADATA
     if (eRet == OMX_ErrorNone && !secure_mode)
-      enable_extradata(DEFAULT_EXTRADATA, 1);
+      enable_extradata(DEFAULT_EXTRADATA, true, true);
 #endif
 		if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
 		{
@@ -3445,7 +3444,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 	}
     case OMX_QcomIndexParamConcealMBMapExtraData:
       if(!secure_mode)
-          eRet = enable_extradata(VDEC_EXTRADATA_MB_ERROR_MAP,
+          eRet = enable_extradata(VDEC_EXTRADATA_MB_ERROR_MAP, false,
                                   ((QOMX_ENABLETYPE *)paramData)->bEnable);
       else {
           DEBUG_PRINT_ERROR("\n secure mode setting not supported");
@@ -3455,7 +3454,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
     case OMX_QcomIndexParamFrameInfoExtraData:
       {
         if(!secure_mode)
-            eRet = enable_extradata(OMX_FRAMEINFO_EXTRADATA,
+            eRet = enable_extradata(OMX_FRAMEINFO_EXTRADATA, false,
                                 ((QOMX_ENABLETYPE *)paramData)->bEnable);
         else {
             DEBUG_PRINT_ERROR("\n secure mode setting not supported");
@@ -3465,7 +3464,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       }
     case OMX_QcomIndexParamInterlaceExtraData:
       if(!secure_mode)
-          eRet = enable_extradata(OMX_INTERLACE_EXTRADATA,
+          eRet = enable_extradata(OMX_INTERLACE_EXTRADATA, false,
                               ((QOMX_ENABLETYPE *)paramData)->bEnable);
       else {
           DEBUG_PRINT_ERROR("\n secure mode setting not supported");
@@ -3474,7 +3473,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       break;
     case OMX_QcomIndexParamH264TimeInfo:
       if(!secure_mode)
-          eRet = enable_extradata(OMX_TIMEINFO_EXTRADATA,
+          eRet = enable_extradata(OMX_TIMEINFO_EXTRADATA, false,
                               ((QOMX_ENABLETYPE *)paramData)->bEnable);
       else {
           DEBUG_PRINT_ERROR("\n secure mode setting not supported");
@@ -3543,7 +3542,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                    (extradataIndexType->nPortIndex == 1))
             {
               DEBUG_PRINT_HIGH("set_parameter:  OMX_QcomIndexParamIndexExtraDataType SmoothStreaming\n");
-              eRet = enable_extradata(OMX_PORTDEF_EXTRADATA, extradataIndexType->bEnabled);
+              eRet = enable_extradata(OMX_PORTDEF_EXTRADATA, false, extradataIndexType->bEnabled);
 
             }
          }
@@ -7809,9 +7808,6 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
     extra_idx = EXTRADATA_IDX(drv_ctx.num_planes);
     if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
       extra_data_size =  fmt.fmt.pix_mp.plane_fmt[extra_idx].sizeimage;
-      /*Temporary workaround for FW bug*/
-      extra_data_size += 128;
-      client_extra_data_size += 128;
     } else if (extra_idx >= VIDEO_MAX_PLANES) {
       DEBUG_PRINT_ERROR("Extradata index is more than allowed: %d\n", extra_idx);
       return OMX_ErrorBadParameter;
@@ -8349,7 +8345,8 @@ unrecognized_extradata:
   return;
 }
 
-OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata, bool enable)
+OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
+	 bool is_internal, bool enable)
 {
   OMX_ERRORTYPE ret = OMX_ErrorNone;
   struct v4l2_control control;
@@ -8358,13 +8355,15 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata, bool enabl
      DEBUG_PRINT_ERROR("ERROR: enable extradata allowed in Loaded state only");
      return OMX_ErrorIncorrectStateOperation;
   }
-  DEBUG_PRINT_ERROR("enable_extradata: actual[%x] requested[%x] enable[%d]",
-    client_extradata, requested_extradata, enable);
+  DEBUG_PRINT_ERROR("NOTE: enable_extradata: actual[%x] requested[%x] enable[%d], is_internal: %d\n",
+    client_extradata, requested_extradata, enable, is_internal);
 
-  if (enable)
-    client_extradata |= requested_extradata;
-  else
-    client_extradata = client_extradata & ~requested_extradata;
+  if (!is_internal) {
+	  if (enable)
+		  client_extradata |= requested_extradata;
+	  else
+		  client_extradata = client_extradata & ~requested_extradata;
+  }
 
   if (enable) {
     if (requested_extradata & OMX_INTERLACE_EXTRADATA) {
@@ -8479,6 +8478,9 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 {
   OMX_STREAMINTERLACEFORMAT *interlace_format;
   OMX_U32 mbaff = 0;
+  if (!(client_extradata & OMX_INTERLACE_EXTRADATA)) {
+	return;
+  }
   extra->nSize = OMX_INTERLACE_EXTRADATA_SIZE;
   extra->nVersion.nVersion = OMX_SPEC_VERSION;
   extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
@@ -8567,6 +8569,9 @@ void omx_vdec::append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 
 void omx_vdec::append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 {
+  if (!client_extradata) {
+	return;
+  }
   extra->nSize = sizeof(OMX_OTHER_EXTRADATATYPE);
   extra->nVersion.nVersion = OMX_SPEC_VERSION;
   extra->eType = OMX_ExtraDataNone;
