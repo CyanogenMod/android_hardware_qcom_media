@@ -2466,27 +2466,19 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
 
 bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 config)
 {
-
-	struct v4l2_control control;
-	int rc;
-	struct venc_framerate frame_rate_cfg;
-	Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
-	control.id = V4L2_CID_MPEG_VIDC_VIDEO_FRAME_RATE;
-	control.value = encode_framerate;
-	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control.id, control.value);
-	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
-	if (rc) {
-		DEBUG_PRINT_ERROR("Failed to set control\n");
-		return false;
-	}
-	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
-  if(//ioctl(m_nDriver_fd, VEN_IOCTL_SET_FRAME_RATE,
-      /*(void*)&ioctl_msg) < */0)
-  {
-    DEBUG_PRINT_ERROR("\nERROR: Request for setting framerate failed");
+  struct v4l2_streamparm parm;
+  int rc;
+  struct venc_framerate frame_rate_cfg;
+  Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
+  parm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+  parm.parm.output.timeperframe.numerator = frame_rate_cfg.fps_denominator * 1e6/frame_rate_cfg.fps_numerator;
+  parm.parm.output.timeperframe.denominator = 1;
+  if(frame_rate_cfg.fps_numerator > 0)
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_PARM, &parm);
+  if (rc) {
+    DEBUG_PRINT_ERROR("ERROR: Request for setting framerate failed\n");
     return false;
   }
-
   m_sVenc_cfg.fps_den = frame_rate_cfg.fps_denominator;
   m_sVenc_cfg.fps_num = frame_rate_cfg.fps_numerator;
   if(!config)
