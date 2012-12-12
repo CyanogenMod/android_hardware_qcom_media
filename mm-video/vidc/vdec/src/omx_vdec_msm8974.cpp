@@ -1326,6 +1326,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	struct v4l2_fmtdesc fdesc;
 	struct v4l2_format fmt;
 	struct v4l2_requestbuffers bufreq;
+	struct v4l2_control control;
 	unsigned int   alignment = 0,buffer_size = 0;
 	int fds[2];
 	int r,ret=0;
@@ -1614,7 +1615,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 				}
 		DEBUG_PRINT_HIGH("\n Set Format was successful \n ");
 		if(secure_mode){
-			struct v4l2_control control;
 			control.id = V4L2_CID_MPEG_VIDC_VIDEO_SECURE;
 			control.value = 1;
 			DEBUG_PRINT_LOW("Omx_vdec:: calling to open secure device %d\n", ret);
@@ -1638,7 +1638,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		}
 		drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
 		drv_ctx.extradata = 0;
-		drv_ctx.picture_order = VDEC_ORDER_DECODE;
+		drv_ctx.picture_order = VDEC_ORDER_DISPLAY;
+		control.id = V4L2_CID_MPEG_VIDC_VIDEO_OUTPUT_ORDER;
+		control.value = V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DISPLAY;
+		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
 		drv_ctx.idr_only_decoding = 0;
 
 		m_state = OMX_StateLoaded;
