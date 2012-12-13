@@ -57,7 +57,8 @@ LOCAL_COPY_HEADERS      += inc/QOMX_SourceExtensions.h
 LOCAL_COPY_HEADERS      += inc/QOMX_VideoExtensions.h
 LOCAL_COPY_HEADERS      += inc/OMX_IndexExt.h
 LOCAL_COPY_HEADERS      += inc/QOMX_StreamingExtensions.h
-
+LOCAL_COPY_HEADERS      += inc/QCMediaDefs.h
+LOCAL_COPY_HEADERS      += inc/QCMetaData.h
 
 #===============================================================================
 #             LIBRARY for Android apps
