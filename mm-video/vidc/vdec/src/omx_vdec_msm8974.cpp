@@ -131,14 +131,6 @@ char ouputextradatafilename [] = "/data/extradata";
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 
-typedef enum INTERLACE_TYPE {
-  INTERLACE_FRAME_PROGRESSIVE = 0x01,
-  INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST = 0x02,
-  INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST = 0x04,
-  INTERLACE_FRAME_TOPFIELDFIRST = 0x08,
-  INTERLACE_FRAME_BOTTOMFIELDFIRST = 0x10,
-};
-
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 void* async_message_thread (void *input)
 {
@@ -6918,7 +6910,17 @@ int omx_vdec::async_message_process (void *context, void* message)
         output_respbuf->offset = vdec_msg->msgdata.output_frame.offset;
 	// output_respbuf->time_stamp = vdec_msg->msgdata.output_frame.time_stamp;
 	// output_respbuf->flags = vdec_msg->msgdata.output_frame.flags;
-	// output_respbuf->pic_type = vdec_msg->msgdata.output_frame.pic_type;
+        if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_KEYFRAME)
+        {
+          output_respbuf->pic_type = PICTURE_TYPE_I;
+        }
+        if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_PFRAME)
+        {
+          output_respbuf->pic_type = PICTURE_TYPE_P;
+        }
+        if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_BFRAME) {
+          output_respbuf->pic_type = PICTURE_TYPE_B;
+        }
 	// output_respbuf->interlaced_format = vdec_msg->msgdata.output_frame.interlaced_format;
 
         if (omx->output_use_buffer)
@@ -8281,30 +8283,14 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
 
 void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 {
-  struct extradata_interlace_video_payload {
-    OMX_U32 format;
-  };
-
-  typedef enum DRIVER_EXTRADATA_TYPE {
-    EXTRADATA_NONE = 0x00000000,
-    EXTRADATA_MB_QUANTIZATION = 0x00000001,
-    EXTRADATA_INTERLACE_VIDEO = 0x00000002,
-    EXTRADATA_VC1_FRAMEDISP = 0x00000003,
-    EXTRADATA_VC1_SEQDISP = 0x00000004,
-    EXTRADATA_TIMESTAMP = 0x00000005,
-    EXTRADATA_S3D_FRAME_PACKING = 0x00000006,
-    EXTRADATA_EOSNAL_DETECTED = 0x00000007,
-    EXTRADATA_MULTISLICE_INFO = 0x7F100000,
-    EXTRADATA_NUM_CONCEALED_MB = 0x7F100001,
-    EXTRADATA_INDEX = 0x7F100002,
-    EXTRADATA_METADATA_FILLER = 0x7FE00002,
-  };
   OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL;
   OMX_U32 num_conceal_MB = 0;
-  OMX_S64 ts_in_sei = 0;
   OMX_U32 frame_rate = 0;
   OMX_U32 consumed_len = 0;
+  OMX_U32 num_MB_in_frame;
+  OMX_U32 recovery_sei_flags = 1;
   int buf_index = p_buf_hdr - m_out_mem_ptr;
+  struct msm_vidc_panscan_window_payload *panscan_payload = NULL;
   OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr + p_buf_hdr->nOffset);
   if (!drv_ctx.extradata_info.uaddr) {
     return;
@@ -8315,7 +8301,6 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
   if ((OMX_U8*)p_extra > (pBuffer + p_buf_hdr->nAllocLen))
     p_extra = NULL;
   OMX_OTHER_EXTRADATATYPE *data = (struct OMX_OTHER_EXTRADATATYPE *)p_extradata;
-
   if (data) {
     while((consumed_len < drv_ctx.extradata_info.buffer_size)
         && (data->eType != EXTRADATA_NONE)) {
@@ -8325,11 +8310,18 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       }
       switch(data->eType) {
       case EXTRADATA_INTERLACE_VIDEO:
-        struct extradata_interlace_video_payload *payload;
-        payload = (struct extradata_interlace_video_payload *)data->data;
+        struct msm_vidc_interlace_payload *payload;
+        payload = (struct msm_vidc_interlace_payload *)data->data;
         if (payload->format != INTERLACE_FRAME_PROGRESSIVE) {
           int enable = 1;
-          setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+          OMX_U32 mbaff = 0;
+          mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
+          if ((payload->format == INTERLACE_FRAME_PROGRESSIVE)  && !mbaff)
+            drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
+          else
+            drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
+          if(m_enable_android_native_buffers)
+            setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
               PP_PARAM_INTERLACED, (void*)&enable);
         }
         if (!secure_mode && (client_extradata & OMX_INTERLACE_EXTRADATA)) {
@@ -8337,12 +8329,46 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
           p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
         }
         break;
+      case EXTRADATA_FRAME_RATE:
+        struct msm_vidc_framerate_payload *frame_rate_payload;
+        frame_rate_payload = (struct msm_vidc_framerate_payload *)data->data;
+        frame_rate = frame_rate_payload->frame_rate;
+      break;
+      case EXTRADATA_TIMESTAMP:
+        struct msm_vidc_ts_payload *time_stamp_payload;
+        time_stamp_payload = (struct msm_vidc_ts_payload *)data->data;
+      break;
+      case EXTRADATA_NUM_CONCEALED_MB:
+        struct msm_vidc_concealmb_payload *conceal_mb_payload;
+        conceal_mb_payload = (struct msm_vidc_concealmb_payload *)data->data;
+        num_MB_in_frame = ((drv_ctx.video_resolution.frame_width + 15) *
+                     (drv_ctx.video_resolution.frame_height + 15)) >> 8;
+        num_conceal_MB = ((num_MB_in_frame > 0)?(conceal_mb_payload->num_mbs * 100 / num_MB_in_frame) : 0);
+      break;
+      case EXTRADATA_RECOVERY_POINT_SEI:
+        struct msm_vidc_recoverysei_payload *recovery_sei_payload;
+        recovery_sei_payload = (struct msm_vidc_recoverysei_payload *)data->data;
+        recovery_sei_flags = recovery_sei_payload->flags;
+       if (recovery_sei_flags != FRAME_RECONSTRUCTION_CORRECT) {
+        p_buf_hdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
+        DEBUG_PRINT_HIGH("***************************************************\n");
+        DEBUG_PRINT_HIGH("Extradata: OMX_BUFFERFLAG_DATACORRUPT Received\n");
+        DEBUG_PRINT_HIGH("***************************************************\n");
+       }
+      break;
+      case EXTRADATA_PANSCAN_WINDOW:
+        panscan_payload = (struct msm_vidc_panscan_window_payload *)data->data;
+        break;
       default:
         goto unrecognized_extradata;
       }
       consumed_len += data->nSize;
       data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
     }
+    if (!secure_mode && (client_extradata & OMX_FRAMEINFO_EXTRADATA)) {
+      append_frame_info_extradata(p_extra,
+        num_conceal_MB, ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->pic_type, frame_rate,
+        panscan_payload);}
   }
 unrecognized_extradata:
   if(!secure_mode && client_extradata)
@@ -8377,6 +8403,35 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
       if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
         DEBUG_PRINT_HIGH("Failed to set interlaced extradata."
             " Quality of interlaced clips might be impacted.\n");
+      }
+    } else if (requested_extradata & OMX_FRAMEINFO_EXTRADATA)
+      {
+      control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+      control.value = V4L2_MPEG_VIDC_EXTRADATA_FRAME_RATE;
+      if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_HIGH("Failed to set framerate extradata\n");
+      }
+      control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+      control.value = V4L2_MPEG_VIDC_EXTRADATA_NUM_CONCEALED_MB;
+      if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_HIGH("Failed to set concealed MB extradata\n");
+      }
+      control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+      control.value = V4L2_MPEG_VIDC_EXTRADATA_RECOVERY_POINT_SEI;
+      if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_HIGH("Failed to set recovery point SEI extradata\n");
+      }
+      control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+      control.value = V4L2_MPEG_VIDC_EXTRADATA_PANSCAN_WINDOW;
+      if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_HIGH("Failed to set panscan extradata\n");
+      }
+    } else if (requested_extradata & OMX_TIMEINFO_EXTRADATA)
+    {
+      control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+      control.value = V4L2_MPEG_VIDC_EXTRADATA_TIMESTAMP;
+      if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+      DEBUG_PRINT_HIGH("Failed to set timeinfo extradata\n");
       }
     }
   }
@@ -8513,10 +8568,14 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 
 
 void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-    OMX_U32 num_conceal_mb, OMX_U32 picture_type, OMX_S64 timestamp, OMX_U32 frame_rate,
-	vdec_aspectratioinfo *aspect_ratio_info)
+    OMX_U32 num_conceal_mb, OMX_U32 picture_type, OMX_U32 frame_rate,
+        struct msm_vidc_panscan_window_payload *panscan_payload)
 {
   OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info = NULL;
+  struct msm_vidc_panscan_window *panscan_window;
+  if (!(client_extradata & OMX_FRAMEINFO_EXTRADATA)) {
+        return;
+  }
   extra->nSize = OMX_FRAMEINFO_EXTRADATA_SIZE;
   extra->nVersion.nVersion = OMX_SPEC_VERSION;
   extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
@@ -8543,15 +8602,22 @@ void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     frame_info->interlaceType = OMX_QCOM_InterlaceInterleaveFrameBottomFieldFirst;
   else
     frame_info->interlaceType = OMX_QCOM_InterlaceFrameProgressive;
-  memset(&frame_info->panScan,0,sizeof(frame_info->panScan));
   memset(&frame_info->aspectRatio, 0, sizeof(frame_info->aspectRatio));
-  if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
-  {
-    h264_parser->fill_pan_scan_data(&frame_info->panScan, timestamp);
-    h264_parser->fill_aspect_ratio_info(&frame_info->aspectRatio);
-  }
   frame_info->nConcealedMacroblocks = num_conceal_mb;
   frame_info->nFrameRate = frame_rate;
+  frame_info->panScan.numWindows = 0;
+  if(panscan_payload) {
+  frame_info->panScan.numWindows = panscan_payload->num_panscan_windows;
+  panscan_window = &panscan_payload->wnd[0];
+  for (int i = 0; i < frame_info->panScan.numWindows; i++)
+    {
+      frame_info->panScan.window[i].x = panscan_window->panscan_window_width;
+      frame_info->panScan.window[i].y = panscan_window->panscan_window_height;
+      frame_info->panScan.window[i].dx = panscan_window->panscan_width_offset;
+      frame_info->panScan.window[i].dy = panscan_window->panscan_height_offset;
+      panscan_window++;
+    }
+  }
   print_debug_extradata(extra);
 }
 
