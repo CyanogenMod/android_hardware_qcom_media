@@ -770,13 +770,15 @@ void* fbd_thread(void* pArg)
                 pBuffer->pBuffer, pBuffer->nTimeStamp, frame_info->ePicType,
                 frame_info->interlaceType, frame_info->nConcealedMacroblocks);
               if (aspectratio_prop)
-                DEBUG_PRINT_ERROR(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) ",
+                DEBUG_PRINT_ERROR(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) DispWidth(%u) DispHeight(%u)",
                 frame_info->nFrameRate, frame_info->aspectRatio.aspectRatioX,
-                frame_info->aspectRatio.aspectRatioY);
+                frame_info->aspectRatio.aspectRatioY, frame_info->displayAspectRatio.displayHorizontalSize,
+                frame_info->displayAspectRatio.displayVerticalSize);
               else
-                DEBUG_PRINT(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) ",
+                DEBUG_PRINT(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) DispWidth(%u) DispHeight(%u)",
                 frame_info->nFrameRate, frame_info->aspectRatio.aspectRatioX,
-                frame_info->aspectRatio.aspectRatioY);
+                frame_info->aspectRatio.aspectRatioY, frame_info->displayAspectRatio.displayHorizontalSize,
+                frame_info->displayAspectRatio.displayVerticalSize);
               DEBUG_PRINT("PANSCAN numWindows(%d)", frame_info->panScan.numWindows);
               for (int i = 0; i < frame_info->panScan.numWindows; i++)
               {
