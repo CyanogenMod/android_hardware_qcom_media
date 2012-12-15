@@ -2471,8 +2471,8 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
   struct venc_framerate frame_rate_cfg;
   Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
   parm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-  parm.parm.output.timeperframe.numerator = frame_rate_cfg.fps_denominator * 1e6/frame_rate_cfg.fps_numerator;
-  parm.parm.output.timeperframe.denominator = 1;
+  parm.parm.output.timeperframe.numerator = frame_rate_cfg.fps_denominator;
+  parm.parm.output.timeperframe.denominator = frame_rate_cfg.fps_numerator;
   if(frame_rate_cfg.fps_numerator > 0)
     rc = ioctl(m_nDriver_fd, VIDIOC_S_PARM, &parm);
   if (rc) {
