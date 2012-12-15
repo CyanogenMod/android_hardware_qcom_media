@@ -6895,6 +6895,10 @@ int omx_vdec::async_message_process (void *context, void* message)
 	  omxhdr->nFlags |= OMX_BUFFERFLAG_EOS;
 	  //rc = -1;
 	}
+        if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOSEQ)
+        {
+          omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
+        }
 	vdec_msg->msgdata.output_frame.bufferaddr=omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
         output_respbuf = (struct vdec_output_frameinfo *)\
                           omxhdr->pOutputPortPrivate;
@@ -8351,9 +8355,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         recovery_sei_flags = recovery_sei_payload->flags;
        if (recovery_sei_flags != FRAME_RECONSTRUCTION_CORRECT) {
         p_buf_hdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
-        DEBUG_PRINT_HIGH("***************************************************\n");
         DEBUG_PRINT_HIGH("Extradata: OMX_BUFFERFLAG_DATACORRUPT Received\n");
-        DEBUG_PRINT_HIGH("***************************************************\n");
        }
       break;
       case EXTRADATA_PANSCAN_WINDOW:
@@ -8366,6 +8368,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
     }
     if (!secure_mode && (client_extradata & OMX_FRAMEINFO_EXTRADATA)) {
+      p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
       append_frame_info_extradata(p_extra,
         num_conceal_MB, ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->pic_type, frame_rate,
         panscan_payload);}
