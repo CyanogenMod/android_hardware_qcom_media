@@ -862,6 +862,8 @@ private:
     bool m_power_hinted;
     OMX_ERRORTYPE power_module_register();
     OMX_ERRORTYPE power_module_deregister();
+    bool msg_thread_created;
+    bool async_thread_created;
 };
 
 #ifdef _MSM8974_
