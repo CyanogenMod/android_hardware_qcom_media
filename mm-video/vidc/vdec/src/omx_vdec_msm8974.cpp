@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2012-2013, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -170,6 +170,12 @@ void* async_message_thread (void *input)
         vdec_msg.msgdata.output_frame.bufferaddr=(void*)plane[0].m.userptr;
         vdec_msg.msgdata.output_frame.time_stamp= ((uint64_t)v4l2_buf.timestamp.tv_sec * (uint64_t)1000000) +
           (uint64_t)v4l2_buf.timestamp.tv_usec;
+        if (vdec_msg.msgdata.output_frame.len) {
+            vdec_msg.msgdata.output_frame.framesize.left = plane[0].reserved[2];
+            vdec_msg.msgdata.output_frame.framesize.top = plane[0].reserved[3];
+            vdec_msg.msgdata.output_frame.framesize.right = plane[0].reserved[4];
+            vdec_msg.msgdata.output_frame.framesize.bottom = plane[0].reserved[5];
+        }
         if (omx->async_message_process(input,&vdec_msg) < 0) {
           DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
           break;
@@ -1224,11 +1230,13 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
 
         case OMX_COMPONENT_GENERATE_PORT_RECONFIG:
           DEBUG_PRINT_HIGH("\n Rxd OMX_COMPONENT_GENERATE_PORT_RECONFIG");
-	  pThis->in_reconfig = true;
 
+          if (p2 == OMX_IndexParamPortDefinition) {
+            pThis->in_reconfig = true;
+          }
           if (pThis->m_cb.EventHandler) {
             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
-                OMX_EventPortSettingsChanged, OMX_CORE_OUTPUT_PORT_INDEX, 0, NULL );
+                OMX_EventPortSettingsChanged, p1, p2, NULL );
           } else {
             DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
           }
@@ -1290,6 +1298,18 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
   }
   while(qsize>0);
 
+}
+
+void omx_vdec::update_resolution(int width, int height)
+{
+    drv_ctx.video_resolution.frame_height = height;
+    drv_ctx.video_resolution.frame_width = width;
+    drv_ctx.video_resolution.scan_lines = height;
+    drv_ctx.video_resolution.stride = width;
+    rectangle.nLeft = 0;
+    rectangle.nTop = 0;
+    rectangle.nWidth = drv_ctx.video_resolution.frame_width;
+    rectangle.nHeight = drv_ctx.video_resolution.frame_height;
 }
 
 /* ======================================================================
@@ -1561,9 +1581,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 					fdesc.pixelformat, fdesc.flags);
 			fdesc.index++;
 		}
-
-		drv_ctx.video_resolution.frame_height=drv_ctx.video_resolution.scan_lines=240;
-		drv_ctx.video_resolution.frame_width=drv_ctx.video_resolution.stride=320;
+        update_resolution(320, 240);
 		fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
 		fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -3093,12 +3111,8 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
              if (portDefn->format.video.nFrameHeight != 0x0 &&
                  portDefn->format.video.nFrameWidth != 0x0)
              {
-               drv_ctx.video_resolution.frame_height =
-                 drv_ctx.video_resolution.scan_lines =
-                 portDefn->format.video.nFrameHeight;
-               drv_ctx.video_resolution.frame_width =
-                 drv_ctx.video_resolution.stride =
-                 portDefn->format.video.nFrameWidth;
+                 update_resolution(portDefn->format.video.nFrameWidth,
+                    portDefn->format.video.nFrameHeight);
 			fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 			fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
 			fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -3691,6 +3705,12 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
       {
         DEBUG_PRINT_ERROR("get_config: Framepack data not supported for non H264 codecs");
       }
+      break;
+    }
+	case OMX_IndexConfigCommonOutputCrop:
+    {
+      OMX_CONFIG_RECTTYPE *rect = (OMX_CONFIG_RECTTYPE *) configData;
+      memcpy(rect, &rectangle, sizeof(OMX_CONFIG_RECTTYPE));
       break;
     }
     default:
@@ -6895,25 +6915,27 @@ int omx_vdec::async_message_process (void *context, void* message)
 	  omxhdr->nFlags |= OMX_BUFFERFLAG_EOS;
 	  //rc = -1;
 	}
-        if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOSEQ)
-        {
-          omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
-        }
-	vdec_msg->msgdata.output_frame.bufferaddr=omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
+  if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOSEQ)
+  {
+    omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
+  }
+  vdec_msg->msgdata.output_frame.bufferaddr=omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
+  if (omxhdr->nFilledLen && ((omx->rectangle.nLeft != vdec_msg->msgdata.output_frame.framesize.left)
+        || (omx->rectangle.nTop != vdec_msg->msgdata.output_frame.framesize.top)
+        || (omx->rectangle.nWidth != vdec_msg->msgdata.output_frame.framesize.right)
+        || (omx->rectangle.nHeight != vdec_msg->msgdata.output_frame.framesize.bottom))) {
+    omx->rectangle.nLeft = vdec_msg->msgdata.output_frame.framesize.left;
+    omx->rectangle.nTop = vdec_msg->msgdata.output_frame.framesize.top;
+    omx->rectangle.nWidth = vdec_msg->msgdata.output_frame.framesize.right;
+    omx->rectangle.nHeight = vdec_msg->msgdata.output_frame.framesize.bottom;
+    DEBUG_PRINT_HIGH("\n Crop information has changed\n");
+    omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexConfigCommonOutputCrop,
+        OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+  }
         output_respbuf = (struct vdec_output_frameinfo *)\
                           omxhdr->pOutputPortPrivate;
-	// output_respbuf->framesize.bottom =
-        //  vdec_msg->msgdata.output_frame.framesize.bottom;
-	// output_respbuf->framesize.left =
-	//   vdec_msg->msgdata.output_frame.framesize.left;
-	// output_respbuf->framesize.right =
-	//   vdec_msg->msgdata.output_frame.framesize.right;
-	// output_respbuf->framesize.top =
-	//   vdec_msg->msgdata.output_frame.framesize.top;
         output_respbuf->len = vdec_msg->msgdata.output_frame.len;
         output_respbuf->offset = vdec_msg->msgdata.output_frame.offset;
-	// output_respbuf->time_stamp = vdec_msg->msgdata.output_frame.time_stamp;
-	// output_respbuf->flags = vdec_msg->msgdata.output_frame.flags;
         if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_KEYFRAME)
         {
           output_respbuf->pic_type = PICTURE_TYPE_I;
@@ -6925,7 +6947,6 @@ int omx_vdec::async_message_process (void *context, void* message)
         if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_BFRAME) {
           output_respbuf->pic_type = PICTURE_TYPE_B;
         }
-	// output_respbuf->interlaced_format = vdec_msg->msgdata.output_frame.interlaced_format;
 
         if (omx->output_use_buffer)
           memcpy ( omxhdr->pBuffer,
@@ -6947,8 +6968,8 @@ int omx_vdec::async_message_process (void *context, void* message)
     break;
   case VDEC_MSG_EVT_CONFIG_CHANGED:
     DEBUG_PRINT_HIGH("\n Port settings changed");
-	omx->post_event ((unsigned int)omxhdr,vdec_msg->status_code,
-                     OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+    omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexParamPortDefinition,
+        OMX_COMPONENT_GENERATE_PORT_RECONFIG);
     break;
   case VDEC_MSG_EVT_INFO_CONFIG_CHANGED:
   {
@@ -6959,8 +6980,7 @@ int omx_vdec::async_message_process (void *context, void* message)
     int ret;
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     ret = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
-    omx->drv_ctx.video_resolution.scan_lines = omx->drv_ctx.video_resolution.frame_height = fmt.fmt.pix_mp.height;
-    omx->drv_ctx.video_resolution.stride = omx->drv_ctx.video_resolution.frame_width = fmt.fmt.pix_mp.width;
+    omx->update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height);
     omx->m_port_def.nPortIndex = 1;
     eRet = omx->update_portdef(&(omx->m_port_def));
     omx->post_event (NULL,vdec_msg->status_code,\
@@ -7800,8 +7820,7 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
 
   ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
 
-  drv_ctx.video_resolution.frame_height = fmt.fmt.pix_mp.height;
-  drv_ctx.video_resolution.frame_width = fmt.fmt.pix_mp.width;
+  update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height);
   drv_ctx.num_planes = fmt.fmt.pix_mp.num_planes;
   DEBUG_PRINT_HIGH("Buffer Size = %d \n ",fmt.fmt.pix_mp.plane_fmt[0].sizeimage);
 

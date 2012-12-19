@@ -398,6 +398,7 @@ public:
 #ifdef _MSM8974_
     OMX_ERRORTYPE allocate_extradata();
 	void free_extradata();
+    void update_resolution(int width, int height);
 #endif
     int  m_pipe_in;
     int  m_pipe_out;
@@ -872,6 +873,7 @@ private:
     int capture_capability;
     int output_capability;
     bool streaming[MAX_PORT];
+    OMX_CONFIG_RECTTYPE rectangle;
 #endif
     bool m_power_hinted;
     OMX_ERRORTYPE power_module_register();
