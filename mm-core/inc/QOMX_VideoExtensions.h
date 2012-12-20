@@ -75,6 +75,7 @@ extern "C"
 #define OMX_QCOM_INDEX_CONFIG_VIDEO_FLOWSTATUS              "OMX.QCOM.index.config.video.FlowStatus"             /**< reference: QOMX_FLOWSTATUSTYPE */    
 #define OMX_QCOM_INDEX_PARAM_VIDEO_PICTURETYPEDECODE        "OMX.QCOM.index.param.video.PictureTypeDecode"       /**< reference: QOMX_VIDEO_DECODEPICTURETYPE */
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SAMPLEASPECTRATIO        "OMX.QCOM.index.param.video.SampleAspectRatio"       /**< reference: QOMX_VIDEO_SAMPLEASPECTRATIO */
+#define OMX_QCOM_INDEX_PARAM_VIDEO_EXTRADATALTRINFO         "OMX.QCOM.index.param.video.ExtraDataLTRInfo"        /**< reference: QOMX_ENABLETYPE */
 
 /* Video coding types */
 #define OMX_QCOM_INDEX_PARAM_VIDEO_DIVX                     "OMX.QCOM.index.param.video.DivX"
