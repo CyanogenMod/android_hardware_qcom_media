@@ -37,12 +37,15 @@ libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_COPPER_
 endif
+ifeq ($(TARGET_BOARD_PLATFORM),msm7630_surf)
+libOmxVdec-def += -DMAX_RES_720P
+endif
 
 libOmxVdec-def += -D_ANDROID_ICS_
 
-#ifeq ($(TARGET_USES_ION),true)
+ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
-#endif
+endif
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
