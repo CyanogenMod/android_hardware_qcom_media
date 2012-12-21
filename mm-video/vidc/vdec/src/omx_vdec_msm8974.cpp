@@ -168,8 +168,8 @@ void* async_message_thread (void *input)
         vdec_msg.msgdata.output_frame.client_data=(void*)&v4l2_buf;
         vdec_msg.msgdata.output_frame.len=plane[0].bytesused;
         vdec_msg.msgdata.output_frame.bufferaddr=(void*)plane[0].m.userptr;
-        vdec_msg.msgdata.output_frame.time_stamp= (v4l2_buf.timestamp.tv_sec * 1000000) +
-          v4l2_buf.timestamp.tv_usec;
+        vdec_msg.msgdata.output_frame.time_stamp= ((uint64_t)v4l2_buf.timestamp.tv_sec * (uint64_t)1000000) +
+          (uint64_t)v4l2_buf.timestamp.tv_usec;
         if (omx->async_message_process(input,&vdec_msg) < 0) {
           DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
           break;
