@@ -48,6 +48,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_vdec.h"
 #include <fcntl.h>
 #include <limits.h>
+#include <media/msm_media_info.h>
 
 #ifndef _ANDROID_
 #include <sys/ioctl.h>
@@ -6630,9 +6631,9 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
   if (outputBufferFile1 && buffer->nFilledLen)
   {
 	  int buf_index = buffer - m_out_mem_ptr;
-	  int stride = ((drv_ctx.video_resolution.frame_width + 31) & (~31));
-	  int scanlines = ((drv_ctx.video_resolution.frame_height+31) & (~31));
-	  char *temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr;
+      int stride = drv_ctx.video_resolution.stride;
+      int scanlines = drv_ctx.video_resolution.scan_lines;
+      char *temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr;
 	  int i;
 	  int bytes_written = 0;
 	  for (i = 0; i < drv_ctx.video_resolution.frame_height; i++) {
@@ -6640,7 +6641,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
 		  temp += stride;
 	  }
 	  temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr + stride * scanlines;
-	  int stride_c = ((drv_ctx.video_resolution.frame_width/2 + 31) & (~31))*2;
+      int stride_c = stride;
 	  for(i = 0; i < drv_ctx.video_resolution.frame_height/2; i++) {
 		  bytes_written += fwrite(temp, drv_ctx.video_resolution.frame_width, 1, outputBufferFile1);
 		  temp += stride_c;
@@ -6982,6 +6983,8 @@ int omx_vdec::async_message_process (void *context, void* message)
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     ret = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
     omx->update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height);
+    omx->drv_ctx.video_resolution.stride = fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
+    omx->drv_ctx.video_resolution.scan_lines = fmt.fmt.pix_mp.plane_fmt[0].reserved[0];
     omx->m_port_def.nPortIndex = 1;
     eRet = omx->update_portdef(&(omx->m_port_def));
     omx->post_event (NULL,vdec_msg->status_code,\
@@ -8022,9 +8025,9 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
   portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
   portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
   portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
-  DEBUG_PRINT_LOW("update_portdef Width = %d Height = %d Stride = %u"
-    "SliceHeight = %u \n", portDefn->format.video.nFrameHeight,
-    portDefn->format.video.nFrameWidth,
+  DEBUG_PRINT_ERROR("update_portdef Width = %d Height = %d Stride = %u"
+    " SliceHeight = %u \n", portDefn->format.video.nFrameWidth,
+    portDefn->format.video.nFrameHeight,
     portDefn->format.video.nStride,
     portDefn->format.video.nSliceHeight);
   return eRet;
