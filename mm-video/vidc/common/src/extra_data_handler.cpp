@@ -216,6 +216,16 @@ OMX_S32 extra_data_handler::parse_sei(OMX_U8 *buffer, OMX_U32 buffer_length)
     payload_size, byte_ptr);
   return 1;
 }
+
+OMX_S32 extra_data_handler::parse_ltrinfo(
+  OMX_BUFFERHEADERTYPE *pBufHdr, OMX_OTHER_EXTRADATATYPE *pExtra)
+{
+  OMX_U32 *pLTR;
+  pExtra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataVideoLTRInfo;
+  pLTR = (OMX_U32* )pExtra + 5;
+  DEBUG_PRINT_HIGH("ExtraData LTR ID %d", *pLTR, 0, 0);
+  return 0;
+}
 /*======================================================================
   Slice Information will be available as below (each line is of 4 bytes)
   | number of slices |
@@ -232,7 +242,7 @@ OMX_S32 extra_data_handler::parse_sliceinfo(
   OMX_U8 *pBuffer = (OMX_U8 *)pBufHdr->pBuffer;
   OMX_U32 *data = (OMX_U32 *)pExtra->data;
   OMX_U32 num_slices = *data;
-  DEBUG_PRINT_HIGH("number of slices = %d", num_slices);
+  DEBUG_PRINT_LOW("number of slices = %d", num_slices);
   if ((4 + num_slices * 8) != (OMX_U32)pExtra->nDataSize) {
     DEBUG_PRINT_ERROR("unknown error in slice info extradata");
     return -1;
@@ -255,7 +265,7 @@ OMX_S32 extra_data_handler::parse_sliceinfo(
     }
     slice_size = (OMX_U32)(*(data + (i*2 + 2)));
     total_size += slice_size;
-    DEBUG_PRINT_HIGH("slice number %d offset/size = %d/%d",
+    DEBUG_PRINT_LOW("slice number %d offset/size = %d/%d",
         i, slice_offset, slice_size);
   }
   if (pBufHdr->nFilledLen != total_size) {
@@ -268,28 +278,55 @@ OMX_S32 extra_data_handler::parse_sliceinfo(
 
 OMX_U32 extra_data_handler::parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr)
 {
-  OMX_OTHER_EXTRADATATYPE *extra_data = (OMX_OTHER_EXTRADATATYPE *)
-    ((unsigned)(buf_hdr->pBuffer + buf_hdr->nOffset +
-    buf_hdr->nFilledLen + 3)&(~3));
-
-  DEBUG_PRINT_LOW("\nIn %s() symbol : %u", __func__,buf_hdr->nFlags);
+  DEBUG_PRINT_LOW("In %s() flags: 0x%x", __func__,buf_hdr->nFlags);
 
   if (buf_hdr->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
-    while(extra_data && (OMX_U8*)extra_data < (buf_hdr->pBuffer +
-      buf_hdr->nAllocLen) && extra_data->eType != VDEC_EXTRADATA_NONE) {
-      DEBUG_PRINT_LOW("\nExtra data type(%x) Extra data size(%u)",
-        extra_data->eType, extra_data->nDataSize);
-      if (extra_data->eType == VDEC_EXTRADATA_SEI) {
+
+    OMX_OTHER_EXTRADATATYPE *extra_data = (OMX_OTHER_EXTRADATATYPE *)
+        ((unsigned)(buf_hdr->pBuffer + buf_hdr->nOffset +
+        buf_hdr->nFilledLen + 3)&(~3));
+
+    while(extra_data &&
+      ((OMX_U32)extra_data > (OMX_U32)buf_hdr->pBuffer) &&
+      ((OMX_U32)extra_data < (OMX_U32)buf_hdr->pBuffer + buf_hdr->nAllocLen)) {
+
+      DEBUG_PRINT_LOW("extradata(0x%x): nSize = 0x%x, eType = 0x%x,"
+         " nDataSize = 0x%x", (unsigned)extra_data, extra_data->nSize,
+         extra_data->eType, extra_data->nDataSize);
+
+      if ((extra_data->eType == VDEC_EXTRADATA_NONE) ||
+         (extra_data->eType == VEN_EXTRADATA_NONE)) {
+         DEBUG_PRINT_LOW("No more extradata available");
+            extra_data->eType = OMX_ExtraDataNone;
+         break;
+      }
+      else if (extra_data->eType == VDEC_EXTRADATA_SEI) {
+         DEBUG_PRINT_LOW("Extradata SEI of size %d found, "
+            "parsing it", extra_data->nDataSize);
          parse_sei(extra_data->data, extra_data->nDataSize);
       }
       else if (extra_data->eType == VEN_EXTRADATA_QCOMFILLER) {
-         DEBUG_PRINT_HIGH("Extradata Qcom Filler found, skip %d bytes",
+         DEBUG_PRINT_LOW("Extradata Qcom Filler found, skip %d bytes",
             extra_data->nSize);
       }
       else if (extra_data->eType == VEN_EXTRADATA_SLICEINFO) {
-         DEBUG_PRINT_HIGH("Extradata SliceInfo of size %d found, "
+         DEBUG_PRINT_LOW("Extradata SliceInfo of size %d found, "
             "parsing it", extra_data->nDataSize);
          parse_sliceinfo(buf_hdr, extra_data);
+      }
+#ifndef _MSM8974_
+      else if (extra_data->eType == VEN_EXTRADATA_LTRINFO) {
+         DEBUG_PRINT_LOW("Extradata LTRInfo of size %d found, "
+            "parsing it", extra_data->nDataSize);
+         parse_ltrinfo(buf_hdr, extra_data);
+      }
+#endif
+      else {
+         DEBUG_PRINT_ERROR("Unknown extradata(0x%x) found, nSize = 0x%x, "
+            "eType = 0x%x, nDataSize = 0x%x", (unsigned)extra_data,
+            extra_data->nSize, extra_data->eType, extra_data->nDataSize);
+         buf_hdr->nFlags &= ~(OMX_BUFFERFLAG_EXTRADATA);
+         break;
       }
       extra_data = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) extra_data) +
         extra_data->nSize);
@@ -459,9 +496,6 @@ OMX_U32 extra_data_handler::create_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr)
      buf_hdr->nOffset + buf_hdr->nFilledLen));
    OMX_U32 msg_size;
 
-   DEBUG_PRINT_LOW("\n filled_len/orig_len %d/%d", buf_hdr->nFilledLen,
-     buf_hdr->nAllocLen);
-
     if(buf_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
       DEBUG_PRINT_LOW("\n%s:%d create extra data with config", __func__,
         __LINE__);
@@ -471,8 +505,6 @@ OMX_U32 extra_data_handler::create_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr)
            buf_hdr->nFilledLen += msg_size;
       }
     }
-    DEBUG_PRINT_LOW("\n filled_len/orig_len %d/%d", buf_hdr->nFilledLen,
-      buf_hdr->nAllocLen);
     return 1;
 }
 
