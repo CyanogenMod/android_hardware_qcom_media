@@ -12,6 +12,8 @@ OMXCORE_CFLAGS += -U_ENABLE_QC_MSG_LOG_
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
 MM_CORE_TARGET = 7627A
+else ifeq ($(TARGET_BOARD_PLATFORM),msm7630_surf)
+MM_CORE_TARGET = 7630
 else ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
 MM_CORE_TARGET = 8660
 #Comment out following line to disable drm.play component
