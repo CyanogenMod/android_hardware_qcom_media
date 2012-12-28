@@ -40,13 +40,17 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //////////////////////////////////////////////////////////////////////////////
 //                             Include Files
 //////////////////////////////////////////////////////////////////////////////
-
+#define JB_MR1
 #include <string.h>
 #include <pthread.h>
 #include <sys/prctl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#ifndef JB_MR1
+#include <ihwc.h>
+#include <binder/IServiceManager.h>
+#endif
 #include "power_module.h"
 #include "omx_vdec.h"
 #include <fcntl.h>
@@ -1202,9 +1206,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
   int fds[2];
   int r;
   OMX_STRING device_name = "/dev/msm_vidc_dec";
+
+#ifndef JB_MR1
   sp<IServiceManager> sm;
   sp<hwcService::IHWComposer> hwcBinder = NULL;
-
+#endif
   if(!strncmp(role, "OMX.qcom.video.decoder.avc.secure",OMX_MAX_STRINGNAME_SIZE)){
       secure_mode = true;
       arbitrary_bytes = false;
@@ -1212,7 +1218,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       device_name =  "/dev/msm_vidc_dec_sec";
       is_secure = 1;
   }
-
+#ifndef JB_MR1
   if (secure_mode) {
     sm = defaultServiceManager();
     hwcBinder =
@@ -1224,7 +1230,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
                          "cannot call secure display start");
     }
   }
-
+#endif
   DEBUG_PRINT_HIGH("omx_vdec::component_init(): Start of New Playback : role  = %s : DEVICE = %s",
         role, device_name);
 
@@ -1636,7 +1642,7 @@ cleanup:
   if (!secure_mode) {
       return eRet;
   }
-
+#ifndef JB_MR1
   if (hwcBinder != NULL) {
       (eRet == OMX_ErrorNone) ?
           hwcBinder->setOpenSecureEnd() :
@@ -1645,7 +1651,7 @@ cleanup:
       DEBUG_PRINT_HIGH("hwcBinder not found, "
                        "not calling secure end");
   }
-
+#endif
   return eRet;
 }
 
@@ -5990,8 +5996,10 @@ RETURN VALUE
 ========================================================================== */
 OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
 {
+#ifndef JB_MR1
   sp<IServiceManager> sm;
   sp<hwcService::IHWComposer> hwcBinder = NULL;
+#endif
 #ifdef _ANDROID_
     if(iDivXDrmDecrypt)
     {
@@ -6010,7 +6018,7 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     {
       DEBUG_PRINT_HIGH("Playback Ended - PASSED");
     }
-
+#ifndef JB_MR1
     if (secure_mode) {
       sm = defaultServiceManager();
       hwcBinder =
@@ -6022,6 +6030,7 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
                          "failed to call close secure start");
       }
     }
+#endif
     /*Check if the output buffers have to be cleaned up*/
     if(m_out_mem_ptr)
     {
@@ -6128,7 +6137,7 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
 #endif
   power_module_deregister();
   DEBUG_PRINT_HIGH("omx_vdec::component_deinit() complete");
-
+#ifndef JB_MR1
   if (secure_mode) {
       if (hwcBinder != NULL) {
           hwcBinder->setCloseSecureEnd();
@@ -6137,6 +6146,7 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
                          "failed to call close secure start");
       }
   }
+#endif
   return OMX_ErrorNone;
 }
 
