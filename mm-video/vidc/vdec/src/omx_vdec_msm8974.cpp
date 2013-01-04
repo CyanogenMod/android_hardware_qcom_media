@@ -5799,6 +5799,9 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 	plane.data_offset = 0;
 	buf.m.planes = &plane;
 	buf.length = 1;
+	if (frameinfo.timestamp >= LLONG_MAX) {
+          buf.flags |= V4L2_QCOM_BUF_TIMESTAMP_INVALID;
+        }
 	//assumption is that timestamp is in milliseconds
 	buf.timestamp.tv_sec = frameinfo.timestamp / 1000000;
 	buf.timestamp.tv_usec = (frameinfo.timestamp % 1000000);
@@ -8370,7 +8373,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     while((consumed_len < drv_ctx.extradata_info.buffer_size)
         && (data->eType != EXTRADATA_NONE)) {
       if ((consumed_len + data->nSize) > drv_ctx.extradata_info.buffer_size) {
-        DEBUG_PRINT_ERROR("Invalid extra data size");
+        DEBUG_PRINT_LOW("Invalid extra data size");
         break;
       }
       switch(data->eType) {
@@ -8402,6 +8405,8 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       case EXTRADATA_TIMESTAMP:
         struct msm_vidc_ts_payload *time_stamp_payload;
         time_stamp_payload = (struct msm_vidc_ts_payload *)data->data;
+        p_buf_hdr->nTimeStamp = time_stamp_payload->timestamp_lo;
+        p_buf_hdr->nTimeStamp |= (time_stamp_payload->timestamp_hi << 32);
       break;
       case EXTRADATA_NUM_CONCEALED_MB:
         struct msm_vidc_concealmb_payload *conceal_mb_payload;
@@ -8409,6 +8414,14 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         num_MB_in_frame = ((drv_ctx.video_resolution.frame_width + 15) *
                      (drv_ctx.video_resolution.frame_height + 15)) >> 8;
         num_conceal_MB = ((num_MB_in_frame > 0)?(conceal_mb_payload->num_mbs * 100 / num_MB_in_frame) : 0);
+      break;
+      case EXTRADATA_ASPECT_RATIO:
+        struct msm_vidc_aspect_ratio_payload *aspect_ratio_payload;
+        aspect_ratio_payload = (struct msm_vidc_aspect_ratio_payload *)data->data;
+        ((struct vdec_output_frameinfo *)
+            p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info.par_width = aspect_ratio_payload->aspect_width;
+        ((struct vdec_output_frameinfo *)
+            p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info.par_height = aspect_ratio_payload->aspect_height;
       break;
       case EXTRADATA_RECOVERY_POINT_SEI:
         struct msm_vidc_recoverysei_payload *recovery_sei_payload;
@@ -8432,7 +8445,8 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
       append_frame_info_extradata(p_extra,
         num_conceal_MB, ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->pic_type, frame_rate,
-        panscan_payload);}
+        panscan_payload,&((struct vdec_output_frameinfo *)
+        p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info);}
   }
 unrecognized_extradata:
   if(!secure_mode && client_extradata)
@@ -8487,6 +8501,11 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
       }
       control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
       control.value = V4L2_MPEG_VIDC_EXTRADATA_PANSCAN_WINDOW;
+      if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_HIGH("Failed to set panscan extradata\n");
+      }
+      control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+      control.value = V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO;
       if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
         DEBUG_PRINT_HIGH("Failed to set panscan extradata\n");
       }
@@ -8630,10 +8649,21 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
   print_debug_extradata(extra);
 }
 
+void omx_vdec::fill_aspect_ratio_info(
+                       struct vdec_aspectratioinfo *aspect_ratio_info,
+                       OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info)
+{
+  m_extradata = frame_info;
+  m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width;
+  m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height;
+  DEBUG_PRINT_LOW("aspectRatioX %d aspectRatioX %d", m_extradata->aspectRatio.aspectRatioX,
+                                                     m_extradata->aspectRatio.aspectRatioY);
+}
 
 void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     OMX_U32 num_conceal_mb, OMX_U32 picture_type, OMX_U32 frame_rate,
-        struct msm_vidc_panscan_window_payload *panscan_payload)
+        struct msm_vidc_panscan_window_payload *panscan_payload,
+        struct vdec_aspectratioinfo *aspect_ratio_info)
 {
   OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info = NULL;
   struct msm_vidc_panscan_window *panscan_window;
@@ -8682,6 +8712,7 @@ void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
       panscan_window++;
     }
   }
+  fill_aspect_ratio_info(aspect_ratio_info, frame_info);
   print_debug_extradata(extra);
 }
 
