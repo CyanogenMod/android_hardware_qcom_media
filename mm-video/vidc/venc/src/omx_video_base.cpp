@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2013, Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1512,13 +1512,15 @@ bool omx_video::post_event(unsigned int p1,
 
   pthread_mutex_lock(&m_lock);
 
-  if( id == OMX_COMPONENT_GENERATE_FTB || \
-      (id == OMX_COMPONENT_GENERATE_FRAME_DONE))
+  if ((id == OMX_COMPONENT_GENERATE_FTB) ||
+      (id == OMX_COMPONENT_GENERATE_FBD) ||
+      (id == OMX_COMPONENT_GENERATE_EVENT_OUTPUT_FLUSH))
   {
     m_ftb_q.insert_entry(p1,p2,id);
   }
-  else if((id == OMX_COMPONENT_GENERATE_ETB) \
-          || (id == OMX_COMPONENT_GENERATE_EBD))
+  else if ((id == OMX_COMPONENT_GENERATE_ETB) ||
+      (id == OMX_COMPONENT_GENERATE_EBD) ||
+      (id == OMX_COMPONENT_GENERATE_EVENT_INPUT_FLUSH))
   {
     m_etb_q.insert_entry(p1,p2,id);
   }
