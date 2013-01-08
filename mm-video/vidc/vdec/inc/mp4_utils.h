@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -30,11 +30,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "OMX_Core.h"
 #include "OMX_QCOMExtns.h"
 typedef signed long long int64;
-typedef unsigned long int uint32;   /* Unsigned 32 bit value */
+typedef unsigned int uint32;   /* Unsigned 32 bit value */
 typedef unsigned short uint16;   /* Unsigned 16 bit value */
 typedef unsigned char uint8;   /* Unsigned 8  bit value */
 
-typedef signed long int int32;   /* Signed 32 bit value */
+typedef int int32;   /* Signed 32 bit value */
 typedef signed short int16;   /* Signed 16 bit value */
 typedef signed char int8;   /* Signed 8  bit value */
 

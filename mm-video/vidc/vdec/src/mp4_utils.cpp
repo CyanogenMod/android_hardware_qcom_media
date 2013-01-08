@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -26,8 +26,21 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #include "mp4_utils.h"
-#include "omx_vdec.h"
+//#include "omx_vdec.h"
 # include <stdio.h>
+#ifdef _ANDROID_
+    extern "C"{
+        #include<utils/Log.h>
+    }
+#endif//_ANDROID_
+
+#undef DEBUG_PRINT_LOW
+#undef DEBUG_PRINT_HIGH
+#undef DEBUG_PRINT_ERROR
+
+#define DEBUG_PRINT_LOW ALOGV
+#define DEBUG_PRINT_HIGH ALOGV
+#define DEBUG_PRINT_ERROR ALOGE
 
 MP4_Utils::MP4_Utils()
 {
