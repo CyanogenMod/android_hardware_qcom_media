@@ -14,4 +14,5 @@ endif
 
 ifneq ($(filter msm8974 msm8960,$(TARGET_BOARD_PLATFORM)),)
 include $(QCOM_MEDIA_ROOT)/QCMediaPlayer/Android.mk
+include $(QCOM_MEDIA_ROOT)/dashplayer/Android.mk
 endif
