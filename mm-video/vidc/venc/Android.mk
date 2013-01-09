@@ -32,7 +32,7 @@ libmm-venc-def += -DMAX_RES_1080P
 libmm-venc-def += -DMAX_RES_1080P_EBI
 libmm-venc-def += -DBADGER
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm7630_surf)
+ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
 libmm-venc-def += -DMAX_RES_720P
 endif
 ifeq ($(TARGET_USES_ION),true)
