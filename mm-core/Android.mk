@@ -10,9 +10,9 @@ OMXCORE_CFLAGS += -U_ENABLE_QC_MSG_LOG_
 #             Figure out the targets
 #===============================================================================
 
-ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
+ifeq ($(TARGET_BOARD_PLATFORM),msm7x27a)
 MM_CORE_TARGET = 7627A
-else ifeq ($(TARGET_BOARD_PLATFORM),msm7630_surf)
+else ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
 MM_CORE_TARGET = 7630
 else ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
 MM_CORE_TARGET = 8660
