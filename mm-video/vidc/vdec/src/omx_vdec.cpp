@@ -8595,29 +8595,8 @@ void omx_vdec::fill_aspect_ratio_info(
                        OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info)
 {
   m_extradata = frame_info;
-
-  m_extradata->aspectRatio.aspectRatioX = 0;
-  m_extradata->aspectRatio.aspectRatioY = 0;
-
-  if(drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
-  {
-     h264_parser->fill_aspect_ratio_info(&m_extradata->aspectRatio);
-  }
-#ifdef MAX_RES_1080P
-  else if(drv_ctx.decoder_format == VDEC_CODECTYPE_MPEG4 ||
-          drv_ctx.decoder_format == VDEC_CODECTYPE_DIVX_3 ||
-          drv_ctx.decoder_format == VDEC_CODECTYPE_DIVX_4 ||
-          drv_ctx.decoder_format == VDEC_CODECTYPE_DIVX_5 ||
-          drv_ctx.decoder_format == VDEC_CODECTYPE_DIVX_6)
-  {
-      mp4_fill_aspect_ratio_info(aspect_ratio_info,m_extradata);
-  }
-#endif
-  if(m_extradata->aspectRatio.aspectRatioX == 0 ||
-     m_extradata->aspectRatio.aspectRatioY == 0) {
-       m_extradata->aspectRatio.aspectRatioX = 1;
-       m_extradata->aspectRatio.aspectRatioY = 1;
-  }
+  m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width;
+  m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height;
 }
 
 void omx_vdec::append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra)
