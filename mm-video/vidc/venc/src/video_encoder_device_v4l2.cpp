@@ -37,6 +37,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef USE_ION
 #include <linux/msm_ion.h>
 #endif
+#include <media/msm_media_info.h>
 
 #define MPEG4_SP_START 0
 #define MPEG4_ASP_START (MPEG4_SP_START + 8)
@@ -417,6 +418,8 @@ if (codec == OMX_VIDEO_CodingVPX)
   }
 #ifdef INPUT_BUFFER_LOG
   inputBufferFile1 = fopen (inputfilename, "ab");
+  if (!inputBufferFile1)
+	  DEBUG_PRINT_ERROR("Input File open failed");
 #endif
 #ifdef OUTPUT_BUFFER_LOG
   outputBufferFile1 = fopen (outputfilename, "ab");
@@ -1577,21 +1580,20 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 		}
   }
 #ifdef INPUT_BUFFER_LOG
-
-  int y_size = 0;
-  int c_offset = 0;
-
-  y_size = m_sVenc_cfg.input_width * m_sVenc_cfg.input_height;
-  //chroma offset is y_size aligned to the 2k boundary
-  c_offset= (y_size + 2047) & (~(2047));
-
-  if(inputBufferFile1)
-  {
-    fwrite((const char *)frameinfo.ptrbuffer, y_size, 1,inputBufferFile1);
-    fwrite((const char *)(frameinfo.ptrbuffer + c_offset), (y_size>>1), 1,inputBufferFile1);
-  }
+	  int i;
+	  int stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, m_sVenc_cfg.input_width);
+	  int scanlines = VENUS_Y_SCANLINES(COLOR_FMT_NV12, m_sVenc_cfg.input_height);
+	  char *temp = (char *)bufhdr->pBuffer;
+	  for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+		  fwrite(temp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
+		  temp += stride;
+	  }
+	  temp = (char *)bufhdr->pBuffer + (stride * scanlines);
+	  for(i = 0; i < m_sVenc_cfg.input_height/2; i++) {
+		  fwrite(temp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
+		  temp += stride;
+	  }
 #endif
-
   return true;
 }
 bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,unsigned fd)
