@@ -8595,12 +8595,21 @@ void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     frame_info->interlaceType = OMX_QCOM_InterlaceFrameProgressive;
   memset(&frame_info->panScan,0,sizeof(frame_info->panScan));
   memset(&frame_info->aspectRatio, 0, sizeof(frame_info->aspectRatio));
+  memset(&frame_info->displayAspectRatio, 0, sizeof(frame_info->displayAspectRatio));
   if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
   {
     h264_parser->fill_pan_scan_data(&frame_info->panScan, timestamp);
   }
 
   fill_aspect_ratio_info(aspect_ratio_info, frame_info);
+  if (drv_ctx.decoder_format == VDEC_CODECTYPE_MPEG2)
+  {
+    if (m_disp_hor_size && m_disp_vert_size)
+    {
+      frame_info->displayAspectRatio.displayHorizontalSize = m_disp_hor_size;
+      frame_info->displayAspectRatio.displayVerticalSize = m_disp_vert_size;
+    }
+  }
   frame_info->nConcealedMacroblocks = num_conceal_mb;
   frame_info->nFrameRate = frame_rate;
   print_debug_extradata(extra);
