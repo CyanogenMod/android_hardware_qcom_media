@@ -1,4 +1,4 @@
-/* Copyright (c) 2012, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012 - 2013, The Linux Foundation. All rights reserved.
  *
  * redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -65,7 +65,7 @@ typedef C2D_STATUS (*LINK_c2dDestroySurface)( uint32 surface_id );
 namespace android {
 
 /*TODO: THIS NEEDS TO ENABLED FOR JB PLUS*/
-/*enum ColorConvertFormat {
+enum ColorConvertFormat {
     RGB565 = 1,
     YCbCr420Tile,
     YCbCr420SP,
@@ -73,7 +73,7 @@ namespace android {
     YCrCb420P,
     RGBA8888,
     NV12_2K,
-};*/
+};
 
 typedef struct {
   int32_t width;
