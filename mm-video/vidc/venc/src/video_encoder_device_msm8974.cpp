@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2012-2013, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -2293,56 +2293,51 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
 
 bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* error_resilience)
 {
-   bool status = true;
-   struct venc_headerextension hec_cfg;
-   struct venc_multiclicecfg multislice_cfg;
-   int rc;
-   struct v4l2_control control;
-   if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_MPEG4) {
-      if (error_resilience->bEnableHEC) {
-         hec_cfg.header_extension = 1;
-      }
-      else {
-         hec_cfg.header_extension = 0;
-      }
+	bool status = true;
+	struct venc_headerextension hec_cfg;
+	struct venc_multiclicecfg multislice_cfg;
+	int rc;
+	struct v4l2_control control = {0};
+	if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_MPEG4) {
+		if (error_resilience->bEnableHEC) {
+			hec_cfg.header_extension = 1;
+		} else {
+			hec_cfg.header_extension = 0;
+		}
+		hec.header_extension = error_resilience->bEnableHEC;
+	}
 
-      if (/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_HEC,(void*)&ioctl_msg) < */0) {
-         DEBUG_PRINT_ERROR("\nERROR: Request for setting HEader Error correction failed");
-         return false;
-      }
-      hec.header_extension = error_resilience->bEnableHEC;
-   }
+	if (error_resilience->bEnableRVLC) {
+		DEBUG_PRINT_ERROR("\n RVLC is not Supported");
+		return false;
+	}
 
-   if (error_resilience->bEnableRVLC) {
-     DEBUG_PRINT_ERROR("\n RVLC is not Supported");
-     return false;
-   }
+	if (( m_sVenc_cfg.codectype != V4L2_PIX_FMT_H263) &&
+		(error_resilience->bEnableDataPartitioning)) {
+		DEBUG_PRINT_ERROR("\n DataPartioning are not Supported for MPEG4/H264");
+		return false;
+		}
 
-   if (( m_sVenc_cfg.codectype != V4L2_PIX_FMT_H263) &&
-       (error_resilience->bEnableDataPartitioning)) {
-     DEBUG_PRINT_ERROR("\n DataPartioning are not Supported for MPEG4/H264");
-     return false;
-     }
-
-   if (( m_sVenc_cfg.codectype != V4L2_PIX_FMT_H263) &&
-            (error_resilience->nResynchMarkerSpacing)) {
-     multislice_cfg.mslice_mode = VEN_MSLICE_CNT_BYTE;
-       multislice_cfg.mslice_size = error_resilience->nResynchMarkerSpacing;
-     }
-   else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263 &&
-            error_resilience->bEnableDataPartitioning) {
-      multislice_cfg.mslice_mode = VEN_MSLICE_GOB;
-      multislice_cfg.mslice_size = 0;
-      }
-      else {
-        multislice_cfg.mslice_mode = VEN_MSLICE_OFF;
-        multislice_cfg.mslice_size = 0;
-        }
-   DEBUG_PRINT_LOW("\n %s(): mode = %u, size = %u", __func__, multislice_cfg.mslice_mode,
-                   multislice_cfg.mslice_size);
-   if(error_resilience->nResynchMarkerSpacing) {
-    control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
-	control.value =  V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_BYTES;
+	if (( m_sVenc_cfg.codectype != V4L2_PIX_FMT_H263) &&
+				(error_resilience->nResynchMarkerSpacing)) {
+		multislice_cfg.mslice_mode = VEN_MSLICE_CNT_BYTE;
+		multislice_cfg.mslice_size = error_resilience->nResynchMarkerSpacing;
+		control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
+		control.value = V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_BYTES;
+	} else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263 &&
+			   error_resilience->bEnableDataPartitioning) {
+		multislice_cfg.mslice_mode = VEN_MSLICE_GOB;
+		multislice_cfg.mslice_size = error_resilience->nResynchMarkerSpacing;
+		control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
+		control.value = V4L2_MPEG_VIDEO_MULTI_SLICE_GOB;
+	} else {
+		multislice_cfg.mslice_mode = VEN_MSLICE_OFF;
+		multislice_cfg.mslice_size = 0;
+		control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
+		control.value =  V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE;
+	}
+	DEBUG_PRINT_LOW("\n %s(): mode = %u, size = %u", __func__,
+					multislice_cfg.mslice_mode, multislice_cfg.mslice_size);
 	printf("Calling IOCTL set control for id=%x, val=%d\n", control.id, control.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 	if (rc) {
@@ -2361,18 +2356,9 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
 		return false;
 	}
 	printf("Success IOCTL set control for id=%x, value=%d\n", control.id, control.value);
-   }
-   if (/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_MULTI_SLICE_CFG,(void*)&ioctl_msg) < */0) {
-      DEBUG_PRINT_ERROR("\nERROR: Request for setting multi-slice cfg failed");
-      status = false;
-   }
-   else
-   {
-     multislice.mslice_mode = multislice_cfg.mslice_mode ;
-     multislice.mslice_size = multislice_cfg.mslice_size;
-
-   }
-   return status;
+	multislice.mslice_mode = multislice_cfg.mslice_mode;
+	multislice.mslice_size = multislice_cfg.mslice_size;
+	return status;
 }
 
 bool venc_dev::venc_set_inloop_filter(OMX_VIDEO_AVCLOOPFILTERTYPE loopfilter)
