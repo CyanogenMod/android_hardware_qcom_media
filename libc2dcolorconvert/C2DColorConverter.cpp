@@ -270,6 +270,7 @@ bool C2DColorConverter::isYUVSurface(ColorConvertFormat format)
         case YCbCr420P:
         case YCrCb420P:
         case NV12_2K:
+        case NV12_128m:
             return true;
         case RGB565:
         case RGBA8888:
@@ -378,6 +379,7 @@ uint32_t C2DColorConverter::getC2DFormat(ColorConvertFormat format)
             return (C2D_COLOR_FORMAT_420_NV12 | C2D_FORMAT_MACROTILED);
         case YCbCr420SP:
         case NV12_2K:
+        case NV12_128m:
             return C2D_COLOR_FORMAT_420_NV12;
         case YCbCr420P:
             return C2D_COLOR_FORMAT_420_I420;
@@ -402,6 +404,8 @@ size_t C2DColorConverter::calcStride(ColorConvertFormat format, size_t width)
             return ALIGN(width, ALIGN32);
         case NV12_2K:
             return ALIGN(width, ALIGN16);
+        case NV12_128m:
+            return ALIGN(width, ALIGN128);
         case YCbCr420P:
             return width;
         case YCrCb420P:
@@ -427,6 +431,8 @@ size_t C2DColorConverter::calcYSize(ColorConvertFormat format, size_t width, siz
             size_t lumaSize = ALIGN(alignedw * height, ALIGN2K);
             return lumaSize;
         }
+        case NV12_128m:
+            return ALIGN(width, ALIGN128) * ALIGN(height, ALIGN32);
         default:
             return 0;
     }
@@ -470,6 +476,11 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
             size = ALIGN(lumaSize + chromaSize, ALIGN4K);
             ALOGV("NV12_2k, width = %d, height = %d, size = %d", width, height, size);
             }
+            break;
+        case NV12_128m:
+            alignedw = ALIGN(width, ALIGN128);
+            alignedh = ALIGN(height, ALIGN32);
+            size = ALIGN(alignedw * alignedh + (alignedw * ALIGN(height/2, ALIGN16)), ALIGN4K);
             break;
         default:
             break;
@@ -550,6 +561,8 @@ size_t C2DColorConverter::calcLumaAlign(ColorConvertFormat format) {
     switch (format) {
         case NV12_2K:
           return ALIGN2K;
+        case NV12_128m:
+          return 1;
         default:
           ALOGE("unknown format passed for luma alignment number");
           return 1;
@@ -563,6 +576,7 @@ size_t C2DColorConverter::calcSizeAlign(ColorConvertFormat format) {
         case YCbCr420SP: //OR NV12
         case YCbCr420P:
         case NV12_2K:
+        case NV12_128m:
           return ALIGN4K;
         default:
           ALOGE("unknown format passed for size alignment number");
