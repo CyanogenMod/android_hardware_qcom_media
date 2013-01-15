@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of the Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -67,21 +67,6 @@ extern "C"{
 #define LOG_TAG "OMX-VDEC-1080P"
 #else
 #define LOG_TAG "OMX-VDEC"
-#endif
-#ifdef ENABLE_DEBUG_LOW
-#define DEBUG_PRINT_LOW ALOGE
-#else
-#define DEBUG_PRINT_LOW
-#endif
-#ifdef ENABLE_DEBUG_HIGH
-#define DEBUG_PRINT_HIGH ALOGE
-#else
-#define DEBUG_PRINT_HIGH
-#endif
-#ifdef ENABLE_DEBUG_ERROR
-#define DEBUG_PRINT_ERROR ALOGE
-#else
-#define DEBUG_PRINT_ERROR
 #endif
 
 #else //_ANDROID_
