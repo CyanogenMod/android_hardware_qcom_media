@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of the Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -1031,23 +1031,23 @@ void h264_stream_parser::sei_pan_scan()
 
 void h264_stream_parser::print_pan_data(h264_pan_scan *pan_scan_param)
 {
-  ALOGV("@@print_pan_data: IN");
+  ALOGE("@@print_pan_data: IN");
 
-  ALOGV("-->rect_id            : %u", pan_scan_param->rect_id);
-  ALOGV("-->rect_cancel_flag   : %u", pan_scan_param->rect_cancel_flag);
+  ALOGE("-->rect_id            : %u", pan_scan_param->rect_id);
+  ALOGE("-->rect_cancel_flag   : %u", pan_scan_param->rect_cancel_flag);
 
   ALOGV("-->cnt                : %u", pan_scan_param->cnt);
 
   for (int i = 0; i < pan_scan_param->cnt; i++)
   {
-    ALOGV("-->rect_left_offset   : %d", pan_scan_param->rect_left_offset[i]);
-    ALOGV("-->rect_right_offset  : %d", pan_scan_param->rect_right_offset[i]);
-    ALOGV("-->rect_top_offset    : %d", pan_scan_param->rect_top_offset[i]);
-    ALOGV("-->rect_bottom_offset : %d", pan_scan_param->rect_bottom_offset[i]);
+    ALOGE("-->rect_left_offset   : %d", pan_scan_param->rect_left_offset[i]);
+    ALOGE("-->rect_right_offset  : %d", pan_scan_param->rect_right_offset[i]);
+    ALOGE("-->rect_top_offset    : %d", pan_scan_param->rect_top_offset[i]);
+    ALOGE("-->rect_bottom_offset : %d", pan_scan_param->rect_bottom_offset[i]);
   }
-  ALOGV("-->repetition_period  : %u", pan_scan_param->rect_repetition_period);
+  ALOGE("-->repetition_period  : %u", pan_scan_param->rect_repetition_period);
 
-  ALOGV("@@print_pan_data: OUT");
+  ALOGE("@@print_pan_data: OUT");
 }
 
 void h264_stream_parser::parse_sps()
@@ -1320,34 +1320,34 @@ void h264_stream_parser::parse_frame_pack()
 
 void h264_stream_parser::print_frame_pack()
 {
-  ALOGV("\n ## frame_packing_arrangement.id = %u", frame_packing_arrangement.id);
-  ALOGV("\n ## frame_packing_arrangement.cancel_flag = %u",
+  ALOGE("\n ## frame_packing_arrangement.id = %u", frame_packing_arrangement.id);
+  ALOGE("\n ## frame_packing_arrangement.cancel_flag = %u",
                        frame_packing_arrangement.cancel_flag);
   if(!frame_packing_arrangement.cancel_flag)
   {
-    ALOGV("\n ## frame_packing_arrangement.type = %u",
+    ALOGE("\n ## frame_packing_arrangement.type = %u",
                          frame_packing_arrangement.type);
-    ALOGV("\n ## frame_packing_arrangement.quincunx_sampling_flag = %u",
+    ALOGE("\n ## frame_packing_arrangement.quincunx_sampling_flag = %u",
                          frame_packing_arrangement.quincunx_sampling_flag);
-    ALOGV("\n ## frame_packing_arrangement.content_interpretation_type = %u",
+    ALOGE("\n ## frame_packing_arrangement.content_interpretation_type = %u",
                          frame_packing_arrangement.content_interpretation_type);
-    ALOGV("\n ## frame_packing_arrangement.spatial_flipping_flag = %u",
+    ALOGE("\n ## frame_packing_arrangement.spatial_flipping_flag = %u",
                          frame_packing_arrangement.spatial_flipping_flag);
-    ALOGV("\n ## frame_packing_arrangement.frame0_flipped_flag = %u",
+    ALOGE("\n ## frame_packing_arrangement.frame0_flipped_flag = %u",
                          frame_packing_arrangement.frame0_flipped_flag);
-    ALOGV("\n ## frame_packing_arrangement.field_views_flag = %u",
+    ALOGE("\n ## frame_packing_arrangement.field_views_flag = %u",
                          frame_packing_arrangement.field_views_flag);
-    ALOGV("\n ## frame_packing_arrangement.current_frame_is_frame0_flag = %u",
+    ALOGE("\n ## frame_packing_arrangement.current_frame_is_frame0_flag = %u",
                          frame_packing_arrangement.current_frame_is_frame0_flag);
-    ALOGV("\n ## frame_packing_arrangement.frame0_self_contained_flag = %u",
+    ALOGE("\n ## frame_packing_arrangement.frame0_self_contained_flag = %u",
                          frame_packing_arrangement.frame0_self_contained_flag);
-    ALOGV("\n ## frame_packing_arrangement.frame1_self_contained_flag = %u",
+    ALOGE("\n ## frame_packing_arrangement.frame1_self_contained_flag = %u",
                          frame_packing_arrangement.frame1_self_contained_flag);
-    ALOGV("\n ## frame_packing_arrangement.reserved_byte = %u",
+    ALOGE("\n ## frame_packing_arrangement.reserved_byte = %u",
                          frame_packing_arrangement.reserved_byte);
-    ALOGV("\n ## frame_packing_arrangement.repetition_period = %u",
+    ALOGE("\n ## frame_packing_arrangement.repetition_period = %u",
                          frame_packing_arrangement.repetition_period);
-    ALOGV("\n ## frame_packing_arrangement.extension_flag = %u",
+    ALOGE("\n ## frame_packing_arrangement.extension_flag = %u",
                          frame_packing_arrangement.extension_flag);
   }
 }
