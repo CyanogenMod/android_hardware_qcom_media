@@ -32,6 +32,7 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -D_MSM8960_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
 libOmxVdec-def += -DMAX_RES_1080P
@@ -87,6 +88,9 @@ libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
 libmm-vdec-inc          += $(vdec-inc)
 libmm-vdec-inc          += hardware/qcom/display/libqdutils
+libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
+libmm-vdec-inc      += hardware/qcom/display/libcopybit
+libmm-vdec-inc      += frameworks/av/include/media/stagefright
 
 
 LOCAL_MODULE                    := libOmxVdec
@@ -95,7 +99,7 @@ LOCAL_CFLAGS                    := $(libOmxVdec-def)
 LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
 
 LOCAL_PRELINK_MODULE    := false
-LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils
+LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
 
 LOCAL_SHARED_LIBRARIES += libgenlock
 LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
@@ -116,7 +120,7 @@ LOCAL_SRC_FILES         += src/omx_vdec.cpp
 endif
 
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
-
+LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
