@@ -1654,13 +1654,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
 		drv_ctx.idr_only_decoding = 0;
 
-		m_state = OMX_StateLoaded;
-		eRet=get_buffer_req(&drv_ctx.ip_buf);
-		DEBUG_PRINT_HIGH("Input Buffer Size =%d \n ",drv_ctx.ip_buf.buffer_size);
+        m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
-    if (eRet == OMX_ErrorNone && !secure_mode)
-      enable_extradata(DEFAULT_EXTRADATA, true, true);
+        if (eRet == OMX_ErrorNone && !secure_mode)
+            enable_extradata(DEFAULT_EXTRADATA, true, true);
 #endif
+        eRet=get_buffer_req(&drv_ctx.ip_buf);
+        DEBUG_PRINT_HIGH("Input Buffer Size =%d \n ",drv_ctx.ip_buf.buffer_size);
+        get_buffer_req(&drv_ctx.op_buf);
 		if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
 		{
 			if (m_frame_parser.mutils == NULL)
@@ -7821,7 +7822,8 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
   ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
 
   update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height);
-  drv_ctx.num_planes = fmt.fmt.pix_mp.num_planes;
+  if (fmt.type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
+      drv_ctx.num_planes = fmt.fmt.pix_mp.num_planes;
   DEBUG_PRINT_HIGH("Buffer Size = %d \n ",fmt.fmt.pix_mp.plane_fmt[0].sizeimage);
 
   if(ret)
