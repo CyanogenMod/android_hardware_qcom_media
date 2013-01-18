@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -3496,6 +3496,10 @@ int overlay_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
             __LINE__);
         return -1;
     }
+    if (ioctl(fb_fd, FBIOPAN_DISPLAY, &vinfo) < 0) {
+        DEBUG_PRINT_ERROR("FBIOPAN_DISPLAY failed! line=%d\n", __LINE__);
+        return -1;
+    }
     DEBUG_PRINT("\nMSMFB_OVERLAY_PLAY successfull");
     return 0;
 }
@@ -3505,6 +3509,9 @@ void overlay_unset()
     if (ioctl(fb_fd, MSMFB_OVERLAY_UNSET, &vid_buf_front_id))
     {
         printf("\nERROR! MSMFB_OVERLAY_UNSET failed! (Line %d)\n", __LINE__);
+    }
+    if (ioctl(fb_fd, FBIOPAN_DISPLAY, &vinfo) < 0) {
+        DEBUG_PRINT_ERROR("FBIOPAN_DISPLAY failed! line=%d\n", __LINE__);
     }
 }
 
