@@ -73,6 +73,7 @@ enum ColorConvertFormat {
     YCrCb420P,
     RGBA8888,
     NV12_2K,
+    NV12_128m,
 };
 
 typedef struct {
