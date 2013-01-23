@@ -30,6 +30,7 @@ import android.media.MediaPlayer;
 import android.util.Log;
 import android.media.TimedText;
 import java.lang.ref.WeakReference;
+import java.io.*;
 import com.qualcomm.qcmedia.QCTimedText;
 import android.os.Handler;
 import android.os.Looper;
@@ -86,6 +87,14 @@ public class QCMediaPlayer extends MediaPlayer
     if(mOnQCTimedTextListener != null)
     {
       mOnQCTimedTextListener.onQCTimedText(this, text);
+    }
+  }
+  private void callOnQOEEventListener(int key,Parcel parcel)
+  {
+    Log.d(TAG, "callOnQOEEventListener");
+    if (mOnQOEEventListener != null)
+    {
+      mOnQOEEventListener.onQOEAttribute(key,parcel,this);
     }
   }
 
@@ -187,6 +196,56 @@ public class QCMediaPlayer extends MediaPlayer
   {
     return getStringParameter(key);
   }
+  public Parcel QCPeriodicParameter(int key)
+  {
+      if(key == mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_PERIODIC)
+      {
+        Log.d(TAG, "QCMediaPlayer :  QCGetParameter(int key , Parcel& data)");
+          return getParcelParameter(key);
+      }
+    return null;
+  }
+  public boolean QCSetParameter(int key, int value)
+  {
+    Log.d(TAG, "QCMediaPlayer : QCSetParameter");
+    return setParameter(key, value);
+  }
+  /**
+  * Interface definition for a callback to be invoked when the media
+  * source is ready for QOE data retrieval.
+  */
+  public interface OnQOEEventListener
+  {
+     /**
+     * Key to identify type of QOE Event
+     */
+     public static final int ATTRIBUTES_QOE_EVENT_REG       = 8004;
+     public static final int ATTRIBUTES_QOE_EVENT_PLAY      = 8005;
+     public static final int ATTRIBUTES_QOE_EVENT_STOP      = 8006;
+     public static final int ATTRIBUTES_QOE_EVENT_SWITCH    = 8007;
+     public static final int ATTRIBUTES_QOE_EVENT_PERIODIC  = 8008;
+
+     /**
+     * Called when attributes are available.
+     *
+     * @param attributekey   the key identifying the type of attributes available
+     * @param value          the value for the attribute
+     * @param mp             the MediaPlayer to which QOE event is
+     *                       applicable
+     *
+     */
+     public void onQOEAttribute(int key, Parcel value,QCMediaPlayer mp);
+  }
+  /**
+  * Register a callback to be invoked when QOE event happens
+  * @param listener          the callback that will be run
+  */
+  public void setOnQOEEventListener(OnQOEEventListener listener)
+  {
+    mOnQOEEventListener = listener;
+  }
+
+  private OnQOEEventListener mOnQOEEventListener;
   /* Do not change these values without updating their counterparts
   * in include/media/mediaplayer.h!
   */
@@ -199,6 +258,21 @@ public class QCMediaPlayer extends MediaPlayer
   private static final int MEDIA_TIMED_TEXT = 99;
   private static final int MEDIA_ERROR = 100;
   private static final int MEDIA_INFO = 200;
+  private static final int MEDIA_QOE = 300;
+
+/* This sequence needs to be same as defined in NuPlayer.h*/
+  private static final int QOEPlay = 1;
+  private static final int QOEStop = 2;
+  private static final int QOESwitch = 3;
+  private static final int QOEPeriodic =4;
+
+  /*enum QOEEvent{
+        QOE,
+        QOEPlay,
+        QOEStop,
+        QOESwitch,
+        QOEPeriodic
+  };*/
 
   private class QCMediaEventHandler extends Handler
   {
@@ -230,6 +304,32 @@ public class QCMediaPlayer extends MediaPlayer
                       Parcel parcel = (Parcel)msg.obj;
                       QCTimedText text = new QCTimedText(parcel);
                       callQCTimedTextListener(text);
+                  }
+                }
+                return;
+
+            case MEDIA_QOE:
+                Log.d(TAG, "QCMediaEventHandler::handleMessage::MEDIA_QOE Received " + msg.arg2);
+                if(mOnQOEEventListener != null)
+                {
+                  if (msg.obj instanceof Parcel)
+                  {
+                    int key = 0;
+                    Parcel parcel = (Parcel)msg.obj;
+                    if(msg.arg2 == /*(int)QOEEvent.*/QOEPlay)
+                    {
+                      key = mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_PLAY;
+                    }else if(msg.arg2 == /*(int)QOEEvent.*/QOEPeriodic)
+                    {
+                      key = mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_PERIODIC;
+                    }else if(msg.arg2 == /*(int)QOEEvent.*/QOESwitch)
+                    {
+                      key = mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_SWITCH;
+                    }else if(msg.arg2 == /*(int)QOEEvent.*/QOEStop)
+                    {
+                      key = mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_STOP;
+                    }
+                    callOnQOEEventListener(key,parcel);
                   }
                 }
                 return;
