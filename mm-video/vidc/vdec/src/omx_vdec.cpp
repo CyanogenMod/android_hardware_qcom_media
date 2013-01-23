@@ -1176,6 +1176,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
   OMX_ERRORTYPE eRet = OMX_ErrorNone;
   struct vdec_ioctl_msg ioctl_msg = {NULL,NULL};
   unsigned int   alignment = 0,buffer_size = 0;
+  int is_secure = 0;
+  int i = 0;
   int fds[2];
   int r;
   OMX_STRING device_name = "/dev/msm_vidc_dec";
@@ -1185,6 +1187,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       arbitrary_bytes = false;
       role = "OMX.qcom.video.decoder.avc";
       device_name =  "/dev/msm_vidc_dec_sec";
+	  is_secure = 1;
   }
 
   if (secure_mode) {
@@ -1205,6 +1208,15 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     drv_ctx.video_driver_fd = open(device_name, O_RDWR | O_NONBLOCK);
   }
 
+  if(is_secure && drv_ctx.video_driver_fd < 0) {
+	  do {
+		  usleep(100 * 1000);
+		  drv_ctx.video_driver_fd = open(device_name, O_RDWR | O_NONBLOCK);
+		  if (drv_ctx.video_driver_fd > 0) {
+			  break;
+		  }
+	  } while(i++ < 50);
+  }
   if(drv_ctx.video_driver_fd < 0)
   {
       DEBUG_PRINT_ERROR("Omx_vdec::Comp Init Returning failure, errno %d\n", errno);
