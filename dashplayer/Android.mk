@@ -10,6 +10,7 @@ LOCAL_SRC_FILES:=                       \
         DashPlayerRenderer.cpp          \
         DashPlayerStats.cpp             \
         DashPlayerDecoder.cpp           \
+        DashPacketSource.cpp            \
         DashFactory.cpp
         
 LOCAL_SHARED_LIBRARIES :=       \
