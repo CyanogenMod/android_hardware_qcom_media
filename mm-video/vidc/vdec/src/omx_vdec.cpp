@@ -146,10 +146,21 @@ char ouputextradatafilename [] = "/data/extradata";
 #define strlcpy g_strlcpy
 #endif
 
+#ifdef _ANDROID_
+#include <ActivityManager.h>
+#include <binder/IBinder.h>
+#include <binder/IMemory.h>
+#include <binder/Parcel.h>
+#endif
+
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
 
 bool omx_vdec::m_secure_display = false;
+
+#ifdef _ANDROID_
+const uint32_t START_BROADCAST_TRANSACTION = IBinder::FIRST_CALL_TRANSACTION + 13;
+#endif
 
 void* async_message_thread (void *input)
 {
@@ -223,7 +234,56 @@ void post_message(omx_vdec *omx, unsigned char id)
       ret_value = write(omx->m_pipe_out, &id, 1);
       DEBUG_PRINT_LOW("post_message to pipe done %d\n",ret_value);
 }
+#ifdef _ANDROID_
+bool sendBroadCastEvent(String16 intentName) {
+    // Fall through to try to connect through the activity manager
+    sp<IServiceManager> sm = defaultServiceManager();
+    sp<IBinder> am = sm->getService(String16("activity"));
+    if (am == NULL) {
+        ALOGE("startServiceThroughActivityManager() couldn't find activity service!\n");
+        return false;
+    }
 
+    Parcel data, reply;
+    data.writeInterfaceToken(String16("android.app.IActivityManager"));
+
+    data.writeStrongBinder(NULL); // The application thread
+    ALOGV("Sending NULL Binder ");
+
+    // Intent Start
+    data.writeString16(intentName); // mAction (null)
+    data.writeInt32(0); // mData (null)
+    data.writeInt32(-1); // mType (null)
+    data.writeInt32(0); // mFlags (0)
+
+    // The ComponentName
+    data.writeInt32(-1);
+    data.writeInt32(-1);
+
+    data.writeInt32(0); // mSourceBounds (null)
+    data.writeInt32(0); // mCatogories (null)
+    data.writeInt32(0); // mSelector (null)
+    data.writeInt32(0); // mClipData (null)
+    data.writeInt32(-1); // mExtras (null)
+    //Intent Finish
+
+    //ResolveType
+    data.writeInt32(-1); // "resolvedType" String16 (null)
+
+
+    data.writeStrongBinder(NULL); // mResultTo
+    data.writeInt32(-1); // mResultCode
+    data.writeInt32(-1); // mResultData
+    data.writeInt32(-1); // mResultExtras
+    data.writeInt32(-1); // required permission
+    data.writeInt32(0); // serialize
+    data.writeInt32(0); // sticky
+    data.writeInt32(0); // userId
+
+    status_t ret = am->transact(START_BROADCAST_TRANSACTION, data, &reply, 0);
+    return true;
+}
+#endif
 // omx_cmd_queue destructor
 omx_vdec::omx_cmd_queue::~omx_cmd_queue()
 {
@@ -584,6 +644,8 @@ omx_vdec::~omx_vdec()
     DEBUG_PRINT_HIGH("--> TOTAL PROCESSING TIME");
     dec_time.end();
   }
+  if(secure_mode)
+    sendBroadCastEvent(String16("qualcomm.intent.action.SECURE_END_DONE"));
 #endif /* _ANDROID_ */
   DEBUG_PRINT_HIGH("Exit OMX vdec Destructor");
 }
@@ -1188,6 +1250,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       role = "OMX.qcom.video.decoder.avc";
       device_name =  "/dev/msm_vidc_dec_sec";
 	  is_secure = 1;
+#ifdef _ANDROID_
+      sendBroadCastEvent(String16("qualcomm.intent.action.SECURE_START"));
+#endif
   }
 
   if (secure_mode) {
@@ -1223,6 +1288,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       eRet = OMX_ErrorInsufficientResources;
       goto cleanup;
   }
+#ifdef _ANDROID_
+  if(is_secure)
+    sendBroadCastEvent(String16("qualcomm.intent.action.SECURE_START_DONE"));
+#endif
   drv_ctx.frame_rate.fps_numerator = DEFAULT_FPS;
   drv_ctx.frame_rate.fps_denominator = 1;
 
@@ -5952,6 +6021,9 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     }
 
     if (secure_mode) {
+#ifdef _ANDROID_
+      sendBroadCastEvent(String16("qualcomm.intent.action.SECURE_END"));
+#endif
       if (unsecureDisplay(qService::IQService::START) < 0) {
         DEBUG_PRINT_HIGH("Failed to send message to unsecure display START");
       }
