@@ -928,7 +928,7 @@ private:
         };
         struct vidc_heap m_heap_ptr[MAX_COUNT];
     };
-#ifdef _MSM8960_
+#if  defined (_MSM8960_) || defined (_MSM8974_)
     allocate_color_convert_buf client_buffers;
 #endif
 };
