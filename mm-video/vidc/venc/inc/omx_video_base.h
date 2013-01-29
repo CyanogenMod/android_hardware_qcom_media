@@ -192,6 +192,9 @@ public:
   virtual bool dev_loaded_stop(void) = 0;
   virtual bool dev_loaded_start_done(void) = 0;
   virtual bool dev_loaded_stop_done(void) = 0;
+#ifdef _MSM8974_
+  virtual int dev_handle_extradata(void*, int) = 0;
+#endif
   virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
 #ifdef _ANDROID_ICS_
   void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);

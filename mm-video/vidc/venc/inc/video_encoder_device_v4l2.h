@@ -38,8 +38,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_video_encoder.h"
 #include <linux/videodev2.h>
 #include <poll.h>
+
 #define TIMEOUT 5*60*1000
-#define MAX_RECON_BUFFERS 4
 
 void* async_venc_message_thread (void *);
 
@@ -165,6 +165,17 @@ enum v4l2_ports {
 	MAX_PORT
 };
 
+struct extradata_buffer_info {
+	int buffer_size;
+	char* uaddr;
+	int count;
+	int size;
+	int allocated;
+#ifdef USE_ION
+	struct venc_ion ion;
+#endif
+};
+
 class venc_dev
 {
 public:
@@ -204,6 +215,7 @@ public:
   OMX_U32 m_nDriver_fd;
   bool m_profile_set;
   bool m_level_set;
+  int num_planes;
   struct recon_buffer {
 	  unsigned char* virtual_address;
 	  int pmem_fd;
@@ -217,13 +229,14 @@ public:
 #endif
 	  };
 
-  recon_buffer recon_buff[MAX_RECON_BUFFERS];
-  int recon_buffers_count;
   int stopped;
   bool m_max_allowed_bitrate_check;
   int etb_count;
   pthread_t m_tid;
   class omx_venc *venc_handle;
+  OMX_ERRORTYPE allocate_extradata();
+  void free_extradata();
+  bool handle_extradata(void *, int);
 private:
   struct msm_venc_basecfg             m_sVenc_cfg;
   struct msm_venc_ratectrlcfg         rate_ctrl;
@@ -260,6 +273,7 @@ private:
   bool venc_set_voptiming_cfg(OMX_U32 nTimeIncRes);
   void venc_config_print();
   bool venc_set_slice_delivery_mode(OMX_U32 enable);
+  bool venc_set_extradata(OMX_U32 extra_data);
 #ifdef MAX_RES_1080P
   OMX_U32 pmem_free();
   OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
@@ -277,6 +291,8 @@ private:
 #endif
   int metadatamode;
   bool streaming[MAX_PORT];
+  bool extradata;
+  struct extradata_buffer_info extradata_info;
 };
 
 enum instance_state {
@@ -298,3 +314,4 @@ enum instance_state {
 	MSM_VIDC_CORE_UNINIT,
 };
 #endif
+

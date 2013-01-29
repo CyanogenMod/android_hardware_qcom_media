@@ -4109,6 +4109,9 @@ bool omx_video::release_input_done(void)
 OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
                                           OMX_BUFFERHEADERTYPE * buffer)
 {
+#ifdef _MSM8974_
+    int index = buffer - m_out_mem_ptr;
+#endif
   DEBUG_PRINT_LOW("fill_buffer_done: buffer->pBuffer[%p], flags=0x%x",
      buffer->pBuffer, buffer->nFlags);
   if(buffer == NULL || ((buffer - m_out_mem_ptr) > m_sOutPortDef.nBufferCountActual))
@@ -4119,11 +4122,12 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
   pending_output_buffers--;
 
   extra_data_handle.create_extra_data(buffer);
-
+#ifndef _MSM8974_
   if(buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
     DEBUG_PRINT_LOW("parsing extradata");
     extra_data_handle.parse_extra_data(buffer);
   }
+#endif
   /* For use buffer we need to copy the data */
   if(m_pCallbacks.FillBufferDone)
   {
@@ -4138,6 +4142,12 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
       }
 #endif
     }
+#ifdef _MSM8974_
+    if(buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
+      if(!dev_handle_extradata((void *)buffer, index))
+        DEBUG_PRINT_ERROR("Failed to parse extradata\n");
+    }
+#endif
     m_pCallbacks.FillBufferDone (hComp,m_app_data,buffer);
   }
   else
