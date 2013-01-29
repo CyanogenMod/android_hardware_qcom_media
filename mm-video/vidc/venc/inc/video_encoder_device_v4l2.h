@@ -259,6 +259,7 @@ private:
   bool venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* error_resilience);
   bool venc_set_voptiming_cfg(OMX_U32 nTimeIncRes);
   void venc_config_print();
+  bool venc_set_slice_delivery_mode(OMX_U32 enable);
 #ifdef MAX_RES_1080P
   OMX_U32 pmem_free();
   OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
