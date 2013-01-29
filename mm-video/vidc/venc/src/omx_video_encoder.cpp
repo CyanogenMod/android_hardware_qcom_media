@@ -256,6 +256,10 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sParamProfileLevel.eLevel = (OMX_U32) OMX_VIDEO_AVCLevel1;
   }
 
+  OMX_INIT_STRUCT(&m_sPicureOrderCount, QOMX_PICTURE_ORDER_COUNT_TYPE);
+  if(codec_type == OMX_VIDEO_CodingAVC)
+    m_sPicureOrderCount.nType = 2;
+
   // Initialize the video parameters for input port
   OMX_INIT_STRUCT(&m_sInPortDef, OMX_PARAM_PORTDEFINITIONTYPE);
   m_sInPortDef.nPortIndex= (OMX_U32) PORT_INDEX_IN;
@@ -414,19 +418,6 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
 
   m_state                   = OMX_StateLoaded;
   m_sExtraData = 0;
-
-  // For H264 enable some parameters in VUI by default
-  if (codec_type == OMX_VIDEO_CodingAVC)
-  {
-    QOMX_VUI_BITSTREAM_RESTRICT parm;
-    OMX_INIT_STRUCT(&parm, QOMX_VUI_BITSTREAM_RESTRICT);
-    parm.bEnable = OMX_TRUE;
-    if (set_parameter(NULL, (OMX_INDEXTYPE)OMX_QcomIndexParamEnableVUIStreamRestrictFlag,
-         (OMX_PTR)&parm)) {
-      // Don't treat this as a fatal error
-      DEBUG_PRINT_ERROR("Unable to set EnableVUIStreamRestrictFlag as default");
-    }
-  }
 
   if(eRet == OMX_ErrorNone)
   {
@@ -776,7 +767,33 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
          DEBUG_PRINT_ERROR("Warning: B frames not supported\n");
          avc_param.nBFrames = 0;
        }
+
+#ifdef MAX_RES_1080P
+       // These settings are geared toward the WFD usecase
+       if (pParam->eProfile == OMX_VIDEO_AVCProfileBaseline)
+       {
+         //set the BITSTREAM_RESTRICT flag in the vui
+         QOMX_VUI_BITSTREAM_RESTRICT br;
+         OMX_INIT_STRUCT(&br, QOMX_VUI_BITSTREAM_RESTRICT);
+         br.bEnable = OMX_TRUE;
+         if (!handle->venc_set_param((OMX_PTR)&br,
+                (OMX_INDEXTYPE)OMX_QcomIndexParamEnableVUIStreamRestrictFlag)) {
+           DEBUG_PRINT_ERROR("Unable to set EnableVUIStreamRestrictFlag as default");
+           return OMX_ErrorHardware;
+         }
+       }
+       if (m_sOutPortFormat.eCompressionFormat ==  OMX_VIDEO_CodingAVC)
+       {
+         //set the PIC_ORDER_CNT_TYPE flag in the sps
+         if (!handle->venc_set_param((OMX_PTR)&m_sPicureOrderCount,
+                (OMX_INDEXTYPE)OMX_QcomIndexParamPictureOrderCountType)) {
+           DEBUG_PRINT_ERROR("Unable to set PictureOrderCountType as default");
+           return OMX_ErrorHardware;
+         }
+       }
+#endif
       }
+
       if(handle->venc_set_param(&avc_param,OMX_IndexParamVideoAvc) != true)
       {
         return OMX_ErrorUnsupportedSetting;
@@ -1233,6 +1250,18 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         "flag in VUI failed");
         return OMX_ErrorUnsupportedSetting;
       }
+      break;
+    }
+  case OMX_QcomIndexParamPictureOrderCountType:
+    {
+      if(!handle->venc_set_param(paramData,
+            (OMX_INDEXTYPE)OMX_QcomIndexParamPictureOrderCountType))
+      {
+        DEBUG_PRINT_ERROR("ERROR: Request for setting poc failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      memcpy(&m_sPicureOrderCount, (QOMX_PICTURE_ORDER_COUNT_TYPE *)paramData,
+            sizeof(m_sPicureOrderCount));
       break;
     }
   case OMX_IndexParamVideoSliceFMO:

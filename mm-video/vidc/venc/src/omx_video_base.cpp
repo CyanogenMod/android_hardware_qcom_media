@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1943,6 +1943,12 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
          eRet = OMX_ErrorHardware;
        }
        break;
+    }
+  case OMX_QcomIndexParamPictureOrderCountType:
+    {
+      QOMX_PICTURE_ORDER_COUNT_TYPE *pParam = (QOMX_PICTURE_ORDER_COUNT_TYPE *)paramData;
+      memcpy(pParam, &m_sPicureOrderCount, sizeof(m_sPicureOrderCount));
+      break;
     }
   case OMX_IndexParamVideoSliceFMO:
   default:

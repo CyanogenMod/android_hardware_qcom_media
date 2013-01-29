@@ -542,6 +542,7 @@ public:
   QOMX_VIDEO_PARAM_LTRCOUNT_TYPE m_sParamLTRCount;
   QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE m_sConfigLTRPeriod;
   QOMX_VIDEO_CONFIG_LTRUSE_TYPE m_sConfigLTRUse;
+  QOMX_PICTURE_ORDER_COUNT_TYPE m_sPicureOrderCount;
   // fill this buffer queue
   omx_cmd_queue         m_ftb_q;
   // Command Q for rest of the events

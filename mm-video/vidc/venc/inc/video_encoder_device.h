@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -161,6 +161,7 @@ private:
   bool venc_set_ltrcount(OMX_U32 count);
   bool venc_set_ltrperiod(OMX_U32 period);
   bool venc_set_ltruse(OMX_U32 id, OMX_U32 frames);
+  bool venc_set_picture_order_count_type(OMX_U32 type);
 
 #ifdef MAX_RES_1080P
   OMX_U32 pmem_free();
