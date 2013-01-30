@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 #define LOG_TAG "DashPlayerDecoder"
 #include <utils/Log.h>
 
 #include "DashPlayerDecoder.h"
+#include "DashCodec.h"
 #include "ESDS.h"
 #include "QCMediaDefs.h"
 #include "QCMetaData.h"
 #include <media/stagefright/foundation/ABuffer.h>
 #include <media/stagefright/foundation/ADebug.h>
 #include <media/stagefright/foundation/AMessage.h>
-#include <media/stagefright/ACodec.h>
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/MetaData.h>
 #include <media/stagefright/Utils.h>
@@ -71,8 +71,8 @@ void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
         CHECK(meta->findCString(kKeyMIMEType, &mime));
     }
 
-    ALOGV("@@@@:: ACodec created ");
-    mCodec = new ACodec;
+    ALOGV("@@@@:: DashCodec created ");
+    mCodec = new DashCodec;
 
     bool needDedicatedLooper = false;
 
@@ -99,7 +99,7 @@ void DashPlayer::Decoder::onMessageReceived(const sp<AMessage> &msg) {
             int32_t what;
             CHECK(msg->findInt32("what", &what));
 
-            if (what == ACodec::kWhatFillThisBuffer) {
+            if (what == DashCodec::kWhatFillThisBuffer) {
                 onFillThisBuffer(msg);
             }else {
                 sp<AMessage> notify = mNotify->dup();
