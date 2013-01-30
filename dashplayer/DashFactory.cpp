@@ -1,7 +1,6 @@
 /*
  *Copyright (c) 2013, The Linux Foundation. All rights reserved.
- *Not a Contribution, Apache license notifications and license are retained
- *for attribution purposes only.
+ *Not a Contribution.
  *
  * Copyright (C) 2010 The Android Open Source Project
  *
@@ -18,7 +17,7 @@
  * limitations under the License.
  */
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 #define LOG_TAG "DASHFactory"
 #include <media/IMediaPlayer.h>
 #include <utils/Log.h>
