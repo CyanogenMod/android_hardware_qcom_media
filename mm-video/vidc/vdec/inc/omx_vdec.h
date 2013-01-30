@@ -622,7 +622,8 @@ private:
                                OMX_U32 num_conceal_mb,
                                OMX_U32 picture_type,
                                OMX_U32 frame_rate,
-                               struct msm_vidc_panscan_window_payload *panscan_payload);
+                               struct msm_vidc_panscan_window_payload *panscan_payload,
+                               struct vdec_aspectratioinfo *aspect_ratio_info);
 #else
     void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
                                     OMX_U32 interlaced_format_type, OMX_U32 buf_index);
