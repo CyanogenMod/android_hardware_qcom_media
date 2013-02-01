@@ -2236,6 +2236,7 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
   if (irMBs == 0 || ir_mode == OMX_VIDEO_IntraRefreshMax)
   {
 	  control_mode.value = V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_NONE;
+	  return status;
   }
   else if ((ir_mode == OMX_VIDEO_IntraRefreshCyclic) &&
            (irMBs < ((m_sVenc_cfg.input_width * m_sVenc_cfg.input_height)>>8)))
@@ -2279,16 +2280,9 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
 	}
 	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control_mbs.id, control_mbs.value);
 
-  if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_INTRA_REFRESH,(void*)&ioctl_msg) < */0)
-  {
-    DEBUG_PRINT_ERROR("\nERROR: Request for setting Intra Refresh failed");
-    status = false;
-  }
-  else
-  {
     intra_refresh.irmode = control_mode.value;
     intra_refresh.mbcount = control_mbs.value;
-  }
+
   return status;
 }
 
