@@ -549,9 +549,7 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                       m_use_output_pmem(OMX_FALSE),
                       m_out_mem_region_smi(OMX_FALSE),
                       m_out_pvt_entry_pmem(OMX_FALSE),
-                      secure_mode(false),
-                      external_meta_buffer(false),
-                      external_meta_buffer_iommu(false)
+                      secure_mode(false)
 #ifdef _ANDROID_
                     ,iDivXDrmDecrypt(NULL)
 #endif
@@ -1255,12 +1253,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 #ifdef _ANDROID_
       sendBroadCastEvent(String16("qualcomm.intent.action.SECURE_START"));
 #endif
-  } else if (!strncmp(role, "OMX.qcom.video.decoder.mpeg2.secure",OMX_MAX_STRINGNAME_SIZE)){
-      secure_mode = true;
-      arbitrary_bytes = false;
-      role = "OMX.qcom.video.decoder.mpeg2";
-      device_name =  "/dev/msm_vidc_dec_sec";
-	  is_secure = 1;
   }
 
   if (secure_mode) {
@@ -1558,7 +1550,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eRet = get_buffer_req(&drv_ctx.op_buf);
     m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
-    if (eRet == OMX_ErrorNone)
+    if (eRet == OMX_ErrorNone && !secure_mode)
       eRet = enable_extradata(DEFAULT_EXTRADATA);
 #endif
     if ( (codec_type_parse == CODEC_TYPE_VC1) ||
@@ -1685,7 +1677,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
   }
 
   memset(&h264_mv_buff,0,sizeof(struct h264_mv_buffer));
-  memset(&meta_buff,0,sizeof(struct meta_buffer));
+
 cleanup:
 
   if (secure_mode && (eRet == OMX_ErrorNone)) {
@@ -3519,27 +3511,41 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
               break;
           }
     case OMX_QcomIndexParamConcealMBMapExtraData:
-      {
+      if(!secure_mode)
           eRet = enable_extradata(VDEC_EXTRADATA_MB_ERROR_MAP,
                                   ((QOMX_ENABLETYPE *)paramData)->bEnable);
+      else {
+          DEBUG_PRINT_ERROR("\n secure mode setting not supported");
+          eRet = OMX_ErrorUnsupportedSetting;
       }
       break;
     case OMX_QcomIndexParamFrameInfoExtraData:
       {
+        if(!secure_mode)
             eRet = enable_extradata(OMX_FRAMEINFO_EXTRADATA,
                                 ((QOMX_ENABLETYPE *)paramData)->bEnable);
+        else {
+            DEBUG_PRINT_ERROR("\n secure mode setting not supported");
+            eRet = OMX_ErrorUnsupportedSetting;
         }
        break;
+      }
     case OMX_QcomIndexParamInterlaceExtraData:
-      {
+      if(!secure_mode)
           eRet = enable_extradata(OMX_INTERLACE_EXTRADATA,
                               ((QOMX_ENABLETYPE *)paramData)->bEnable);
+      else {
+          DEBUG_PRINT_ERROR("\n secure mode setting not supported");
+          eRet = OMX_ErrorUnsupportedSetting;
       }
       break;
     case OMX_QcomIndexParamH264TimeInfo:
-      {
+      if(!secure_mode)
           eRet = enable_extradata(OMX_TIMEINFO_EXTRADATA,
                               ((QOMX_ENABLETYPE *)paramData)->bEnable);
+      else {
+          DEBUG_PRINT_ERROR("\n secure mode setting not supported");
+          eRet = OMX_ErrorUnsupportedSetting;
       }
       break;
     case OMX_QcomIndexParamVideoDivx:
@@ -3664,8 +3670,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       break;
     case OMX_QcomIndexEnableExtnUserData:
       {
+        if(!secure_mode)
           eRet = enable_extradata(OMX_EXTNUSER_EXTRADATA,
                               ((QOMX_ENABLETYPE *)paramData)->bEnable);
+        else {
+          DEBUG_PRINT_ERROR("\n secure mode setting not supported");
+          eRet = OMX_ErrorUnsupportedSetting;
+        }
       }
       break;
     default:
@@ -4096,17 +4107,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
   if (!m_out_mem_ptr) {
     DEBUG_PRINT_HIGH("Use_op_buf:Allocating output headers");
     eRet = allocate_output_headers();
-
 #ifdef MAX_RES_1080P
-    if(secure_mode)
-    {
-      eRet = vdec_alloc_meta_buffers();
-      if (eRet) {
-        DEBUG_PRINT_ERROR("ERROR in allocating meta buffers\n");
-        return OMX_ErrorInsufficientResources;
-      }
-    }
-
     if(drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
     {
       //allocate H264_mv_buffer
@@ -4591,10 +4592,6 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
 #endif
   }
 #ifdef MAX_RES_1080P
-  if(secure_mode)
-  {
-    vdec_dealloc_meta_buffers();
-  }
   if(drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
   {
     vdec_dealloc_h264_mv();
@@ -5037,15 +5034,6 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         pPlatformList++;
       }
 #ifdef MAX_RES_1080P
-      if(eRet == OMX_ErrorNone && secure_mode)
-      {
-        eRet = vdec_alloc_meta_buffers();
-        if (eRet) {
-          DEBUG_PRINT_ERROR("ERROR in allocating meta buffers\n");
-          return OMX_ErrorInsufficientResources;
-        }
-      }
-
       if(eRet == OMX_ErrorNone && drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
       {
         //Allocate the h264_mv_buffer
@@ -5773,8 +5761,8 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     fwrite((const char *)temp_buffer->bufferaddr,
       temp_buffer->buffer_len,1,inputBufferFile1);
   }
-
 #endif
+
   if(buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ)
   {
     frameinfo.flags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
@@ -6686,12 +6674,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     if (buffer->nFilledLen > 0)
     {
       if (client_extradata)
-      {
-        if(secure_mode)
-          handle_extradata_secure(buffer);
-        else
-          handle_extradata(buffer);
-      }
+        handle_extradata(buffer);
       if (client_extradata & OMX_TIMEINFO_EXTRADATA)
         // Keep min timestamp interval to handle corrupted bit stream scenario
         set_frame_rate(buffer->nTimeStamp);
@@ -7633,15 +7616,8 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
   }
 
   if(secure_mode) {
-    if(external_meta_buffer) {
-      alloc_data->heap_mask = ION_HEAP(ION_CP_MFC_HEAP_ID);
-      alloc_data->flags |= ION_SECURE;
-    } else if (external_meta_buffer_iommu) {
-      alloc_data->heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
-    } else {
-      alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
-      alloc_data->flags |= ION_SECURE;
-    }
+    alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
+    alloc_data->flags |= ION_SECURE;
   } else {
     alloc_data->heap_mask = (ION_HEAP(ION_IOMMU_HEAP_ID));
   }
@@ -7876,7 +7852,12 @@ OMX_ERRORTYPE omx_vdec::start_port_reconfig()
       if (drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
       {
         DEBUG_PRINT_HIGH("Interlace format detected (%x)!", drv_ctx.interlace);
-        client_extradata |= OMX_INTERLACE_EXTRADATA;
+        if(!secure_mode)
+            client_extradata |= OMX_INTERLACE_EXTRADATA;
+	else {
+            DEBUG_PRINT_ERROR("secure mode interlaced format not supported");
+            eRet = OMX_ErrorUnsupportedSetting;
+        }
       }
       in_reconfig = true;
       op_buf_rcnfg.buffer_type = VDEC_BUFFER_TYPE_OUTPUT;
@@ -8262,206 +8243,6 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
   }
 }
 
-void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
-{
-  OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL, *p_extn_user[32];
-  struct vdec_output_frameinfo *output_respbuf;
-  OMX_U32 num_conceal_MB = 0;
-  OMX_S64 ts_in_sei = 0;
-  OMX_U32 frame_rate = 0;
-  OMX_U32 extn_user_data_cnt = 0;
-
-  OMX_U32 index = p_buf_hdr - m_out_mem_ptr;
-  OMX_U8 *meta_buffer_virtual = (OMX_U8 *)meta_buff.buffer;
-
-
-  p_extra = (OMX_OTHER_EXTRADATATYPE *)
-           ((unsigned)(meta_buffer_virtual +
-           index * drv_ctx.op_buf.meta_buffer_size + 3)&(~3));
-
-  //mapping of ouput buffer to the corresponding meta buffer
-  output_respbuf = (struct vdec_output_frameinfo *)\
-                             p_buf_hdr->pOutputPortPrivate;
-  output_respbuf->metadata_info.metabufaddr = (OMX_U8 *)p_extra;
-  output_respbuf->metadata_info.size =
-                     drv_ctx.op_buf.meta_buffer_size;
-
-  meta_buffer_virtual = (OMX_U8 *)p_extra;
-
-  if (drv_ctx.extradata && (p_buf_hdr->nFlags & OMX_BUFFERFLAG_EXTRADATA))
-    {
-      // Process driver extradata
-      while(p_extra && p_extra->eType != VDEC_EXTRADATA_NONE)
-      {
-        DEBUG_PRINT_LOW("handle_extradata_secure : pBuf(%p) BufTS(%lld) Type(%x) DataSz(%u)",
-             p_buf_hdr, p_buf_hdr->nTimeStamp, p_extra->eType, p_extra->nDataSize);
-        if (p_extra->nSize < p_extra->nDataSize)
-        {
-          DEBUG_PRINT_ERROR(" \n Corrupt metadata Buffer size %d payload size %d",
-                             p_extra->nSize, p_extra->nDataSize);
-          p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-          if((OMX_U8*)p_extra > (meta_buffer_virtual + drv_ctx.op_buf.meta_buffer_size) ||
-                        p_extra->nDataSize == 0 || p_extra->nSize == 0)
-            p_extra = NULL;
-          continue;
-        }
-        if (p_extra->eType == VDEC_EXTRADATA_MB_ERROR_MAP)
-        {
-          if (client_extradata & OMX_FRAMEINFO_EXTRADATA)
-            num_conceal_MB = count_MB_in_extradata(p_extra);
-          if (client_extradata & VDEC_EXTRADATA_MB_ERROR_MAP)
-            // Map driver extradata to corresponding OMX type
-            p_extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataConcealMB;
-          else
-            p_extra->eType = OMX_ExtraDataMax; // Invalid type to avoid expose this extradata to OMX client
-#ifdef _ANDROID_
-          if (m_debug_concealedmb) {
-              DEBUG_PRINT_HIGH("Concealed MB percentage is %u", num_conceal_MB);
-          }
-#endif /* _ANDROID_ */
-        }
-        else if (p_extra->eType == VDEC_EXTRADATA_SEI)
-        {
-          p_sei = p_extra;
-#ifdef MAX_RES_1080P
-          h264_parser->parse_nal((OMX_U8*)p_sei->data, p_sei->nDataSize, NALU_TYPE_SEI);
-#endif
-          p_extra->eType = OMX_ExtraDataMax; // Invalid type to avoid expose this extradata to OMX client
-        }
-        else if (p_extra->eType == VDEC_EXTRADATA_VUI)
-        {
-          p_vui = p_extra;
-#ifdef MAX_RES_1080P
-          h264_parser->parse_nal((OMX_U8*)p_vui->data, p_vui->nDataSize, NALU_TYPE_VUI, false);
-#endif
-          p_extra->eType = OMX_ExtraDataMax; // Invalid type to avoid expose this extradata to OMX client
-        }
-        else if (p_extra->eType == VDEC_EXTRADATA_EXT_DATA)
-        {
-          OMX_U8 *data_ptr = (OMX_U8*)p_extra->data;
-          OMX_U32 value = 0;
-          p_extn_user[extn_user_data_cnt] = p_extra;
-          extn_user_data_cnt++;
-          if((*data_ptr & 0xf0) == 0x20)
-          {
-            value = ((*data_ptr) & 0x01);
-            data_ptr++;
-            if (value)
-              data_ptr += 3;
-            value = *((OMX_U32*)data_ptr);
-            value = ((value << 24) | (((value >> 8)<<24)>>8) |
-                        (((value >> 16)<<24)>>16) | (value >> 24));
-            m_disp_hor_size = (value & 0xfffc0000)>>18;
-            m_disp_vert_size = (value & 0x0001fff8)>>3;
-            DEBUG_PRINT_LOW("Display Vertical Size = %d Display Horizontal Size = %d",
-                                     m_disp_vert_size, m_disp_hor_size);
-          }
-        }
-        else if (p_extra->eType == VDEC_EXTRADATA_USER_DATA)
-        {
-          p_extn_user[extn_user_data_cnt] = p_extra;
-          extn_user_data_cnt++;
-        }
-        print_debug_extradata(p_extra);
-        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-
-        if((OMX_U8*)p_extra > (meta_buffer_virtual + drv_ctx.op_buf.meta_buffer_size) ||
-            p_extra->nDataSize == 0 || p_extra->nSize == 0)
-          p_extra = NULL;
-      }
-      if (!(client_extradata & VDEC_EXTRADATA_MB_ERROR_MAP))
-      {
-        //moving p_extra to the starting location of the metadata buffer
-        p_extra = (OMX_OTHER_EXTRADATATYPE *)meta_buffer_virtual;
-        // Driver extradata is only exposed if MB map is requested by client,
-        // otherwise can be overwritten by omx extradata.
-        p_buf_hdr->nFlags &= ~OMX_BUFFERFLAG_EXTRADATA;
-      }
-    }
-
-    if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
-    {
-      if (client_extradata & OMX_TIMEINFO_EXTRADATA)
-      {
-        if (p_vui)
-          h264_parser->parse_nal((OMX_U8*)p_vui->data, p_vui->nDataSize, NALU_TYPE_VUI, false);
-        if (p_sei)
-          h264_parser->parse_nal((OMX_U8*)p_sei->data, p_sei->nDataSize, NALU_TYPE_SEI);
-        ts_in_sei = h264_parser->process_ts_with_sei_vui(p_buf_hdr->nTimeStamp);
-        if (!VALID_TS(p_buf_hdr->nTimeStamp))
-          p_buf_hdr->nTimeStamp = ts_in_sei;
-      }
-      else if ((client_extradata & OMX_FRAMEINFO_EXTRADATA) && p_sei)
-        // If timeinfo is present frame info from SEI is already processed
-        h264_parser->parse_nal((OMX_U8*)p_sei->data, p_sei->nDataSize, NALU_TYPE_SEI);
-    }
-
-    if (client_extradata & OMX_EXTNUSER_EXTRADATA && p_extra)
-    {
-      p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
-      for(int i = 0; i < extn_user_data_cnt; i++)
-      {
-        if (((OMX_U8*)p_extra + p_extn_user[i]->nSize) <
-                          (meta_buffer_virtual + drv_ctx.op_buf.meta_buffer_size))
-        {
-          if (p_extn_user[i]->eType == VDEC_EXTRADATA_EXT_DATA)
-          {
-            append_extn_extradata(p_extra, p_extn_user[i]);
-            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-          }
-          else if (p_extn_user[i]->eType == VDEC_EXTRADATA_USER_DATA)
-          {
-            append_user_extradata(p_extra, p_extn_user[i]);
-            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-          }
-        }
-      }
-    }
-    if ((client_extradata & OMX_INTERLACE_EXTRADATA) && p_extra &&
-        ((OMX_U8*)p_extra + OMX_INTERLACE_EXTRADATA_SIZE) <
-         (meta_buffer_virtual + drv_ctx.op_buf.meta_buffer_size))
-    {
-      p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
-      append_interlace_extradata(p_extra,
-             ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format);
-      p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-    }
-    if (client_extradata & OMX_FRAMEINFO_EXTRADATA && p_extra &&
-         ((OMX_U8*)p_extra + OMX_FRAMEINFO_EXTRADATA_SIZE) <
-         (meta_buffer_virtual + drv_ctx.op_buf.meta_buffer_size))
-    {
-      p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
-      /* vui extra data (frame_rate) information */
-      if (h264_parser)
-        h264_parser->get_frame_rate(&frame_rate);
-      append_frame_info_extradata(p_extra, num_conceal_MB,
-          ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->pic_type,
-          p_buf_hdr->nTimeStamp, frame_rate,
-          &((struct vdec_output_frameinfo *)
-            p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info);
-      p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-    }
-    if ((client_extradata & OMX_PORTDEF_EXTRADATA) &&
-         p_extra != NULL &&
-        ((OMX_U8*)p_extra + OMX_PORTDEF_EXTRADATA_SIZE) <
-         (meta_buffer_virtual + drv_ctx.op_buf.meta_buffer_size))
-    {
-      p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
-      append_portdef_extradata(p_extra);
-      p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-    }
-    if (p_buf_hdr->nFlags & OMX_BUFFERFLAG_EXTRADATA)
-      if (p_extra &&
-        ((OMX_U8*)p_extra + OMX_FRAMEINFO_EXTRADATA_SIZE) <
-          (meta_buffer_virtual + drv_ctx.op_buf.meta_buffer_size))
-        append_terminator_extradata(p_extra);
-      else
-      {
-        DEBUG_PRINT_ERROR("ERROR: Terminator extradata cannot be added");
-        p_buf_hdr->nFlags &= ~OMX_BUFFERFLAG_EXTRADATA;
-      }
-}
-
 void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 {
   OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL, *p_extn_user[32];
@@ -8682,10 +8463,6 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata, bool enabl
   }
 
   driver_extradata = requested_extradata & DRIVER_EXTRADATA_MASK;
-
-  if(secure_mode)
-    driver_extradata = driver_extradata | VDEC_EXTRADATA_EXT_BUFFER;
-
   if (requested_extradata & OMX_FRAMEINFO_EXTRADATA)
     driver_extradata |= VDEC_EXTRADATA_MB_ERROR_MAP; // Required for conceal MB frame info
   if (drv_ctx.decoder_format == VDEC_CODECTYPE_MPEG2)
@@ -9204,140 +8981,6 @@ OMX_ERRORTYPE omx_vdec::handle_demux_data(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 }
 
 #ifdef MAX_RES_1080P
-
-OMX_ERRORTYPE omx_vdec::vdec_alloc_meta_buffers()
-{
-  OMX_U32 pmem_fd = -1, pmem_fd_iommu = -1;
-  OMX_U32 size, alignment;
-  void *buf_addr = NULL;
-  struct vdec_ioctl_msg ioctl_msg;
-#ifndef USE_ION
-  struct pmem_allocation allocation;
-#endif
-  struct vdec_meta_buffers meta_buffer;
-
-  memset ((unsigned char*)&meta_buffer,0,sizeof (struct vdec_meta_buffers));
-
-  //we already have meta buffer size.
-  size = drv_ctx.op_buf.meta_buffer_size * drv_ctx.op_buf.actualcount;
-  alignment = 8192;
-
-
-#ifdef USE_ION
- external_meta_buffer = true;
- drv_ctx.meta_buffer.ion_device_fd = alloc_map_ion_memory(
-                    size, 8192,
-                    &drv_ctx.meta_buffer.ion_alloc_data,
-                    &drv_ctx.meta_buffer.fd_ion_data, 0);
-  if (drv_ctx.meta_buffer.ion_device_fd < 0) {
-        external_meta_buffer = false;
-        return OMX_ErrorInsufficientResources;
-  }
-  external_meta_buffer = false;
-  pmem_fd = drv_ctx.meta_buffer.fd_ion_data.fd;
-
- external_meta_buffer_iommu = true;
- drv_ctx.meta_buffer_iommu.ion_device_fd = alloc_map_ion_memory(
-                    size, 8192,
-                    &drv_ctx.meta_buffer_iommu.ion_alloc_data,
-                    &drv_ctx.meta_buffer_iommu.fd_ion_data, 0);
-  if (drv_ctx.meta_buffer_iommu.ion_device_fd < 0) {
-        external_meta_buffer_iommu = false;
-        return OMX_ErrorInsufficientResources;
-  }
-  external_meta_buffer_iommu = false;
-  pmem_fd_iommu = drv_ctx.meta_buffer_iommu.fd_ion_data.fd;
-#else
-  allocation.size = size;
-  allocation.align = clip2(alignment);
-  if (allocation.align != 8192)
-    allocation.align = 8192;
-
-  pmem_fd = open(MEM_DEVICE, O_RDWR);
-
-  if ((int)(pmem_fd) < 0)
-      return OMX_ErrorInsufficientResources;
-
-  if (ioctl(pmem_fd, PMEM_ALLOCATE_ALIGNED, &allocation) < 0)
-  {
-    DEBUG_PRINT_ERROR("\n Aligment(%u) failed with pmem driver Sz(%lu)",
-      allocation.align, allocation.size);
-    return OMX_ErrorInsufficientResources;
-  }
-#endif
-
-    buf_addr = mmap(NULL, size,
-                 PROT_READ | PROT_WRITE,
-                 MAP_SHARED, pmem_fd_iommu, 0);
-
-    if (buf_addr == (void*) MAP_FAILED)
-    {
-      close(pmem_fd);
-      close(pmem_fd_iommu);
-#ifdef USE_ION
-      free_ion_memory(&drv_ctx.meta_buffer);
-      free_ion_memory(&drv_ctx.meta_buffer_iommu);
-#endif
-      pmem_fd = -1;
-      pmem_fd_iommu = -1;
-      DEBUG_PRINT_ERROR("Error returned in allocating recon buffers buf_addr: %p\n",buf_addr);
-      return OMX_ErrorInsufficientResources;
-    }
-
-  meta_buffer.size = size;
-  meta_buffer.count = drv_ctx.op_buf.actualcount;
-  meta_buffer.pmem_fd = pmem_fd;
-  meta_buffer.pmem_fd_iommu = pmem_fd_iommu;
-  meta_buffer.offset = 0;
-
-  ioctl_msg.in = (void*)&meta_buffer;
-  ioctl_msg.out = NULL;
-
-  if (ioctl (drv_ctx.video_driver_fd,VDEC_IOCTL_SET_META_BUFFERS, (void*)&ioctl_msg) < 0)
-  {
-    DEBUG_PRINT_ERROR("Failed to set the meta_buffers\n");
-    return OMX_ErrorInsufficientResources;
-  }
-
-  meta_buff.buffer = (unsigned char *) buf_addr;
-  meta_buff.size = size;
-  meta_buff.count = drv_ctx.op_buf.actualcount;
-  meta_buff.offset = 0;
-  meta_buff.pmem_fd = pmem_fd;
-  meta_buff.pmem_fd_iommu = pmem_fd_iommu;
-  DEBUG_PRINT_HIGH("Saving virt:%p, FD: %d and FD_IOMMU %d of size %d count: %d", meta_buff.buffer,
-                   meta_buff.pmem_fd, meta_buff.pmem_fd_iommu, meta_buff.size, drv_ctx.op_buf.actualcount);
-  return OMX_ErrorNone;
-}
-
-void omx_vdec::vdec_dealloc_meta_buffers()
-{
-    if(meta_buff.pmem_fd > 0)
-    {
-      if(ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_FREE_META_BUFFERS,NULL) < 0)
-        DEBUG_PRINT_ERROR("VDEC_IOCTL_FREE_META_BUFFERS failed");
-      close(meta_buff.pmem_fd);
-#ifdef USE_ION
-      free_ion_memory(&drv_ctx.meta_buffer);
-#endif
-    }
-    if(meta_buff.pmem_fd_iommu > 0)
-    {
-      munmap(meta_buff.buffer, meta_buff.size);
-      close(meta_buff.pmem_fd_iommu);
-#ifdef USE_ION
-      free_ion_memory(&drv_ctx.meta_buffer_iommu);
-#endif
-      DEBUG_PRINT_LOW("Cleaning Meta buffer of size %d",meta_buff.size);
-      meta_buff.pmem_fd = -1;
-      meta_buff.pmem_fd_iommu = -1;
-      meta_buff.offset = 0;
-      meta_buff.size = 0;
-      meta_buff.count = 0;
-      meta_buff.buffer = NULL;
-    }
-}
-
 OMX_ERRORTYPE omx_vdec::vdec_alloc_h264_mv()
 {
   OMX_U32 pmem_fd = -1;
