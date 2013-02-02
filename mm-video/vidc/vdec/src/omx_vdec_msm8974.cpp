@@ -582,6 +582,7 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
   if (m_debug_timestamp)
   {
     time_stamp_dts.set_timestamp_reorder_mode(true);
+    time_stamp_dts.enable_debug_print(true);
   }
 
   property_value[0] = NULL;
@@ -6680,6 +6681,20 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     time_stamp_dts.get_next_timestamp(buffer,
     (drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
      ?true:false);
+    if (m_debug_timestamp)
+    {
+      {
+        OMX_TICKS expected_ts = 0;
+        m_timestamp_list.pop_min_ts(expected_ts);
+        DEBUG_PRINT_LOW("\n Current timestamp (%lld),Popped TIMESTAMP (%lld) from list",
+                       buffer->nTimeStamp, expected_ts);
+
+        if (buffer->nTimeStamp != expected_ts)
+        {
+          DEBUG_PRINT_ERROR("\n ERROR in omx_vdec::async_message_process timestamp Check");
+        }
+      }
+    }
   }
   if (m_cb.FillBufferDone)
   {
@@ -6838,25 +6853,6 @@ int omx_vdec::async_message_process (void *context, void* message)
   vdec_msg = (struct vdec_msginfo *)message;
 
   omx = reinterpret_cast<omx_vdec*>(context);
-
-#ifdef _ANDROID_
-  if (omx->m_debug_timestamp)
-  {
-    if ( (vdec_msg->msgcode == VDEC_MSG_RESP_OUTPUT_BUFFER_DONE) &&
-         !(omx->output_flush_progress) )
-    {
-      OMX_TICKS expected_ts = 0;
-      omx->m_timestamp_list.pop_min_ts(expected_ts);
-      DEBUG_PRINT_LOW("\n Current timestamp (%lld),Popped TIMESTAMP (%lld) from list",
-                       vdec_msg->msgdata.output_frame.time_stamp, expected_ts);
-
-      if (vdec_msg->msgdata.output_frame.time_stamp != expected_ts)
-      {
-        DEBUG_PRINT_ERROR("\n ERROR in omx_vdec::async_message_process timestamp Check");
-      }
-    }
-  }
-#endif
 
   switch (vdec_msg->msgcode)
   {
