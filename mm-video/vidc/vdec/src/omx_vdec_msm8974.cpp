@@ -606,6 +606,7 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
   drv_ctx.video_driver_fd = -1;
   m_vendor_config.pData = NULL;
   pthread_mutex_init(&m_lock, NULL);
+  pthread_mutex_init(&c_lock, NULL);
   sem_init(&m_cmd_lock,0,0);
 #ifdef _ANDROID_
   char extradata_value[PROPERTY_VALUE_MAX] = {0};
@@ -716,6 +717,7 @@ omx_vdec::~omx_vdec()
   unsubscribe_to_events(drv_ctx.video_driver_fd);
   close(drv_ctx.video_driver_fd);
   pthread_mutex_destroy(&m_lock);
+  pthread_mutex_destroy(&c_lock);
   sem_destroy(&m_cmd_lock);
   if (perf_flag)
   {
@@ -8970,10 +8972,12 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
     DEBUG_PRINT_ERROR("\n No color conversion required");
     return status;
   }
+  pthread_mutex_lock(&omx->c_lock);
   if (omx->drv_ctx.output_format != VDEC_YUV_FORMAT_NV12 &&
       ColorFormat != OMX_COLOR_FormatYUV420Planar) {
     DEBUG_PRINT_ERROR("\nupdate_buffer_req: Unsupported color conversion");
-    return false;
+    status = false;
+    goto fail_update_buf_req;
   }
   c2d.close();
   status = c2d.open(omx->drv_ctx.video_resolution.frame_height,
@@ -9001,6 +9005,8 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
             buffer_alignment_req = omx->drv_ctx.op_buf.alignment;
     }
   }
+fail_update_buf_req:
+  pthread_mutex_unlock(&omx->c_lock);
   return status;
 }
 
@@ -9013,6 +9019,7 @@ bool omx_vdec::allocate_color_convert_buf::set_color_format(
     DEBUG_PRINT_ERROR("\n Invalid client in color convert");
     return false;
   }
+  pthread_mutex_lock(&omx->c_lock);
   if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12)
     drv_color_format = (OMX_COLOR_FORMATTYPE)
     QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
@@ -9041,6 +9048,7 @@ bool omx_vdec::allocate_color_convert_buf::set_color_format(
       c2d.destroy();
     enabled = false;
   }
+  pthread_mutex_unlock(&omx->c_lock);
   return status;
 }
 
@@ -9072,12 +9080,15 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr
     m_out_mem_ptr_client[index].nTimeStamp = bufadd->nTimeStamp;
     bool status;
     if (!omx->in_reconfig && !omx->output_flush_progress) {
+       pthread_mutex_lock(&omx->c_lock);
       status = c2d.convert(omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
                   bufadd->pBuffer,pmem_fd[index],pmem_baseaddress[index]);
+       pthread_mutex_unlock(&omx->c_lock);
       m_out_mem_ptr_client[index].nFilledLen = buffer_size_req;
       if (!status){
         DEBUG_PRINT_ERROR("\n Failed color conversion %d", status);
-        return NULL;
+        m_out_mem_ptr_client[index].nFilledLen = 0;
+        return &m_out_mem_ptr_client[index];
       }
     } else
       m_out_mem_ptr_client[index].nFilledLen = 0;
@@ -9107,18 +9118,24 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_dr_buf_hdr
 bool omx_vdec::allocate_color_convert_buf::get_buffer_req
           (unsigned int &buffer_size)
 {
+  bool status = true;
+  pthread_mutex_lock(&omx->c_lock);
   if (!enabled)
     buffer_size = omx->drv_ctx.op_buf.buffer_size;
-  else
+  else {
     if (!c2d.get_buffer_size(C2D_OUTPUT,buffer_size)) {
       DEBUG_PRINT_ERROR("\n Get buffer size failed");
-      return false;
+      status = false;
+      goto fail_get_buffer_size;
+    }
   }
   if (buffer_size < omx->drv_ctx.op_buf.buffer_size)
         buffer_size = omx->drv_ctx.op_buf.buffer_size;
   if (buffer_alignment_req < omx->drv_ctx.op_buf.alignment)
 	  buffer_alignment_req = omx->drv_ctx.op_buf.alignment;
-    return true;
+fail_get_buffer_size:
+  pthread_mutex_unlock(&omx->c_lock);
+  return status;
 }
 OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::free_output_buffer(
   OMX_BUFFERHEADERTYPE *bufhdr) {
@@ -9151,8 +9168,10 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::free_output_buffer(
   else
     allocated_count = 0;
   if (!allocated_count) {
+    pthread_mutex_lock(&omx->c_lock);
     c2d.close();
     init_members();
+    pthread_mutex_unlock(&omx->c_lock);
   }
   return omx->free_output_buffer(&omx->m_out_mem_ptr[index]);
 }
