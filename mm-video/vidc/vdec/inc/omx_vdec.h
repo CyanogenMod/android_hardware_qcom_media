@@ -228,6 +228,8 @@ struct video_driver_context
     struct vdec_ion *ip_buf_ion_info;
     struct vdec_ion *op_buf_ion_info;
     struct vdec_ion h264_mv;
+    struct vdec_ion meta_buffer;
+    struct vdec_ion meta_buffer_iommu;
 #endif
     struct vdec_framerate frame_rate;
     unsigned extradata;
@@ -235,6 +237,7 @@ struct video_driver_context
     char kind[128];
     bool idr_only_decoding;
     unsigned disable_dmx;
+    unsigned enable_sec_metadata;
 };
 
 #ifdef _ANDROID_
@@ -577,6 +580,7 @@ private:
 	void stream_off();
     void adjust_timestamp(OMX_S64 &act_timestamp);
     void set_frame_rate(OMX_S64 act_timestamp);
+    void handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr);
     void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
     OMX_ERRORTYPE enable_extradata(OMX_U32 requested_extradata, bool enable = true);
     void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
@@ -632,6 +636,8 @@ private:
 #ifdef MAX_RES_1080P
     OMX_ERRORTYPE vdec_alloc_h264_mv();
     void vdec_dealloc_h264_mv();
+    OMX_ERRORTYPE vdec_alloc_meta_buffers();
+    void vdec_dealloc_meta_buffers();
 #endif
 
     inline void omx_report_error ()
@@ -798,6 +804,16 @@ private:
         int offset;
     };
     h264_mv_buffer h264_mv_buff;
+
+    struct meta_buffer{
+        unsigned char* buffer;
+        int size;
+        int count;
+        int pmem_fd;
+        int pmem_fd_iommu;
+        int offset;
+    };
+    meta_buffer meta_buff;
 	extra_data_handler extra_data_handle;
 #ifdef _ANDROID_
     DivXDrmDecrypt* iDivXDrmDecrypt;
@@ -806,6 +822,8 @@ private:
     omx_time_stamp_reorder time_stamp_dts;
     desc_buffer_hdr *m_desc_buffer_ptr;
     bool secure_mode;
+    bool external_meta_buffer;
+    bool external_meta_buffer_iommu;
     OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
     bool codec_config_flag;
 #ifdef _COPPER_
