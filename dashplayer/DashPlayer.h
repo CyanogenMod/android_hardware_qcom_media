@@ -25,12 +25,22 @@
 #include <media/stagefright/foundation/ABuffer.h>
 #define KEY_DASH_ADAPTION_PROPERTIES 8002
 #define KEY_DASH_MPD_QUERY           8003
+#define KEY_DASH_QOE_EVENT           8004
+#define KEY_DASH_QOE_PERIODIC_EVENT  8008
 
 namespace android {
 
 struct ACodec;
 struct MetaData;
 struct DashPlayerDriver;
+
+enum {
+        kWhatQOE,
+        kWhatQOEPlay,
+        kWhatQOEStop,
+        kWhatQOESwitch,
+        kWhatQOEPeriodic,
+    };
 
 struct DashPlayer : public AHandler {
     DashPlayer();
@@ -202,6 +212,7 @@ private:
     char *mTrackName;
     sp<AMessage> mTextNotify;
     sp<AMessage> mSourceNotify;
+    sp<AMessage> mQOENotify;
 
     enum NuSourceType {
         kHttpLiveSource = 0,

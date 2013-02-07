@@ -260,6 +260,8 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
 #ifdef QCOM_WFD_SINK
             }
 #endif /* QCOM_WFD_SINK */
+               // for qualcomm statistics profiling
+                mStats = new DashPlayerStats();
                 mRenderer->registerStats(mStats);
                 looper()->registerHandler(mRenderer);
 
@@ -873,6 +875,69 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
             }
             break;
   }
+       case kWhatQOE:
+           {
+               sp<AMessage> dataQOE;
+               Parcel notifyDataQOE;
+               int64_t timeofday;
+               bool msgFound = msg->findMessage("QOEData", &dataQOE);
+               if (msgFound)
+               {
+                 int32_t what;
+                 CHECK(dataQOE->findInt32("what", &what));
+                 if (what == kWhatQOEPlay)
+                 {
+                   dataQOE->findInt64("timeofday",&timeofday);
+
+                   notifyDataQOE.writeInt64(timeofday);
+                 }
+                 else if (what == kWhatQOEStop)
+                 {
+                   int32_t bandwidth = 0;
+                   int32_t reBufCount = 0;
+                   int32_t stopSize = 0;
+                   int32_t videoSize = 0;
+                   AString stopPhrase;
+                   AString videoUrl;
+
+                   dataQOE->findInt64("timeofday",&timeofday);
+                   dataQOE->findInt32("bandwidth",&bandwidth);
+                   dataQOE->findInt32("rebufct",&reBufCount);
+                   dataQOE->findInt32("sizestopphrase",&stopSize);
+                   dataQOE->findString("stopphrase",&stopPhrase);
+                   dataQOE->findInt32("sizevideo",&videoSize);
+                   dataQOE->findString("videourl",&videoUrl);
+
+                   notifyDataQOE.writeInt32(bandwidth);
+                   notifyDataQOE.writeInt32(reBufCount);
+                   notifyDataQOE.writeInt64(timeofday);
+                   notifyDataQOE.writeInt32(stopSize);
+                   notifyDataQOE.writeInt32(stopSize);
+                   stopPhrase.append('\0');
+                   notifyDataQOE.write((const uint8_t *)stopPhrase.c_str(), stopSize+1);
+                   notifyDataQOE.writeInt32(videoSize);
+                   notifyDataQOE.writeInt32(videoSize);
+                   videoUrl.append('\0');
+                   notifyDataQOE.write((const uint8_t *)videoUrl.c_str(), videoSize+1);
+
+                 }
+                 else if (what == kWhatQOESwitch)
+                 {
+                   int32_t bandwidth = 0;
+                   int32_t reBufCount = 0;
+
+                   dataQOE->findInt64("timeofday",&timeofday);
+                   dataQOE->findInt32("bandwidth",&bandwidth);
+                   dataQOE->findInt32("rebufct",&reBufCount);
+
+                   notifyDataQOE.writeInt32(bandwidth);
+                   notifyDataQOE.writeInt32(reBufCount);
+                   notifyDataQOE.writeInt64(timeofday);
+                 }
+                 notifyListener(MEDIA_QOE,kWhatQOE,what,&notifyDataQOE);
+               }
+           }
+           break;
 
         default:
             TRESPASS();
@@ -1451,6 +1516,46 @@ status_t DashPlayer::getParameter(int key, Parcel *reply)
       return UNKNOWN_ERROR;
     }
     err = mSource->getParameter(key, &data_8, &data_8_Size);
+    if (key == KEY_DASH_QOE_PERIODIC_EVENT)
+    {
+      if (err == OK)
+      {
+        if(data_8)
+        {
+          sp<AMessage> dataQOE;
+          dataQOE = (AMessage*)(data_8);
+          int32_t bandwidth = 0;
+          int32_t ipaddSize = 0;
+          int32_t videoSize = 0;
+          int64_t timeofday = 0;
+          AString ipAdd;
+          AString videoUrl;
+
+          dataQOE->findInt64("timeofday",&timeofday);
+          dataQOE->findInt32("bandwidth",&bandwidth);
+          dataQOE->findInt32("sizeipadd",&ipaddSize);
+          dataQOE->findString("ipaddress",&ipAdd);
+          dataQOE->findInt32("sizevideo",&videoSize);
+          dataQOE->findString("videourl",&videoUrl);
+
+          reply->setDataPosition(0);
+          reply->writeInt32(bandwidth);
+          reply->writeInt64(timeofday);
+          reply->writeInt32(ipaddSize);
+          reply->writeInt32(ipaddSize);
+          reply->write((const uint8_t *)ipAdd.c_str(), ipaddSize);
+          reply->writeInt32(videoSize);
+          reply->writeInt32(videoSize);
+          videoUrl.append('\0');
+          reply->write((const uint8_t *)videoUrl.c_str(), videoSize+1);
+        }else
+        {
+          ALOGE("DashPlayerStats::getParameter : data_8 is null");
+        }
+      }
+    }
+    else
+    {
     if (err != OK)
     {
       ALOGE("source getParameter returned error: %d\n",err);
@@ -1468,6 +1573,7 @@ status_t DashPlayer::getParameter(int key, Parcel *reply)
     utf8_to_utf16_no_null_terminator((uint8_t *)data_8, data_8_Size, (char16_t *) data_16);
     err = reply->writeString16((char16_t *)data_16, data_8_Size);
     free(data_16);
+    }
     return err;
 }
 
@@ -1488,6 +1594,10 @@ status_t DashPlayer::setParameter(int key, const Parcel &request)
         utf16_to_utf8(str, len, (char*) data);
         err = mSource->setParameter(key, data, len);
         free(data);
+    }else if(key == KEY_DASH_QOE_EVENT)
+    {
+      int value  = request.readInt32();
+      err = mSource->setParameter(key, &value, sizeof(value));
     }
     return err;
 }
@@ -1627,9 +1737,11 @@ void DashPlayer::prepareSource()
     if (mSourceType = kHttpDashSource)
     {
        mSourceNotify = new AMessage(kWhatSourceNotify ,id());
+       mQOENotify = new AMessage(kWhatQOE,id());
        if (mSource != NULL)
        {
          mSource->setupSourceData(mSourceNotify,kTrackAll);
+         mSource->setupSourceData(mQOENotify,-1);
        }
     }
 }
