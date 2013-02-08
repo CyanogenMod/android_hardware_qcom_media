@@ -282,6 +282,7 @@ int takeYuvLog = 0;
 int displayYuv = 0;
 int displayWindow = 0;
 int realtime_display = 0;
+int num_frames_to_decode = 0;
 
 Queue *etb_queue = NULL;
 Queue *fbd_queue = NULL;
@@ -664,6 +665,7 @@ void PrintFramePackArrangement(OMX_QCOM_FRAME_PACK_ARRANGEMENT framePackingArran
 }
 void* ebd_thread(void* pArg)
 {
+  int signal_eos = 0;
   while(currentStatus != ERROR_STATE)
   {
     int readBytes =0;
@@ -685,8 +687,14 @@ void* ebd_thread(void* pArg)
       DEBUG_PRINT_ERROR("Error - No etb pBuffer to dequeue\n");
       continue;
     }
+
+    if (num_frames_to_decode && (etb_count >= num_frames_to_decode)) {
+        printf("\n Signal EOS %d frames decoded \n", num_frames_to_decode);
+       signal_eos = 1;
+    }
+
     pBuffer->nOffset = 0;
-    if((readBytes = Read_Buffer(pBuffer)) > 0) {
+    if(((readBytes = Read_Buffer(pBuffer)) > 0) && !signal_eos) {
         pBuffer->nFilledLen = readBytes;
         DEBUG_PRINT("%s: Timestamp sent(%lld)", __FUNCTION__, pBuffer->nTimeStamp);
         OMX_EmptyThisBuffer(dec_handle,pBuffer);
@@ -1289,10 +1297,10 @@ int main(int argc, char **argv)
     if(argc > 2)
     {
       codec_format_option = (codec_format)atoi(argv[2]);
-      // file_type, out_op, tst_op, nal_sz, disp_win, rt_dis, (fps), color, pic_order
-      int param[9] = {2, 1, 1, 0, 0, 0, 0xFF, 0xFF, 0xFF};
+      // file_type, out_op, tst_op, nal_sz, disp_win, rt_dis, (fps), color, pic_order, num_frames_to_decode
+      int param[10] = {2, 1, 1, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF};
       int next_arg = 3, idx = 0;
-      while (argc > next_arg && idx < 9)
+      while (argc > next_arg && idx < 10)
       {
         if (strlen(argv[next_arg]) > 2)
         {
@@ -1315,21 +1323,24 @@ int main(int argc, char **argv)
       }
       outputOption = param[idx++];
       test_option = param[idx++];
-      displayWindow = param[idx++];
-      if (displayWindow > 0)
-        printf("Only entire display window supported! Ignoring value\n");
-      realtime_display = param[idx++];
-      if (realtime_display)
-      {
-        takeYuvLog = 0;
-        if(param[idx] != 0xFF)
-        {
-          fps = param[idx++];
-          timestampInterval = 1e6 / fps;
-        }
+      if (outputOption == 1 || outputOption == 3) {
+          displayWindow = param[idx++];
+          if (displayWindow > 0)
+            printf("Only entire display window supported! Ignoring value\n");
+          realtime_display = param[idx++];
+          if (realtime_display)
+          {
+            takeYuvLog = 0;
+            if(param[idx] != 0xFF)
+            {
+              fps = param[idx++];
+              timestampInterval = 1e6 / fps;
+            }
+          }
       }
       color_fmt_type = (param[idx] != 0xFF)? param[idx++] : color_fmt_type;
       pic_order = (param[idx] != 0xFF)? param[idx++] : 0;
+      num_frames_to_decode = param[idx];
       printf("Executing DynPortReconfig QCIF 144 x 176 \n");
     }
     else
@@ -1507,6 +1518,15 @@ int main(int argc, char **argv)
       fflush(stdin);
       fgets(tempbuf,sizeof(tempbuf),stdin);
       sscanf(tempbuf,"%d",&pic_order);
+      fflush(stdin);
+
+      printf(" *********************************************\n");
+      printf(" Number of frames to decode: \n");
+      printf(" 0 ---> decode all frames: \n");
+      printf(" *********************************************\n");
+      fflush(stdin);
+      fgets(tempbuf,sizeof(tempbuf),stdin);
+      sscanf(tempbuf,"%d",&num_frames_to_decode);
       fflush(stdin);
     }
     if (file_type_option >= FILE_TYPE_COMMON_CODEC_MAX)
