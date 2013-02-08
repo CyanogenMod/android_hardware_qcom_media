@@ -283,6 +283,7 @@ int displayYuv = 0;
 int displayWindow = 0;
 int realtime_display = 0;
 int num_frames_to_decode = 0;
+int thumbnailMode = 0;
 
 Queue *etb_queue = NULL;
 Queue *fbd_queue = NULL;
@@ -1323,24 +1324,26 @@ int main(int argc, char **argv)
       }
       outputOption = param[idx++];
       test_option = param[idx++];
-      if (outputOption == 1 || outputOption == 3) {
+      if (test_option != 3) {
           displayWindow = param[idx++];
           if (displayWindow > 0)
-            printf("Only entire display window supported! Ignoring value\n");
+              printf("Only entire display window supported! Ignoring value\n");
           realtime_display = param[idx++];
-          if (realtime_display)
-          {
-            takeYuvLog = 0;
-            if(param[idx] != 0xFF)
-            {
-              fps = param[idx++];
-              timestampInterval = 1e6 / fps;
-            }
-          }
+      }
+      if (realtime_display)
+      {
+        takeYuvLog = 0;
+        if(param[idx] != 0xFF)
+        {
+          fps = param[idx++];
+          timestampInterval = 1e6 / fps;
+        }
       }
       color_fmt_type = (param[idx] != 0xFF)? param[idx++] : color_fmt_type;
-      pic_order = (param[idx] != 0xFF)? param[idx++] : 0;
-      num_frames_to_decode = param[idx];
+      if (test_option != 3) {
+          pic_order = (param[idx] != 0xFF)? param[idx++] : 0;
+          num_frames_to_decode = param[idx++];
+      }
       printf("Executing DynPortReconfig QCIF 144 x 176 \n");
     }
     else
@@ -1447,12 +1450,15 @@ int main(int argc, char **argv)
       printf(" 1 --> Play the clip till the end\n");
       printf(" 2 --> Run compliance test. Do NOT expect any display for most option. \n");
       printf("       Please only see \"TEST SUCCESSFULL\" to indicate test pass\n");
+      printf(" 3 --> Thumbnail decode mode\n");
       fflush(stdin);
       fgets(tempbuf,sizeof(tempbuf),stdin);
       sscanf(tempbuf,"%d",&test_option);
       fflush(stdin);
+      if (test_option == 3)
+          thumbnailMode = 1;
 
-      if (outputOption == 1 || outputOption == 3)
+      if ((outputOption == 1 || outputOption == 3) && thumbnailMode == 0)
       {
           printf(" *********************************************\n");
           printf(" ENTER THE PORTION OF DISPLAY TO USE\n");
@@ -1474,7 +1480,7 @@ int main(int argc, char **argv)
           }
       }
 
-      if (outputOption == 1 || outputOption == 3)
+      if ((outputOption == 1 || outputOption == 3) && thumbnailMode == 0)
       {
           printf(" *********************************************\n");
           printf(" DO YOU WANT TEST APP TO RENDER in Real time \n");
@@ -1511,23 +1517,25 @@ int main(int argc, char **argv)
       sscanf(tempbuf,"%d",&color_fmt_type);
       fflush(stdin);
 
-      printf(" *********************************************\n");
-      printf(" Output picture order option: \n");
-      printf(" *********************************************\n");
-      printf(" 0 --> Display order\n 1 --> Decode order\n");
-      fflush(stdin);
-      fgets(tempbuf,sizeof(tempbuf),stdin);
-      sscanf(tempbuf,"%d",&pic_order);
-      fflush(stdin);
+      if (thumbnailMode != 1) {
+          printf(" *********************************************\n");
+          printf(" Output picture order option: \n");
+          printf(" *********************************************\n");
+          printf(" 0 --> Display order\n 1 --> Decode order\n");
+          fflush(stdin);
+          fgets(tempbuf,sizeof(tempbuf),stdin);
+          sscanf(tempbuf,"%d",&pic_order);
+          fflush(stdin);
 
-      printf(" *********************************************\n");
-      printf(" Number of frames to decode: \n");
-      printf(" 0 ---> decode all frames: \n");
-      printf(" *********************************************\n");
-      fflush(stdin);
-      fgets(tempbuf,sizeof(tempbuf),stdin);
-      sscanf(tempbuf,"%d",&num_frames_to_decode);
-      fflush(stdin);
+          printf(" *********************************************\n");
+          printf(" Number of frames to decode: \n");
+          printf(" 0 ---> decode all frames: \n");
+          printf(" *********************************************\n");
+          fflush(stdin);
+          fgets(tempbuf,sizeof(tempbuf),stdin);
+          sscanf(tempbuf,"%d",&num_frames_to_decode);
+          fflush(stdin);
+      }
     }
     if (file_type_option >= FILE_TYPE_COMMON_CODEC_MAX)
     {
@@ -2013,6 +2021,13 @@ int Init_Decoder()
       DEBUG_PRINT_ERROR("Error: Unsupported codec %d\n", codec_format_option);
     }
 
+    if (thumbnailMode == 1) {
+        QOMX_ENABLETYPE thumbNailMode;
+        thumbNailMode.bEnable = OMX_TRUE;
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoSyncFrameDecodingMode,
+                     (OMX_PTR)&thumbNailMode);
+        DEBUG_PRINT("Enabled Thumbnail mode\n");
+    }
 
     return 0;
 }
