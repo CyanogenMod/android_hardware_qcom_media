@@ -556,7 +556,12 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
 
                 if ((mAudioEOS || mAudioDecoder == NULL)
                         && (mVideoEOS || mVideoDecoder == NULL)) {
-                    notifyListener(MEDIA_PLAYBACK_COMPLETE, 0, 0);
+                     if ((mSourceType == kHttpDashSource) &&
+                         (finalResult == ERROR_END_OF_STREAM)) {
+                        notifyListener(MEDIA_PLAYBACK_COMPLETE, 0, 0);
+                     } else if (mSourceType != kHttpDashSource) {
+                       notifyListener(MEDIA_PLAYBACK_COMPLETE, 0, 0);
+                     }
                 }
             } else if (what == Renderer::kWhatPosition) {
                 int64_t positionUs;
@@ -805,7 +810,6 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 break;
             }
             if (mSource->isPrepareDone()) {
-                notifyListener(MEDIA_PREPARED, 0, 0);
                 int64_t durationUs;
                 if (mDriver != NULL && mSource->getDuration(&durationUs) == OK) {
                     sp<DashPlayerDriver> driver = mDriver.promote();
@@ -813,6 +817,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                         driver->notifyDuration(durationUs);
                     }
                 }
+                notifyListener(MEDIA_PREPARED, 0, 0);
             } else {
                 msg->post(100000ll);
             }
