@@ -592,6 +592,8 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
   memset(&op_buf_rcnfg, 0 ,sizeof(vdec_allocatorproperty));
   memset(m_demux_offsets, 0, ( sizeof(OMX_U32) * 8192) );
   m_demux_entries = 0;
+  msg_thread_created = false;
+  async_thread_created = false;
 #ifdef _ANDROID_ICS_
   memset(&native_buffer, 0 ,(sizeof(struct nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
 #endif
@@ -632,10 +634,20 @@ omx_vdec::~omx_vdec()
   if(m_pipe_out) close(m_pipe_out);
   m_pipe_in = -1;
   m_pipe_out = -1;
-  DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
-  pthread_join(msg_thread_id,NULL);
-  DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
-  pthread_join(async_thread_id,NULL);
+  if (msg_thread_created)
+  {
+    DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
+    pthread_join(msg_thread_id,NULL);
+  }
+  if (async_thread_created)
+  {
+    DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
+    pthread_join(async_thread_id,NULL);
+  }
+  DEBUG_PRINT_HIGH("Calling close() on Video Driver");
+  close (drv_ctx.video_driver_fd);
+  drv_ctx.video_driver_fd = -1;
+
   pthread_mutex_destroy(&m_lock);
   sem_destroy(&m_cmd_lock);
 #ifdef _ANDROID_
@@ -1643,7 +1655,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       m_pipe_in = fds[0];
       m_pipe_out = fds[1];
       r = pthread_create(&msg_thread_id,0,message_thread,this);
-
       if(r < 0)
       {
         DEBUG_PRINT_ERROR("\n component_init(): message_thread creation failed");
@@ -1651,11 +1662,16 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       }
       else
       {
+        msg_thread_created = true;
         r = pthread_create(&async_thread_id,0,async_message_thread,this);
         if(r < 0)
         {
           DEBUG_PRINT_ERROR("\n component_init(): async_message_thread creation failed");
           eRet = OMX_ErrorInsufficientResources;
+        }
+        else
+        {
+          async_thread_created = true;
         }
       }
     }
@@ -1664,12 +1680,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
   if (eRet != OMX_ErrorNone)
   {
     DEBUG_PRINT_ERROR("\n Component Init Failed");
-    DEBUG_PRINT_HIGH("\n Calling VDEC_IOCTL_STOP_NEXT_MSG");
+    DEBUG_PRINT_HIGH("Calling VDEC_IOCTL_STOP_NEXT_MSG");
     (void)ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_STOP_NEXT_MSG,
         NULL);
-    DEBUG_PRINT_HIGH("\n Calling close() on Video Driver");
-    close (drv_ctx.video_driver_fd);
-    drv_ctx.video_driver_fd = -1;
   }
   else
   {
@@ -6106,10 +6119,9 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     }
 #endif
 
-    DEBUG_PRINT_LOW("\n Calling VDEC_IOCTL_STOP_NEXT_MSG");
+    DEBUG_PRINT_HIGH("Calling VDEC_IOCTL_STOP_NEXT_MSG");
     (void)ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_STOP_NEXT_MSG,
         NULL);
-    DEBUG_PRINT_HIGH("\n Close the driver instance");
 #ifdef _ANDROID_
    /* get strong count gets the refernce count of the pmem, the count will
     * be incremented by our kernal driver and surface flinger, by the time
@@ -6126,7 +6138,6 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
          m_heap_count = 0;
      }
 #endif // _ANDROID_
-    close(drv_ctx.video_driver_fd);
 #ifdef INPUT_BUFFER_LOG
     fclose (inputBufferFile1);
 #endif
