@@ -41,7 +41,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define TIMEOUT 5*60*1000
 
-void* async_venc_message_thread (void *);
 
 struct msm_venc_switch{
 	unsigned char	status;
@@ -182,6 +181,7 @@ public:
   venc_dev(class omx_venc *venc_class); //constructor
   ~venc_dev(); //des
 
+  static void* async_venc_message_thread (void *);
   bool venc_open(OMX_U32);
   void venc_close();
   unsigned venc_stop(void);
@@ -293,6 +293,10 @@ private:
   bool streaming[MAX_PORT];
   bool extradata;
   struct extradata_buffer_info extradata_info;
+
+  pthread_mutex_t pause_resume_mlock;
+  pthread_cond_t pause_resume_cond;
+  bool paused;
 };
 
 enum instance_state {

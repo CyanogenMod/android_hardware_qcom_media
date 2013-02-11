@@ -435,7 +435,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         m_pipe_out = fds[1];
       }
     }
-    r = pthread_create(&msg_thread_id,0,message_thread,this);
+    r = pthread_create(&msg_thread_id,0, message_thread, this);
 
     if(r < 0)
     {
@@ -443,7 +443,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     }
     else
     {
-      r = pthread_create(&async_thread_id,0,async_venc_message_thread,this);
+    r = pthread_create(&async_thread_id,0, venc_dev::async_venc_message_thread, this);
       dev_set_message_thread_id(async_thread_id);
       if(r < 0)
       {
