@@ -50,7 +50,7 @@ private:
     sp<AMessage> mNotify;
     sp<NativeWindowWrapper> mNativeWindow;
 
-    sp<ACodec> mCodec;
+    sp<DashCodec> mCodec;
     sp<ALooper> mCodecLooper;
     sp<MediaPlayerBase::AudioSink> mAudioSink;
     sp<Renderer> mRenderer;
