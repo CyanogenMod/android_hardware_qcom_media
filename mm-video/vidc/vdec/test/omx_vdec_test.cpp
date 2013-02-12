@@ -741,6 +741,10 @@ void* fbd_thread(void* pArg)
     {
       pthread_mutex_unlock(&enable_lock);
       pthread_mutex_lock(&fbd_lock);
+      if (pPrevBuff != NULL ) {
+        push(fbd_queue, (void *)pBuffer);
+        pPrevBuff = NULL;
+      }
       if (free_op_buf_cnt == portFmt.nBufferCountActual)
         free_output_buffers();
       pthread_mutex_unlock(&fbd_lock);
