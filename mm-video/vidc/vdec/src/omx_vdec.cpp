@@ -3679,6 +3679,18 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
          }
        }
       break;
+
+    case OMX_QcomIndexParamEnableSmoothStreaming:
+      {
+        DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexParamEnableSmoothStreaming SmoothStreaming\n");
+        int rc = ioctl(drv_ctx.video_driver_fd,
+                      VDEC_IOCTL_SET_CONT_ON_RECONFIG);
+        if(rc < 0) {
+            DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
+            eRet = OMX_ErrorHardware;
+        }
+      }
+     break;
 #endif
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
       /* Need to allow following two set_parameters even in Idle
