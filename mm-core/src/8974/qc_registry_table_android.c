@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2012 - 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -25,7 +25,6 @@ BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
 OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
 IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
 --------------------------------------------------------------------------*/
 /*============================================================================
                             O p e n M A X   w r a p p e r s
@@ -457,7 +456,7 @@ omx_core_cb_type core[] =
     }
   },
   {
-    "drm.play",
+    "AIV.play",
     NULL, // Create instance function
     // Unique instance handle
     {
@@ -467,9 +466,9 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,  // Shared object library handle
-    "libDrmPlay.so",
+    "libAivPlay.so",
     {
-      "drm.play"
+      "AIV.play.101"
     }
   },
   {
