@@ -44,6 +44,7 @@ libmm-venc-def += -DMAX_RES_720P
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 libmm-venc-def += -DMAX_RES_720P
+libmm-venc-def += -D_MSM8974_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
 libmm-venc-def += -DMAX_RES_720P
@@ -85,7 +86,9 @@ LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils
 LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_video_encoder.cpp
 ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
-LOCAL_SRC_FILES   += src/video_encoder_device_msm8974.cpp
+LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
+else ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
+LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
 else
 LOCAL_SRC_FILES   += src/video_encoder_device.cpp
 endif
