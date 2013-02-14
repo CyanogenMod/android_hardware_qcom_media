@@ -31,7 +31,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/prctl.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "video_encoder_device_msm8974.h"
+#include "video_encoder_device_v4l2.h"
 #include "omx_video_encoder.h"
 #include <linux/android_pmem.h>
 #ifdef USE_ION
