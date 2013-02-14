@@ -1533,6 +1533,15 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             portDefn->format.video.eColorFormat =
               (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque;
         }
+#ifdef MAX_RES_1080P
+        else
+        {
+          portDefn->format.video.eColorFormat =
+            m_sInPortFormat.eColorFormat;
+          DEBUG_PRINT_HIGH("get port definition: color_format = 0x%x",
+            m_sInPortFormat.eColorFormat);
+        }
+#endif
 #endif
       }
       else if(portDefn->nPortIndex == (OMX_U32) PORT_INDEX_OUT)
@@ -1585,6 +1594,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                   portFmt->nIndex = index; //restore index set from client
                   portFmt->eColorFormat =
                     (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque;
+                  DEBUG_PRINT_HIGH("get_parameter: QOMX_COLOR_FormatAndroidOpaque");
               }
           }
 #endif
