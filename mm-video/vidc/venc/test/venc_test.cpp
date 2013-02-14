@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -70,6 +70,9 @@ REFERENCES
 #ifdef USE_ION
 #include <linux/msm_ion.h>
 #endif
+#ifdef _MSM8974_
+#include <media/msm_media_info.h>
+#endif
 
 //////////////////////////
 // MACROS
@@ -78,14 +81,14 @@ REFERENCES
 #define CHK(result) if ((result != OMX_ErrorNone) && (result != OMX_ErrorNoMore)) { E("*************** error *************"); exit(0); }
 #define TEST_LOG
 #ifdef VENC_SYSLOG
-#include "cutils/log.h"
+#include <cutils/log.h>
 /// Debug message macro
-#define D(fmt, ...) LOGE("venc_test Debug %s::%d "fmt"\n",              \
+#define D(fmt, ...) ALOGE("venc_test Debug %s::%d "fmt,              \
                          __FUNCTION__, __LINE__,                        \
                          ## __VA_ARGS__)
 
 /// Error message macro
-#define E(fmt, ...) LOGE("venc_test Error %s::%d "fmt"\n",            \
+#define E(fmt, ...) ALOGE("venc_test Error %s::%d "fmt,            \
                          __FUNCTION__, __LINE__,                      \
                          ## __VA_ARGS__)
 
@@ -414,11 +417,11 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
   ion_data.alloc_data.len = nSize;
   ion_data.alloc_data.heap_mask = 0x1 << ION_CP_MM_HEAP_ID;
   ion_data.alloc_data.align = 4096;
-  ion_data.alloc_data.flags = 0;
+  ion_data.alloc_data.flags = ION_SECURE;
 
   rc = ioctl(ion_data.ion_device_fd,ION_IOC_ALLOC,&ion_data.alloc_data);
   if(rc || !ion_data.alloc_data.handle) {
-         E("\n ION ALLOC memory failed ");
+         E("\n ION ALLOC memory failed rc: %d, handle: %p", rc, ion_data.alloc_data.handle);
          ion_data.alloc_data.handle=NULL;
          return NULL;
   }
@@ -837,7 +840,8 @@ result = OMX_SetParameter(m_hHandle,
    else if (m_sProfile.eCodec == OMX_VIDEO_CodingH263)
    {
 //H263
-      eResyncMarkerType = RESYNC_MARKER_GOB;
+      //eResyncMarkerType = RESYNC_MARKER_GOB;
+	  eResyncMarkerType = RESYNC_MARKER_NONE;
       nResyncMarkerSpacing = 0;
    }
    else if (m_sProfile.eCodec == OMX_VIDEO_CodingAVC)
@@ -861,8 +865,8 @@ result = OMX_SetParameter(m_hHandle,
       }
       else
       {
-         eResyncMarkerType = RESYNC_MARKER_MB;
-          nResyncMarkerSpacing = 50;
+         eResyncMarkerType = RESYNC_MARKER_NONE;
+          nResyncMarkerSpacing = 0;
       }
    }
 
@@ -1486,7 +1490,7 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
 {
    OMX_ERRORTYPE result = OMX_ErrorNone;
 #ifdef T_ARM
-#ifdef MAX_RES_720P
+#if defined(MAX_RES_720P) && !defined(_MSM8974_)
    if (read(m_nInFd,
             pYUVBuffer->pBuffer,
             m_sProfile.nFrameBytes) != m_sProfile.nFrameBytes)
@@ -1494,13 +1498,37 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
       return OMX_ErrorUndefined;
    }
 #elif _MSM8974_
-   int bytes;
-   bytes = read(m_nInFd, pYUVBuffer->pBuffer, m_sProfile.nFrameRead);
-   if (bytes != m_sProfile.nFrameRead) {
-		E("read failed: %d != %d\n", read, m_sProfile.nFrameRead);
-		return OMX_ErrorUndefined;
+   int i, lscanl, lstride, cscanl, cstride, height, width;
+   int bytes = 0, read_bytes = 0;
+   OMX_U8 *yuv = pYUVBuffer->pBuffer;
+   height = m_sProfile.nFrameHeight;
+   width = m_sProfile.nFrameWidth;
+   lstride = VENUS_Y_STRIDE(COLOR_FMT_NV12, width);
+   lscanl = VENUS_Y_SCANLINES(COLOR_FMT_NV12, height);
+   cstride = VENUS_UV_STRIDE(COLOR_FMT_NV12, width);
+   cscanl = VENUS_UV_SCANLINES(COLOR_FMT_NV12, height);
+
+   for(i = 0; i < height; i++) {
+	   bytes = read(m_nInFd, yuv, width);
+	   if (bytes != width) {
+		   E("read failed: %d != %d\n", read, width);
+		   return OMX_ErrorUndefined;
+	   }
+	   read_bytes += bytes;
+	   yuv += lstride;
    }
-   E("\n\nRead %d bytes\n\n\n", m_sProfile.nFrameRead);
+   yuv = pYUVBuffer->pBuffer + (lscanl * lstride);
+   for (i = 0; i < ((height + 1) >> 1); i++) {
+	   bytes = read(m_nInFd, yuv, width);
+	   if (bytes != width) {
+		   E("read failed: %d != %d\n", read, width);
+		   return OMX_ErrorUndefined;
+	   }
+	   read_bytes += bytes;
+	   yuv += cstride;
+   }
+   m_sProfile.nFrameRead = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height);
+   E("\n\nActual read bytes: %d, NV12 buffer size: %d\n\n\n", read_bytes, m_sProfile.nFrameRead);
 #else
          OMX_U32 bytestoread = m_sProfile.nFrameWidth*m_sProfile.nFrameHeight;
          // read Y first
@@ -2008,13 +2036,21 @@ int main(int argc, char** argv)
    m_nFrameOut = 0;
 
    memset(&m_sMsgQ, 0, sizeof(MsgQ));
+   memset(&m_sProfile, 0, sizeof(m_sProfile));
    parseArgs(argc, argv);
 
-   D("fps=%d, bitrate=%d, width=%d, height=%d",
+   D("fps=%f, bitrate=%u, width=%u, height=%u, frame bytes=%u",
      m_sProfile.nFramerate,
      m_sProfile.nBitrate,
      m_sProfile.nFrameWidth,
-     m_sProfile.nFrameHeight);
+     m_sProfile.nFrameHeight,
+     m_sProfile.nFrameBytes);
+#ifdef _MSM8974_
+   D("Frame stride=%u, scanlines=%u, read=%u",
+		   m_sProfile.nFramestride,
+		   m_sProfile.nFrameScanlines,
+		   m_sProfile.nFrameRead);
+#endif
 
 
    //if (m_eMode != MODE_PREVIEW && m_eMode != MODE_DISPLAY)
