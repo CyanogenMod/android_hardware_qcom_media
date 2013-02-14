@@ -118,7 +118,7 @@ LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(mm-venc-test720p-inc)
 LOCAL_ADDITIONAL_DEPENDENCIES   := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 LOCAL_PRELINK_MODULE            := false
-LOCAL_SHARED_LIBRARIES          := libmm-omxcore libOmxVenc libbinder
+LOCAL_SHARED_LIBRARIES          := libmm-omxcore libOmxVenc libbinder liblog
 
 LOCAL_SRC_FILES                 := test/venc_test.cpp
 LOCAL_SRC_FILES                 += test/camera_test.cpp
