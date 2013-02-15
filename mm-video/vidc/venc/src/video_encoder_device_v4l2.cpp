@@ -186,11 +186,13 @@ void* async_venc_message_thread (void *input)
   timeout.millisec = VEN_TIMEOUT_INFINITE;
   struct v4l2_plane plane;
   struct pollfd pfd;
-  struct v4l2_buffer v4l2_buf ={0};
+  struct v4l2_buffer v4l2_buf;
   struct v4l2_event dqevent;
   pfd.events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
   pfd.fd = omx->handle->m_nDriver_fd;
   int error_code = 0,rc=0;
+
+  memset(&v4l2_buf, 0, sizeof(v4l2_buf));
   while(1)
   {
 	  rc = poll(&pfd, 1, POLL_TIMEOUT);
@@ -293,9 +295,10 @@ static const int event_type[] = {
 static OMX_ERRORTYPE subscribe_to_events(int fd)
 {
 	OMX_ERRORTYPE eRet = OMX_ErrorNone;
-	struct v4l2_event_subscription sub = {0};
+	struct v4l2_event_subscription sub;
 	int array_sz = sizeof(event_type)/sizeof(int);
 	int i,rc;
+	memset(&sub, 0, sizeof(sub));
 	if (fd < 0) {
 		printf("Invalid input: %d\n", fd);
 		return OMX_ErrorBadParameter;
@@ -782,7 +785,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 		  bufreq.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		  if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq))
 		  {
-			  DEBUG_PRINT_ERROR("\nERROR: Request for setting o/p buffer count failed: requested: %d, current: %d",
+			  DEBUG_PRINT_ERROR("\nERROR: Request for setting o/p buffer count failed: requested: %lu, current: %lu",
 								portDefn->nBufferCountActual, m_sOutput_buff_property.actualcount);
 			  return false;
 		  }
@@ -1212,13 +1215,13 @@ unsigned venc_dev::venc_stop( void)
 	struct venc_msg venc_msg;
 	int rc = 0;
 	if(!stopped) {
-		enum v4l2_buf_type out_type, cap_type;
+		enum v4l2_buf_type cap_type;
 		if (streaming[OUTPUT_PORT]) {
 			cap_type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 			rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &cap_type);
 			if (rc) {
 				DEBUG_PRINT_ERROR("Failed to call streamoff on driver: capability: %d, %d\n",
-						out_type, rc);
+						cap_type, rc);
 			} else
 				streaming[OUTPUT_PORT] = false;
 		}
@@ -1307,31 +1310,31 @@ unsigned venc_dev::venc_start(void)
 void venc_dev::venc_config_print()
 {
 
-  DEBUG_PRINT_HIGH("\nENC_CONFIG: Codec: %d, Profile %d, level : %d",
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: Codec: %ld, Profile %ld, level : %ld",
                    m_sVenc_cfg.codectype, codec_profile.profile, profile_level.level);
 
-  DEBUG_PRINT_HIGH("\n ENC_CONFIG: Width: %d, Height:%d, Fps: %d",
+  DEBUG_PRINT_HIGH("\n ENC_CONFIG: Width: %ld, Height:%ld, Fps: %ld",
                    m_sVenc_cfg.input_width, m_sVenc_cfg.input_height,
                    m_sVenc_cfg.fps_num/m_sVenc_cfg.fps_den);
 
-  DEBUG_PRINT_HIGH("\nENC_CONFIG: Bitrate: %d, RC: %d, I-Period: %d",
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: Bitrate: %ld, RC: %ld, I-Period: %ld",
                    bitrate.target_bitrate, rate_ctrl.rcmode, intra_period.num_pframes);
 
-  DEBUG_PRINT_HIGH("\nENC_CONFIG: qpI: %d, qpP: %d, qpb: %d",
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: qpI: %ld, qpP: %ld, qpb: %ld",
                    session_qp.iframeqp, session_qp.pframqp,session_qp.bframqp);
 
-  DEBUG_PRINT_HIGH("\nENC_CONFIG: VOP_Resolution: %d, Slice-Mode: %d, Slize_Size: %d",
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: VOP_Resolution: %ld, Slice-Mode: %ld, Slize_Size: %ld",
                    voptimecfg.voptime_resolution, multislice.mslice_mode,
                    multislice.mslice_size);
 
-  DEBUG_PRINT_HIGH("\nENC_CONFIG: EntropyMode: %d, CabacModel: %d",
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: EntropyMode: %d, CabacModel: %ld",
                    entropy.longentropysel, entropy.cabacmodel);
 
-  DEBUG_PRINT_HIGH("\nENC_CONFIG: DB-Mode: %d, alpha: %d, Beta: %d\n",
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: DB-Mode: %ld, alpha: %ld, Beta: %ld\n",
                    dbkfilter.db_mode, dbkfilter.slicealpha_offset,
                    dbkfilter.slicebeta_offset);
 
-  DEBUG_PRINT_HIGH("\nENC_CONFIG: IntraMB/Frame: %d, HEC: %d\n",
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: IntraMB/Frame: %ld, HEC: %ld\n",
                    intra_refresh.mbcount, hec.header_extension);
 }
 
@@ -1431,8 +1434,9 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
 bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
 {
   struct pmem *pmem_tmp;
-  struct venc_bufferpayload dev_buffer = {0};
+  struct venc_bufferpayload dev_buffer;
 
+  memset(&dev_buffer, 0, sizeof(dev_buffer));
   pmem_tmp = (struct pmem *)buf_addr;
 
   if(port == PORT_INDEX_IN)
@@ -1486,12 +1490,15 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
 bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index, unsigned fd)
 {
   struct pmem *temp_buffer;
-  struct v4l2_buffer buf = {0};
-  struct v4l2_plane plane = {0};
+  struct v4l2_buffer buf;
+  struct v4l2_plane plane;
   int rc=0;
   struct OMX_BUFFERHEADERTYPE *bufhdr;
   encoder_media_buffer_type * meta_buf = NULL;
   temp_buffer = (struct pmem *)buffer;
+
+  memset (&buf, 0, sizeof(buf));
+  memset (&plane, 0, sizeof(plane));
 
   if(buffer == NULL)
   {
@@ -1623,12 +1630,6 @@ if(pmem_data_buf)
   if (rc) {
 	  DEBUG_PRINT_ERROR("Failed to qbuf (ftb) to driver");
 	  return false;
-  }
-
-  if(/*ioctl (m_nDriver_fd,VEN_IOCTL_CMD_FILL_OUTPUT_BUFFER,&ioctl_msg) < */0)
-  {
-    DEBUG_PRINT_ERROR("\nERROR: ioctl VEN_IOCTL_CMD_FILL_OUTPUT_BUFFER failed");
-    return false;
   }
 
   return true;
@@ -1950,9 +1951,9 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
       requested_level.level = V4L2_MPEG_VIDEO_H264_LEVEL_5_1;
       break;
     default :
-      DEBUG_PRINT_ERROR("\nERROR: Unsupported H.264 level= %u",
+      DEBUG_PRINT_ERROR("\nERROR: Unsupported H.264 level= %lu",
         requested_level.level);
-      return false;
+	  return false;
       break;
     }
   }
@@ -2100,10 +2101,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
 
 bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
 {
-  //struct venc_entropycfg entropy_cfg;
-
- // memset(&entropy_cfg,0,sizeof(entropy_cfg));
-	int rc;
+	int rc = 0;
 	struct v4l2_control control;
 
   DEBUG_PRINT_LOW("\n venc_set_entropy_config: CABAC = %u level: %u", enable, i_cabac_level);
@@ -2260,11 +2258,11 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
   else
   {
     DEBUG_PRINT_ERROR("\nERROR: Invalid IntraRefresh Parameters:"
-                      "mb count: %d, mb mode:%d", irMBs, ir_mode);
+                      "mb count: %lu, mb mode:%d", irMBs, ir_mode);
     return false;
   }
 
-	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d\n", control_mode.id, control_mode.value);
+	DEBUG_PRINT_LOW("Calling IOCTL set control for id=%lu, val=%lu\n", control_mode.id, control_mode.value);
 	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control_mode);
 	if (rc) {
 		DEBUG_PRINT_ERROR("Failed to set control\n");
@@ -2292,7 +2290,9 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
 	struct venc_headerextension hec_cfg;
 	struct venc_multiclicecfg multislice_cfg;
 	int rc;
-	struct v4l2_control control = {0};
+	struct v4l2_control control;
+
+	memset(&control, 0, sizeof(control));
 	if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_MPEG4) {
 		if (error_resilience->bEnableHEC) {
 			hec_cfg.header_extension = 1;
@@ -2414,7 +2414,7 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
   DEBUG_PRINT_LOW("\n venc_set_target_bitrate: bitrate = %u",
     nTargetBitrate);
 	struct v4l2_control control;
-	int rc;
+	int rc = 0;
 	control.id = V4L2_CID_MPEG_VIDEO_BITRATE;
 	control.value = nTargetBitrate;
 
@@ -2427,11 +2427,6 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
 	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 
-  if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_TARGET_BITRATE,(void*)&ioctl_msg) < */0)
-  {
-    DEBUG_PRINT_ERROR("\nERROR: Request for setting bit rate failed");
-    return false;
-  }
   m_sVenc_cfg.targetbitrate = control.value;
   bitrate.target_bitrate = control.value;
   if(!config)
@@ -2439,7 +2434,7 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
     m_level_set = false;
     if(venc_set_profile_level(0, 0))
     {
-      DEBUG_PRINT_HIGH("Calling set level (Bitrate) with %d\n",profile_level.level);
+      DEBUG_PRINT_HIGH("Calling set level (Bitrate) with %lu\n",profile_level.level);
     }
   }
   return true;
@@ -2448,7 +2443,7 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
 bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 config)
 {
   struct v4l2_streamparm parm;
-  int rc;
+  int rc = 0;
   struct venc_framerate frame_rate_cfg;
   Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
   parm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -2467,7 +2462,7 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
     m_level_set = false;
     if(venc_set_profile_level(0, 0))
     {
-      DEBUG_PRINT_HIGH("Calling set level (Framerate) with %d\n",profile_level.level);
+      DEBUG_PRINT_HIGH("Calling set level (Framerate) with %lu\n",profile_level.level);
     }
   }
   return true;
@@ -2486,11 +2481,6 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
     DEBUG_PRINT_ERROR("\nWARNING: Unsupported Color format [%d]", color_format);
     m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV12_16M2KA;
     DEBUG_PRINT_HIGH("\n Default color format YUV420SemiPlanar is set");
-  }
-  if (/*ioctl(m_nDriver_fd, VEN_IOCTL_SET_BASE_CFG, (void*)&ioctl_msg) < */0)
-  {
-    DEBUG_PRINT_ERROR("\nERROR: Request for setting color format failed");
-    return false;
   }
   return true;
 }
@@ -2511,12 +2501,6 @@ bool venc_dev::venc_set_intra_vop_refresh(OMX_BOOL intra_vop_refresh)
 		return false;
 	}
 	printf("Success IOCTL set control for id=%x, value=%d\n", control.id, control.value);
-
-    if(/*ioctl(m_nDriver_fd, VEN_IOCTL_CMD_REQUEST_IFRAME, NULL) < */0)
-    {
-      DEBUG_PRINT_ERROR("\nERROR: Request for setting Intra VOP Refresh failed");
-      return false;
-    }
   }
   else
   {
@@ -2529,7 +2513,7 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
 {
   bool status = true;
 	struct v4l2_control control;
-	int rc;
+	int rc = 0;
 	control.id = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL;
   switch(eControlRate)
   {
@@ -2565,13 +2549,7 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
 	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 
-    if(/*ioctl (m_nDriver_fd,VEN_IOCTL_SET_RATE_CTRL_CFG,(void*)&ioctl_msg) < */0)
-    {
-      DEBUG_PRINT_ERROR("\nERROR: Request for setting rate control failed");
-      status = false;
-    }
-    else
-      rate_ctrl.rcmode = control.value;
+    rate_ctrl.rcmode = control.value;
   }
   return status;
 }
@@ -2941,11 +2919,11 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
   mb_per_frame = ((m_sVenc_cfg.input_height + 15) >> 4)*
                    ((m_sVenc_cfg.input_width + 15)>> 4);
 
-  if((mb_per_frame >= 3600) && (m_sVenc_cfg.codectype == V4L2_PIX_FMT_MPEG4))
+  if((mb_per_frame >= 3600) && (m_sVenc_cfg.codectype == (unsigned long) V4L2_PIX_FMT_MPEG4))
   {
-    if(codec_profile.profile == V4L2_MPEG_VIDEO_MPEG4_PROFILE_ADVANCED_SIMPLE)
+    if(codec_profile.profile == (unsigned long) V4L2_MPEG_VIDEO_MPEG4_PROFILE_ADVANCED_SIMPLE)
       profile_level.level = V4L2_MPEG_VIDEO_MPEG4_LEVEL_5;
-    if(codec_profile.profile == V4L2_MPEG_VIDEO_MPEG4_PROFILE_SIMPLE)
+    if(codec_profile.profile == (unsigned long) V4L2_MPEG_VIDEO_MPEG4_PROFILE_SIMPLE)
       profile_level.level = V4L2_MPEG_VIDEO_MPEG4_LEVEL_5;
     {
       new_level = profile_level.level;
@@ -2957,11 +2935,11 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
   mb_per_sec = mb_per_frame * m_sVenc_cfg.fps_num / m_sVenc_cfg.fps_den;
 
   do{
-      if(mb_per_frame <= (int)profile_tbl[0])
+      if(mb_per_frame <= (unsigned int)profile_tbl[0])
       {
-        if(mb_per_sec <= (int)profile_tbl[1])
+        if(mb_per_sec <= (unsigned int)profile_tbl[1])
         {
-          if(m_sVenc_cfg.targetbitrate <= (int)profile_tbl[2])
+          if(m_sVenc_cfg.targetbitrate <= (unsigned int)profile_tbl[2])
           {
               new_level = (int)profile_tbl[3];
               new_profile = (int)profile_tbl[4];
