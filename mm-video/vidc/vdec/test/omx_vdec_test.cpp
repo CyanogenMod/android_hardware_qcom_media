@@ -834,19 +834,19 @@ void* fbd_thread(void* pArg)
       if (takeYuvLog)
       {
 #ifdef _MSM8974_
-	  stride = ((width + 31) & (~31));
-	  scanlines = ((height+31) & (~31));
-	  char *temp = (char *) pBuffer->pBuffer;
-	  for (i = 0; i < height; i++) {
-		  bytes_written = fwrite(temp, width, 1, outputBufferFile);
-		  temp += stride;
-	  }
-	  temp = (char *)pBuffer->pBuffer + stride * scanlines;
-	  stride_c = ((width/2 + 31) & (~31))*2;
-	  for(i = 0; i < height/2; i++) {
-		  bytes_written += fwrite(temp, width, 1, outputBufferFile);
-		  temp += stride_c;
-	  }
+          stride = ((width + 127) & (~127));
+          scanlines = ((height+31) & (~31));
+          char *temp = (char *) pBuffer->pBuffer;
+          for (i = 0; i < height; i++) {
+                  bytes_written = fwrite(temp, width, 1, outputBufferFile);
+                  temp += stride;
+          }
+          temp = (char *)pBuffer->pBuffer + stride * scanlines;
+          stride_c = (width + 127) & (~127);
+          for(i = 0; i < height/2; i++) {
+                  bytes_written += fwrite(temp, width, 1, outputBufferFile);
+                  temp += stride_c;
+          }
 #else
 	  DEBUG_PRINT_ERROR("NOTE: Buffer: %p, len: %d\n", pBuffer->pBuffer,
 			  pBuffer->nFilledLen);
