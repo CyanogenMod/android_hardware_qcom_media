@@ -461,7 +461,7 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
 #endif
       return NULL;
    }
-   D("allocated pMem->fd = %d pvirt=0x%x, pMem->phys=0x%x, size = %d", pMem->pmem_fd,
+   D("allocated pMem->fd = %lu pvirt=0x%p, pMem->phys=0x%lx, size = %d", pMem->pmem_fd,
        pvirt, pMem->offset, nSize);
    return pvirt;
 }
@@ -489,41 +489,41 @@ int PmemFree(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, void* pvirt, int nSize)
 }
 void PrintFramePackArrangement(OMX_QCOM_FRAME_PACK_ARRANGEMENT framePackingArrangement)
 {
-    printf("id (%d)\n",
+    printf("id (%lu)\n",
            framePackingArrangement.id);
-    printf("cancel_flag (%d)\n",
+    printf("cancel_flag (%lu)\n",
            framePackingArrangement.cancel_flag);
-    printf("type (%d)\n",
+    printf("type (%lu)\n",
            framePackingArrangement.type);
-    printf("quincunx_sampling_flag (%d)\n",
+    printf("quincunx_sampling_flag (%lu)\n",
            framePackingArrangement.quincunx_sampling_flag);
-   printf("content_interpretation_type (%d)\n",
+   printf("content_interpretation_type (%lu)\n",
           framePackingArrangement.content_interpretation_type);
-   printf("spatial_flipping_flag (%d)\n",
+   printf("spatial_flipping_flag (%lu)\n",
           framePackingArrangement.spatial_flipping_flag);
-   printf("frame0_flipped_flag (%d)\n",
+   printf("frame0_flipped_flag (%lu)\n",
           framePackingArrangement.frame0_flipped_flag);
-   printf("field_views_flag (%d)\n",
+   printf("field_views_flag (%lu)\n",
           framePackingArrangement.field_views_flag);
-   printf("current_frame_is_frame0_flag (%d)\n",
+   printf("current_frame_is_frame0_flag (%lu)\n",
           framePackingArrangement.current_frame_is_frame0_flag);
-   printf("frame0_self_contained_flag (%d)\n",
+   printf("frame0_self_contained_flag (%lu)\n",
           framePackingArrangement.frame0_self_contained_flag);
-   printf("frame1_self_contained_flag (%d)\n",
+   printf("frame1_self_contained_flag (%lu)\n",
           framePackingArrangement.frame1_self_contained_flag);
-   printf("frame0_grid_position_x (%d)\n",
+   printf("frame0_grid_position_x (%lu)\n",
           framePackingArrangement.frame0_grid_position_x);
-   printf("frame0_grid_position_y (%d)\n",
+   printf("frame0_grid_position_y (%lu)\n",
           framePackingArrangement.frame0_grid_position_y);
-   printf("frame1_grid_position_x (%d)\n",
+   printf("frame1_grid_position_x (%lu)\n",
           framePackingArrangement.frame1_grid_position_x);
-   printf("frame1_grid_position_y (%d)\n",
+   printf("frame1_grid_position_y (%lu)\n",
           framePackingArrangement.frame1_grid_position_y);
-   printf("reserved_byte (%d)\n",
+   printf("reserved_byte (%lu)\n",
           framePackingArrangement.reserved_byte);
-   printf("repetition_period (%d)\n",
+   printf("repetition_period (%lu)\n",
           framePackingArrangement.repetition_period);
-   printf("extension_flag (%d)\n",
+   printf("extension_flag (%lu)\n",
           framePackingArrangement.extension_flag);
 }
 void SetState(OMX_STATETYPE eState)
@@ -576,7 +576,7 @@ OMX_ERRORTYPE ConfigureEncoder()
    portdef.format.video.nFrameWidth = m_sProfile.nFrameWidth;
    portdef.format.video.nFrameHeight = m_sProfile.nFrameHeight;
 
-   E ("\n Height %d width %d bit rate %d",portdef.format.video.nFrameHeight
+   E ("\n Height %lu width %lu bit rate %lu",portdef.format.video.nFrameHeight
       ,portdef.format.video.nFrameWidth,portdef.format.video.nBitrate);
    result = OMX_SetParameter(m_hHandle,
                              OMX_IndexParamPortDefinition,
@@ -645,15 +645,15 @@ result = OMX_SetParameter(m_hHandle,
    mb_per_sec = mb_per_frame*(m_sProfile.nFramerate);
 
    do{
-      if(mb_per_frame <= (int)profile_tbl[0])
+      if(mb_per_frame <= (unsigned int)profile_tbl[0])
       {
-          if(mb_per_sec <= (int)profile_tbl[1])
+          if(mb_per_sec <= (unsigned int)profile_tbl[1])
           {
-            if(m_sProfile.nBitrate <= (int)profile_tbl[2])
+            if(m_sProfile.nBitrate <= (unsigned int)profile_tbl[2])
             {
               eLevel = (int)profile_tbl[3];
               eProfile = (int)profile_tbl[4];
-              E("\n profile/level found: %d/%d\n",eProfile/eLevel);
+              E("\n profile/level found: %lu/%lu\n",eProfile, eLevel);
               profile_level_found = true;
               break;
             }
@@ -714,7 +714,7 @@ result = OMX_SetParameter(m_hHandle,
                                 OMX_IndexParamVideoProfileLevelCurrent,
                                 &profileLevel);
       E("\n OMX_IndexParamVideoProfileLevelCurrent Get Paramter port");
-      D ("\n Profile = %d level = %d",profileLevel.eProfile,profileLevel.eLevel);
+      D ("\n Profile = %lu level = %lu",profileLevel.eProfile,profileLevel.eLevel);
       CHK(result);
 
         if (m_sProfile.eCodec == OMX_VIDEO_CodingMPEG4)
