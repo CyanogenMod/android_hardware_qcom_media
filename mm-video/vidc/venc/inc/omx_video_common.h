@@ -36,6 +36,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #ifdef USE_ION
 #include <linux/msm_ion.h>
+#ifndef NEW_ION_API
+#define ION_FLAG_CACHED CACHED
+#endif
 #endif
 
 #define OMX_VIDEO_DEC_NUM_INPUT_BUFFERS   2

@@ -51,6 +51,9 @@ static ptrdiff_t x;
 #ifdef _ANDROID_
 #ifdef USE_ION
 #include <linux/msm_ion.h>
+#ifndef NEW_ION_API
+#define ION_FLAG_CACHED CACHED
+#endif
 #endif
 #include <binder/MemoryHeapBase.h>
 #include <ui/ANativeObjectBase.h>

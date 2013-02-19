@@ -1576,6 +1576,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
     //check if the target support separate metadata
     drv_ctx.enable_sec_metadata = false;
+#ifdef VDEC_IOCTL_GET_ENABLE_SEC_METADATA
     if(secure_mode)
     {
       struct vdec_ioctl_msg ioctl_msg = {NULL, NULL};
@@ -1593,6 +1594,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
           DEBUG_PRINT_HIGH("Separate Metadata is not supported in secure playback");
       }
     }
+#endif
 
 #ifdef DEFAULT_EXTRADATA
     if ((eRet == OMX_ErrorNone) && (!secure_mode || drv_ctx.enable_sec_metadata))
@@ -7706,17 +7708,28 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
      DEBUG_PRINT_ERROR("Invalid arguments to alloc_map_ion_memory\n");
      return -EINVAL;
   }
+#ifdef NEW_ION_API
   ion_dev_flag = O_RDONLY;
+#else
+  if(!secure_mode && flag == CACHED)
+  {
+     ion_dev_flag = O_RDONLY;
+  } else {
+    ion_dev_flag = (O_RDONLY | O_DSYNC);
+  }
+#endif
   fd = open (MEM_DEVICE, ion_dev_flag);
   if (fd < 0) {
      DEBUG_PRINT_ERROR("opening ion device failed with fd = %d\n", fd);
      return fd;
   }
+#ifdef NEW_ION_API
   alloc_data->flags = 0;
   if (!secure_mode && (flag & ION_FLAG_CACHED))
   {
     alloc_data->flags |= ION_FLAG_CACHED;
   }
+#endif
   alloc_data->len = buffer_size;
   alloc_data->align = clip2(alignment);
   if (alloc_data->align < 4096)
@@ -7726,20 +7739,40 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
 
   if(secure_mode) {
     if(external_meta_buffer) {
+#ifdef NEW_ION_API
       alloc_data->heap_mask = ION_HEAP(ION_CP_MFC_HEAP_ID);
       alloc_data->flags |= ION_SECURE;
+#else
+      alloc_data->flags = (ION_HEAP(ION_CP_MFC_HEAP_ID) | ION_SECURE);
+#endif
     } else if (external_meta_buffer_iommu) {
+#ifdef NEW_ION_API
       alloc_data->heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
+#else
+      alloc_data->flags = (ION_HEAP(ION_IOMMU_HEAP_ID));
+#endif
     } else {
+#ifdef NEW_ION_API
       alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
       alloc_data->flags |= ION_SECURE;
+#else
+      alloc_data->flags = (ION_HEAP(MEM_HEAP_ID) | ION_SECURE);
+#endif
     }
   } else {
 #ifdef MAX_RES_720P
     alloc_data->len = (buffer_size + (alloc_data->align - 1)) & ~(alloc_data->align - 1);
+#ifdef NEW_ION_API
     alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
 #else
+    alloc_data->flags = ION_HEAP(MEM_HEAP_ID);
+#endif
+#else
+#ifdef NEW_ION_API
     alloc_data->heap_mask = (ION_HEAP(MEM_HEAP_ID) | ION_HEAP(ION_IOMMU_HEAP_ID));
+#else
+    alloc_data->flags = (ION_HEAP(MEM_HEAP_ID) | ION_HEAP(ION_IOMMU_HEAP_ID));
+#endif
 #endif
   }
   rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
@@ -8373,6 +8406,7 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
 
 void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 {
+#ifdef VDEC_IOCTL_GET_ENABLE_SEC_METADATA
   OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL, *p_extn_user[32];
   struct vdec_output_frameinfo *output_respbuf;
   OMX_U32 num_conceal_MB = 0;
@@ -8569,6 +8603,7 @@ void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         DEBUG_PRINT_ERROR("ERROR: Terminator extradata cannot be added");
         p_buf_hdr->nFlags &= ~OMX_BUFFERFLAG_EXTRADATA;
       }
+#endif
 }
 
 void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
@@ -8792,8 +8827,10 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata, bool enabl
 
   driver_extradata = requested_extradata & DRIVER_EXTRADATA_MASK;
 
+#ifdef VDEC_IOCTL_GET_ENABLE_SEC_METADATA
   if(drv_ctx.enable_sec_metadata)
     driver_extradata = driver_extradata | VDEC_EXTRADATA_EXT_BUFFER;
+#endif
 
   if (requested_extradata & OMX_FRAMEINFO_EXTRADATA)
     driver_extradata |= VDEC_EXTRADATA_MB_ERROR_MAP; // Required for conceal MB frame info
@@ -9316,6 +9353,7 @@ OMX_ERRORTYPE omx_vdec::handle_demux_data(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 
 OMX_ERRORTYPE omx_vdec::vdec_alloc_meta_buffers()
 {
+#ifdef VDEC_IOCTL_GET_ENABLE_SEC_METADATA
   OMX_U32 pmem_fd = -1, pmem_fd_iommu = -1;
   OMX_U32 size, alignment;
   void *buf_addr = NULL;
@@ -9416,11 +9454,13 @@ OMX_ERRORTYPE omx_vdec::vdec_alloc_meta_buffers()
   meta_buff.pmem_fd_iommu = pmem_fd_iommu;
   DEBUG_PRINT_HIGH("Saving virt:%p, FD: %d and FD_IOMMU %d of size %d count: %d", meta_buff.buffer,
                    meta_buff.pmem_fd, meta_buff.pmem_fd_iommu, meta_buff.size, drv_ctx.op_buf.actualcount);
+#endif
   return OMX_ErrorNone;
 }
 
 void omx_vdec::vdec_dealloc_meta_buffers()
 {
+#ifdef VDEC_IOCTL_GET_ENABLE_SEC_METADATA
     if(meta_buff.pmem_fd > 0)
     {
       if(ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_FREE_META_BUFFERS,NULL) < 0)
@@ -9445,6 +9485,7 @@ void omx_vdec::vdec_dealloc_meta_buffers()
       meta_buff.count = 0;
       meta_buff.buffer = NULL;
     }
+#endif
 }
 
 OMX_ERRORTYPE omx_vdec::vdec_alloc_h264_mv()

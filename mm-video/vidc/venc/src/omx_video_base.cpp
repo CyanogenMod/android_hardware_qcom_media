@@ -4280,7 +4280,15 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
     DEBUG_PRINT_ERROR("\nInvalid input to alloc_map_ion_memory");
     return -EINVAL;
 	}
+#ifdef NEW_ION_API
     ion_dev_flags = O_RDONLY;
+#else
+    if(!secure_session && flag == CACHED) {
+        ion_dev_flags = O_RDONLY;
+    } else {
+        ion_dev_flags = O_RDONLY | O_DSYNC;
+    }
+#endif
         ion_device_fd = open (MEM_DEVICE,ion_dev_flags);
         if(ion_device_fd < 0)
         {
@@ -4289,20 +4297,34 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
         }
         alloc_data->len = size;
         alloc_data->align = 4096;
+#ifdef NEW_ION_API
         alloc_data->flags = 0;
         if(!secure_session && (flag & ION_FLAG_CACHED))
         {
           alloc_data->flags = ION_FLAG_CACHED;
         }
-
+#endif
         if (secure_session)
+#ifdef NEW_ION_API
            alloc_data->heap_mask = (ION_HEAP(MEM_HEAP_ID) | ION_SECURE);
+#else
+           alloc_data->flags = (ION_HEAP(MEM_HEAP_ID) | ION_SECURE);
+#endif
         else
 #ifdef MAX_RES_720P
            alloc_data->len = (size + (alloc_data->align - 1)) & ~(alloc_data->align - 1);
+#ifdef NEW_ION_API
            alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
 #else
-           alloc_data->heap_mask = (ION_HEAP(MEM_HEAP_ID) |
+           alloc_data->flags = ION_HEAP(MEM_HEAP_ID);
+#endif
+#else
+#ifdef NEW_ION_API
+           alloc_data->heap_mask =
+#else
+           alloc_data->flags =
+#endif
+               (ION_HEAP(MEM_HEAP_ID) |
                 ION_HEAP(ION_IOMMU_HEAP_ID));
 #endif
         rc = ioctl(ion_device_fd,ION_IOC_ALLOC,alloc_data);
