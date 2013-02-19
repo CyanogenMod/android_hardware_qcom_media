@@ -37,15 +37,12 @@ libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_COPPER_
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm7x30)
-libOmxVdec-def += -DMAX_RES_720P
-endif
 
 libOmxVdec-def += -D_ANDROID_ICS_
 
-ifeq ($(TARGET_USES_ION),true)
+#ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
-endif
+#endif
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
@@ -65,6 +62,7 @@ libmm-vdec-inc          += bionic/libstdc++/include
 libmm-vdec-inc          += $(LOCAL_PATH)/inc 
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
+libmm-vdec-inc          += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libgralloc
@@ -75,6 +73,8 @@ libmm-vdec-inc          += hardware/qcom/media/libc2dcolorconvert
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libcopybit
 libmm-vdec-inc          += frameworks/av/include/media/stagefright
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqservice
+libmm-vdec-inc          += frameworks/av/media/libmediaplayerservice
+libmm-vdec-inc          += frameworks/native/include/binder
 
 
 LOCAL_MODULE                    := libOmxVdec
@@ -106,9 +106,10 @@ include $(CLEAR_VARS)
 
 mm-vdec-test-inc    := hardware/qcom/media/mm-core/inc
 mm-vdec-test-inc    += $(LOCAL_PATH)/inc
+mm-vdec-test-inc    += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 LOCAL_MODULE                    := mm-vdec-omx-test
-LOCAL_MODULE_TAGS               := optional
+LOCAL_MODULE_TAGS               := debug
 LOCAL_CFLAGS                    := $(libOmxVdec-def)
 LOCAL_C_INCLUDES                := $(mm-vdec-test-inc)
 
@@ -127,9 +128,10 @@ include $(CLEAR_VARS)
 
 mm-vdec-drv-test-inc    := hardware/qcom/media/mm-core/inc
 mm-vdec-drv-test-inc    += $(LOCAL_PATH)/inc
+mm-vdec-drv-test-inc    += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 LOCAL_MODULE                    := mm-video-driver-test
-LOCAL_MODULE_TAGS               := optional
+LOCAL_MODULE_TAGS               := debug
 LOCAL_CFLAGS                    := $(libOmxVdec-def)
 LOCAL_C_INCLUDES                := $(mm-vdec-drv-test-inc)
 LOCAL_PRELINK_MODULE            := false

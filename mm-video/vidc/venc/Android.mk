@@ -107,7 +107,7 @@ mm-venc-test720p-inc            += hardware/qcom/media/mm-core/inc
 mm-venc-test720p-inc            += hardware/qcom/$(DISPLAY)/libgralloc
 
 LOCAL_MODULE                    := mm-venc-omx-test720p
-LOCAL_MODULE_TAGS               := optional
+LOCAL_MODULE_TAGS               := debug
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(mm-venc-test720p-inc)
 #LOCAL_ADDITIONAL_DEPENDENCIES   := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
@@ -130,7 +130,7 @@ include $(CLEAR_VARS)
 venc-test-inc                   += $(LOCAL_PATH)/inc
 
 LOCAL_MODULE                    := mm-video-encdrv-test
-LOCAL_MODULE_TAGS               := optional
+LOCAL_MODULE_TAGS               := debug
 LOCAL_C_INCLUDES                := $(venc-test-inc)
 LOCAL_C_INCLUDES                += hardware/qcom/media/mm-core/inc
 

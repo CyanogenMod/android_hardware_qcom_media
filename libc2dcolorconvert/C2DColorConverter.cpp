@@ -1,4 +1,4 @@
-/* copyright (c) 2012, code aurora forum. all rights reserved.
+/* copyright (c) 2012, The Linux Foundation. all rights reserved.
  *
  * redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -9,7 +9,7 @@
  *       copyright notice, this list of conditions and the following
  *       disclaimer in the documentation and/or other materials provided
  *       with the distribution.
- *     * neither the name of code aurora forum, inc. nor the names of its
+ *     * neither the name of The Linux Foundation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *
@@ -27,7 +27,7 @@
  *
  */
 /*--------------------------------------------------------------------------
-Copyright (c) 2012 Code Aurora Forum. All rights reserved.
+Copyright (c) 2012 The Linux Foundation. All rights reserved.
 --------------------------------------------------------------------------*/
 
 #include <C2DColorConverter.h>

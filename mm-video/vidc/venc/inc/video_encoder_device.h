@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -39,6 +39,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <poll.h>
 #define TIMEOUT 5000
 #define MAX_RECON_BUFFERS 4
+/* 1080P video hardware does not support slice size less than */
+/* 1900 bits for multi slice settings in bits mode */
+#define MIN_SLICE_BITS_1080P 1900
 
 void* async_venc_message_thread (void *);
 
