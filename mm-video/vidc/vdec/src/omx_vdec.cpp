@@ -63,10 +63,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gralloc_priv.h>
 #endif
 
-#if defined (_ANDROID_ICS_)
-#include <genlock.h>
-#endif
-
 #ifdef _ANDROID_
 #include "DivXDrmDecrypt.h"
 #endif //_ANDROID_
@@ -5991,17 +5987,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 #ifdef _ANDROID_ICS_
     if (m_enable_android_native_buffers)
     {
-        // Acquire a write lock on this buffer.
-        if (GENLOCK_NO_ERROR != genlock_lock_buffer(native_buffer[buffer - m_out_mem_ptr].nativehandle,
-                                                  GENLOCK_WRITE_LOCK, GENLOCK_MAX_TIMEOUT)) {
-            DEBUG_PRINT_ERROR("Failed to acquire genlock");
-            buffer->nFilledLen = 0;
-            m_cb.FillBufferDone (hComp,m_app_data,buffer);
-            pending_output_buffers--;
-            return OMX_ErrorInsufficientResources;
-        } else {
-            native_buffer[buffer - m_out_mem_ptr].inuse = true;
-      }
+      native_buffer[buffer - m_out_mem_ptr].inuse = true;
     }
 #endif
 
@@ -6014,13 +6000,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 #ifdef _ANDROID_ICS_
     if (m_enable_android_native_buffers)
     {
-        // Unlock the buffer
-        if (GENLOCK_NO_ERROR != genlock_unlock_buffer(native_buffer[buffer - m_out_mem_ptr].nativehandle)) {
-            DEBUG_PRINT_ERROR("Releasing genlock failed");
-            return OMX_ErrorInsufficientResources;
-        } else {
-            native_buffer[buffer - m_out_mem_ptr].inuse = false;
-        }
+      native_buffer[buffer - m_out_mem_ptr].inuse = false;
     }
 #endif
     m_cb.FillBufferDone (hComp,m_app_data,buffer);
@@ -6113,9 +6093,6 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
         {
           if (native_buffer[i].inuse)
           {
-            if (GENLOCK_NO_ERROR != genlock_unlock_buffer(native_buffer[i].nativehandle)) {
-                DEBUG_PRINT_ERROR("Unlocking genlock failed");
-            }
             native_buffer[i].inuse = false;
           }
         }
@@ -6818,13 +6795,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     if (m_enable_android_native_buffers)
     {
      if (native_buffer[buffer - m_out_mem_ptr].inuse) {
-      if (GENLOCK_NO_ERROR != genlock_unlock_buffer(native_buffer[buffer - m_out_mem_ptr].nativehandle)) {
-        DEBUG_PRINT_ERROR("Unlocking genlock failed");
-        return OMX_ErrorInsufficientResources;
-      }
-      else {
         native_buffer[buffer - m_out_mem_ptr].inuse = false;
-      }
      }
     }
 #endif
