@@ -220,31 +220,32 @@ PARAMETERS
 RETURN VALUE
   None.
 ========================================================================== */
-omx_video::omx_video(): m_state(OMX_StateInvalid),
-                        m_app_data(NULL),
-                        m_inp_mem_ptr(NULL),
-                        m_out_mem_ptr(NULL),
-                        m_pInput_pmem(NULL),
-                        m_pOutput_pmem(NULL),
+omx_video::omx_video():
+	m_pInput_pmem(NULL),
+	m_pOutput_pmem(NULL),
 #ifdef USE_ION
-                        m_pInput_ion(NULL),
-                        m_pOutput_ion(NULL),
+	m_pInput_ion(NULL),
+	m_pOutput_ion(NULL),
 #endif
-                        pending_input_buffers(0),
-                        pending_output_buffers(0),
-                        m_out_bm_count(0),
-                        m_inp_bm_count(0),
-                        m_flags(0),
-                        m_event_port_settings_sent(false),
-                        output_flush_progress (false),
-                        input_flush_progress (false),
-                        input_use_buffer (false),
-                        output_use_buffer (false),
-                        m_use_input_pmem(OMX_FALSE),
-                        m_use_output_pmem(OMX_FALSE),
-                        m_etb_count(0),
-                        m_fbd_count(0),
-                        m_error_propogated(false)
+	m_error_propogated(false),
+	m_state(OMX_StateInvalid),
+	m_app_data(NULL),
+	m_use_input_pmem(OMX_FALSE),
+	m_use_output_pmem(OMX_FALSE),
+	m_inp_mem_ptr(NULL),
+	m_out_mem_ptr(NULL),
+	input_flush_progress (false),
+	output_flush_progress (false),
+	input_use_buffer (false),
+	output_use_buffer (false),
+	pending_input_buffers(0),
+	pending_output_buffers(0),
+	m_out_bm_count(0),
+	m_inp_bm_count(0),
+	m_flags(0),
+	m_etb_count(0),
+	m_fbd_count(0),
+	m_event_port_settings_sent(false)
 {
   DEBUG_PRINT_HIGH("\n omx_video(): Inside Constructor()");
   memset(&m_cmp,0,sizeof(m_cmp));
