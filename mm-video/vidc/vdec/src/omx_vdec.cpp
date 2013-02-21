@@ -8479,6 +8479,7 @@ void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 #endif
           p_extra->eType = OMX_ExtraDataMax; // Invalid type to avoid expose this extradata to OMX client
         }
+#ifdef VDEC_EXTRADATA_EXT_DATA
         else if (p_extra->eType == VDEC_EXTRADATA_EXT_DATA)
         {
           OMX_U8 *data_ptr = (OMX_U8*)p_extra->data;
@@ -8500,11 +8501,14 @@ void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                                      m_disp_vert_size, m_disp_hor_size);
           }
         }
+#endif
+#ifdef VDEC_EXTRADATA_USER_DATA
         else if (p_extra->eType == VDEC_EXTRADATA_USER_DATA)
         {
           p_extn_user[extn_user_data_cnt] = p_extra;
           extn_user_data_cnt++;
         }
+#endif
         print_debug_extradata(p_extra);
         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
 
@@ -8539,6 +8543,7 @@ void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         h264_parser->parse_nal((OMX_U8*)p_sei->data, p_sei->nDataSize, NALU_TYPE_SEI);
     }
 
+#if defined(VDEC_EXTRADATA_EXT_DATA) && defined(VDEC_EXTRADATA_USER_DATA)
     if (client_extradata & OMX_EXTNUSER_EXTRADATA && p_extra)
     {
       p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
@@ -8560,6 +8565,7 @@ void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         }
       }
     }
+#endif
     if ((client_extradata & OMX_INTERLACE_EXTRADATA) && p_extra &&
         ((OMX_U8*)p_extra + OMX_INTERLACE_EXTRADATA_SIZE) <
          (meta_buffer_virtual + drv_ctx.op_buf.meta_buffer_size))
@@ -8669,6 +8675,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 #endif
         p_extra->eType = OMX_ExtraDataMax; // Invalid type to avoid expose this extradata to OMX client
       }
+#ifdef VDEC_EXTRADATA_EXT_DATA
       else if (p_extra->eType == VDEC_EXTRADATA_EXT_DATA)
       {
         OMX_U8 *data_ptr = (OMX_U8*)p_extra->data;
@@ -8690,11 +8697,14 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                                      m_disp_vert_size, m_disp_hor_size);
         }
       }
+#endif
+#ifdef VDEC_EXTRADATA_USER_DATA
       else if (p_extra->eType == VDEC_EXTRADATA_USER_DATA)
       {
         p_extn_user[extn_user_data_cnt] = p_extra;
         extn_user_data_cnt++;
       }
+#endif
       print_debug_extradata(p_extra);
       p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
       if ((OMX_U8*)p_extra > (pBuffer + p_buf_hdr->nAllocLen) ||
@@ -8730,6 +8740,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       h264_parser->parse_nal((OMX_U8*)p_sei->data, p_sei->nDataSize, NALU_TYPE_SEI);
   }
 #endif
+#if defined(VDEC_EXTRADATA_EXT_DATA) && defined(VDEC_EXTRADATA_USER_DATA)
   if (client_extradata & OMX_EXTNUSER_EXTRADATA && p_extra)
   {
     p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
@@ -8751,6 +8762,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       }
     }
   }
+#endif
   if ((client_extradata & OMX_INTERLACE_EXTRADATA) && p_extra &&
       ((OMX_U8*)p_extra + OMX_INTERLACE_EXTRADATA_SIZE) <
        (pBuffer + p_buf_hdr->nAllocLen))
@@ -8834,11 +8846,13 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata, bool enabl
 
   if (requested_extradata & OMX_FRAMEINFO_EXTRADATA)
     driver_extradata |= VDEC_EXTRADATA_MB_ERROR_MAP; // Required for conceal MB frame info
+#if defined(VDEC_EXTRADATA_EXT_DATA) && defined(VDEC_EXTRADATA_USER_DATA)
   if (drv_ctx.decoder_format == VDEC_CODECTYPE_MPEG2)
   {
     driver_extradata |= ((requested_extradata & OMX_EXTNUSER_EXTRADATA)?
                           VDEC_EXTRADATA_EXT_DATA | VDEC_EXTRADATA_USER_DATA : 0);
   }
+#endif
 #ifdef PROCESS_EXTRADATA_IN_OUTPUT_PORT
   if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
   {
