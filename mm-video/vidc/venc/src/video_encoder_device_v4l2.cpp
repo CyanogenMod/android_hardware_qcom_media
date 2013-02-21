@@ -554,6 +554,26 @@ if (codec == OMX_VIDEO_CodingVPX)
   DEBUG_PRINT_LOW("Calling IOCTL to disable seq_hdr in sync_frame id=%d, val=%d\n", control.id, control.value);
   if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control))
 	  DEBUG_PRINT_ERROR("Failed to set control\n");
+
+  struct v4l2_frmsizeenum frmsize;
+
+  //Get the hardware capabilities
+  memset((void *)&frmsize,0,sizeof(frmsize));
+  frmsize.index = 0;
+  frmsize.pixel_format = m_sVenc_cfg.codectype;
+  ret = ioctl(m_nDriver_fd, VIDIOC_ENUM_FRAMESIZES, &frmsize);
+  if(ret || frmsize.type != V4L2_FRMSIZE_TYPE_STEPWISE) {
+      DEBUG_PRINT_ERROR("Failed to get framesizes\n");
+      return false;
+  }
+
+  if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE) {
+      capability.min_width = frmsize.stepwise.min_width;
+      capability.max_width = frmsize.stepwise.max_width;
+      capability.min_height = frmsize.stepwise.min_height;
+      capability.max_height = frmsize.stepwise.max_height;
+  }
+
   return true;
 }
 
@@ -3010,3 +3030,20 @@ bool venc_dev::venc_set_meta_mode(bool mode)
 	return true;
 }
 #endif
+
+bool venc_dev::venc_is_video_session_supported(unsigned long width,
+                                             unsigned long height)
+{
+	if (width < capability.min_width || width > capability.max_width ||
+	    height < capability.min_height || height > capability.max_height) {
+	    DEBUG_PRINT_ERROR("\n Unsupported video resolution width = %u height = %u\n",
+                               width, height);
+	    DEBUG_PRINT_ERROR("\n supported range width - min(%u) max(%u\n",
+                               capability.min_width, capability.max_width);
+	    DEBUG_PRINT_ERROR("\n supported range height - min(%u) max(%u)\n",
+                               capability.min_height, capability.max_height);
+	    return false;
+	}
+	DEBUG_PRINT_LOW("\n video session supported\n");
+	return true;
+}

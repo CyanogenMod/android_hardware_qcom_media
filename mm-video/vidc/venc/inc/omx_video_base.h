@@ -195,6 +195,7 @@ public:
 #ifdef _MSM8974_
   virtual int dev_handle_extradata(void*, int) = 0;
 #endif
+  virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
   virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
 #ifdef _ANDROID_ICS_
   void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
@@ -473,6 +474,16 @@ public:
       m_error_propogated = true;
       m_pCallbacks.EventHandler(&m_cmp,m_app_data,
                                 OMX_EventError,OMX_ErrorHardware,0,NULL);
+    }
+  }
+
+  inline void omx_report_unsupported_setting ()
+  {
+    if(m_pCallbacks.EventHandler && !m_error_propogated)
+    {
+      m_error_propogated = true;
+      m_pCallbacks.EventHandler(&m_cmp,m_app_data,
+                                OMX_EventError,OMX_ErrorUnsupportedSetting,0,NULL);
     }
   }
 
