@@ -304,7 +304,7 @@ boolean H264_Utils::extract_rbsp(OMX_IN   OMX_U8  *buffer,
     ALOGE("ERROR: In %s() - line %d", __func__, __LINE__);
     return false;
   }
-  if (nal_unit->forbidden_zero_bit = (buffer[pos] & 0x80))
+  if ((nal_unit->forbidden_zero_bit = (buffer[pos] & 0x80)) != 0)
   {
     ALOGE("ERROR: In %s() - line %d", __func__, __LINE__);
   }
@@ -739,7 +739,7 @@ void h264_stream_parser::aspect_ratio_info()
 
 void h264_stream_parser::hrd_parameters(h264_hrd_param *hrd_param)
 {
-  int idx;
+  OMX_U32 idx;
   ALOGV("hrd_parameters: IN");
   hrd_param->cpb_cnt = uev() + 1;
   hrd_param->bit_rate_scale = extract_bits(4);
@@ -823,7 +823,7 @@ void h264_stream_parser::parse_sei()
 
 void h264_stream_parser::sei_buffering_period()
 {
-  int idx;
+  OMX_U32 idx;
   OMX_U32 value = 0;
   h264_hrd_param *hrd_param = NULL;
   ALOGV("@@sei_buffering_period: IN");
@@ -912,7 +912,7 @@ void h264_stream_parser::sei_picture_timing()
         ALOGE("sei_picture_timing: pic_struct invalid!");
     }
     ALOGV("-->num_clock_ts      : %u", sei_pic_timing.num_clock_ts);
-    for (int i = 0; i < sei_pic_timing.num_clock_ts && more_bits(); i++)
+    for (OMX_U32 i = 0; i < sei_pic_timing.num_clock_ts && more_bits(); i++)
     {
       sei_pic_timing.clock_ts_flag = extract_bits(1);
       if(sei_pic_timing.clock_ts_flag)
@@ -987,7 +987,7 @@ void h264_stream_parser::sei_pan_scan()
   pan_scan_param->rect_id = uev();
   if (pan_scan_param->rect_id > 0xFF)
   {
-    ALOGE("sei_pan_scan: ERROR: Invalid rect_id[%u]!", pan_scan_param->rect_id);
+    ALOGE("sei_pan_scan: ERROR: Invalid rect_id[%lu]!", pan_scan_param->rect_id);
     pan_scan_param->rect_id = NO_PAN_SCAN_BIT;
     return;
   }
@@ -1001,12 +1001,12 @@ void h264_stream_parser::sei_pan_scan()
     pan_scan_param->cnt = uev() + 1;
     if (pan_scan_param->cnt > MAX_PAN_SCAN_RECT)
     {
-      ALOGE("sei_pan_scan: ERROR: Invalid num of rect [%u]!", pan_scan_param->cnt);
+      ALOGE("sei_pan_scan: ERROR: Invalid num of rect [%lu]!", pan_scan_param->cnt);
       pan_scan_param->rect_id = NO_PAN_SCAN_BIT;
       return;
     }
 
-    for (int i = 0; i < pan_scan_param->cnt; i++)
+    for (OMX_U32 i = 0; i < pan_scan_param->cnt; i++)
     {
       pan_scan_param->rect_left_offset[i] = sev();
       pan_scan_param->rect_right_offset[i] = sev();
@@ -1033,19 +1033,19 @@ void h264_stream_parser::print_pan_data(h264_pan_scan *pan_scan_param)
 {
   ALOGE("@@print_pan_data: IN");
 
-  ALOGE("-->rect_id            : %u", pan_scan_param->rect_id);
+  ALOGE("-->rect_id            : %lu", pan_scan_param->rect_id);
   ALOGE("-->rect_cancel_flag   : %u", pan_scan_param->rect_cancel_flag);
 
-  ALOGE("-->cnt                : %u", pan_scan_param->cnt);
+  ALOGE("-->cnt                : %lu", pan_scan_param->cnt);
 
-  for (int i = 0; i < pan_scan_param->cnt; i++)
+  for (OMX_U32 i = 0; i < pan_scan_param->cnt; i++)
   {
-    ALOGE("-->rect_left_offset   : %d", pan_scan_param->rect_left_offset[i]);
-    ALOGE("-->rect_right_offset  : %d", pan_scan_param->rect_right_offset[i]);
-    ALOGE("-->rect_top_offset    : %d", pan_scan_param->rect_top_offset[i]);
-    ALOGE("-->rect_bottom_offset : %d", pan_scan_param->rect_bottom_offset[i]);
+    ALOGE("-->rect_left_offset   : %ld", pan_scan_param->rect_left_offset[i]);
+    ALOGE("-->rect_right_offset  : %ld", pan_scan_param->rect_right_offset[i]);
+    ALOGE("-->rect_top_offset    : %ld", pan_scan_param->rect_top_offset[i]);
+    ALOGE("-->rect_bottom_offset : %ld", pan_scan_param->rect_bottom_offset[i]);
   }
-  ALOGE("-->repetition_period  : %u", pan_scan_param->rect_repetition_period);
+  ALOGE("-->repetition_period  : %lu", pan_scan_param->rect_repetition_period);
 
   ALOGE("@@print_pan_data: OUT");
 }

@@ -74,17 +74,18 @@ static unsigned char VC1_AP_mask_code[4] = {0xFF,0xFF,0xFF,0xFC};
 static unsigned char MPEG2_start_code[4] = {0x00, 0x00, 0x01, 0x00};
 static unsigned char MPEG2_mask_code[4] = {0xFF, 0xFF, 0xFF, 0xFF};
 
-frame_parse::frame_parse():parse_state(A0),
+frame_parse::frame_parse():mutils(NULL),
+                           parse_state(A0),
+                           start_code(NULL),
+                           mask_code(NULL),
                            last_byte_h263(0),
+                           last_byte(0),
+                           header_found(false),
+                           skip_frame_boundary(false),
                            state_nal(NAL_LENGTH_ACC),
                            nal_length(0),
                            accum_length(0),
-                           bytes_tobeparsed(0),
-                           mutils(NULL),
-                           start_code(NULL),
-                           mask_code(NULL),
-                           header_found(false),
-                           skip_frame_boundary(false)
+                           bytes_tobeparsed(0)
 {
 }
 
@@ -126,6 +127,12 @@ int frame_parse::init_start_codes (codec_type codec_type_parse)
                 start_code = MPEG2_start_code;
                 mask_code = MPEG2_mask_code;
                 break;
+#ifdef _MSM8974_
+        case CODEC_TYPE_VP8:
+                break;
+#endif
+        default:
+                return -1;
         }
 	return 1;
 }
@@ -330,6 +337,7 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
              break;
          case A4:
          case A0:
+         case A5:
              break;
         }
         dest_len = dest->nAllocLen - (dest->nFilledLen + dest->nOffset);
@@ -447,6 +455,9 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
           {
               parse_state = A0;
           }
+          break;
+       case A4:
+       case A5:
           break;
       }
 
