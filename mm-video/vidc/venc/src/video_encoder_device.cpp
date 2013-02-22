@@ -1500,26 +1500,26 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
       luma_size_2k = (luma_size + 2047) & ~2047;
 
       dev_buffer.sz = luma_size_2k + ((luma_size/2 + 2047) & ~2047);
-#ifdef USE_ION
-      ioctl_msg.in = NULL;
-      ioctl_msg.out = (void*)&buff_alloc_property;
-      if(ioctl (m_nDriver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
-      {
-         DEBUG_PRINT_ERROR("\nERROR: venc_use_buf:get input buffer failed ");
-         return false;
-      }
-      if(buff_alloc_property.alignment < 4096)
-      {
-         dev_buffer.sz = ((dev_buffer.sz + 4095) & ~4095);
-      }
-      else
-      {
-         dev_buffer.sz = ((dev_buffer.sz + (buff_alloc_property.alignment - 1)) &
-                                           ~(buff_alloc_property.alignment - 1));
-      }
-#endif
-      dev_buffer.maped_size = dev_buffer.sz;
     }
+#ifdef USE_ION
+    ioctl_msg.in = NULL;
+    ioctl_msg.out = (void*)&buff_alloc_property;
+    if(ioctl (m_nDriver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0)
+    {
+       DEBUG_PRINT_ERROR("\nERROR: venc_use_buf:get input buffer failed ");
+       return false;
+    }
+    if(buff_alloc_property.alignment < 4096)
+    {
+       dev_buffer.sz = ((dev_buffer.sz + 4095) & ~4095);
+    }
+    else
+    {
+       dev_buffer.sz = ((dev_buffer.sz + (buff_alloc_property.alignment - 1)) &
+                                         ~(buff_alloc_property.alignment - 1));
+    }
+#endif
+    dev_buffer.maped_size = dev_buffer.sz;
 
     ioctl_msg.in  = (void*)&dev_buffer;
     ioctl_msg.out = NULL;
