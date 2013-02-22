@@ -42,6 +42,9 @@ libOmxVdec-def += -D_ANDROID_ICS_
 
 #ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
+ifeq ($(TARGET_USES_QCOM_BSP),true)
+libOmxVdec-def += NEW_ION_API
+endif
 #endif
 
 # ---------------------------------------------------------------------------------
