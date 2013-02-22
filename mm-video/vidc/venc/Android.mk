@@ -37,6 +37,9 @@ libmm-venc-def += -DMAX_RES_720P
 endif
 ifeq ($(TARGET_USES_ION),true)
 libmm-venc-def += -DUSE_ION
+ifeq ($(TARGET_USES_QCOM_BSP),true)
+libmm-venc-def += NEW_ION_API
+endif
 endif
 libmm-venc-def += -D_ANDROID_ICS_
 # ---------------------------------------------------------------------------------
