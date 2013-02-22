@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -374,7 +374,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   m_sParamH263.bPLUSPTYPEAllowed = OMX_FALSE;
   m_sParamH263.nAllowedPictureTypes = 2;
   m_sParamH263.bForceRoundingTypeToZero = OMX_TRUE;
-  m_sParamH263.nPictureHeaderRepetition = 0; 
+  m_sParamH263.nPictureHeaderRepetition = 0;
   m_sParamH263.nGOBHeaderInterval = 1;
 
   // h264 specific init
@@ -385,7 +385,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   m_sParamAVC.nBFrames = 0;
   m_sParamAVC.bUseHadamard = OMX_FALSE;
   m_sParamAVC.nRefFrames = 1;
-  m_sParamAVC.nRefIdx10ActiveMinus1 = 1; 
+  m_sParamAVC.nRefIdx10ActiveMinus1 = 1;
   m_sParamAVC.nRefIdx11ActiveMinus1 = 0;
   m_sParamAVC.bEnableUEP = OMX_FALSE;
   m_sParamAVC.bEnableFMO = OMX_FALSE;
