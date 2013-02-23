@@ -800,7 +800,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                   comp_role->cRole);
 
       if((m_state == OMX_StateLoaded)&&
-          !BITMASK_PRESENT(&m_flags,OMX_COMPONENT_IDLE_PENDING))
+          !BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_IDLE_PENDING))
       {
          DEBUG_PRINT_LOW("Set Parameter called in valid state");
       }
