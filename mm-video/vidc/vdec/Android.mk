@@ -113,7 +113,6 @@ ifeq ($(call is-board-platform-in-list,msm8974 msm8610 msm8226),true)
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
 else
 LOCAL_SHARED_LIBRARIES  += libhardware
-LOCAL_SHARED_LIBRARIES  += libhwcservice
 libmm-vdec-inc          += hardware/qcom/display/libhwcomposer
 LOCAL_SRC_FILES         += src/power_module.cpp
 LOCAL_SRC_FILES         += src/omx_vdec.cpp
