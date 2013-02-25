@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -2450,15 +2450,24 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
   {
 #ifdef MAX_RES_1080P
   m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV12_16M2KA;
+    DEBUG_PRINT_HIGH("venc_set_color_format: VEN_INPUTFMT_NV12_16M2KA");
 #else
     m_sVenc_cfg.inputformat = VEN_INPUTFMT_NV12;
 #endif
   }
+#if defined(MAX_RES_1080P) && defined(VEN_INPUTFMT_NV21_16M2KA)
+  else if(color_format == QOMX_COLOR_FormatYUV420PackedSemiPlanar16m2ka_nv21)
+  {
+    m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV21_16M2KA;
+    DEBUG_PRINT_HIGH("venc_set_color_format: VEN_INPUTFMT_NV21_16M2KA");
+  }
+#endif
   else
   {
     DEBUG_PRINT_ERROR("\nWARNING: Unsupported Color format [%d]", color_format);
 #ifdef MAX_RES_1080P
     m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV12_16M2KA;
+    DEBUG_PRINT_HIGH("venc_set_color_format: VEN_INPUTFMT_NV12_16M2KA");
 #else
     m_sVenc_cfg.inputformat = VEN_INPUTFMT_NV12;
 #endif

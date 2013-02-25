@@ -63,10 +63,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gralloc_priv.h>
 #endif
 
-#if defined (_ANDROID_ICS_)
-#include <genlock.h>
-#endif
-
 #ifdef _ANDROID_
 #include "DivXDrmDecrypt.h"
 #endif //_ANDROID_
@@ -772,10 +768,10 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
 
               case OMX_CommandPortDisable:
                 DEBUG_PRINT_HIGH("\n OMX_CommandPortDisable complete for port [%d]", p2);
-                if (BITMASK_PRESENT(&pThis->m_flags,
+                if (BITMASK_PRESENT_U32(pThis->m_flags,
                     OMX_COMPONENT_OUTPUT_FLUSH_IN_DISABLE_PENDING))
                 {
-                  BITMASK_SET(&pThis->m_flags, OMX_COMPONENT_DISABLE_OUTPUT_DEFERRED);
+                  pThis->m_flags = BITMASK_SET_U32(pThis->m_flags, OMX_COMPONENT_DISABLE_OUTPUT_DEFERRED);
                   break;
                 }
                 if (p2 == OMX_CORE_OUTPUT_PORT_INDEX && pThis->in_reconfig)
@@ -921,16 +917,16 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
               else
               {
                 /*Check if we need generate event for Flush done*/
-                if(BITMASK_PRESENT(&pThis->m_flags,
+                if(BITMASK_PRESENT_U32(pThis->m_flags,
                                    OMX_COMPONENT_INPUT_FLUSH_PENDING))
                 {
-                  BITMASK_CLEAR (&pThis->m_flags,OMX_COMPONENT_INPUT_FLUSH_PENDING);
+                  pThis->m_flags = BITMASK_CLEAR_U32(pThis->m_flags,OMX_COMPONENT_INPUT_FLUSH_PENDING);
                   DEBUG_PRINT_LOW("\n Input Flush completed - Notify Client");
                   pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                            OMX_EventCmdComplete,OMX_CommandFlush,
                                            OMX_CORE_INPUT_PORT_INDEX,NULL );
                 }
-                if (BITMASK_PRESENT(&pThis->m_flags,
+                if (BITMASK_PRESENT_U32(pThis->m_flags,
                                          OMX_COMPONENT_IDLE_PENDING))
                 {
                   if (!pThis->output_flush_progress)
@@ -972,34 +968,34 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
               else
               {
                 /*Check if we need generate event for Flush done*/
-                if(BITMASK_PRESENT(&pThis->m_flags,
+                if(BITMASK_PRESENT_U32(pThis->m_flags,
                                    OMX_COMPONENT_OUTPUT_FLUSH_PENDING))
                 {
                   DEBUG_PRINT_LOW("\n Notify Output Flush done");
-                  BITMASK_CLEAR (&pThis->m_flags,OMX_COMPONENT_OUTPUT_FLUSH_PENDING);
+                  pThis->m_flags = BITMASK_CLEAR_U32(pThis->m_flags,OMX_COMPONENT_OUTPUT_FLUSH_PENDING);
                   pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                            OMX_EventCmdComplete,OMX_CommandFlush,
                                            OMX_CORE_OUTPUT_PORT_INDEX,NULL );
                 }
-                if(BITMASK_PRESENT(&pThis->m_flags,
+                if(BITMASK_PRESENT_U32(pThis->m_flags,
                        OMX_COMPONENT_OUTPUT_FLUSH_IN_DISABLE_PENDING))
                 {
                   DEBUG_PRINT_LOW("\n Internal flush complete");
-                  BITMASK_CLEAR (&pThis->m_flags,
+                  pThis->m_flags = BITMASK_CLEAR_U32(pThis->m_flags,
                                  OMX_COMPONENT_OUTPUT_FLUSH_IN_DISABLE_PENDING);
-                  if (BITMASK_PRESENT(&pThis->m_flags,
+                  if (BITMASK_PRESENT_U32(pThis->m_flags,
                           OMX_COMPONENT_DISABLE_OUTPUT_DEFERRED))
                   {
                     pThis->post_event(OMX_CommandPortDisable,
                                OMX_CORE_OUTPUT_PORT_INDEX,
                                OMX_COMPONENT_GENERATE_EVENT);
-                    BITMASK_CLEAR (&pThis->m_flags,
+                    pThis->m_flags = BITMASK_CLEAR_U32(pThis->m_flags,
                                    OMX_COMPONENT_DISABLE_OUTPUT_DEFERRED);
 
                   }
                 }
 
-                if (BITMASK_PRESENT(&pThis->m_flags ,OMX_COMPONENT_IDLE_PENDING))
+                if (BITMASK_PRESENT_U32(pThis->m_flags ,OMX_COMPONENT_IDLE_PENDING))
                 {
                   if (!pThis->input_flush_progress)
                   {
@@ -1034,17 +1030,17 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
             else
             {
               DEBUG_PRINT_LOW("\n OMX_COMPONENT_GENERATE_START_DONE Success");
-              if(BITMASK_PRESENT(&pThis->m_flags,OMX_COMPONENT_EXECUTE_PENDING))
+              if(BITMASK_PRESENT_U32(pThis->m_flags,OMX_COMPONENT_EXECUTE_PENDING))
               {
                 DEBUG_PRINT_LOW("\n Move to executing");
                 // Send the callback now
-                BITMASK_CLEAR((&pThis->m_flags),OMX_COMPONENT_EXECUTE_PENDING);
+                pThis->m_flags = BITMASK_CLEAR_U32(pThis->m_flags,OMX_COMPONENT_EXECUTE_PENDING);
                 pThis->m_state = OMX_StateExecuting;
                 pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                        OMX_EventCmdComplete,OMX_CommandStateSet,
                                        OMX_StateExecuting, NULL);
               }
-              else if (BITMASK_PRESENT(&pThis->m_flags,
+              else if (BITMASK_PRESENT_U32(pThis->m_flags,
                                        OMX_COMPONENT_PAUSE_PENDING))
               {
                 if (ioctl (pThis->drv_ctx.video_driver_fd,
@@ -1074,11 +1070,11 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
             else
             {
               pThis->complete_pending_buffer_done_cbs();
-              if(BITMASK_PRESENT(&pThis->m_flags,OMX_COMPONENT_PAUSE_PENDING))
+              if(BITMASK_PRESENT_U32(pThis->m_flags,OMX_COMPONENT_PAUSE_PENDING))
               {
                 DEBUG_PRINT_LOW("\n OMX_COMPONENT_GENERATE_PAUSE_DONE nofity");
                 //Send the callback now
-                BITMASK_CLEAR((&pThis->m_flags),OMX_COMPONENT_PAUSE_PENDING);
+                pThis->m_flags = BITMASK_CLEAR_U32(pThis->m_flags,OMX_COMPONENT_PAUSE_PENDING);
                 pThis->m_state = OMX_StatePause;
                 pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                        OMX_EventCmdComplete,OMX_CommandStateSet,
@@ -1104,11 +1100,11 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
             }
             else
             {
-              if(BITMASK_PRESENT(&pThis->m_flags,OMX_COMPONENT_EXECUTE_PENDING))
+              if(BITMASK_PRESENT_U32(pThis->m_flags,OMX_COMPONENT_EXECUTE_PENDING))
               {
                 DEBUG_PRINT_LOW("\n Moving the decoder to execute state");
                 // Send the callback now
-                BITMASK_CLEAR((&pThis->m_flags),OMX_COMPONENT_EXECUTE_PENDING);
+                pThis->m_flags = BITMASK_CLEAR_U32(pThis->m_flags,OMX_COMPONENT_EXECUTE_PENDING);
                 pThis->m_state = OMX_StateExecuting;
                 pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                        OMX_EventCmdComplete,OMX_CommandStateSet,
@@ -1135,11 +1131,11 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
             else
             {
               pThis->complete_pending_buffer_done_cbs();
-              if(BITMASK_PRESENT(&pThis->m_flags,OMX_COMPONENT_IDLE_PENDING))
+              if(BITMASK_PRESENT_U32(pThis->m_flags,OMX_COMPONENT_IDLE_PENDING))
               {
                 DEBUG_PRINT_LOW("\n OMX_COMPONENT_GENERATE_STOP_DONE Success");
                 // Send the callback now
-                BITMASK_CLEAR((&pThis->m_flags),OMX_COMPONENT_IDLE_PENDING);
+                pThis->m_flags = BITMASK_CLEAR_U32(pThis->m_flags,OMX_COMPONENT_IDLE_PENDING);
                 pThis->m_state = OMX_StateIdle;
                 DEBUG_PRINT_LOW("\n Move to Idle State");
                 pThis->m_cb.EventHandler(&pThis->m_cmp,pThis->m_app_data,
@@ -1859,7 +1855,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         else
         {
           DEBUG_PRINT_LOW("send_command_proxy(): Loaded-->Idle-Pending\n");
-          BITMASK_SET(&m_flags, OMX_COMPONENT_IDLE_PENDING);
+          m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_IDLE_PENDING);
           // Skip the event notification
           bFlag = 0;
         }
@@ -1928,7 +1924,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         else
         {
           DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Loaded-Pending\n");
-          BITMASK_SET(&m_flags, OMX_COMPONENT_LOADING_PENDING);
+          m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_LOADING_PENDING);
           // Skip the event notification
           bFlag = 0;
         }
@@ -1937,7 +1933,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
       else if(eState == OMX_StateExecuting)
       {
         DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
-        BITMASK_SET(&m_flags, OMX_COMPONENT_EXECUTE_PENDING);
+        m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_EXECUTE_PENDING);
         bFlag = 0;
         if (ioctl (drv_ctx.video_driver_fd,VDEC_IOCTL_CMD_START,
                     NULL) < 0)
@@ -1976,7 +1972,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
          }
          else
          {
-           BITMASK_SET(&m_flags,OMX_COMPONENT_PAUSE_PENDING);
+           m_flags = BITMASK_SET_U32(m_flags,OMX_COMPONENT_PAUSE_PENDING);
            DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Pause\n");
            bFlag = 0;
          }
@@ -2008,7 +2004,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
          at the end of this function definition
          */
          DEBUG_PRINT_LOW("\n send_command_proxy(): Executing --> Idle \n");
-         BITMASK_SET(&m_flags,OMX_COMPONENT_IDLE_PENDING);
+         m_flags = BITMASK_SET_U32(m_flags,OMX_COMPONENT_IDLE_PENDING);
          if(!sem_posted)
          {
            sem_posted = 1;
@@ -2031,7 +2027,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
          }
          else
          {
-           BITMASK_SET(&m_flags,OMX_COMPONENT_PAUSE_PENDING);
+           m_flags = BITMASK_SET_U32(m_flags,OMX_COMPONENT_PAUSE_PENDING);
            DEBUG_PRINT_LOW("send_command_proxy(): Executing-->Pause\n");
            bFlag = 0;
          }
@@ -2092,7 +2088,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         }
         else
         {
-          BITMASK_SET(&m_flags,OMX_COMPONENT_EXECUTE_PENDING);
+          m_flags = BITMASK_SET_U32(m_flags,OMX_COMPONENT_EXECUTE_PENDING);
           DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
           post_event (NULL,VDEC_S_SUCCESS,\
                       OMX_COMPONENT_GENERATE_RESUME_DONE);
@@ -2105,7 +2101,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         /* Since error is None , we will post an event
         at the end of this function definition */
         DEBUG_PRINT_LOW("\n Pause --> Idle \n");
-         BITMASK_SET(&m_flags,OMX_COMPONENT_IDLE_PENDING);
+         m_flags = BITMASK_SET_U32(m_flags,OMX_COMPONENT_IDLE_PENDING);
          if(!sem_posted)
          {
            sem_posted = 1;
@@ -2226,11 +2222,11 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         "with param1: %d", param1);
     if(OMX_CORE_INPUT_PORT_INDEX == param1 || OMX_ALL == param1)
     {
-      BITMASK_SET(&m_flags, OMX_COMPONENT_INPUT_FLUSH_PENDING);
+      m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_INPUT_FLUSH_PENDING);
     }
     if(OMX_CORE_OUTPUT_PORT_INDEX == param1 || OMX_ALL == param1)
     {
-      BITMASK_SET(&m_flags, OMX_COMPONENT_OUTPUT_FLUSH_PENDING);
+      m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_OUTPUT_FLUSH_PENDING);
     }
     if (!sem_posted){
       sem_posted = 1;
@@ -2249,7 +2245,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         m_inp_bEnabled = OMX_TRUE;
 
         if( (m_state == OMX_StateLoaded &&
-             !BITMASK_PRESENT(&m_flags,OMX_COMPONENT_IDLE_PENDING))
+             !BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_IDLE_PENDING))
             || allocate_input_done())
         {
           post_event(OMX_CommandPortEnable,OMX_CORE_INPUT_PORT_INDEX,
@@ -2258,7 +2254,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         else
         {
           DEBUG_PRINT_LOW("send_command_proxy(): Disabled-->Enabled Pending\n");
-          BITMASK_SET(&m_flags, OMX_COMPONENT_INPUT_ENABLE_PENDING);
+          m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_INPUT_ENABLE_PENDING);
           // Skip the event notification
           bFlag = 0;
         }
@@ -2269,7 +2265,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
           m_out_bEnabled = OMX_TRUE;
 
           if( (m_state == OMX_StateLoaded &&
-              !BITMASK_PRESENT(&m_flags,OMX_COMPONENT_IDLE_PENDING))
+              !BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_IDLE_PENDING))
               || (allocate_output_done()))
           {
              post_event(OMX_CommandPortEnable,OMX_CORE_OUTPUT_PORT_INDEX,
@@ -2279,7 +2275,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
           else
           {
               DEBUG_PRINT_LOW("send_command_proxy(): Disabled-->Enabled Pending\n");
-              BITMASK_SET(&m_flags, OMX_COMPONENT_OUTPUT_ENABLE_PENDING);
+              m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_OUTPUT_ENABLE_PENDING);
               // Skip the event notification
               bFlag = 0;
           }
@@ -2300,7 +2296,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
           }
           else
           {
-             BITMASK_SET(&m_flags, OMX_COMPONENT_INPUT_DISABLE_PENDING);
+             m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_INPUT_DISABLE_PENDING);
              if(m_state == OMX_StatePause ||m_state == OMX_StateExecuting)
              {
                if(!sem_posted)
@@ -2327,7 +2323,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
           }
           else
          {
-            BITMASK_SET(&m_flags, OMX_COMPONENT_OUTPUT_DISABLE_PENDING);
+            m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_OUTPUT_DISABLE_PENDING);
             if(m_state == OMX_StatePause ||m_state == OMX_StateExecuting)
             {
               if (!sem_posted)
@@ -2335,7 +2331,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
                 sem_posted = 1;
                 sem_post (&m_cmd_lock);
               }
-                BITMASK_SET(&m_flags, OMX_COMPONENT_OUTPUT_FLUSH_IN_DISABLE_PENDING);
+                m_flags = BITMASK_SET_U32(m_flags, OMX_COMPONENT_OUTPUT_FLUSH_IN_DISABLE_PENDING);
                 execute_omx_flush(OMX_CORE_OUTPUT_PORT_INDEX);
             }
             // Skip the event notification
@@ -3140,9 +3136,9 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
          return OMX_ErrorBadParameter;
     }
     if((m_state != OMX_StateLoaded) &&
-          BITMASK_ABSENT(&m_flags,OMX_COMPONENT_OUTPUT_ENABLE_PENDING) &&
+          BITMASK_ABSENT_U32(m_flags,OMX_COMPONENT_OUTPUT_ENABLE_PENDING) &&
           (m_out_bEnabled == OMX_TRUE) &&
-          BITMASK_ABSENT(&m_flags, OMX_COMPONENT_INPUT_ENABLE_PENDING) &&
+          BITMASK_ABSENT_U32(m_flags, OMX_COMPONENT_INPUT_ENABLE_PENDING) &&
           (m_inp_bEnabled == OMX_TRUE)) {
         DEBUG_PRINT_ERROR("Set Param in Invalid State \n");
         return OMX_ErrorIncorrectStateOperation;
@@ -3393,7 +3389,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                        comp_role->cRole);
 
           if((m_state == OMX_StateLoaded)&&
-              !BITMASK_PRESENT(&m_flags,OMX_COMPONENT_IDLE_PENDING))
+              !BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_IDLE_PENDING))
           {
            DEBUG_PRINT_LOW("Set Parameter called in valid state");
           }
@@ -3715,6 +3711,18 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
          }
        }
       break;
+
+    case OMX_QcomIndexParamEnableSmoothStreaming:
+      {
+        DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexParamEnableSmoothStreaming SmoothStreaming\n");
+        int rc = ioctl(drv_ctx.video_driver_fd,
+                      VDEC_IOCTL_SET_CONT_ON_RECONFIG);
+        if(rc < 0) {
+            DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
+            eRet = OMX_ErrorHardware;
+        }
+      }
+     break;
 #endif
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
       /* Need to allow following two set_parameters even in Idle
@@ -4218,7 +4226,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
 
   if (eRet == OMX_ErrorNone) {
     for(i=0; i< drv_ctx.op_buf.actualcount; i++) {
-      if(BITMASK_ABSENT(&m_out_bm_count,i))
+      if(BITMASK_ABSENT_U32(m_out_bm_count,i))
       {
         break;
       }
@@ -4395,7 +4403,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
        (*bufferHdr)->pBuffer = buff;
      }
      (*bufferHdr)->pAppPrivate = privateAppData;
-     BITMASK_SET(&m_out_bm_count,i);
+     m_out_bm_count = BITMASK_SET_U32(m_out_bm_count,i);
   }
   return eRet;
 }
@@ -4518,25 +4526,25 @@ OMX_ERRORTYPE  omx_vdec::use_buffer(
   DEBUG_PRINT_LOW("Use Buffer: port %u, buffer %p, eRet %d", port, *bufferHdr, error);
   if(error == OMX_ErrorNone)
   {
-    if(allocate_done() && BITMASK_PRESENT(&m_flags,OMX_COMPONENT_IDLE_PENDING))
+    if(allocate_done() && BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_IDLE_PENDING))
     {
       // Send the callback now
-      BITMASK_CLEAR((&m_flags),OMX_COMPONENT_IDLE_PENDING);
+      m_flags = BITMASK_CLEAR_U32(m_flags,OMX_COMPONENT_IDLE_PENDING);
       post_event(OMX_CommandStateSet,OMX_StateIdle,
                          OMX_COMPONENT_GENERATE_EVENT);
     }
     if(port == OMX_CORE_INPUT_PORT_INDEX && m_inp_bPopulated &&
-       BITMASK_PRESENT(&m_flags,OMX_COMPONENT_INPUT_ENABLE_PENDING))
+       BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_INPUT_ENABLE_PENDING))
     {
-      BITMASK_CLEAR((&m_flags),OMX_COMPONENT_INPUT_ENABLE_PENDING);
+      m_flags = BITMASK_CLEAR_U32(m_flags,OMX_COMPONENT_INPUT_ENABLE_PENDING);
       post_event(OMX_CommandPortEnable,
           OMX_CORE_INPUT_PORT_INDEX,
           OMX_COMPONENT_GENERATE_EVENT);
     }
     else if(port == OMX_CORE_OUTPUT_PORT_INDEX && m_out_bPopulated &&
-            BITMASK_PRESENT(&m_flags,OMX_COMPONENT_OUTPUT_ENABLE_PENDING))
+            BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_OUTPUT_ENABLE_PENDING))
     {
-      BITMASK_CLEAR((&m_flags),OMX_COMPONENT_OUTPUT_ENABLE_PENDING);
+      m_flags = BITMASK_CLEAR_U32(m_flags,OMX_COMPONENT_OUTPUT_ENABLE_PENDING);
       post_event(OMX_CommandPortEnable,
                  OMX_CORE_OUTPUT_PORT_INDEX,
                  OMX_COMPONENT_GENERATE_EVENT);
@@ -4737,7 +4745,7 @@ OMX_ERRORTYPE omx_vdec::allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
   /*Find a Free index*/
   for(i=0; i< drv_ctx.ip_buf.actualcount; i++)
   {
-    if(BITMASK_ABSENT(&m_heap_inp_bm_count,i))
+    if(BITMASK_ABSENT_U32(m_heap_inp_bm_count,i))
     {
       DEBUG_PRINT_LOW("\n Free Input Buffer Index %d",i);
       break;
@@ -4755,7 +4763,7 @@ OMX_ERRORTYPE omx_vdec::allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
 
     *bufferHdr = (m_inp_heap_ptr + i);
     input = *bufferHdr;
-    BITMASK_SET(&m_heap_inp_bm_count,i);
+    m_heap_inp_bm_count = BITMASK_SET_U32(m_heap_inp_bm_count,i);
 
     input->pBuffer           = (OMX_U8 *)buf_addr;
     input->nSize             = sizeof(OMX_BUFFERHEADERTYPE);
@@ -4862,7 +4870,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
 
   for(i=0; i< drv_ctx.ip_buf.actualcount; i++)
   {
-    if(BITMASK_ABSENT(&m_inp_bm_count,i))
+    if(BITMASK_ABSENT_U32(m_inp_bm_count,i))
     {
       DEBUG_PRINT_LOW("\n Free Input Buffer Index %d",i);
       break;
@@ -4949,7 +4957,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
     }
 
     input = *bufferHdr;
-    BITMASK_SET(&m_inp_bm_count,i);
+    m_inp_bm_count = BITMASK_SET_U32(m_inp_bm_count,i);
     DEBUG_PRINT_LOW("\n Buffer address %p of pmem",*bufferHdr);
     if (secure_mode)
          input->pBuffer = (OMX_U8 *)drv_ctx.ptr_inputbuffer [i].pmem_fd;
@@ -5190,7 +5198,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
 
   for (i=0; i< drv_ctx.op_buf.actualcount; i++)
   {
-    if(BITMASK_ABSENT(&m_out_bm_count,i))
+    if(BITMASK_ABSENT_U32(m_out_bm_count,i))
     {
       DEBUG_PRINT_LOW("\n Found a Free Output Buffer Index %d",i);
       break;
@@ -5307,7 +5315,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     (*bufferHdr)->nAllocLen = drv_ctx.op_buf.buffer_size;
     (*bufferHdr)->pBuffer = (OMX_U8*)drv_ctx.ptr_outputbuffer[i].bufferaddr;
     (*bufferHdr)->pAppPrivate = appData;
-    BITMASK_SET(&m_out_bm_count,i);
+    m_out_bm_count = BITMASK_SET_U32(m_out_bm_count,i);
 
   }
   else
@@ -5375,19 +5383,19 @@ OMX_ERRORTYPE  omx_vdec::allocate_buffer(OMX_IN OMX_HANDLETYPE                hC
     if(eRet == OMX_ErrorNone)
     {
         if(allocate_done()){
-            if(BITMASK_PRESENT(&m_flags,OMX_COMPONENT_IDLE_PENDING))
+            if(BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_IDLE_PENDING))
             {
                 // Send the callback now
-                BITMASK_CLEAR((&m_flags),OMX_COMPONENT_IDLE_PENDING);
+                m_flags = BITMASK_CLEAR_U32(m_flags,OMX_COMPONENT_IDLE_PENDING);
                 post_event(OMX_CommandStateSet,OMX_StateIdle,
                                    OMX_COMPONENT_GENERATE_EVENT);
             }
         }
         if(port == OMX_CORE_INPUT_PORT_INDEX && m_inp_bPopulated)
         {
-          if(BITMASK_PRESENT(&m_flags,OMX_COMPONENT_INPUT_ENABLE_PENDING))
+          if(BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_INPUT_ENABLE_PENDING))
           {
-             BITMASK_CLEAR((&m_flags),OMX_COMPONENT_INPUT_ENABLE_PENDING);
+             m_flags = BITMASK_CLEAR_U32(m_flags,OMX_COMPONENT_INPUT_ENABLE_PENDING);
              post_event(OMX_CommandPortEnable,
                         OMX_CORE_INPUT_PORT_INDEX,
                         OMX_COMPONENT_GENERATE_EVENT);
@@ -5395,9 +5403,9 @@ OMX_ERRORTYPE  omx_vdec::allocate_buffer(OMX_IN OMX_HANDLETYPE                hC
         }
         if(port == OMX_CORE_OUTPUT_PORT_INDEX && m_out_bPopulated)
             {
-          if(BITMASK_PRESENT(&m_flags,OMX_COMPONENT_OUTPUT_ENABLE_PENDING))
+          if(BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_OUTPUT_ENABLE_PENDING))
           {
-             BITMASK_CLEAR((&m_flags),OMX_COMPONENT_OUTPUT_ENABLE_PENDING);
+             m_flags = BITMASK_CLEAR_U32(m_flags,OMX_COMPONENT_OUTPUT_ENABLE_PENDING);
                 post_event(OMX_CommandPortEnable,
                            OMX_CORE_OUTPUT_PORT_INDEX,
                            OMX_COMPONENT_GENERATE_EVENT);
@@ -5432,7 +5440,7 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     DEBUG_PRINT_LOW("In for decoder free_buffer \n");
 
     if(m_state == OMX_StateIdle &&
-       (BITMASK_PRESENT(&m_flags ,OMX_COMPONENT_LOADING_PENDING)))
+       (BITMASK_PRESENT_U32(m_flags ,OMX_COMPONENT_LOADING_PENDING)))
     {
         DEBUG_PRINT_LOW(" free buffer while Component in Loading pending\n");
     }
@@ -5470,8 +5478,8 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         if(nPortIndex < drv_ctx.ip_buf.actualcount)
         {
          // Clear the bit associated with it.
-         BITMASK_CLEAR(&m_inp_bm_count,nPortIndex);
-         BITMASK_CLEAR(&m_heap_inp_bm_count,nPortIndex);
+         m_inp_bm_count = BITMASK_CLEAR_U32(m_inp_bm_count,nPortIndex);
+         m_heap_inp_bm_count = BITMASK_CLEAR_U32(m_heap_inp_bm_count,nPortIndex);
          if (input_use_buffer == true)
          {
 
@@ -5505,11 +5513,11 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             eRet = OMX_ErrorBadPortIndex;
         }
 
-        if(BITMASK_PRESENT((&m_flags),OMX_COMPONENT_INPUT_DISABLE_PENDING)
+        if(BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_INPUT_DISABLE_PENDING)
            && release_input_done())
         {
             DEBUG_PRINT_LOW("MOVING TO DISABLED STATE \n");
-            BITMASK_CLEAR((&m_flags),OMX_COMPONENT_INPUT_DISABLE_PENDING);
+            m_flags = BITMASK_CLEAR_U32(m_flags,OMX_COMPONENT_INPUT_DISABLE_PENDING);
             post_event(OMX_CommandPortDisable,
                        OMX_CORE_INPUT_PORT_INDEX,
                        OMX_COMPONENT_GENERATE_EVENT);
@@ -5523,7 +5531,7 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         {
             DEBUG_PRINT_LOW("free_buffer on o/p port - Port idx %d \n", nPortIndex);
             // Clear the bit associated with it.
-            BITMASK_CLEAR(&m_out_bm_count,nPortIndex);
+            m_out_bm_count = BITMASK_CLEAR_U32(m_out_bm_count,nPortIndex);
             m_out_bPopulated = OMX_FALSE;
             client_buffers.free_output_buffer (buffer);
 
@@ -5537,13 +5545,13 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             DEBUG_PRINT_ERROR("Error: free_buffer , Port Index Invalid\n");
             eRet = OMX_ErrorBadPortIndex;
         }
-        if(BITMASK_PRESENT((&m_flags),OMX_COMPONENT_OUTPUT_DISABLE_PENDING)
+        if(BITMASK_PRESENT_U32(m_flags,OMX_COMPONENT_OUTPUT_DISABLE_PENDING)
            && release_output_done())
         {
             DEBUG_PRINT_LOW("FreeBuffer : If any Disable event pending,post it\n");
 
                 DEBUG_PRINT_LOW("MOVING TO DISABLED STATE \n");
-                BITMASK_CLEAR((&m_flags),OMX_COMPONENT_OUTPUT_DISABLE_PENDING);
+                m_flags = BITMASK_CLEAR_U32(m_flags,OMX_COMPONENT_OUTPUT_DISABLE_PENDING);
 #ifdef _ANDROID_ICS_
                 if (m_enable_android_native_buffers)
                 {
@@ -5562,12 +5570,12 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         eRet = OMX_ErrorBadPortIndex;
     }
     if((eRet == OMX_ErrorNone) &&
-       (BITMASK_PRESENT(&m_flags ,OMX_COMPONENT_LOADING_PENDING)))
+       (BITMASK_PRESENT_U32(m_flags ,OMX_COMPONENT_LOADING_PENDING)))
     {
         if(release_done())
         {
             // Send the callback now
-            BITMASK_CLEAR((&m_flags),OMX_COMPONENT_LOADING_PENDING);
+            m_flags = BITMASK_CLEAR_U32(m_flags,OMX_COMPONENT_LOADING_PENDING);
             post_event(OMX_CommandStateSet, OMX_StateLoaded,
                                       OMX_COMPONENT_GENERATE_EVENT);
         }
@@ -6027,17 +6035,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 #ifdef _ANDROID_ICS_
     if (m_enable_android_native_buffers)
     {
-        // Acquire a write lock on this buffer.
-        if (GENLOCK_NO_ERROR != genlock_lock_buffer(native_buffer[buffer - m_out_mem_ptr].nativehandle,
-                                                  GENLOCK_WRITE_LOCK, GENLOCK_MAX_TIMEOUT)) {
-            DEBUG_PRINT_ERROR("Failed to acquire genlock");
-            buffer->nFilledLen = 0;
-            m_cb.FillBufferDone (hComp,m_app_data,buffer);
-            pending_output_buffers--;
-            return OMX_ErrorInsufficientResources;
-        } else {
-            native_buffer[buffer - m_out_mem_ptr].inuse = true;
-      }
+      native_buffer[buffer - m_out_mem_ptr].inuse = true;
     }
 #endif
 
@@ -6050,13 +6048,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 #ifdef _ANDROID_ICS_
     if (m_enable_android_native_buffers)
     {
-        // Unlock the buffer
-        if (GENLOCK_NO_ERROR != genlock_unlock_buffer(native_buffer[buffer - m_out_mem_ptr].nativehandle)) {
-            DEBUG_PRINT_ERROR("Releasing genlock failed");
-            return OMX_ErrorInsufficientResources;
-        } else {
-            native_buffer[buffer - m_out_mem_ptr].inuse = false;
-        }
+      native_buffer[buffer - m_out_mem_ptr].inuse = false;
     }
 #endif
     m_cb.FillBufferDone (hComp,m_app_data,buffer);
@@ -6149,9 +6141,6 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
         {
           if (native_buffer[i].inuse)
           {
-            if (GENLOCK_NO_ERROR != genlock_unlock_buffer(native_buffer[i].nativehandle)) {
-                DEBUG_PRINT_ERROR("Unlocking genlock failed");
-            }
             native_buffer[i].inuse = false;
           }
         }
@@ -6502,7 +6491,7 @@ bool omx_vdec::allocate_input_done(void)
   {
     for(;i<drv_ctx.ip_buf.actualcount;i++)
     {
-      if(BITMASK_ABSENT(&m_inp_bm_count,i))
+      if(BITMASK_ABSENT_U32(m_inp_bm_count,i))
       {
         break;
       }
@@ -6547,7 +6536,7 @@ bool omx_vdec::allocate_output_done(void)
   {
     for(;j < drv_ctx.op_buf.actualcount;j++)
     {
-      if(BITMASK_ABSENT(&m_out_bm_count,j))
+      if(BITMASK_ABSENT_U32(m_out_bm_count,j))
       {
         break;
       }
@@ -6618,7 +6607,7 @@ bool omx_vdec::release_output_done(void)
   {
       for(;j < drv_ctx.op_buf.actualcount ; j++)
       {
-        if(BITMASK_PRESENT(&m_out_bm_count,j))
+        if(BITMASK_PRESENT_U32(m_out_bm_count,j))
         {
           break;
         }
@@ -6660,7 +6649,7 @@ bool omx_vdec::release_input_done(void)
   {
       for(;j<drv_ctx.ip_buf.actualcount;j++)
       {
-        if( BITMASK_PRESENT(&m_inp_bm_count,j))
+        if( BITMASK_PRESENT_U32(m_inp_bm_count,j))
         {
           break;
         }
@@ -6854,13 +6843,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     if (m_enable_android_native_buffers)
     {
      if (native_buffer[buffer - m_out_mem_ptr].inuse) {
-      if (GENLOCK_NO_ERROR != genlock_unlock_buffer(native_buffer[buffer - m_out_mem_ptr].nativehandle)) {
-        DEBUG_PRINT_ERROR("Unlocking genlock failed");
-        return OMX_ErrorInsufficientResources;
-      }
-      else {
         native_buffer[buffer - m_out_mem_ptr].inuse = false;
-      }
      }
     }
 #endif

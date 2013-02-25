@@ -164,6 +164,13 @@ extern "C" {
 #define BITMASK_ABSENT(mArray,mIndex) (((mArray)[BITMASK_OFFSET(mIndex)] \
         & BITMASK_FLAG(mIndex)) == 0x0)
 
+//BitMask Management logic for U32
+#define BITMASK_CLEAR_U32(mArray,mIndex) ((mArray) & (~(BITMASK_FLAG(mIndex))))
+#define BITMASK_SET_U32(mArray,mIndex)  ((mArray) | BITMASK_FLAG(mIndex))
+#define BITMASK_PRESENT_U32(mArray,mIndex) ((mArray) & BITMASK_FLAG(mIndex))
+#define BITMASK_ABSENT_U32(mArray,mIndex) (((mArray) & BITMASK_FLAG(mIndex)) == 0x0)
+
+
 #define OMX_CORE_CONTROL_CMDQ_SIZE   100
 #define OMX_CORE_QCIF_HEIGHT         144
 #define OMX_CORE_QCIF_WIDTH          176

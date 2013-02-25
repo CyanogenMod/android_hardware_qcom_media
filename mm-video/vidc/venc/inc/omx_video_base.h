@@ -119,18 +119,15 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 #define BITMASK_SIZE(mIndex) (((mIndex) + BITS_PER_BYTE - 1)/BITS_PER_BYTE)
 #define BITMASK_OFFSET(mIndex) ((mIndex)/BITS_PER_BYTE)
 #define BITMASK_FLAG(mIndex) (1 << ((mIndex) % BITS_PER_BYTE))
-#define BITMASK_CLEAR(mArray,mIndex) (mArray)[BITMASK_OFFSET(mIndex)] \
-        &=  ~(BITMASK_FLAG(mIndex))
-#define BITMASK_SET(mArray,mIndex)  (mArray)[BITMASK_OFFSET(mIndex)] \
-        |=  BITMASK_FLAG(mIndex)
-#define BITMASK_PRESENT(mArray,mIndex) ((mArray)[BITMASK_OFFSET(mIndex)] \
-        & BITMASK_FLAG(mIndex))
-#define BITMASK_ABSENT(mArray,mIndex) (((mArray)[BITMASK_OFFSET(mIndex)] \
-        & BITMASK_FLAG(mIndex)) == 0x0)
-#define BITMASK_PRESENT(mArray,mIndex) ((mArray)[BITMASK_OFFSET(mIndex)] \
-        & BITMASK_FLAG(mIndex))
-#define BITMASK_ABSENT(mArray,mIndex) (((mArray)[BITMASK_OFFSET(mIndex)] \
-        & BITMASK_FLAG(mIndex)) == 0x0)
+
+//BitMask Management logic for U32
+#define BITMASK_CLEAR_U32(mArray,mIndex) ((mArray) & (~(BITMASK_FLAG(mIndex))))
+#define BITMASK_SET_U32(mArray,mIndex)  ((mArray) | BITMASK_FLAG(mIndex))
+#define BITMASK_PRESENT_U32(mArray,mIndex) ((mArray) & BITMASK_FLAG(mIndex))
+#define BITMASK_ABSENT_U32(mArray,mIndex) (((mArray) & BITMASK_FLAG(mIndex)) == 0x0)
+
+
+
 #ifdef _ANDROID_ICS_
 #define MAX_NUM_INPUT_BUFFERS 32
 #endif
