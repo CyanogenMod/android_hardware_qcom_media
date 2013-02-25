@@ -84,6 +84,10 @@ DashPlayer::~DashPlayer() {
         mStats->logFpsSummary();
         mStats = NULL;
     }
+    if (mTrackName != NULL) {
+       delete[] mTrackName;
+       mTrackName = NULL;
+    }
 }
 
 void DashPlayer::setUID(uid_t uid) {
@@ -859,6 +863,9 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                   ALOGE("Source Notified Buffering End for %s ",mTrackName);
                         mBufferingNotification = false;
                   notifyListener(MEDIA_INFO, MEDIA_INFO_BUFFERING_END, 0);
+                  if(mStats != NULL) {
+                    mStats->notifyBufferingEvent();
+                  }
                 }
                 else {
                   ALOGE("No need to notify Buffering end as mBufferingNotification is (%d) "
