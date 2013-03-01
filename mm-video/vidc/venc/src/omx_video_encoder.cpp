@@ -1057,7 +1057,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
     }
     break;
 #endif
-#ifndef MAX_RES_720P
+#if !defined(MAX_RES_720P) || defined(_MSM8974_)
   case OMX_QcomIndexParamIndexExtraDataType:
     {
       DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexParamIndexExtraDataType");
