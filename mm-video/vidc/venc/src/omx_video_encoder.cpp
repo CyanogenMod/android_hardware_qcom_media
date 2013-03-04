@@ -712,7 +712,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         }
         if(pParam->nRefFrames != 2)
         {
-          DEBUG_PRINT_ERROR("Warning: 2 RefFrames are needed, changing RefFrames from %d to 2", pParam->nRefFrames);
+          DEBUG_PRINT_ERROR("Warning: 2 RefFrames are needed, changing RefFrames from %lu to 2", pParam->nRefFrames);
           avc_param.nRefFrames = 2;
         }
 #else
@@ -723,7 +723,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
        }
        if(pParam->nRefFrames != 1)
        {
-         DEBUG_PRINT_ERROR("Warning: Only 1 RefFrame is supported, changing RefFrame from %d to 1)", pParam->nRefFrames);
+         DEBUG_PRINT_ERROR("Warning: Only 1 RefFrame is supported, changing RefFrame from %lu to 1)", pParam->nRefFrames);
          avc_param.nRefFrames = 1;
        }
 #endif
@@ -732,7 +732,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       {
        if(pParam->nRefFrames != 1)
        {
-         DEBUG_PRINT_ERROR("Warning: Only 1 RefFrame is supported, changing RefFrame from %d to 1)", pParam->nRefFrames);
+         DEBUG_PRINT_ERROR("Warning: Only 1 RefFrame is supported, changing RefFrame from %lu to 1)", pParam->nRefFrames);
          avc_param.nRefFrames = 1;
        }
        if(pParam->nBFrames)
@@ -756,8 +756,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoProfileLevelCurrent");
       if(handle->venc_set_param(pParam,OMX_IndexParamVideoProfileLevelCurrent) != true)
       {
-        DEBUG_PRINT_ERROR("set_parameter: OMX_IndexParamVideoProfileLevelCurrent failed for Profile: %d "
-                          "Level :%d", pParam->eProfile, pParam->eLevel);
+        DEBUG_PRINT_ERROR("set_parameter: OMX_IndexParamVideoProfileLevelCurrent failed for Profile: %lu "
+                          "Level :%lu", pParam->eProfile, pParam->eLevel);
         return OMX_ErrorUnsupportedSetting;
       }
       m_sParamProfileLevel.eProfile = pParam->eProfile;
@@ -1014,7 +1014,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       StoreMetaDataInBuffersParams *pParam =
         (StoreMetaDataInBuffersParams*)paramData;
       DEBUG_PRINT_HIGH("set_parameter:OMX_QcomIndexParamVideoEncodeMetaBufferMode: "
-         "port_index = %d, meta_mode = %d", pParam->nPortIndex, pParam->bStoreMetaData);
+         "port_index = %lu, meta_mode = %d", pParam->nPortIndex, pParam->bStoreMetaData);
       if(pParam->nPortIndex == PORT_INDEX_IN)
       {
         if(pParam->bStoreMetaData != meta_mode_enable)
@@ -1080,8 +1080,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             &m_sOutPortDef.nBufferCountActual,
                             &m_sOutPortDef.nBufferSize,
                              m_sOutPortDef.nPortIndex);
-            DEBUG_PRINT_HIGH("updated out_buf_req: buffer cnt=%d, "
-                "count min=%d, buffer size=%d",
+            DEBUG_PRINT_HIGH("updated out_buf_req: buffer cnt=%lu, "
+                "count min=%lu, buffer size=%lu",
                 m_sOutPortDef.nBufferCountActual,
                 m_sOutPortDef.nBufferCountMin,
                 m_sOutPortDef.nBufferSize);
@@ -1175,7 +1175,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       else
       {
         DEBUG_PRINT_ERROR("ERROR: OMX_QcomIndexParamVideoMaxAllowedBitrateCheck "
-           " called on wrong port(%d)", pParam->nPortIndex);
+           " called on wrong port(%lu)", pParam->nPortIndex);
         return OMX_ErrorBadPortIndex;
       }
       break;
@@ -1197,7 +1197,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       else
       {
         DEBUG_PRINT_ERROR("ERROR: OMX_QcomIndexEnableSliceDeliveryMode "
-           "called on wrong port(%d)", pParam->nPortIndex);
+           "called on wrong port(%lu)", pParam->nPortIndex);
         return OMX_ErrorBadPortIndex;
       }
       break;
@@ -1220,7 +1220,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       else
       {
         DEBUG_PRINT_ERROR("ERROR: OMX_QcomIndexEnableH263PlusPType "
-           "called on wrong port(%d)", pParam->nPortIndex);
+           "called on wrong port(%lu)", pParam->nPortIndex);
         return OMX_ErrorBadPortIndex;
       }
       break;
@@ -1311,7 +1311,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     {
       OMX_VIDEO_CONFIG_BITRATETYPE* pParam =
         reinterpret_cast<OMX_VIDEO_CONFIG_BITRATETYPE*>(configData);
-      DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoBitrate (%u)", pParam->nEncodeBitrate);
+      DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoBitrate (%lu)", pParam->nEncodeBitrate);
 
       if(pParam->nPortIndex == PORT_INDEX_OUT)
       {
@@ -1327,7 +1327,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
       }
       else
       {
-        DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", pParam->nPortIndex);
+        DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %lu", pParam->nPortIndex);
         return OMX_ErrorBadPortIndex;
       }
       break;
@@ -1336,7 +1336,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     {
       OMX_CONFIG_FRAMERATETYPE* pParam =
         reinterpret_cast<OMX_CONFIG_FRAMERATETYPE*>(configData);
-      DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoFramerate (0x%x)", pParam->xEncodeFramerate);
+      DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoFramerate (0x%lx)", pParam->xEncodeFramerate);
 
       if(pParam->nPortIndex == PORT_INDEX_OUT)
       {
@@ -1352,7 +1352,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
       }
       else
       {
-        DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", pParam->nPortIndex);
+        DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %lu", pParam->nPortIndex);
         return OMX_ErrorBadPortIndex;
       }
 
@@ -1373,7 +1373,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
           return OMX_ErrorUnsupportedSetting;
         }
 #endif
-        DEBUG_PRINT_HIGH("Old: P/B frames = %d/%d, New: P/B frames = %d/%d",
+        DEBUG_PRINT_HIGH("Old: P/B frames = %lu/%lu, New: P/B frames = %lu/%lu",
             m_sIntraperiod.nPFrames, m_sIntraperiod.nBFrames,
             pParam->nPFrames, pParam->nBFrames);
         if (m_sIntraperiod.nBFrames != pParam->nBFrames)
@@ -1413,7 +1413,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
       }
       else
       {
-        DEBUG_PRINT_ERROR("ERROR: (QOMX_IndexConfigVideoIntraperiod) Unsupported port index: %u", pParam->nPortIndex);
+        DEBUG_PRINT_ERROR("ERROR: (QOMX_IndexConfigVideoIntraperiod) Unsupported port index: %lu", pParam->nPortIndex);
         return OMX_ErrorBadPortIndex;
       }
 
@@ -1439,7 +1439,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
       }
       else
       {
-        DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", pParam->nPortIndex);
+        DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %lu", pParam->nPortIndex);
         return OMX_ErrorBadPortIndex;
       }
 
@@ -1452,16 +1452,16 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
       OMX_S32 nRotation;
 
       if(pParam->nPortIndex != PORT_INDEX_IN){
-           DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", pParam->nPortIndex);
+           DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %lu", pParam->nPortIndex);
            return OMX_ErrorBadPortIndex;
       }
       if( pParam->nRotation == 0   ||
           pParam->nRotation == 90  ||
           pParam->nRotation == 180 ||
           pParam->nRotation == 270 ) {
-          DEBUG_PRINT_HIGH("\nset_config: Rotation Angle %u", pParam->nRotation);
+          DEBUG_PRINT_HIGH("\nset_config: Rotation Angle %lu", pParam->nRotation);
       } else {
-          DEBUG_PRINT_ERROR("ERROR: un supported Rotation %u", pParam->nRotation);
+          DEBUG_PRINT_ERROR("ERROR: un supported Rotation %lu", pParam->nRotation);
           return OMX_ErrorUnsupportedSetting;
       }
       nRotation = pParam->nRotation - m_sConfigFrameRotation.nRotation;
@@ -1752,7 +1752,7 @@ int omx_venc::async_message_process (void *context, void* message)
 
   if(m_sVenc_msg->statuscode != VEN_S_SUCCESS)
   {
-    DEBUG_PRINT_ERROR("\nERROR: async_msg_process() - Error statuscode = %d\n",
+    DEBUG_PRINT_ERROR("\nERROR: async_msg_process() - Error statuscode = %lu\n",
         m_sVenc_msg->statuscode);
     omx->omx_report_error();
   }
