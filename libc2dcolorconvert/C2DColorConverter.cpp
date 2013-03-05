@@ -490,7 +490,11 @@ void * C2DColorConverter::getMappedGPUAddr(int bufFD, void *bufPtr, size_t bufLe
     param.len = bufLen;
     param.hostptr = (unsigned int)bufPtr;
     param.memtype = KGSL_USER_MEM_TYPE_ION;
+#ifdef QCOM_BSP
+    param.flags = 0;
+#else
     param.reserved = 0;
+#endif
     param.gpuaddr = 0;
 
     if (!ioctl(mKgslFd, IOCTL_KGSL_MAP_USER_MEM, &param, sizeof(param))) {

@@ -60,6 +60,10 @@ REFERENCES
 
 #define QCOM_EXT 1
 
+#ifdef QCOM_BSP
+#define NEW_ION_API 1
+#endif
+
 #include "OMX_Core.h"
 #include "OMX_Video.h"
 #include "OMX_Component.h"

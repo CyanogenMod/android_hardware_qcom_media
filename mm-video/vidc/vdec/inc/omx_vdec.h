@@ -46,6 +46,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <inttypes.h>
 #include <cstddef>
 
+#ifdef QCOM_BSP
+#define NEW_ION_API 1
+#endif
+
 static ptrdiff_t x;
 
 #ifdef _ANDROID_

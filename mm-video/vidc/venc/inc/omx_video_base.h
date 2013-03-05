@@ -41,6 +41,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //                             Include Files
 //////////////////////////////////////////////////////////////////////////////
 
+#ifdef QCOM_BSP
+#define NEW_ION_API 1
+#endif
+
 #include<stdlib.h>
 #include <stdio.h>
 #include <sys/mman.h>
