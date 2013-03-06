@@ -4418,7 +4418,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
 #endif
 
 #ifdef USE_ION
-int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
+int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
                                     struct ion_fd_data *fd_data,int flag)
 {
         struct venc_ion buf_ion_info;
@@ -4467,7 +4467,7 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
         return ion_device_fd;
 }
 
-void omx_video::free_ion_memory(struct venc_ion *buf_ion_info)
+void free_ion_memory(struct venc_ion *buf_ion_info)
 {
      if (!buf_ion_info) {
         DEBUG_PRINT_ERROR("\n Invalid input to free_ion_memory");

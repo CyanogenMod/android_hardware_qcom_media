@@ -138,6 +138,12 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 #define MAX_NUM_INPUT_BUFFERS 32
 #endif
 void* message_thread(void *);
+#ifdef USE_ION
+int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
+                                    struct ion_fd_data *fd_data,int flag);
+void free_ion_memory(struct venc_ion *buf_ion_info);
+#endif
+
 // OMX video class
 class omx_video: public qc_omx_component
 {
@@ -552,12 +558,6 @@ public:
   OMX_U8                m_cRole[OMX_MAX_STRINGNAME_SIZE];
   extra_data_handler extra_data_handle;
 
-private:
-#ifdef USE_ION
-  int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
-                                    struct ion_fd_data *fd_data,int flag);
-  void free_ion_memory(struct venc_ion *buf_ion_info);
-#endif
 };
 
 #endif // __OMX_VIDEO_BASE_H__
