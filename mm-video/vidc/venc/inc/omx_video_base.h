@@ -89,7 +89,11 @@ public:
        #define MEM_HEAP_ID ION_CAMERA_HEAP_ID
        #endif
     #else
-    #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
+       #ifdef _MSM8974_
+       #define MEM_HEAP_ID ION_IOMMU_HEAP_ID
+       #else
+       #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
+       #endif
     #endif
 #elif MAX_RES_720P
 static const char* MEM_DEVICE = "/dev/pmem_adsp";
