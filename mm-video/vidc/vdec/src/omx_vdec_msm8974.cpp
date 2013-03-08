@@ -2948,8 +2948,9 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PROTECTED |
                                                       GRALLOC_USAGE_PRIVATE_UNCACHED);
                 } else {
-                        nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED |
-                                                         GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+                        nativeBuffersUsage->nUsage =
+                            (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP |
+                             GRALLOC_USAGE_PRIVATE_UNCACHED);
                 }
             } else {
                 DEBUG_PRINT_HIGH("get_parameter: OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage failed!\n");
@@ -7618,9 +7619,9 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
   if ((secure_mode) && (flag & ION_SECURE))
       alloc_data->flags |= ION_SECURE;
 
-  alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
-  if (!secure_mode)
-	  alloc_data->heap_mask |= ION_HEAP(ION_IOMMU_HEAP_ID);
+  alloc_data->heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
+  if (secure_mode)
+	  alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
   rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
   if (rc || !alloc_data->handle) {
     DEBUG_PRINT_ERROR("\n ION ALLOC memory failed ");
