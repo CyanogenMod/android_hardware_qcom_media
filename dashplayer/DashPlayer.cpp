@@ -948,6 +948,10 @@ void DashPlayer::finishFlushIfPossible() {
         if ( (mSourceType == kHttpDashSource) &&
              (mTextDecoder != NULL) )
         {
+          if (mSource != NULL) {
+           ALOGV("finishFlushIfPossible calling mSource->stop");
+           mSource->stop();
+          }
           sp<AMessage> codecRequest;
           mTextNotify->findMessage("codec-request", &codecRequest);
           codecRequest = NULL;
@@ -970,6 +974,7 @@ void DashPlayer::finishReset() {
     }
 
     if (mSource != NULL) {
+        ALOGV("finishReset calling mSource->stop");
         mSource->stop();
         mSource.clear();
     }
