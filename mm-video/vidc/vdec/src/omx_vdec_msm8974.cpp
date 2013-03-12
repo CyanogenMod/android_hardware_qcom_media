@@ -560,7 +560,11 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 	iDivXDrmDecrypt(NULL),
 #endif
 	m_desc_buffer_ptr(NULL),
-	secure_mode(false)
+	secure_mode(false),
+	opt_handle(NULL),
+	perf_lock_acq(NULL),
+	perf_lock_rel(NULL),
+	perf_lock_handle(-1)
 {
   /* Assumption is that , to begin with , we have all the frames with decoder */
   DEBUG_PRINT_HIGH("In OMX vdec Constructor");
@@ -720,6 +724,15 @@ omx_vdec::~omx_vdec()
   pthread_mutex_destroy(&m_lock);
   pthread_mutex_destroy(&c_lock);
   sem_destroy(&m_cmd_lock);
+  if (perf_lock_handle >= 0 && perf_lock_rel) {
+    DEBUG_PRINT_LOW("Lock released");
+    perf_lock_rel(perf_lock_handle);
+    perf_lock_handle = -1;
+  }
+  if (opt_handle) {
+    dlclose(opt_handle);
+    opt_handle = NULL;
+  }
   if (perf_flag)
   {
     DEBUG_PRINT_HIGH("--> TOTAL PROCESSING TIME");
@@ -3086,6 +3099,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             DEBUG_PRINT_LOW("set_parameter: frm_int(%u) fps(%.2f)",
                              frm_int, drv_ctx.frame_rate.fps_numerator /
                              (float)drv_ctx.frame_rate.fps_denominator);
+            enableAdditionalCores(frm_int);
         }
          DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition IP port\n");
          if(drv_ctx.video_resolution.frame_height !=
@@ -8259,6 +8273,7 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
         DEBUG_PRINT_LOW("set_frame_rate: frm_int(%lu) fps(%f)",
                          frm_int, drv_ctx.frame_rate.fps_numerator /
                          (float)drv_ctx.frame_rate.fps_denominator);
+        enableAdditionalCores(frm_int);
       }
     }
   }
@@ -9228,4 +9243,40 @@ bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE
       dest_color_format = OMX_COLOR_FormatYUV420Planar;
   }
   return status;
+}
+
+void omx_vdec::enableAdditionalCores(int frame_interval)
+{
+  DEBUG_PRINT_LOW("Setting frame rate to 1/(%dusec)", frame_interval);
+  if (frame_interval < 33000)
+  {
+    DEBUG_PRINT_HIGH("Turning on additional CPU cores");
+    if (NULL == opt_handle) {
+      char opt_lib_path[PATH_MAX] = {0};
+
+      if (property_get("ro.vendor.extension_library", opt_lib_path, NULL) != 0) {
+        if ((opt_handle = dlopen(opt_lib_path, RTLD_NOW)) == NULL) {
+          DEBUG_PRINT_ERROR("Unable to open %s: %s\n", opt_lib_path, dlerror());
+        } else {
+          perf_lock_acq = (int(*)(int, int, int*,int))dlsym(opt_handle, "perf_lock_acq");
+          if (perf_lock_acq == NULL) {
+            DEBUG_PRINT_ERROR("failed to get lock_acq sym");
+          }
+
+          perf_lock_rel = (int(*)(int))dlsym(opt_handle, "perf_lock_rel");
+          if (perf_lock_rel == NULL) {
+            DEBUG_PRINT_ERROR("failed to get lock_rel sym");
+          }
+        }
+      } else {
+        DEBUG_PRINT_ERROR("Property ro.vendor.extension_library does not exist.");
+      }
+    }
+
+    int decode_opts[1] = {0x704}; //value of last nibble == # of cores
+    if (perf_lock_acq && perf_lock_handle < 0) {
+      DEBUG_PRINT_LOW("Lock acquired");
+      perf_lock_handle = perf_lock_acq(perf_lock_handle, 0, decode_opts, 1);
+    }
+  }
 }
