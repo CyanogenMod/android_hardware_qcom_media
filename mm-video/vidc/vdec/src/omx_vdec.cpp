@@ -861,7 +861,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                DEBUG_PRINT_ERROR("\n empty_buffer_done failure");
                pThis->omx_report_error ();
             }
-            if(!pThis->arbitrary_bytes && pThis->m_inp_err_count > MAX_INPUT_ERROR)
+            if(pThis->m_inp_err_count > MAX_INPUT_ERROR)
             {
                DEBUG_PRINT_ERROR("\n Input bitstream error for consecutive %d frames.", MAX_INPUT_ERROR);
                pThis->omx_report_error ();
