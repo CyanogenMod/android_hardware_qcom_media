@@ -7694,7 +7694,7 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
 #ifdef NEW_ION_API
   ion_dev_flag = O_RDONLY;
 #else
-  if(!secure_mode && flag == CACHED)
+  if(!secure_mode && flag == ION_FLAG_CACHED)
   {
      ion_dev_flag = O_RDONLY;
   } else {

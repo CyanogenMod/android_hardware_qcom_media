@@ -4293,7 +4293,7 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
 #ifdef NEW_ION_API
     ion_dev_flags = O_RDONLY;
 #else
-    if(!secure_session && flag == CACHED) {
+    if(!secure_session && flag == ION_FLAG_CACHED) {
         ion_dev_flags = O_RDONLY;
     } else {
         ion_dev_flags = O_RDONLY | O_DSYNC;

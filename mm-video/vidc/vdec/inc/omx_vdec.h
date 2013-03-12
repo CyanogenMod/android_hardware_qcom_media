@@ -55,7 +55,7 @@ static ptrdiff_t x;
 #ifdef _ANDROID_
 #ifdef USE_ION
 #include <linux/msm_ion.h>
-#ifndef NEW_ION_API
+#if !defined(ION_FLAG_CACHED) && defined(CACHED)
 #define ION_FLAG_CACHED CACHED
 #endif
 #endif
