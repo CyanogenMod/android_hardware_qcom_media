@@ -6651,9 +6651,18 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
   /* For use buffer we need to copy the data */
   if (!output_flush_progress)
   {
-    time_stamp_dts.get_next_timestamp(buffer,
-    (drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
-     ?true:false);
+    /* This is the error check for non-recoverable errros */
+    if (buffer->nFilledLen > 0)
+      time_stamp_dts.get_next_timestamp(buffer,
+      (drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
+        ?true:false);
+    else {
+      m_inp_err_count++;
+      time_stamp_dts.remove_time_stamp(
+              buffer->nTimeStamp,
+              (drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
+                ?true:false);
+    }
     if (m_debug_timestamp)
     {
       {
