@@ -559,6 +559,7 @@ public class QCTimedText
             }
         }
 
+        mParcel.recycle();
         return true;
     }
 
