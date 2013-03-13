@@ -83,11 +83,7 @@ public:
 #ifdef USE_ION
     static const char* MEM_DEVICE = "/dev/ion";
     #ifdef MAX_RES_720P
-       #ifdef _MSM8974_
-       #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
-       #else
-       #define MEM_HEAP_ID ION_CAMERA_HEAP_ID
-       #endif
+    #define MEM_HEAP_ID ION_CAMERA_HEAP_ID
     #else
        #ifdef _MSM8974_
        #define MEM_HEAP_ID ION_IOMMU_HEAP_ID
