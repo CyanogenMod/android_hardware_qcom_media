@@ -5152,7 +5152,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
      }
      buf.m.planes = plane;
      buf.length = drv_ctx.num_planes;
-     DEBUG_PRINT_LOW("\n Set the Output Buffer Idx: %d Addr: %x", i, drv_ctx.ptr_outputbuffer[i]);
+     DEBUG_PRINT_LOW("\n Set the Output Buffer Idx: %d Addr: %p", i, drv_ctx.ptr_outputbuffer[i].bufferaddr);
      rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_PREPARE_BUF, &buf);
      if (rc) {
        /*TODO: How to handle this case */
@@ -5305,7 +5305,7 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     else if((m_inp_bEnabled == OMX_FALSE && port == OMX_CORE_INPUT_PORT_INDEX)||
             (m_out_bEnabled == OMX_FALSE && port == OMX_CORE_OUTPUT_PORT_INDEX))
     {
-        DEBUG_PRINT_LOW("Free Buffer while port %d disabled\n", port);
+        DEBUG_PRINT_LOW("Free Buffer while port %lu disabled\n", port);
     }
     else if(m_state == OMX_StateExecuting || m_state == OMX_StatePause)
     {
@@ -5520,7 +5520,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
        m_inp_mem_ptr[nBufferIndex].nTimeStamp = m_inp_heap_ptr[nBufferIndex].nTimeStamp;
        m_inp_mem_ptr[nBufferIndex].nFlags = m_inp_heap_ptr[nBufferIndex].nFlags;
        buffer = &m_inp_mem_ptr[nBufferIndex];
-       DEBUG_PRINT_LOW("Non-Arbitrary mode - buffer address is: malloc %p, pmem%p in Index %d, buffer %p of size %d",
+       DEBUG_PRINT_LOW("Non-Arbitrary mode - buffer address is: malloc %p, pmem%p in Index %d, buffer %p of size %lu",
                          &m_inp_heap_ptr[nBufferIndex], &m_inp_mem_ptr[nBufferIndex],nBufferIndex, buffer, buffer->nFilledLen);
      }
      else{
@@ -5684,7 +5684,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
       extract_demux_addr_offsets(buffer);
     }
 
-    DEBUG_PRINT_LOW("ETB: handle_demux_data - entries=%d",m_demux_entries);
+    DEBUG_PRINT_LOW("ETB: handle_demux_data - entries=%lu",m_demux_entries);
     handle_demux_data(buffer);
     frameinfo.desc_addr = (OMX_U8 *)m_desc_buffer_ptr[nPortIndex].buf_addr;
     frameinfo.desc_size = m_desc_buffer_ptr[nPortIndex].desc_data_size;
@@ -6732,7 +6732,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     pPMEMInfo = (OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *)
                 ((OMX_QCOM_PLATFORM_PRIVATE_LIST *)
                 buffer->pPlatformPrivate)->entryList->entry;
-    DEBUG_PRINT_LOW("\n Before FBD callback Accessed Pmeminfo %d",pPMEMInfo->pmem_fd);
+    DEBUG_PRINT_LOW("\n Before FBD callback Accessed Pmeminfo %lu",pPMEMInfo->pmem_fd);
 #ifdef _ANDROID_ICS_
     if (m_enable_android_native_buffers)
     {
@@ -6755,7 +6755,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
       DEBUG_PRINT_ERROR("Invalid buffer address from get_il_buf_hdr");
       return OMX_ErrorBadParameter;
     }
-    DEBUG_PRINT_LOW("\n After Fill Buffer Done callback %d",pPMEMInfo->pmem_fd);
+    DEBUG_PRINT_LOW("\n After Fill Buffer Done callback %lu",pPMEMInfo->pmem_fd);
   }
   else
   {
@@ -7014,8 +7014,8 @@ OMX_ERRORTYPE omx_vdec::empty_this_buffer_proxy_arbitrary (
     return OMX_ErrorBadParameter;
   }
   DEBUG_PRINT_LOW("\n ETBProxyArb: bufhdr = %p, bufhdr->pBuffer = %p", buffer, buffer->pBuffer);
-  DEBUG_PRINT_LOW("\n ETBProxyArb: nFilledLen %u, flags %d, timestamp %u",
-        buffer->nFilledLen, buffer->nFlags, (unsigned)buffer->nTimeStamp);
+  DEBUG_PRINT_LOW("\n ETBProxyArb: nFilledLen %lu, flags %lu, timestamp %lld",
+        buffer->nFilledLen, buffer->nFlags, buffer->nTimeStamp);
 
   /* return zero length and not an EOS buffer */
   /* return buffer if input flush in progress */
@@ -7029,7 +7029,7 @@ OMX_ERRORTYPE omx_vdec::empty_this_buffer_proxy_arbitrary (
 
   if (psource_frame == NULL)
   {
-    DEBUG_PRINT_LOW("\n Set Buffer as source Buffer %p time stamp %d",buffer,buffer->nTimeStamp);
+    DEBUG_PRINT_LOW("\n Set Buffer as source Buffer %p time stamp %lld",buffer,buffer->nTimeStamp);
     psource_frame = buffer;
     DEBUG_PRINT_LOW("\n Try to Push One Input Buffer ");
     push_input_buffer (hComp);
@@ -7077,9 +7077,9 @@ OMX_ERRORTYPE omx_vdec::push_input_buffer (OMX_HANDLETYPE hComp)
       {
         m_input_pending_q.pop_entry(&address,&p2,&id);
         psource_frame = (OMX_BUFFERHEADERTYPE *)address;
-        DEBUG_PRINT_LOW("\n Next source Buffer %p time stamp %d",psource_frame,
+        DEBUG_PRINT_LOW("\n Next source Buffer %p time stamp %lld",psource_frame,
                 psource_frame->nTimeStamp);
-        DEBUG_PRINT_LOW("\n Next source Buffer flag %d length %d",
+        DEBUG_PRINT_LOW("\n Next source Buffer flag %lu length %lu",
         psource_frame->nFlags,psource_frame->nFilledLen);
 
       }
@@ -7120,9 +7120,9 @@ OMX_ERRORTYPE omx_vdec::push_input_sc_codec(OMX_HANDLETYPE hComp)
 {
   OMX_U32 partial_frame = 1;
   OMX_BOOL generate_ebd = OMX_TRUE;
-  unsigned address,p2,id;
+  unsigned address = 0, p2 = 0, id = 0;
 
-  DEBUG_PRINT_LOW("\n Start Parsing the bit stream address %p TimeStamp %d",
+  DEBUG_PRINT_LOW("\n Start Parsing the bit stream address %p TimeStamp %lld",
         psource_frame,psource_frame->nTimeStamp);
   if (m_frame_parser.parse_sc_frame(psource_frame,
                                        pdest_frame,&partial_frame) == -1)
@@ -7133,11 +7133,11 @@ OMX_ERRORTYPE omx_vdec::push_input_sc_codec(OMX_HANDLETYPE hComp)
 
   if (partial_frame == 0)
   {
-    DEBUG_PRINT_LOW("\n Frame size %d source %p frame count %d",
+    DEBUG_PRINT_LOW("\n Frame size %lu source %p frame count %d",
           pdest_frame->nFilledLen,psource_frame,frame_count);
 
 
-    DEBUG_PRINT_LOW("\n TimeStamp updated %d",pdest_frame->nTimeStamp);
+    DEBUG_PRINT_LOW("\n TimeStamp updated %lld", pdest_frame->nTimeStamp);
     /*First Parsed buffer will have only header Hence skip*/
     if (frame_count == 0)
     {
@@ -7184,7 +7184,7 @@ OMX_ERRORTYPE omx_vdec::push_input_sc_codec(OMX_HANDLETYPE hComp)
   }
   else
   {
-    DEBUG_PRINT_LOW("\n Not a Complete Frame %d",pdest_frame->nFilledLen);
+    DEBUG_PRINT_LOW("\n Not a Complete Frame %lu",pdest_frame->nFilledLen);
     /*Check if Destination Buffer is full*/
     if (pdest_frame->nAllocLen ==
         pdest_frame->nFilledLen + pdest_frame->nOffset)
@@ -7201,9 +7201,9 @@ OMX_ERRORTYPE omx_vdec::push_input_sc_codec(OMX_HANDLETYPE hComp)
       if (pdest_frame)
       {
         pdest_frame->nFlags |= psource_frame->nFlags;
-        DEBUG_PRINT_LOW("\n Frame Found start Decoding Size =%d TimeStamp = %x",
+        DEBUG_PRINT_LOW("\n Frame Found start Decoding Size =%lu TimeStamp = %lld",
                      pdest_frame->nFilledLen,pdest_frame->nTimeStamp);
-        DEBUG_PRINT_LOW("\n Found a frame size = %d number = %d",
+        DEBUG_PRINT_LOW("\n Found a frame size = %lu number = %d",
                      pdest_frame->nFilledLen,frame_count++);
         /*Push the frame to the Decoder*/
         if (empty_this_buffer_proxy(hComp,pdest_frame) != OMX_ErrorNone)
@@ -7230,9 +7230,9 @@ OMX_ERRORTYPE omx_vdec::push_input_sc_codec(OMX_HANDLETYPE hComp)
         DEBUG_PRINT_LOW("\n Pull Next source Buffer %p",psource_frame);
         m_input_pending_q.pop_entry(&address,&p2,&id);
         psource_frame = (OMX_BUFFERHEADERTYPE *) address;
-        DEBUG_PRINT_LOW("\n Next source Buffer %p time stamp %d",psource_frame,
+        DEBUG_PRINT_LOW("\n Next source Buffer %p time stamp %lld",psource_frame,
                 psource_frame->nTimeStamp);
-        DEBUG_PRINT_LOW("\n Next source Buffer flag %d length %d",
+        DEBUG_PRINT_LOW("\n Next source Buffer flag %lu length %lu",
         psource_frame->nFlags,psource_frame->nFilledLen);
       }
     }
@@ -7243,7 +7243,7 @@ OMX_ERRORTYPE omx_vdec::push_input_sc_codec(OMX_HANDLETYPE hComp)
 OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
 {
   OMX_U32 partial_frame = 1;
-  unsigned address,p2,id;
+  unsigned address = 0, p2 = 0, id = 0;
   OMX_BOOL isNewFrame = OMX_FALSE;
   OMX_BOOL generate_ebd = OMX_TRUE;
 
@@ -7252,9 +7252,9 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
     DEBUG_PRINT_ERROR("\nERROR:H.264 Scratch Buffer not allocated");
     return OMX_ErrorBadParameter;
   }
-  DEBUG_PRINT_LOW("\n Pending h264_scratch.nFilledLen %d "
+  DEBUG_PRINT_LOW("\n Pending h264_scratch.nFilledLen %lu "
       "look_ahead_nal %d", h264_scratch.nFilledLen, look_ahead_nal);
-  DEBUG_PRINT_LOW("\n Pending pdest_frame->nFilledLen %d",pdest_frame->nFilledLen);
+  DEBUG_PRINT_LOW("\n Pending pdest_frame->nFilledLen %lu",pdest_frame->nFilledLen);
   if (h264_scratch.nFilledLen && look_ahead_nal)
   {
     look_ahead_nal = false;
@@ -7305,7 +7305,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
     }
     else
     {
-      DEBUG_PRINT_LOW("\n Parsed New NAL Length = %d",h264_scratch.nFilledLen);
+      DEBUG_PRINT_LOW("\n Parsed New NAL Length = %lu",h264_scratch.nFilledLen);
       if(h264_scratch.nFilledLen)
       {
           h264_parser->parse_nal((OMX_U8*)h264_scratch.pBuffer, h264_scratch.nFilledLen,
@@ -7350,7 +7350,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
         if ( (pdest_frame->nAllocLen - pdest_frame->nFilledLen) >=
             h264_scratch.nFilledLen)
         {
-          DEBUG_PRINT_LOW("\n Not a NewFrame Copy into Dest len %d",
+          DEBUG_PRINT_LOW("\n Not a NewFrame Copy into Dest len %lu",
               h264_scratch.nFilledLen);
           memcpy ((pdest_frame->pBuffer + pdest_frame->nFilledLen),
               h264_scratch.pBuffer,h264_scratch.nFilledLen);
@@ -7368,9 +7368,9 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
       else
       {
         look_ahead_nal = true;
-        DEBUG_PRINT_LOW("\n Frame Found start Decoding Size =%d TimeStamp = %x",
+        DEBUG_PRINT_LOW("\n Frame Found start Decoding Size =%lu TimeStamp = %llx",
                      pdest_frame->nFilledLen,pdest_frame->nTimeStamp);
-        DEBUG_PRINT_LOW("\n Found a frame size = %d number = %d",
+        DEBUG_PRINT_LOW("\n Found a frame size = %lu number = %d",
                      pdest_frame->nFilledLen,frame_count++);
 
         if (pdest_frame->nFilledLen == 0)
@@ -7420,7 +7420,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
   }
   else
   {
-    DEBUG_PRINT_LOW("\n Not a Complete Frame, pdest_frame->nFilledLen %d",pdest_frame->nFilledLen);
+    DEBUG_PRINT_LOW("\n Not a Complete Frame, pdest_frame->nFilledLen %lu",pdest_frame->nFilledLen);
     /*Check if Destination Buffer is full*/
     if (h264_scratch.nAllocLen ==
         h264_scratch.nFilledLen + h264_scratch.nOffset)
@@ -7455,7 +7455,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
         pdest_frame->nTimeStamp = h264_scratch.nTimeStamp;
         pdest_frame->nFlags = h264_scratch.nFlags | psource_frame->nFlags;
 
-        DEBUG_PRINT_LOW("\n pdest_frame->nFilledLen =%d TimeStamp = %x",
+        DEBUG_PRINT_LOW("\n pdest_frame->nFilledLen =%lu TimeStamp = %llx",
                      pdest_frame->nFilledLen,pdest_frame->nTimeStamp);
         DEBUG_PRINT_LOW("\n Push AU frame number %d to driver", frame_count++);
 #ifndef PROCESS_EXTRADATA_IN_OUTPUT_PORT
@@ -7476,7 +7476,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
       }
       else
       {
-        DEBUG_PRINT_LOW("\n Last frame in else dest addr %p size %d",
+        DEBUG_PRINT_LOW("\n Last frame in else dest addr %p size %lu",
                      pdest_frame,h264_scratch.nFilledLen);
         generate_ebd = OMX_FALSE;
       }
@@ -7491,7 +7491,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
       DEBUG_PRINT_LOW("\n Pull Next source Buffer %p",psource_frame);
       m_input_pending_q.pop_entry(&address,&p2,&id);
       psource_frame = (OMX_BUFFERHEADERTYPE *) address;
-      DEBUG_PRINT_LOW("\nNext source Buffer flag %d src length %d",
+      DEBUG_PRINT_LOW("\nNext source Buffer flag %lu src length %lu",
       psource_frame->nFlags,psource_frame->nFilledLen);
     }
   }
@@ -8271,7 +8271,7 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
       {
         drv_ctx.frame_rate.fps_numerator = 1e6;
         drv_ctx.frame_rate.fps_denominator = frm_int;
-        DEBUG_PRINT_LOW("set_frame_rate: frm_int(%u) fps(%f)",
+        DEBUG_PRINT_LOW("set_frame_rate: frm_int(%lu) fps(%f)",
                          frm_int, drv_ctx.frame_rate.fps_numerator /
                          (float)drv_ctx.frame_rate.fps_denominator);
       }
@@ -8618,7 +8618,7 @@ void omx_vdec::fill_aspect_ratio_info(
   m_extradata = frame_info;
   m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width;
   m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height;
-  DEBUG_PRINT_LOW("aspectRatioX %d aspectRatioX %d", m_extradata->aspectRatio.aspectRatioX,
+  DEBUG_PRINT_LOW("aspectRatioX %lu aspectRatioX %lu", m_extradata->aspectRatio.aspectRatioX,
                                                      m_extradata->aspectRatio.aspectRatioY);
 }
 
@@ -8688,8 +8688,8 @@ void omx_vdec::append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra)
   extra->nDataSize = sizeof(OMX_PARAM_PORTDEFINITIONTYPE);
   portDefn = (OMX_PARAM_PORTDEFINITIONTYPE *)extra->data;
   *portDefn = m_port_def;
-  DEBUG_PRINT_LOW("append_portdef_extradata height = %u width = %u stride = %u"
-     "sliceheight = %u \n",portDefn->format.video.nFrameHeight,
+  DEBUG_PRINT_LOW("append_portdef_extradata height = %lu width = %lu "
+     "stride = %lu sliceheight = %lu \n",portDefn->format.video.nFrameHeight,
      portDefn->format.video.nFrameWidth,
      portDefn->format.video.nStride,
      portDefn->format.video.nSliceHeight);
@@ -8741,7 +8741,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_desc_buffer(OMX_U32 index)
 
 void omx_vdec::insert_demux_addr_offset(OMX_U32 address_offset)
 {
-  DEBUG_PRINT_LOW("Inserting address offset (%d) at idx (%d)", address_offset,m_demux_entries);
+  DEBUG_PRINT_LOW("Inserting address offset (%lu) at idx (%lu)", address_offset,m_demux_entries);
   if (m_demux_entries < 8192)
   {
     m_demux_offsets[m_demux_entries++] = address_offset;
@@ -8774,7 +8774,7 @@ void omx_vdec::extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr)
     else
       index++;
   }
-  DEBUG_PRINT_LOW("Extracted (%d) demux entry offsets",m_demux_entries);
+  DEBUG_PRINT_LOW("Extracted (%lu) demux entry offsets",m_demux_entries);
   return;
 }
 
@@ -8832,8 +8832,8 @@ OMX_ERRORTYPE omx_vdec::handle_demux_data(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       {
         nal_size = p_buf_hdr->nFilledLen - m_demux_offsets[demux_index] - 2;
       }
-      DEBUG_PRINT_LOW("Start_addr(%p), suffix_byte(0x%x),nal_size(%d),demux_index(%d)",
-                        start_addr,
+      DEBUG_PRINT_LOW("Start_addr(%p), suffix_byte(0x%lx),nal_size(%lu),demux_index(%lu)",
+                        (void *)start_addr,
                         suffix_byte,
                         nal_size,
                         demux_index);
@@ -8864,7 +8864,7 @@ OMX_ERRORTYPE omx_vdec::handle_demux_data(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     memset(p_demux_data, 0, sizeof(OMX_U32));
 
     m_desc_buffer_ptr[buffer_index].desc_data_size = (m_demux_entries * 16) + sizeof(OMX_U32);
-    DEBUG_PRINT_LOW("desc table data size=%d", m_desc_buffer_ptr[buffer_index].desc_data_size);
+    DEBUG_PRINT_LOW("desc table data size=%lu", m_desc_buffer_ptr[buffer_index].desc_data_size);
   }
   memset(m_demux_offsets, 0, ( sizeof(OMX_U32) * 8192) );
   m_demux_entries = 0;
