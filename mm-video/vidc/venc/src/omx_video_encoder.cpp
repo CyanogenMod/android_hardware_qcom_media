@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -685,6 +685,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         return OMX_ErrorUnsupportedSetting;
       }
       memcpy(&m_sParamMPEG4,pParam, sizeof(struct OMX_VIDEO_PARAM_MPEG4TYPE));
+      m_sIntraperiod.nPFrames = m_sParamMPEG4.nPFrames;
+      m_sIntraperiod.nBFrames = m_sParamMPEG4.nBFrames;
       break;
     }
   case OMX_IndexParamVideoH263:
@@ -696,6 +698,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         return OMX_ErrorUnsupportedSetting;
       }
       memcpy(&m_sParamH263,pParam, sizeof(struct OMX_VIDEO_PARAM_H263TYPE));
+      m_sIntraperiod.nPFrames = m_sParamH263.nPFrames;
+      m_sIntraperiod.nBFrames = m_sParamH263.nBFrames;
       break;
     }
   case OMX_IndexParamVideoAvc:
@@ -751,6 +755,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       }
 
       memcpy(&m_sParamAVC,pParam, sizeof(struct OMX_VIDEO_PARAM_AVCTYPE));
+      m_sIntraperiod.nPFrames = m_sParamAVC.nPFrames;
+      m_sIntraperiod.nBFrames = m_sParamAVC.nBFrames;
       break;
     }
   case OMX_IndexParamVideoProfileLevelCurrent:
@@ -1199,7 +1205,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     {
       OMX_VIDEO_CONFIG_BITRATETYPE* pParam =
         reinterpret_cast<OMX_VIDEO_CONFIG_BITRATETYPE*>(configData);
-      DEBUG_PRINT_LOW("\n omx_venc:: set_config(): OMX_IndexConfigVideoBitrate");
+      DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoBitrate (%u)", pParam->nEncodeBitrate);
 
       if(pParam->nPortIndex == PORT_INDEX_OUT)
       {
@@ -1224,7 +1230,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     {
       OMX_CONFIG_FRAMERATETYPE* pParam =
         reinterpret_cast<OMX_CONFIG_FRAMERATETYPE*>(configData);
-      DEBUG_PRINT_LOW("\n omx_venc:: set_config(): OMX_IndexConfigVideoFramerate");
+      DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoFramerate (0x%x)", pParam->xEncodeFramerate);
 
       if(pParam->nPortIndex == PORT_INDEX_OUT)
       {
@@ -1250,6 +1256,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     {
       QOMX_VIDEO_INTRAPERIODTYPE* pParam =
         reinterpret_cast<QOMX_VIDEO_INTRAPERIODTYPE*>(configData);
+      DEBUG_PRINT_HIGH("set_config(): QOMX_IndexConfigVideoIntraperiod");
 
       if(pParam->nPortIndex == PORT_INDEX_OUT)
       {
@@ -1260,6 +1267,14 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
           return OMX_ErrorUnsupportedSetting;
         }
 #endif
+        DEBUG_PRINT_HIGH("Old: P/B frames = %d/%d, New: P/B frames = %d/%d",
+            m_sIntraperiod.nPFrames, m_sIntraperiod.nBFrames,
+            pParam->nPFrames, pParam->nBFrames);
+        if (m_sIntraperiod.nBFrames != pParam->nBFrames)
+        {
+           DEBUG_PRINT_HIGH("Dynamically changing B-frames not supported");
+           return OMX_ErrorUnsupportedSetting;
+        }
         if(handle->venc_set_config(configData, (OMX_INDEXTYPE) QOMX_IndexConfigVideoIntraperiod) != true)
         {
           DEBUG_PRINT_ERROR("ERROR: Setting QOMX_IndexConfigVideoIntraperiod failed");
@@ -1303,6 +1318,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     {
       OMX_CONFIG_INTRAREFRESHVOPTYPE* pParam =
         reinterpret_cast<OMX_CONFIG_INTRAREFRESHVOPTYPE*>(configData);
+      DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoIntraVOPRefresh");
 
       if(pParam->nPortIndex == PORT_INDEX_OUT)
       {
@@ -1374,6 +1390,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     }
   case OMX_QcomIndexConfigVideoFramePackingArrangement:
     {
+      DEBUG_PRINT_HIGH("set_config(): OMX_QcomIndexConfigVideoFramePackingArrangement");
       if(m_sOutPortFormat.eCompressionFormat == OMX_VIDEO_CodingAVC)
       {
         OMX_QCOM_FRAME_PACK_ARRANGEMENT *configFmt =
