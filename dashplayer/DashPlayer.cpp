@@ -83,6 +83,18 @@ DashPlayer::DashPlayer()
 }
 
 DashPlayer::~DashPlayer() {
+    if (mRenderer != NULL) {
+        looper()->unregisterHandler(mRenderer->id());
+    }
+    if (mAudioDecoder != NULL) {
+      looper()->unregisterHandler(mAudioDecoder->id());
+    }
+    if (mVideoDecoder != NULL) {
+      looper()->unregisterHandler(mVideoDecoder->id());
+    }
+    if (mTextDecoder != NULL) {
+      looper()->unregisterHandler(mTextDecoder->id());
+    }
     if(mStats != NULL) {
         mStats->logFpsSummary();
         mStats = NULL;
@@ -497,12 +509,18 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 ALOGV("%s shutdown completed", mTrackName);
                 if (track == kAudio) {
                     ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: audio");
+                    if (mAudioDecoder != NULL) {
+                        looper()->unregisterHandler(mAudioDecoder->id());
+                    }
                     mAudioDecoder.clear();
 
                     CHECK_EQ((int)mFlushingAudio, (int)SHUTTING_DOWN_DECODER);
                     mFlushingAudio = SHUT_DOWN;
                 } else if (track == kVideo) {
                     ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: Video");
+                    if (mVideoDecoder != NULL) {
+                        looper()->unregisterHandler(mVideoDecoder->id());
+                    }
                     mVideoDecoder.clear();
 
                     CHECK_EQ((int)mFlushingVideo, (int)SHUTTING_DOWN_DECODER);
@@ -956,6 +974,7 @@ void DashPlayer::finishFlushIfPossible() {
           mTextNotify->findMessage("codec-request", &codecRequest);
           codecRequest = NULL;
           mTextNotify = NULL;
+          looper()->unregisterHandler(mTextDecoder->id());
           mTextDecoder.clear();
         }
         postScanSources();
@@ -969,6 +988,9 @@ void DashPlayer::finishReset() {
     ++mScanSourcesGeneration;
     mScanSourcesPending = false;
 
+    if (mRenderer != NULL) {
+        looper()->unregisterHandler(mRenderer->id());
+    }
     if(mRenderer != NULL) {
         mRenderer.clear();
     }
@@ -985,6 +1007,7 @@ void DashPlayer::finishReset() {
       mTextNotify->findMessage("codec-request", &codecRequest);
       codecRequest = NULL;
       mTextNotify = NULL;
+      looper()->unregisterHandler(mTextDecoder->id());
       mTextDecoder.clear();
       ALOGE("Text Dummy Decoder Deleted");
     }
