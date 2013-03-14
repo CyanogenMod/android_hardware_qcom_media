@@ -26,6 +26,7 @@
 #include <media/stagefright/foundation/AHierarchicalStateMachine.h>
 #include <media/stagefright/SkipCutBuffer.h>
 #include <OMX_Audio.h>
+#include <OMX_Component.h>
 
 #define TRACK_BUFFER_TIMING     0
 
@@ -61,7 +62,8 @@ struct DashCodec : public AHierarchicalStateMachine {
     void initiateStart();
 
     void signalRequestIDRFrame();
-
+    void queueNextFormat();
+    void clearCachedFormats();
     struct PortDescription : public RefBase {
         size_t countBuffers();
         IOMX::buffer_id bufferIDAt(size_t index) const;
@@ -117,6 +119,7 @@ private:
 
     enum {
         kFlagIsSecure   = 1,
+        kFlagIsSecureOPOnly = 2
     };
 
     struct BufferInfo {
@@ -174,6 +177,7 @@ private:
     List<sp<AMessage> > mDeferredQueue;
 
     bool mSentFormat;
+    bool mPostFormat;
     bool mIsEncoder;
 
     bool mShutdownInProgress;
@@ -276,7 +280,8 @@ private:
 
     status_t InitSmoothStreaming();
     bool mSmoothStreaming;
-
+    Vector<OMX_PARAM_PORTDEFINITIONTYPE*> mFormats;
+    Vector<OMX_CONFIG_RECTTYPE*> mOutputCrops;
     DISALLOW_EVIL_CONSTRUCTORS(DashCodec);
 };
 

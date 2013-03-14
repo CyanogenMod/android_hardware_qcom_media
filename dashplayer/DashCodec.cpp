@@ -371,6 +371,7 @@ DashCodec::DashCodec()
     : mQuirks(0),
       mNode(NULL),
       mSentFormat(false),
+      mPostFormat(false),
       mIsEncoder(false),
       mShutdownInProgress(false),
       mEncoderDelay(0),
@@ -565,7 +566,7 @@ status_t DashCodec::allocateOutputBuffersFromNativeWindow() {
         usage = 0;
     }
 
-    if (mFlags & kFlagIsSecure) {
+    if (mFlags & kFlagIsSecure || mFlags & kFlagIsSecureOPOnly) {
         usage |= GRALLOC_USAGE_PROTECTED;
     }
 
@@ -607,6 +608,29 @@ status_t DashCodec::allocateOutputBuffersFromNativeWindow() {
                 strerror(-err), -err);
         return err;
     }
+
+    // XXX: Is this the right logic to use?  It's not clear to me what the OMX
+    // buffer counts refer to - how do they account for the renderer holding on
+    // to buffers?
+    if (def.nBufferCountActual < def.nBufferCountMin + minUndequeuedBufs) {
+        OMX_U32 newBufferCount = def.nBufferCountMin + minUndequeuedBufs;
+        def.nBufferCountActual = newBufferCount;
+
+        //Keep an extra buffer for smooth streaming
+        if (mSmoothStreaming) {
+            def.nBufferCountActual += 1;
+        }
+
+        err = mOMX->setParameter(
+                mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+
+        if (err != OK) {
+            ALOGE("[%s] setting nBufferCountActual to %lu failed: %d",
+                    mComponentName.c_str(), newBufferCount, err);
+            return err;
+        }
+    }
+
 
     err = native_window_set_buffer_count(
             mNativeWindow.get(), def.nBufferCountActual);
@@ -804,8 +828,9 @@ status_t DashCodec::setComponentRole(
             "audio_decoder.amrnb", "audio_encoder.amrnb" },
         { MEDIA_MIMETYPE_AUDIO_AMR_WB,
             "audio_decoder.amrwb", "audio_encoder.amrwb" },
-        { MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS,
-            "audio_decoder.amrwbplus", "audio_encoder.amrwbplus" },
+        // commenting out AMR_WM_PLUS for bringing up dash on MR2
+        /* { MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS,
+            "audio_decoder.amrwbplus", "audio_encoder.amrwbplus" },*/
         { MEDIA_MIMETYPE_AUDIO_AAC,
             "audio_decoder.aac", "audio_encoder.aac" },
         { MEDIA_MIMETYPE_AUDIO_VORBIS,
@@ -1437,7 +1462,10 @@ status_t DashCodec::setSupportedOutputFormat() {
            || format.eColorFormat == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar
            || format.eColorFormat == OMX_QCOM_COLOR_FormatYVU420SemiPlanar
            || format.eColorFormat == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka
-           || format.eColorFormat == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m );
+           /* Commenting OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m for bringing up dash on mr2,
+              also looks like this is needed only for B family*/
+           //|| format.eColorFormat == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m
+          );
 
     return mOMX->setParameter(
             mNode, OMX_IndexParamVideoPortFormat,
@@ -2098,24 +2126,57 @@ void DashCodec::processDeferredMessages() {
     }
 }
 
+void DashCodec::queueNextFormat() {
+    OMX_PARAM_PORTDEFINITIONTYPE* def = new OMX_PARAM_PORTDEFINITIONTYPE();
+    InitOMXParams(def);
+    def->nPortIndex = kPortIndexOutput;
+
+    CHECK_EQ(mOMX->getParameter(
+                mNode, OMX_IndexParamPortDefinition, def, sizeof(*def)),
+             (status_t)OK);
+
+    CHECK_EQ((int)def->eDir, (int)OMX_DirOutput);
+    mFormats.push_back(def);
+
+    OMX_CONFIG_RECTTYPE* rect = new OMX_CONFIG_RECTTYPE();
+    InitOMXParams(rect);
+    rect->nPortIndex = kPortIndexOutput;
+    if (mOMX->getConfig(mNode, OMX_IndexConfigCommonOutputCrop, rect, sizeof(*rect)) != OK) {
+        mOutputCrops.push_back(NULL);
+    } else {
+        mOutputCrops.push_back(rect);
+    }
+}
+
+void DashCodec::clearCachedFormats() {
+    mOutputCrops.clear();
+    mFormats.clear();
+}
+
 void DashCodec::sendFormatChange() {
     sp<AMessage> notify = mNotify->dup();
     notify->setInt32("what", kWhatOutputFormatChanged);
+    bool useCachedConfig = false;
+    OMX_PARAM_PORTDEFINITIONTYPE* def;
+    if (mFormats.size() > 0) {
+        useCachedConfig = true;
+        def = mFormats[0];
+        mFormats.pop();
+    } else {
+        def = new OMX_PARAM_PORTDEFINITIONTYPE();
+        InitOMXParams(def);
+        def->nPortIndex = kPortIndexOutput;
 
-    OMX_PARAM_PORTDEFINITIONTYPE def;
-    InitOMXParams(&def);
-    def.nPortIndex = kPortIndexOutput;
+        CHECK_EQ(mOMX->getParameter(
+                    mNode, OMX_IndexParamPortDefinition, def, sizeof(*def)),
+                 (status_t)OK);
 
-    CHECK_EQ(mOMX->getParameter(
-                mNode, OMX_IndexParamPortDefinition, &def, sizeof(def)),
-             (status_t)OK);
-
-    CHECK_EQ((int)def.eDir, (int)OMX_DirOutput);
-
-    switch (def.eDomain) {
+        CHECK_EQ((int)def->eDir, (int)OMX_DirOutput);
+    }
+    switch (def->eDomain) {
         case OMX_PortDomainVideo:
         {
-            OMX_VIDEO_PORTDEFINITIONTYPE *videoDef = &def.format.video;
+            OMX_VIDEO_PORTDEFINITIONTYPE *videoDef = &def->format.video;
 
             notify->setString("mime", MEDIA_MIMETYPE_VIDEO_RAW);
             notify->setInt32("width", videoDef->nFrameWidth);
@@ -2123,26 +2184,38 @@ void DashCodec::sendFormatChange() {
             notify->setInt32("stride", videoDef->nStride);
             notify->setInt32("slice-height", videoDef->nSliceHeight);
             notify->setInt32("color-format", videoDef->eColorFormat);
-
-            OMX_CONFIG_RECTTYPE rect;
-            InitOMXParams(&rect);
-            rect.nPortIndex = kPortIndexOutput;
-
-            if (mOMX->getConfig(
-                        mNode, OMX_IndexConfigCommonOutputCrop,
-                        &rect, sizeof(rect)) != OK) {
-                rect.nLeft = 0;
-                rect.nTop = 0;
-                rect.nWidth = videoDef->nFrameWidth;
-                rect.nHeight = videoDef->nFrameHeight;
+            ALOGE("sendformatchange: %d %d", videoDef->nFrameWidth, videoDef->nFrameHeight);
+            OMX_CONFIG_RECTTYPE* rect;
+            bool hasValidCrop = true;
+            if (useCachedConfig) {
+                rect = mOutputCrops[0];
+                mOutputCrops.pop();
+                if (rect == NULL) {
+                    rect = new OMX_CONFIG_RECTTYPE();
+                    hasValidCrop = false;
+                }
+            } else {
+                rect = new OMX_CONFIG_RECTTYPE();
+                InitOMXParams(rect);
+                rect->nPortIndex = kPortIndexOutput;
+                hasValidCrop = (mOMX->getConfig(
+                    mNode, OMX_IndexConfigCommonOutputCrop,
+                    rect, sizeof(*rect)) == OK);
             }
 
-            CHECK_GE(rect.nLeft, 0);
-            CHECK_GE(rect.nTop, 0);
-            CHECK_GE(rect.nWidth, 0u);
-            CHECK_GE(rect.nHeight, 0u);
-            CHECK_LE(rect.nLeft + rect.nWidth - 1, videoDef->nFrameWidth);
-            CHECK_LE(rect.nTop + rect.nHeight - 1, videoDef->nFrameHeight);
+            if (!hasValidCrop) {
+                rect->nLeft = 0;
+                rect->nTop = 0;
+                rect->nWidth = videoDef->nFrameWidth;
+                rect->nHeight = videoDef->nFrameHeight;
+            }
+
+            CHECK_GE(rect->nLeft, 0);
+            CHECK_GE(rect->nTop, 0);
+            CHECK_GE(rect->nWidth, 0u);
+            CHECK_GE(rect->nHeight, 0u);
+            CHECK_LE(rect->nLeft + rect->nWidth - 1, videoDef->nFrameWidth);
+            CHECK_LE(rect->nTop + rect->nHeight - 1, videoDef->nFrameHeight);
 
 #ifdef QCOM_BSP
             if( mSmoothStreaming ) {
@@ -2150,7 +2223,7 @@ void DashCodec::sendFormatChange() {
                 ALOGE("Calling native window update buffer geometry");
                 status_t err = mNativeWindow.get()->perform(mNativeWindow.get(),
                                          NATIVE_WINDOW_UPDATE_BUFFERS_GEOMETRY,
-                                         videoDef->nFrameWidth, videoDef->nFrameHeight, def.format.video.eColorFormat);
+                                         videoDef->nFrameWidth, videoDef->nFrameHeight, def->format.video.eColorFormat);
                if( err != OK ) {
                    ALOGE("native_window_update_buffers_geometry failed in SS mode %d", err);
                }
@@ -2160,27 +2233,28 @@ void DashCodec::sendFormatChange() {
 
             notify->setRect(
                     "crop",
-                    rect.nLeft,
-                    rect.nTop,
-                    rect.nLeft + rect.nWidth - 1,
-                    rect.nTop + rect.nHeight - 1);
+                    rect->nLeft,
+                    rect->nTop,
+                    rect->nLeft + rect->nWidth - 1,
+                    rect->nTop + rect->nHeight - 1);
 
             if (mNativeWindow != NULL) {
                 android_native_rect_t crop;
-                crop.left = rect.nLeft;
-                crop.top = rect.nTop;
-                crop.right = rect.nLeft + rect.nWidth;
-                crop.bottom = rect.nTop + rect.nHeight;
+                crop.left = rect->nLeft;
+                crop.top = rect->nTop;
+                crop.right = rect->nLeft + rect->nWidth;
+                crop.bottom = rect->nTop + rect->nHeight;
 
                 CHECK_EQ(0, native_window_set_crop(
                             mNativeWindow.get(), &crop));
             }
+            delete rect;
             break;
         }
 
         case OMX_PortDomainAudio:
         {
-            OMX_AUDIO_PORTDEFINITIONTYPE *audioDef = &def.format.audio;
+            OMX_AUDIO_PORTDEFINITIONTYPE *audioDef = &def->format.audio;
             CHECK_EQ((int)audioDef->eEncoding, (int)OMX_AUDIO_CodingPCM);
 
             OMX_AUDIO_PARAM_PCMMODETYPE params;
@@ -2224,7 +2298,7 @@ void DashCodec::sendFormatChange() {
     }
 
     notify->post();
-
+    delete def;
     mSentFormat = true;
 }
 
@@ -2866,6 +2940,18 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
                 break;
             }
 
+            if (flags & OMX_BUFFERFLAG_EOS) {
+                ALOGE("[%s] saw output EOS", mCodec->mComponentName.c_str());
+
+                sp<AMessage> notify = mCodec->mNotify->dup();
+                notify->setInt32("what", DashCodec::kWhatEOS);
+                notify->setInt32("err", mCodec->mInputEOSResult);
+                notify->post();
+
+                mCodec->mPortEOS[kPortIndexOutput] = true;
+                break;
+            }
+
             if (!mCodec->mIsEncoder && !mCodec->mSentFormat && !mCodec->mSmoothStreaming) {
                 mCodec->sendFormatChange();
             }
@@ -2893,9 +2979,10 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
             sp<AMessage> reply =
                 new AMessage(kWhatOutputBufferDrained, mCodec->id());
 
-           if (!mCodec->mSentFormat && mCodec->mSmoothStreaming){
+           if (!mCodec->mPostFormat && mCodec->mSmoothStreaming){
                    ALOGV("Resolution will change from this buffer, set a flag");
                    reply->setInt32("resChange", 1);
+                   mCodec->mPostFormat = true;
             }
 
             reply->setPointer("buffer-id", info->mBufferID);
@@ -2906,16 +2993,6 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
 
             info->mStatus = BufferInfo::OWNED_BY_DOWNSTREAM;
 
-            if (flags & OMX_BUFFERFLAG_EOS) {
-                ALOGV("[%s] saw output EOS", mCodec->mComponentName.c_str());
-
-                sp<AMessage> notify = mCodec->mNotify->dup();
-                notify->setInt32("what", DashCodec::kWhatEOS);
-                notify->setInt32("err", mCodec->mInputEOSResult);
-                notify->post();
-
-                mCodec->mPortEOS[kPortIndexOutput] = true;
-            }
             break;
         }
 
@@ -2940,7 +3017,7 @@ void DashCodec::BaseState::onOutputBufferDrained(const sp<AMessage> &msg) {
     BufferInfo *info =
         mCodec->findBufferByID(kPortIndexOutput, bufferID, &index);
     CHECK_EQ((int)info->mStatus, (int)BufferInfo::OWNED_BY_DOWNSTREAM);
-    if (mCodec->mSmoothStreaming && !mCodec->mSentFormat) {
+    if (mCodec->mSmoothStreaming) {
         int32_t resChange = 0;
         if (msg->findInt32("resChange", &resChange) && resChange == 1) {
             ALOGV("Resolution change is sent to native window now ");
@@ -3282,6 +3359,9 @@ bool DashCodec::LoadedState::onConfigureComponent(
         }
     }
 
+    if (msg->findInt32("secure-op", &value) && (value == 1)) {
+        mCodec->mFlags |= kFlagIsSecureOPOnly;
+    }
 
     AString mime;
     CHECK(msg->findString("mime", &mime));
@@ -3541,7 +3621,7 @@ bool DashCodec::ExecutingState::onMessageReceived(const sp<AMessage> &msg) {
                      (status_t)OK);
 
             mCodec->changeState(mCodec->mFlushingState);
-
+            mCodec->clearCachedFormats();
             handled = true;
             break;
         }
@@ -3590,6 +3670,8 @@ bool DashCodec::ExecutingState::onOMXEvent(
 
             } else if (data2 == OMX_IndexConfigCommonOutputCrop) {
                 mCodec->mSentFormat = false;
+                mCodec->mPostFormat = false;
+                mCodec->queueNextFormat();
             } else {
                 ALOGV("[%s] OMX_EventPortSettingsChanged 0x%08lx",
                      mCodec->mComponentName.c_str(), data2);

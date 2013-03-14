@@ -52,6 +52,7 @@ DashPlayerDriver::DashPlayerDriver()
 
 DashPlayerDriver::~DashPlayerDriver() {
     mLooper->stop();
+    mLooper->unregisterHandler(mPlayer->id());
 }
 
 status_t DashPlayerDriver::initCheck() {
@@ -95,12 +96,21 @@ status_t DashPlayerDriver::setDataSource(const sp<IStreamSource> &source) {
     return OK;
 }
 
+#ifdef ANDROID_JB_MR2
+status_t DashPlayerDriver::setVideoSurfaceTexture(
+        const sp<IGraphicBufferProducer> &bufferProducer) {
+    mPlayer->setVideoSurfaceTexture(bufferProducer);
+
+    return OK;
+}
+#else
 status_t DashPlayerDriver::setVideoSurfaceTexture(
         const sp<ISurfaceTexture> &surfaceTexture) {
     mPlayer->setVideoSurfaceTexture(surfaceTexture);
 
     return OK;
 }
+#endif
 
 status_t DashPlayerDriver::prepare() {
     sendEvent(MEDIA_SET_VIDEO_SIZE, 0, 0);
@@ -330,21 +340,9 @@ void DashPlayerDriver::notifyFrameStats(
 }
 
 status_t DashPlayerDriver::dump(int fd, const Vector<String16> &args) const {
-    Mutex::Autolock autoLock(mLock);
-
-    FILE *out = fdopen(dup(fd), "w");
-
-    fprintf(out, " DashPlayer\n");
-    fprintf(out, "  numFramesTotal(%lld), numFramesDropped(%lld), "
-                 "percentageDropped(%.2f)\n",
-                 mNumFramesTotal,
-                 mNumFramesDropped,
-                 mNumFramesTotal == 0
-                    ? 0.0 : (double)mNumFramesDropped / mNumFramesTotal);
-
-    fclose(out);
-    out = NULL;
-
+    if(mPlayer != NULL) {
+      mPlayer->dump(fd, args);
+    }
     return OK;
 }
 

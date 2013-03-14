@@ -1,6 +1,6 @@
+#ifneq ($(call is-board-platform,msm8960),true)
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
-
 # ---------------------------------------------------------------------------------
 #            Common definitons
 # ---------------------------------------------------------------------------------
@@ -43,9 +43,13 @@ LOCAL_C_INCLUDES := \
 	$(TOP)/frameworks/av/media/libstagefright/rtsp                \
 	$(TOP)/hardware/qcom/media/mm-core/inc                        \
 
+ifeq ($(PLATFORM_SDK_VERSION), 18)
+  LOCAL_CFLAGS += -DANDROID_JB_MR2
+endif
+
 LOCAL_MODULE:= libdashplayer
 
 LOCAL_MODULE_TAGS := eng
 
 include $(BUILD_SHARED_LIBRARY)
-
+#endif
