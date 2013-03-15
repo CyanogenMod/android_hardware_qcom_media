@@ -1306,7 +1306,7 @@ bool omx_video::execute_omx_flush(OMX_U32 flushType)
   }
   else
   {
-    DEBUG_PRINT_ERROR("Invalid index (%d) for flush\n", flushType);
+    DEBUG_PRINT_ERROR("Invalid index (%lu) for flush\n", flushType);
     return bRet;
   }
 #else
@@ -1702,7 +1702,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported\n");
       eRet = get_supported_profile_level(pParam);
       if(eRet)
-        DEBUG_PRINT_ERROR("Invalid entry returned from get_supported_profile_level %d, %d",
+        DEBUG_PRINT_ERROR("Invalid entry returned from get_supported_profile_level %lu, %lu",
                           pParam->eProfile, pParam->eLevel);
       break;
      }
@@ -1943,7 +1943,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             (unsigned)(pParam->nSize - sizeof(QOMX_EXTNINDEX_PARAMTYPE)),
             (unsigned *)&pParam->nDataSize))
        {
-         DEBUG_PRINT_HIGH("get syntax header successful (hdrlen = %d)",
+         DEBUG_PRINT_HIGH("get syntax header successful (hdrlen = %lu)",
             pParam->nDataSize);
          for (unsigned i = 0; i < pParam->nDataSize; i++) {
            DEBUG_PRINT_LOW("Header[%d] = %x", i, *((char *)pParam->pData + i));
@@ -2165,11 +2165,11 @@ OMX_ERRORTYPE  omx_video::use_input_buffer(
   unsigned   i = 0;
   unsigned char *buf_addr = NULL;
 
-  DEBUG_PRINT_HIGH("use_input_buffer: port = %d appData = %p bytes = %d buffer = %p",port,appData,bytes,buffer);
+  DEBUG_PRINT_HIGH("use_input_buffer: port = %lu appData = %p bytes = %lu buffer = %p",port,appData,bytes,buffer);
   if(bytes != m_sInPortDef.nBufferSize)
   {
     DEBUG_PRINT_ERROR("\nERROR: use_input_buffer: Size Mismatch!! "
-                      "bytes[%d] != Port.nBufferSize[%d]", bytes, m_sInPortDef.nBufferSize);
+                      "bytes[%lu] != Port.nBufferSize[%lu]", bytes, m_sInPortDef.nBufferSize);
     return OMX_ErrorBadParameter;
   }
 
@@ -2353,7 +2353,7 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
   if(bytes != m_sOutPortDef.nBufferSize)
   {
     DEBUG_PRINT_ERROR("\nERROR: use_output_buffer: Size Mismatch!! "
-                      "bytes[%d] != Port.nBufferSize[%d]", bytes, m_sOutPortDef.nBufferSize);
+                      "bytes[%lu] != Port.nBufferSize[%lu]", bytes, m_sOutPortDef.nBufferSize);
     return OMX_ErrorBadParameter;
   }
 
@@ -2418,7 +2418,7 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
     }
     else
     {
-      DEBUG_PRINT_ERROR("ERROR: Output buf mem alloc failed[0x%x]\n",m_out_mem_ptr);
+      DEBUG_PRINT_ERROR("ERROR: Output buf mem alloc failed[0x%p]\n",m_out_mem_ptr);
       eRet =  OMX_ErrorInsufficientResources;
     }
   }
@@ -2739,7 +2739,7 @@ OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
   unsigned index = 0;
   if(!bufferHdr || bytes != sizeof(encoder_media_buffer_type))
   {
-    DEBUG_PRINT_ERROR("wrong params allocate_input_meta_buffer Hdr %p len %d",
+    DEBUG_PRINT_ERROR("wrong params allocate_input_meta_buffer Hdr %p len %lu",
                      bufferHdr,bytes);
     return OMX_ErrorBadParameter;
   }
@@ -2792,14 +2792,14 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
   DEBUG_PRINT_HIGH("\n allocate_input_buffer()::");
   if(bytes != m_sInPortDef.nBufferSize)
   {
-    DEBUG_PRINT_ERROR("\nERROR: Buffer size mismatch error: bytes[%u] != nBufferSize[%u]\n",
+    DEBUG_PRINT_ERROR("\nERROR: Buffer size mismatch error: bytes[%lu] != nBufferSize[%lu]\n",
       bytes, m_sInPortDef.nBufferSize);
     return OMX_ErrorBadParameter;
   }
 
   if(!m_inp_mem_ptr)
   {
-    DEBUG_PRINT_HIGH("%s: size = %d, actual cnt %d", __FUNCTION__,
+    DEBUG_PRINT_HIGH("%s: size = %lu, actual cnt %lu", __FUNCTION__,
         m_sInPortDef.nBufferSize, m_sInPortDef.nBufferCountActual);
     m_inp_mem_ptr = (OMX_BUFFERHEADERTYPE*) \
                     calloc( (sizeof(OMX_BUFFERHEADERTYPE)), m_sInPortDef.nBufferCountActual);
@@ -2945,11 +2945,11 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
 #ifdef _MSM8974_
   int align_size;
 #endif
-  DEBUG_PRINT_HIGH("\n allocate_output_buffer()for %d bytes", bytes);
+  DEBUG_PRINT_HIGH("\n allocate_output_buffer()for %lu bytes", bytes);
   if(!m_out_mem_ptr)
   {
     int nBufHdrSize        = 0;
-    DEBUG_PRINT_HIGH("%s: size = %d, actual cnt %d", __FUNCTION__,
+    DEBUG_PRINT_HIGH("%s: size = %lu, actual cnt %lu", __FUNCTION__,
         m_sOutPortDef.nBufferSize, m_sOutPortDef.nBufferCountActual);
     nBufHdrSize        = m_sOutPortDef.nBufferCountActual * sizeof(OMX_BUFFERHEADERTYPE);
 
@@ -3006,7 +3006,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
     }
   }
 
-  DEBUG_PRINT_HIGH("\n actual cnt = %u", m_sOutPortDef.nBufferCountActual);
+  DEBUG_PRINT_HIGH("\n actual cnt = %lu", m_sOutPortDef.nBufferCountActual);
   for(i=0; i< m_sOutPortDef.nBufferCountActual; i++)
   {
     if(BITMASK_ABSENT(&m_out_bm_count,i))
@@ -3083,7 +3083,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
     else
     {
       DEBUG_PRINT_ERROR("\nERROR: All o/p buffers are allocated, invalid allocate buf call"
-                        "for index [%d] actual: %d\n", i, m_sOutPortDef.nBufferCountActual);
+                        "for index [%d] actual: %lu\n", i, m_sOutPortDef.nBufferCountActual);
     }
   }
 
@@ -4378,7 +4378,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
       }
       else
       {
-        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %d\n", profileLevelType->nProfileIndex);
+        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu\n", profileLevelType->nProfileIndex);
         eRet = OMX_ErrorNoMore;
       }
     }
@@ -4396,7 +4396,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
       }
       else
       {
-        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %d\n", profileLevelType->nProfileIndex);
+        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu\n", profileLevelType->nProfileIndex);
         eRet = OMX_ErrorNoMore;
       }
     }
@@ -4408,10 +4408,10 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
   }
   else
   {
-    DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported should be queries on Input port only %d\n", profileLevelType->nPortIndex);
+    DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported should be queries on Input port only %lu\n", profileLevelType->nPortIndex);
     eRet = OMX_ErrorBadPortIndex;
   }
-  DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported for Input port returned Profile:%d, Level:%d\n",
+  DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported for Input port returned Profile:%lu, Level:%lu\n",
                     profileLevelType->eProfile,profileLevelType->eLevel);
   return eRet;
 }
