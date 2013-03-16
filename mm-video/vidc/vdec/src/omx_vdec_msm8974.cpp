@@ -7551,6 +7551,7 @@ OMX_ERRORTYPE omx_vdec::push_input_vc1 (OMX_HANDLETYPE hComp)
     return OMX_ErrorNone;
 }
 
+#ifndef USE_ION
 bool omx_vdec::align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
                                   OMX_U32 alignment)
 {
@@ -7569,6 +7570,7 @@ bool omx_vdec::align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
   }
   return true;
 }
+#endif
 #ifdef USE_ION
 int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
               OMX_U32 alignment, struct ion_allocation_data *alloc_data,
