@@ -51,7 +51,7 @@ extern const char *MEDIA_MIMETYPE_AUDIO_DTS_LBR;
 extern const char *MEDIA_MIMETYPE_AUDIO_EAC3;
 extern const char *MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG2TS;
-
+extern const char *MEDIA_MIMETYPE_VIDEO_HEVC;
 }  // namespace android
 
 #endif  //QC_MEDIA_DEFS_H_
