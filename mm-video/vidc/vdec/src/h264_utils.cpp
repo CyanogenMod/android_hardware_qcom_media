@@ -1071,15 +1071,17 @@ void h264_stream_parser::parse_sps()
     uev(); //bit_depth_luma_minus8
     uev(); //bit_depth_chroma_minus8
     extract_bits(1); //qpprime_y_zero_transform_bypass_flag
-    if (extract_bits(1)) //seq_scaling_matrix_present_flag
-      for (int i = 0; i < scaling_matrix_limit && more_bits(); i++)
+    if (extract_bits(1)) { //seq_scaling_matrix_present_flag
+      for (unsigned int i = 0; i < scaling_matrix_limit && more_bits(); i++)
       {
-        if (extract_bits(1)) ////seq_scaling_list_present_flag[ i ]
+        if (extract_bits(1)) { ////seq_scaling_list_present_flag[ i ]
           if (i < 6)
             scaling_list(16);
           else
             scaling_list(64);
+        }
       }
+    }
   }
   uev(); //log2_max_frame_num_minus4
   value = uev(); //pic_order_cnt_type
@@ -1091,7 +1093,7 @@ void h264_stream_parser::parse_sps()
     sev(); //offset_for_non_ref_pic
     sev(); //offset_for_top_to_bottom_field
     value = uev(); // num_ref_frames_in_pic_order_cnt_cycle
-    for (int i = 0; i < value; i++)
+    for (unsigned int i = 0; i < value; i++)
       sev(); //offset_for_ref_frame[ i ]
   }
   uev(); //max_num_ref_frames
@@ -1116,7 +1118,7 @@ void h264_stream_parser::parse_sps()
 void h264_stream_parser::scaling_list(OMX_U32 size_of_scaling_list)
 {
   OMX_S32 last_scale = 8, next_scale = 8, delta_scale;
-  for (int j = 0; j < size_of_scaling_list; j++)
+  for (unsigned int j = 0; j < size_of_scaling_list; j++)
   {
     if (next_scale != 0)
     {
@@ -1437,12 +1439,12 @@ void h264_stream_parser::fill_pan_scan_data(OMX_QCOM_PANSCAN *dest_pan_scan, OMX
 #else
   h264_pan_scan *pan_scan_param = &panscan_param;
 #endif
-  if (pan_scan_param)
+  if (pan_scan_param) {
     if (!(pan_scan_param->rect_id & NO_PAN_SCAN_BIT))
     {
       PRINT_PANSCAN_PARAM(*pan_scan_param);
       dest_pan_scan->numWindows = pan_scan_param->cnt;
-      for (int i = 0; i < dest_pan_scan->numWindows; i++)
+      for (unsigned int i = 0; i < dest_pan_scan->numWindows; i++)
       {
         dest_pan_scan->window[i].x = pan_scan_param->rect_left_offset[i];
         dest_pan_scan->window[i].y = pan_scan_param->rect_top_offset[i];
@@ -1460,6 +1462,7 @@ void h264_stream_parser::fill_pan_scan_data(OMX_QCOM_PANSCAN *dest_pan_scan, OMX
     }
     else
       pan_scan_param->rect_repetition_period = 0;
+  }
 }
 
 OMX_S64 h264_stream_parser::process_ts_with_sei_vui(OMX_S64 timestamp)
@@ -1594,11 +1597,12 @@ h264_pan_scan *panscan_handler::get_populated(OMX_S64 frame_ts)
       panscan_node->active = true;
     }
   }
-  if (data)
+  if (data) {
     if (data->rect_repetition_period == 0)
       panscan_free.add_last(panscan_used.remove_first());
     else if (data->rect_repetition_period > 1)
       data->rect_repetition_period -= 2;
+  }
   PRINT_PANSCAN_DATA(panscan_node);
   return data;
 }
