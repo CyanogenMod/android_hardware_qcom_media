@@ -215,10 +215,9 @@ typedef enum {
   CODEC_FORMAT_MPEG2,
 #ifdef _MSM8974_
   CODEC_FORMAT_VP8,
-  CODEC_FORMAT_MAX = CODEC_FORMAT_VP8
-#else
-  CODEC_FORMAT_MAX = CODEC_FORMAT_MPEG2
+  CODEC_FORMAT_HEVC,
 #endif
+  CODEC_FORMAT_MAX
 } codec_format;
 
 typedef enum {
@@ -833,26 +832,27 @@ void* fbd_thread(void* pArg)
 
       if (takeYuvLog)
       {
-#ifdef _MSM8974_
-          stride = ((width + 127) & (~127));
-          scanlines = ((height+31) & (~31));
-          char *temp = (char *) pBuffer->pBuffer;
-          for (i = 0; i < height; i++) {
-                  bytes_written = fwrite(temp, width, 1, outputBufferFile);
-                  temp += stride;
-          }
-          temp = (char *)pBuffer->pBuffer + stride * scanlines;
-          stride_c = (width + 127) & (~127);
-          for(i = 0; i < height/2; i++) {
-                  bytes_written += fwrite(temp, width, 1, outputBufferFile);
-                  temp += stride_c;
-          }
-#else
-	  DEBUG_PRINT_ERROR("NOTE: Buffer: %p, len: %d\n", pBuffer->pBuffer,
-			  pBuffer->nFilledLen);
-	  bytes_written = fwrite((const char *)pBuffer->pBuffer,
-                                  pBuffer->nFilledLen,1,outputBufferFile);
-#endif
+          if (color_fmt == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m)
+          {
+             unsigned int stride = ((width + 127) & (~127));
+             unsigned int scanlines = ((height+31) & (~31));
+             char *temp = (char *) pBuffer->pBuffer;
+             int i = 0;
+             for (i = 0; i < height; i++) {
+                bytes_written = fwrite(temp, width, 1, outputBufferFile);
+                temp += stride;
+             }
+             temp = (char *)pBuffer->pBuffer + stride * scanlines;
+             for(i = 0; i < height/2; i++) {
+                 bytes_written += fwrite(temp, width, 1, outputBufferFile);
+                 temp += stride;
+             }
+         }
+         else
+         {
+             bytes_written = fwrite((const char *)pBuffer->pBuffer,
+                       pBuffer->nFilledLen,1,outputBufferFile);
+         }
           if (bytes_written < 0) {
               DEBUG_PRINT("\nFillBufferDone: Failed to write to the file\n");
           }
@@ -870,8 +870,6 @@ void* fbd_thread(void* pArg)
 	      if (num_bytes < sizeof(crc_val)) {
 		      printf("Failed to write CRC value into file\n");
 	      }
-      } else {
-	      printf("No CRC file available\n");
       }
 #endif
       if (pBuffer->nFlags & OMX_BUFFERFLAG_EXTRADATA)
@@ -1174,6 +1172,9 @@ OMX_ERRORTYPE EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
 
         case OMX_EventBufferFlag:
             DEBUG_PRINT("OMX_EventBufferFlag port[%d] flags[%x]\n", nData1, nData2);
+#if 0
+            // we should not set the bOutputEosReached here. in stead we wait until fbd_thread to
+            // check the flag so that all frames can be dumped for bit exactness check.
             if (nData1 == 1 && (nData2 & OMX_BUFFERFLAG_EOS)) {
                 pthread_mutex_lock(&eos_lock);
                 bOutputEosReached = true;
@@ -1189,6 +1190,7 @@ OMX_ERRORTYPE EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
             {
                 DEBUG_PRINT_ERROR("OMX_EventBufferFlag Event not handled\n");
             }
+#endif
             break;
         case OMX_EventIndexsettingChanged:
             DEBUG_PRINT("OMX_EventIndexSettingChanged Interlace mode[%x]\n", nData1);
@@ -1347,6 +1349,7 @@ int main(int argc, char **argv)
       printf(" 6--> MPEG2\n");
 #ifdef _MSM8974_
       printf(" 7--> VP8\n");
+      printf(" 8--> HEVC\n");
 #endif
       fflush(stdin);
       fgets(tempbuf,sizeof(tempbuf),stdin);
@@ -1395,7 +1398,7 @@ int main(int argc, char **argv)
 #endif
       fflush(stdin);
       fgets(tempbuf,sizeof(tempbuf),stdin);
-      sscanf(tempbuf,"%d",&file_type_option); 
+      sscanf(tempbuf,"%d",&file_type_option);
 #ifdef _MSM8974_
       if (codec_format_option == CODEC_FORMAT_VP8)
       {
@@ -1906,6 +1909,10 @@ int Init_Decoder()
       strlcpy(vdecCompNames, "OMX.qcom.video.decoder.vp8", 27);
     }
 #endif
+    else if (codec_format_option == CODEC_FORMAT_HEVC)
+    {
+      strlcpy(vdecCompNames, "OMX.qcom.video.decoder.hevc", 28);
+    }
 #ifdef MAX_RES_1080P
     else if (file_type_option == FILE_TYPE_DIVX_311)
     {
@@ -1976,6 +1983,10 @@ int Init_Decoder()
     else if (codec_format_option == CODEC_FORMAT_MPEG2)
     {
       portFmt.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG2;
+    }
+    else if (codec_format_option == CODEC_FORMAT_HEVC)
+    {
+      portFmt.format.video.eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingHevc;
     }
     else
     {
@@ -2193,7 +2204,8 @@ int Play_Decoder()
     DEBUG_PRINT("\nVideo format: W x H (%d x %d)",
       portFmt.format.video.nFrameWidth,
       portFmt.format.video.nFrameHeight);
-    if(codec_format_option == CODEC_FORMAT_H264)
+    if(codec_format_option == CODEC_FORMAT_H264 ||
+       codec_format_option == CODEC_FORMAT_HEVC)
     {
         OMX_VIDEO_CONFIG_NALSIZE naluSize;
         naluSize.nNaluBytes = nalSize;
