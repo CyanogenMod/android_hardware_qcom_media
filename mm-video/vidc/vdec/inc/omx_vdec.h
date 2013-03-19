@@ -404,7 +404,7 @@ public:
 #ifdef _MSM8974_
     OMX_ERRORTYPE allocate_extradata();
 	void free_extradata();
-    void update_resolution(int width, int height);
+    void update_resolution(int width, int height, int stride, int scan_lines);
     OMX_ERRORTYPE is_video_session_supported();
 #endif
     int  m_pipe_in;
