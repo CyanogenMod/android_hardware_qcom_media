@@ -73,6 +73,7 @@ DashPlayer::DashPlayer()
       mFlushingVideo(NONE),
       mResetInProgress(false),
       mResetPostponed(false),
+      mSetVideoSize(true),
       mSkipRenderingAudioUntilMediaTimeUs(-1ll),
       mSkipRenderingVideoUntilMediaTimeUs(-1ll),
       mVideoLateByUs(0ll),
@@ -159,6 +160,7 @@ void DashPlayer::setVideoSurfaceTexture(const sp<IGraphicBufferProducer> &buffer
 }
 #else
 void DashPlayer::setVideoSurfaceTexture(const sp<ISurfaceTexture> &surfaceTexture) {
+    mSetVideoSize = true;
     sp<AMessage> msg = new AMessage(kWhatSetVideoNativeWindow, id());
     sp<SurfaceTextureClient> surfaceTextureClient(surfaceTexture != NULL ?
                 new SurfaceTextureClient(surfaceTexture) : NULL);
@@ -500,26 +502,29 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 } else if (track == kVideo) {
                     // video
                     ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: video");
-                    int32_t width, height;
-                    CHECK(codecRequest->findInt32("width", &width));
-                    CHECK(codecRequest->findInt32("height", &height));
+                    // No need to notify JAVA layer the message of kWhatOutputFormatChanged which will cause a flicker while changing the resolution
+#if 0
+                        int32_t width, height;
+                        CHECK(codecRequest->findInt32("width", &width));
+                        CHECK(codecRequest->findInt32("height", &height));
 
-                    int32_t cropLeft, cropTop, cropRight, cropBottom;
-                    CHECK(codecRequest->findRect(
-                                "crop",
-                                &cropLeft, &cropTop, &cropRight, &cropBottom));
+                        int32_t cropLeft, cropTop, cropRight, cropBottom;
+                        CHECK(codecRequest->findRect(
+                                    "crop",
+                                    &cropLeft, &cropTop, &cropRight, &cropBottom));
 
-                    ALOGW("Video output format changed to %d x %d "
-                         "(crop: %d x %d @ (%d, %d))",
-                         width, height,
-                         (cropRight - cropLeft + 1),
-                         (cropBottom - cropTop + 1),
-                         cropLeft, cropTop);
+                        ALOGW("Video output format changed to %d x %d "
+                             "(crop: %d x %d @ (%d, %d))",
+                             width, height,
+                             (cropRight - cropLeft + 1),
+                             (cropBottom - cropTop + 1),
+                             cropLeft, cropTop);
 
-                    notifyListener(
-                            MEDIA_SET_VIDEO_SIZE,
-                            cropRight - cropLeft + 1,
-                            cropBottom - cropTop + 1);
+                        notifyListener(
+                                MEDIA_SET_VIDEO_SIZE,
+                                cropRight - cropLeft + 1,
+                                cropBottom - cropTop + 1);
+#endif
                 }
             } else if (what == DashCodec::kWhatShutdownCompleted) {
                 ALOGV("%s shutdown completed", mTrackName);
@@ -1109,12 +1114,15 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
             mIsSecureInputBuffers = true;
         }
 
-        int32_t width = 0;
-        meta->findInt32(kKeyWidth, &width);
-        int32_t height = 0;
-        meta->findInt32(kKeyHeight, &height);
-        ALOGE("instantiate video decoder, send wxh = %dx%d",width,height);
-        notifyListener(MEDIA_SET_VIDEO_SIZE, width, height);
+        if (mSetVideoSize) {
+            int32_t width = 0;
+            meta->findInt32(kKeyWidth, &width);
+            int32_t height = 0;
+            meta->findInt32(kKeyHeight, &height);
+            ALOGE("instantiate video decoder, send wxh = %dx%d",width,height);
+            notifyListener(MEDIA_SET_VIDEO_SIZE, width, height);
+            mSetVideoSize = false;
+        }
     }
 
     sp<AMessage> notify;
