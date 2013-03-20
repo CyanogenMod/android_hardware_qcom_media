@@ -79,7 +79,6 @@ libmm-vdec-inc          += bionic/libstdc++/include
 libmm-vdec-inc          += $(LOCAL_PATH)/inc 
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
-#libmm-vdec-inc          += bionic/libc/kernel/common/linux
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
 libmm-vdec-inc          += hardware/qcom/display/libgralloc
@@ -123,6 +122,44 @@ LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
+
+
+# ---------------------------------------------------------------------------------
+# 			Make the Shared library (libOmxVdecHevc)
+# ---------------------------------------------------------------------------------
+
+include $(CLEAR_VARS)
+LOCAL_PATH:= $(ROOT_DIR)
+
+ifeq ($(call is-board-platform-in-list,msm8974),true)
+
+LOCAL_MODULE                    := libOmxVdecHevc
+LOCAL_MODULE_TAGS               := optional
+LOCAL_CFLAGS                    := $(libOmxVdec-def)
+LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
+
+LOCAL_PRELINK_MODULE    := false
+LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
+
+LOCAL_SHARED_LIBRARIES += libgenlock
+LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
+LOCAL_SHARED_LIBRARIES  += libqdMetaData
+
+LOCAL_SRC_FILES         := src/frameparser.cpp
+LOCAL_SRC_FILES         += src/h264_utils.cpp
+LOCAL_SRC_FILES         += src/ts_parser.cpp
+LOCAL_SRC_FILES         += src/mp4_utils.cpp
+
+LOCAL_SRC_FILES         += src/omx_vdec_hevc.cpp
+LOCAL_SRC_FILES         += src/hevc_utils.cpp
+
+LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
+LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
+include $(BUILD_SHARED_LIBRARY)
+
+endif
 
 # ---------------------------------------------------------------------------------
 # 			Make the apps-test (mm-vdec-omx-test)

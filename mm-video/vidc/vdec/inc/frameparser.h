@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -43,10 +43,9 @@ enum codec_type
     CODEC_TYPE_MPEG2 = 4,
 #ifdef _MSM8974_
     CODEC_TYPE_VP8 = 5,
-    CODEC_TYPE_MAX = CODEC_TYPE_VP8
-#else
-    CODEC_TYPE_MAX = CODEC_TYPE_MPEG2
+    CODEC_TYPE_HEVC,
 #endif
+    CODEC_TYPE_MAX
 };
 
 enum state_start_code_parse
