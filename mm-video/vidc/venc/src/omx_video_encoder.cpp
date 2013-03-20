@@ -1734,6 +1734,13 @@ bool omx_venc::dev_set_buf_req(OMX_U32 *min_buff_count,
 
 }
 
+#ifdef _MSM8974_
+int omx_venc::dev_handle_extradata(void *buffer, int index)
+{
+  return handle->handle_extradata(buffer, index);
+}
+#endif
+
 int omx_venc::async_message_process (void *context, void* message)
 {
   omx_video* omx = NULL;
@@ -1761,28 +1768,22 @@ int omx_venc::async_message_process (void *context, void* message)
                m_sVenc_msg->msgcode);
   switch(m_sVenc_msg->msgcode)
   {
-
   case VEN_MSG_START:
     omx->post_event (NULL,m_sVenc_msg->statuscode,\
                      OMX_COMPONENT_GENERATE_START_DONE);
     break;
-
   case VEN_MSG_STOP:
     omx->post_event (NULL,m_sVenc_msg->statuscode,\
                      OMX_COMPONENT_GENERATE_STOP_DONE);
     break;
-
   case VEN_MSG_RESUME:
     omx->post_event (NULL,m_sVenc_msg->statuscode,\
                      OMX_COMPONENT_GENERATE_RESUME_DONE);
     break;
-
   case VEN_MSG_PAUSE:
     omx->post_event (NULL,m_sVenc_msg->statuscode,\
                      OMX_COMPONENT_GENERATE_PAUSE_DONE);
-
     break;
-
   case VEN_MSG_FLUSH_INPUT_DONE:
 
     omx->post_event (NULL,m_sVenc_msg->statuscode,\
@@ -1809,7 +1810,6 @@ int omx_venc::async_message_process (void *context, void* message)
                      OMX_COMPONENT_GENERATE_EBD);
     break;
   case VEN_MSG_OUTPUT_BUFFER_DONE:
-
     omxhdr = (OMX_BUFFERHEADERTYPE*)m_sVenc_msg->buf.clientdata;
 
     if( (omxhdr != NULL) &&
@@ -1843,7 +1843,6 @@ int omx_venc::async_message_process (void *context, void* message)
       omxhdr = NULL;
       m_sVenc_msg->statuscode = VEN_S_EFAIL;
     }
-
     omx->post_event ((unsigned int)omxhdr,m_sVenc_msg->statuscode,
                      OMX_COMPONENT_GENERATE_FBD);
     break;
