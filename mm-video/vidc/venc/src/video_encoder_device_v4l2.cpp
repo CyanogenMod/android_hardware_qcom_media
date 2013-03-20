@@ -660,7 +660,6 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
 	fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
 	ret = ioctl(m_nDriver_fd, VIDIOC_G_FMT, &fmt);
 	m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
-
 	bufreq.memory = V4L2_MEMORY_USERPTR;
 	if (*actual_buff_count)
 		bufreq.count = *actual_buff_count;
@@ -668,8 +667,11 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
 		bufreq.count = 2;
 	bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
-	m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
-
+	if (ret) {
+                        DEBUG_PRINT_ERROR("\n VIDIOC_REQBUFS OUTPUT_MPLANE Failed \n ");
+                        return false;
+                }
+    m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
     *min_buff_count = m_sInput_buff_property.mincount;
     *actual_buff_count = m_sInput_buff_property.actualcount;
 #ifdef USE_ION
@@ -1104,6 +1106,26 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
         DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoQuantization");
       }
       break;
+    }
+  case OMX_QcomIndexEnableSliceDeliveryMode:
+    {
+       QOMX_EXTNINDEX_PARAMTYPE* pParam =
+          (QOMX_EXTNINDEX_PARAMTYPE*)paramData;
+       if(pParam->nPortIndex == PORT_INDEX_OUT)
+       {
+         if(venc_set_slice_delivery_mode(pParam->bEnable) == false)
+         {
+           DEBUG_PRINT_ERROR("Setting slice delivery mode failed");
+           return OMX_ErrorUnsupportedSetting;
+         }
+       }
+       else
+       {
+         DEBUG_PRINT_ERROR("OMX_QcomIndexEnableSliceDeliveryMode "
+            "called on wrong port(%d)", pParam->nPortIndex);
+         return OMX_ErrorBadPortIndex;
+       }
+       break;
     }
   case OMX_IndexParamVideoSliceFMO:
   default:
@@ -1641,6 +1663,36 @@ if(pmem_data_buf)
   }
 
   return true;
+}
+
+bool venc_dev::venc_set_slice_delivery_mode(OMX_U32 enable)
+{
+	struct v4l2_control control;
+	if (enable) {
+		control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_DELIVERY_MODE;
+		control.value = 1;
+		DEBUG_PRINT_LOW("Set slice_delivery_mode: %d", control.value);
+		if(multislice.mslice_mode == V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_MB && m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264)
+		{
+			if(ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+				DEBUG_PRINT_ERROR("Request for setting slice delivery mode failed");
+				return false;
+			}
+			else
+				DEBUG_PRINT_LOW("Successfully set Slice delivery mode id: %d, value=%d\n", control.id, control.value);
+		}
+		else
+		{
+			DEBUG_PRINT_ERROR("Failed to set slice delivery mode, slice_mode [%d] "
+							  "is not MB BASED or [%lu] is not H264 codec ", multislice.mslice_mode,
+							   m_sVenc_cfg.codectype);
+		}
+	}
+	else
+	{
+		DEBUG_PRINT_ERROR("Slice_DELIVERY_MODE not enabled\n");
+	}
+	return true;
 }
 
 bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U32 b_frame_qp)
