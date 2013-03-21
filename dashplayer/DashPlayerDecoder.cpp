@@ -41,6 +41,17 @@ DashPlayer::Decoder::Decoder(
 }
 
 DashPlayer::Decoder::~Decoder() {
+    ALooper::handler_id id = 0;
+    if (mCodec != NULL) {
+        id = mCodec->id();
+    }
+    if (id != 0) {
+        if (mCodecLooper != NULL) {
+            mCodecLooper->stop();
+            mCodecLooper->unregisterHandler(id);
+        }
+        looper()->unregisterHandler(id);
+    }
 }
 
 void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
