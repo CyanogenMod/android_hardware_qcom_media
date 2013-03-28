@@ -1692,9 +1692,17 @@ bool venc_dev::venc_set_extradata(OMX_U32 extra_data)
 	control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
 	control.value = V4L2_MPEG_VIDC_EXTRADATA_MULTISLICE_INFO;
 	DEBUG_PRINT_HIGH("venc_set_extradata:: %x", (int) extra_data);
-	if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
-		DEBUG_PRINT_ERROR("ERROR: Request for setting extradata failed");
-		return false;
+	if(multislice.mslice_mode && multislice.mslice_mode != V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE)
+	{
+		if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+			DEBUG_PRINT_ERROR("ERROR: Request for setting extradata failed");
+			return false;
+		}
+	}
+	else
+	{
+		DEBUG_PRINT_ERROR("Failed to set slice extradata, slice_mode "
+						  "is set to [%lu]", multislice.mslice_mode);
 	}
 	return true;
 }
