@@ -6626,16 +6626,21 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
   if (!output_flush_progress)
   {
     /* This is the error check for non-recoverable errros */
+    bool is_duplicate_ts_valid = true;
+    if (output_capability == V4L2_PIX_FMT_MPEG4 ||
+      output_capability == V4L2_PIX_FMT_DIVX ||
+      output_capability == V4L2_PIX_FMT_DIVX_311)
+      is_duplicate_ts_valid = false;
     if (buffer->nFilledLen > 0)
       time_stamp_dts.get_next_timestamp(buffer,
-      (drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
-        ?true:false);
+      ((drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
+        ?true:false) && is_duplicate_ts_valid);
     else {
       m_inp_err_count++;
       time_stamp_dts.remove_time_stamp(
               buffer->nTimeStamp,
-              (drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
-                ?true:false);
+              ((drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
+                ?true:false) && is_duplicate_ts_valid);
     }
     if (m_debug_timestamp)
     {
