@@ -2135,7 +2135,36 @@ int Play_Decoder()
             stride = width;
     }
 #endif
+#ifdef _MSM8974_
+    if( (codec_format_option == CODEC_FORMAT_VC1) &&
+        (file_type_option == FILE_TYPE_RCV) ) {
+        //parse struct_A data to get height and width information
+        unsigned int temp;
+        lseek64(inputBufferFileFd, 0, SEEK_SET);
+        if (read(inputBufferFileFd, &temp, 4) < 0) {
+            DEBUG_PRINT_ERROR("\nFailed to read vc1 data\n");
+            return -1;
+        }
+        //Refer to Annex L of SMPTE 421M-2006 VC1 decoding standard
+        //We need to skip 12 bytes after 0xC5 in sequence layer data
+        //structure to read struct_A, which includes height and
+        //width information.
+        if ((temp & 0xFF000000) == 0xC5000000) {
+            lseek64(inputBufferFileFd, 12, SEEK_SET);
 
+            if ( read(inputBufferFileFd, &height, 4 ) < -1 ) {
+                DEBUG_PRINT_ERROR("\nFailed to read height for vc-1\n");
+                return  -1;
+            }
+            if ( read(inputBufferFileFd, &width, 4 ) == -1 ) {
+                DEBUG_PRINT_ERROR("\nFailed to read width for vc-1\n");
+                return  -1;
+            }
+            lseek64(inputBufferFileFd, 0, SEEK_SET);
+        }
+        DEBUG_PRINT("\n RCV clip width = %u height = %u \n",width, height);
+    }
+#endif
     bufCnt = 0;
     portFmt.format.video.nFrameHeight = height;
     portFmt.format.video.nFrameWidth  = width;
@@ -2388,8 +2417,9 @@ int Play_Decoder()
 
       pInputBufHdrs[0]->nInputPortIndex = 0;
       pInputBufHdrs[0]->nOffset = 0;
+#ifndef _MSM8974_
       pInputBufHdrs[0]->nFlags = 0;
-
+#endif
       ret = OMX_EmptyThisBuffer(dec_handle, pInputBufHdrs[0]);
       if (ret != OMX_ErrorNone)
       {
@@ -2403,6 +2433,9 @@ int Play_Decoder()
           DEBUG_PRINT("OMX_EmptyThisBuffer success!\n");
       }
       i = 1;
+#ifdef _MSM8974_
+      pInputBufHdrs[0]->nFlags = 0;
+#endif
     }
     else
     {
@@ -3175,7 +3208,11 @@ static int Read_Buffer_From_RCV_File_Seq_Layer(OMX_BUFFERHEADERTYPE  *pBufHdr)
     unsigned int readOffset = 0, size_struct_C = 0;
     unsigned int startcode = 0;
     pBufHdr->nFilledLen = 0;
+#ifdef _MSM8974_
+    pBufHdr->nFlags |= OMX_BUFFERFLAG_CODECCONFIG;
+#else
     pBufHdr->nFlags = 0;
+#endif
 
     DEBUG_PRINT("Inside %s \n", __FUNCTION__);
 
@@ -3184,16 +3221,20 @@ static int Read_Buffer_From_RCV_File_Seq_Layer(OMX_BUFFERHEADERTYPE  *pBufHdr)
     /* read size of struct C as it need not be 4 always*/
     read(inputBufferFileFd, &size_struct_C, 4);
 
+#ifndef _MSM8974_
     /* reseek to beginning of sequence header */
     lseek64(inputBufferFileFd, -8, SEEK_CUR);
-
+#endif
     if ((startcode & 0xFF000000) == 0xC5000000)
     {
 
       DEBUG_PRINT("Read_Buffer_From_RCV_File_Seq_Layer size_struct_C: %d\n", size_struct_C);
-
+#ifdef _MSM8974_
+      readOffset = read(inputBufferFileFd, pBufHdr->pBuffer, size_struct_C);
+      lseek64(inputBufferFileFd, 24, SEEK_CUR);
+#else
       readOffset = read(inputBufferFileFd, pBufHdr->pBuffer, VC1_SEQ_LAYER_SIZE_WITHOUT_STRUCTC + size_struct_C);
-
+#endif
     }
     else if((startcode & 0xFF000000) == 0x85000000)
     {
@@ -3202,8 +3243,12 @@ static int Read_Buffer_From_RCV_File_Seq_Layer(OMX_BUFFERHEADERTYPE  *pBufHdr)
       rcv_v1 = 1;
 
       DEBUG_PRINT("Read_Buffer_From_RCV_File_Seq_Layer size_struct_C: %d\n", size_struct_C);
-
+#ifdef _MSM8974_
+      readOffset = read(inputBufferFileFd, pBufHdr->pBuffer, size_struct_C);
+      lseek64(inputBufferFileFd, 8, SEEK_CUR);
+#else
       readOffset = read(inputBufferFileFd, pBufHdr->pBuffer, VC1_SEQ_LAYER_SIZE_V1_WITHOUT_STRUCTC + size_struct_C);
+#endif
 
     }
     else
