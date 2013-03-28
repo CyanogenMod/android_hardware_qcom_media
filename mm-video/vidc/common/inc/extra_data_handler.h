@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -43,22 +43,31 @@ extern "C"{
 #include<utils/Log.h>
 }
 #ifdef ENABLE_DEBUG_LOW
+#undef DEBUG_PRINT_LOW
 #define DEBUG_PRINT_LOW ALOGE
 #else
+#undef DEBUG_PRINT_LOW
 #define DEBUG_PRINT_LOW
 #endif
 #ifdef ENABLE_DEBUG_HIGH
+#undef DEBUG_PRINT_HIGH
 #define DEBUG_PRINT_HIGH ALOGE
 #else
+#undef DEBUG_PRINT_HIGH
 #define DEBUG_PRINT_HIGH
 #endif
 #ifdef ENABLE_DEBUG_ERROR
+#undef DEBUG_PRINT_ERROR
 #define DEBUG_PRINT_ERROR ALOGE
 #else
+#undef DEBUG_PRINT_ERROR
 #define DEBUG_PRINT_ERROR
 #endif
 
 #else //_ANDROID_
+#undef DEBUG_PRINT_LOW
+#undef DEBUG_PRINT_HIGH
+#undef DEBUG_PRINT_ERROR
 #define DEBUG_PRINT_LOW printf
 #define DEBUG_PRINT_HIGH printf
 #define DEBUG_PRINT_ERROR printf
