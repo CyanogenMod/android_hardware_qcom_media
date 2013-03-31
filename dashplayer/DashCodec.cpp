@@ -2144,6 +2144,7 @@ void DashCodec::sendFormatChange() {
             CHECK_LE(rect.nLeft + rect.nWidth - 1, videoDef->nFrameWidth);
             CHECK_LE(rect.nTop + rect.nHeight - 1, videoDef->nFrameHeight);
 
+#ifdef QCOM_BSP
             if( mSmoothStreaming ) {
                //call Update buffer geometry here
                 ALOGE("Calling native window update buffer geometry");
@@ -2155,6 +2156,7 @@ void DashCodec::sendFormatChange() {
                }
 
            }
+#endif
 
             notify->setRect(
                     "crop",

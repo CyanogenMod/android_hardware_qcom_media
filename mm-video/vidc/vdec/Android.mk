@@ -76,7 +76,7 @@ libmm-vdec-inc          += frameworks/av/include/media/stagefright
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqservice
 libmm-vdec-inc          += frameworks/av/media/libmediaplayerservice
 libmm-vdec-inc          += frameworks/native/include/binder
-libmm-vdec-inc          += hardware/qcom/display/libqdutils
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqdutils
 
 
 LOCAL_MODULE                    := libOmxVdec
