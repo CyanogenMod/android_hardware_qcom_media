@@ -865,7 +865,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                DEBUG_PRINT_ERROR("\n empty_buffer_done failure");
                pThis->omx_report_error ();
             }
-            if(!pThis->arbitrary_bytes && pThis->m_inp_err_count > MAX_INPUT_ERROR)
+            if(pThis->m_inp_err_count > MAX_INPUT_ERROR)
             {
                DEBUG_PRINT_ERROR("\n Input bitstream error for consecutive %d frames.", MAX_INPUT_ERROR);
                pThis->omx_report_error ();
@@ -3875,7 +3875,7 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
         (OMX_QCOM_EXTRADATA_FRAMEINFO *) configData;
 
       if(m_extradata == NULL){
-          DEBUG_PRINT_ERROR("get_config: m_extradata not set. "
+          DEBUG_PRINT_LOW("get_config: m_extradata not set. "
                             "Aspect Ratio information missing!!");
       }
       else {
@@ -4280,6 +4280,12 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
         drv_ctx.ptr_outputbuffer[i].bufferaddr = buff;
         drv_ctx.ptr_outputbuffer[i].mmaped_size =
             drv_ctx.ptr_outputbuffer[i].buffer_len = drv_ctx.op_buf.buffer_size;
+#if defined(_ANDROID_ICS_)
+        if (drv_ctx.interlace != VDEC_InterlaceFrameProgressive) {
+            int enable = 1;
+            setMetaData(handle, PP_PARAM_INTERLACED, (void*)&enable);
+        }
+#endif
     } else
 #endif
 
@@ -4675,11 +4681,11 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
                     munmap (drv_ctx.ptr_outputbuffer[index].bufferaddr,
                             drv_ctx.ptr_outputbuffer[index].mmaped_size);
                }
+               close (drv_ctx.ptr_outputbuffer[index].pmem_fd);
+               drv_ctx.ptr_outputbuffer[index].pmem_fd = -1;
 #ifdef USE_ION
                 free_ion_memory(&drv_ctx.op_buf_ion_info[index]);
 #endif
-                close (drv_ctx.ptr_outputbuffer[index].pmem_fd);
-                drv_ctx.ptr_outputbuffer[index].pmem_fd = -1;
 #ifdef _ANDROID_
                 m_heap_ptr[index].video_heap_ptr = NULL;
                 m_heap_count = m_heap_count - 1;
@@ -8555,7 +8561,7 @@ void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     {
       p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
       append_interlace_extradata(p_extra,
-             ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format);
+             ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format, index);
       p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
     }
     if (client_extradata & OMX_FRAMEINFO_EXTRADATA && p_extra &&
@@ -8752,7 +8758,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
   {
     p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
     append_interlace_extradata(p_extra,
-         ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format);
+         ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format, index);
     p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
   }
   if (client_extradata & OMX_FRAMEINFO_EXTRADATA && p_extra &&
@@ -8973,10 +8979,17 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 }
 
 void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                                          OMX_U32 interlaced_format_type)
+                                          OMX_U32 interlaced_format_type, OMX_U32 buf_index)
 {
   OMX_STREAMINTERLACEFORMAT *interlace_format;
   OMX_U32 mbaff = 0;
+#if defined(_ANDROID_ICS_)
+  OMX_U32 enable = 0;
+  private_handle_t *handle = NULL;
+  handle = (private_handle_t *)native_buffer[buf_index].nativehandle;
+  if(!handle)
+    DEBUG_PRINT_LOW("%s: Native Buffer handle is NULL",__func__);
+#endif
   extra->nSize = OMX_INTERLACE_EXTRADATA_SIZE;
   extra->nVersion.nVersion = OMX_SPEC_VERSION;
   extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
@@ -8992,12 +9005,25 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     interlace_format->bInterlaceFormat = OMX_FALSE;
     interlace_format->nInterlaceFormats = OMX_InterlaceFrameProgressive;
     drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
+#if defined(_ANDROID_ICS_)
+    if(handle)
+    {
+      setMetaData(handle, PP_PARAM_INTERLACED, (void*)&enable);
+    }
+#endif
   }
   else
   {
     interlace_format->bInterlaceFormat = OMX_TRUE;
     interlace_format->nInterlaceFormats = OMX_InterlaceInterleaveFrameTopFieldFirst;
     drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
+#if defined(_ANDROID_ICS_)
+    enable = 1;
+    if(handle)
+    {
+      setMetaData(handle, PP_PARAM_INTERLACED, (void*)&enable);
+    }
+#endif
   }
   print_debug_extradata(extra);
 }
@@ -9228,6 +9254,7 @@ void omx_vdec::extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr)
   OMX_U32 bytes_to_parse = buf_hdr->nFilledLen;
   OMX_U8 *buf = buf_hdr->pBuffer + buf_hdr->nOffset;
   OMX_U32 index = 0;
+  OMX_U32 prev_sc_index = 0;
 
   m_demux_entries = 0;
 
@@ -9238,12 +9265,18 @@ void omx_vdec::extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr)
          ((buf[index] == 0x00) && (buf[index+1] == 0x00) &&
           (buf[index+2] == 0x01)) )
     {
+      if ((((index+3) - prev_sc_index) <= 4) && m_demux_entries)
+      {
+	 DEBUG_PRINT_ERROR("FOUND Consecutive start Code, Hence skip one");
+         m_demux_entries--;
+      }
       //Found start code, insert address offset
       insert_demux_addr_offset(index);
       if (buf[index+2] == 0x01) // 3 byte start code
         index += 3;
       else                      //4 byte start code
         index += 4;
+      prev_sc_index = index;
     }
     else
       index++;
@@ -9902,7 +9935,7 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::allocate_buffers_color_conve
   op_buf_ion_info[i].ion_device_fd = omx->alloc_map_ion_memory(
     buffer_size_req,buffer_alignment_req,
     &op_buf_ion_info[i].ion_alloc_data,&op_buf_ion_info[i].fd_ion_data,
-    ION_FLAG_CACHED);
+    0);
 
   pmem_fd[i] = op_buf_ion_info[i].fd_ion_data.fd;
   if (op_buf_ion_info[i].ion_device_fd < 0) {

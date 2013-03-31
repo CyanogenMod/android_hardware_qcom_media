@@ -571,7 +571,7 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
           }
           else
           {
-            DEBUG_PRINT_ERROR("\nERROR: unknown flags=%x\n",pThis->m_flags);
+            DEBUG_PRINT_LOW("\nERROR: unknown flags=%x\n",pThis->m_flags);
           }
         }
         else
@@ -646,7 +646,7 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
           }
           else
           {
-            DEBUG_PRINT_ERROR("\nERROR: unknown flags=%x\n",pThis->m_flags);
+            DEBUG_PRINT_LOW("\nERROR: unknown flags=%x\n",pThis->m_flags);
           }
         }
 
@@ -1859,7 +1859,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
   case OMX_IndexParamVideoSliceFMO:
   default:
     {
-      DEBUG_PRINT_ERROR("ERROR: get_parameter: unknown param %08x\n", paramIndex);
+      DEBUG_PRINT_LOW("ERROR: get_parameter: unknown param %08x\n", paramIndex);
       eRet =OMX_ErrorUnsupportedIndex;
       break;
     }

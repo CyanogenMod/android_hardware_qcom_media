@@ -184,7 +184,7 @@ void* async_venc_message_thread (void *input)
     }
     else if (error_code <0)
     {
-        DEBUG_PRINT_ERROR("\nioctl VEN_IOCTL_CMD_READ_NEXT_MSG failed");
+        DEBUG_PRINT_LOW("\nioctl VEN_IOCTL_CMD_READ_NEXT_MSG failed");
         break;
     }
     else if(omx->async_message_process(input,&venc_msg) < 0)
@@ -1324,7 +1324,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
   #ifdef USE_ION
       if(ioctl(recon_buff[count].ion_device_fd,ION_IOC_FREE,
          &recon_buff[count].alloc_data.handle)) {
-        DEBUG_PRINT_ERROR("ion recon buffer free failed");
+        DEBUG_PRINT_LOW("ion recon buffer free failed");
       }
       recon_buff[count].alloc_data.handle = NULL;
       recon_buff[count].ion_alloc_fd.fd =-1;
@@ -1387,7 +1387,7 @@ OMX_U32 venc_dev::pmem_free()
 #ifdef USE_ION
       if(ioctl(recon_buff[cnt].ion_device_fd,ION_IOC_FREE,
          &recon_buff[cnt].alloc_data.handle)) {
-        DEBUG_PRINT_ERROR("ion recon buffer free failed");
+        DEBUG_PRINT_LOW("ion recon buffer free failed");
       }
       recon_buff[cnt].alloc_data.handle = NULL;
       recon_buff[cnt].ion_alloc_fd.fd =-1;

@@ -1,7 +1,6 @@
 /*
  *Copyright (c) 2013, The Linux Foundation. All rights reserved.
- *Not a Contribution, Apache license notifications and license are retained
- *for attribution purposes only.
+ *Not a Contribution.
  *
  * Copyright (C) 2010 The Android Open Source Project
  *
@@ -18,7 +17,7 @@
  * limitations under the License.
  */
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 
 #define LOG_TAG "DashPlayer"
 #define SRMax 30
@@ -33,13 +32,17 @@
 #include "DashPlayerDriver.h"
 #include "DashPlayerRenderer.h"
 #include "DashPlayerSource.h"
+#include "DashCodec.h"
+//#include "RTSPSource.h"
+//#include "StreamingSource.h"
+//#include "GenericSource.h"
+
 #include "ATSParser.h"
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/foundation/ABuffer.h>
 #include <media/stagefright/foundation/ADebug.h>
 #include <media/stagefright/foundation/AMessage.h>
 #include <media/stagefright/foundation/AString.h>
-#include <media/stagefright/ACodec.h>
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/MediaErrors.h>
 #include <media/stagefright/MetaData.h>
@@ -83,6 +86,10 @@ DashPlayer::~DashPlayer() {
     if(mStats != NULL) {
         mStats->logFpsSummary();
         mStats = NULL;
+    }
+    if (mTrackName != NULL) {
+       delete[] mTrackName;
+       mTrackName = NULL;
     }
 }
 
@@ -343,8 +350,8 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
             int32_t what;
             CHECK(codecRequest->findInt32("what", &what));
 
-            if (what == ACodec::kWhatFillThisBuffer) {
-                ALOGV("@@@@:: Dashplayer :: MESSAGE FROM ACODEC +++++++++++++ (%s) kWhatFillThisBuffer",mTrackName);
+            if (what == DashCodec::kWhatFillThisBuffer) {
+                ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++ (%s) kWhatFillThisBuffer",mTrackName);
                 if ( (track == kText) && (mTextDecoder == NULL)) {
                     break; // no need to proceed further
                 }
@@ -366,8 +373,8 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     }
                 }
 
-            } else if (what == ACodec::kWhatEOS) {
-                ALOGV("@@@@:: Dashplayer :: MESSAGE FROM ACODEC +++++++++++++++++++++++++++++++ kWhatEOS");
+            } else if (what == DashCodec::kWhatEOS) {
+                ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatEOS");
                 int32_t err;
                 CHECK(codecRequest->findInt32("err", &err));
 
@@ -382,8 +389,8 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 if((mRenderer != NULL) && (track == kAudio || track == kVideo)) {
                     mRenderer->queueEOS(track, err);
                 }
-            } else if (what == ACodec::kWhatFlushCompleted) {
-                ALOGV("@@@@:: Dashplayer :: MESSAGE FROM ACODEC +++++++++++++++++++++++++++++++ kWhatFlushCompleted");
+            } else if (what == DashCodec::kWhatFlushCompleted) {
+                ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatFlushCompleted");
 
                 Mutex::Autolock autoLock(mLock);
                 bool needShutdown;
@@ -414,9 +421,9 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 }
 
                 finishFlushIfPossible();
-            } else if (what == ACodec::kWhatOutputFormatChanged) {
+            } else if (what == DashCodec::kWhatOutputFormatChanged) {
                 if (track == kAudio) {
-                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM ACODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: audio");
+                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: audio");
                     int32_t numChannels;
                     CHECK(codecRequest->findInt32("channel-count", &numChannels));
 
@@ -464,7 +471,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     }
                 } else if (track == kVideo) {
                     // video
-                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM ACODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: video");
+                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: video");
                     int32_t width, height;
                     CHECK(codecRequest->findInt32("width", &width));
                     CHECK(codecRequest->findInt32("height", &height));
@@ -486,16 +493,16 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                             cropRight - cropLeft + 1,
                             cropBottom - cropTop + 1);
                 }
-            } else if (what == ACodec::kWhatShutdownCompleted) {
+            } else if (what == DashCodec::kWhatShutdownCompleted) {
                 ALOGV("%s shutdown completed", mTrackName);
                 if (track == kAudio) {
-                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM ACODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: audio");
+                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: audio");
                     mAudioDecoder.clear();
 
                     CHECK_EQ((int)mFlushingAudio, (int)SHUTTING_DOWN_DECODER);
                     mFlushingAudio = SHUT_DOWN;
                 } else if (track == kVideo) {
-                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM ACODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: Video");
+                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: Video");
                     mVideoDecoder.clear();
 
                     CHECK_EQ((int)mFlushingVideo, (int)SHUTTING_DOWN_DECODER);
@@ -503,16 +510,16 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 }
 
                 finishFlushIfPossible();
-            } else if (what == ACodec::kWhatError) {
+            } else if (what == DashCodec::kWhatError) {
                 ALOGE("Received error from %s decoder, aborting playback.",
                        mTrackName);
                 if((mRenderer != NULL) && (track == kAudio || track == kVideo)) {
-                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM ACODEC +++++++++++++++++++++++++++++++ ACodec::kWhatError:: %s",track == kAudio ? "audio" : "video");
+                    ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ DashCodec::kWhatError:: %s",track == kAudio ? "audio" : "video");
                     mRenderer->queueEOS(track, UNKNOWN_ERROR);
                 }
-            } else if (what == ACodec::kWhatDrainThisBuffer) {
+            } else if (what == DashCodec::kWhatDrainThisBuffer) {
                 if(track == kAudio || track == kVideo) {
-                   ALOGV("@@@@:: Dashplayer :: MESSAGE FROM ACODEC +++++++++++++++++++++++++++++++ ACodec::kWhatRenderBuffer:: %s",track == kAudio ? "audio" : "video");
+                   ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ DashCodec::kWhatRenderBuffer:: %s",track == kAudio ? "audio" : "video");
                         renderBuffer(track, codecRequest);
                     }
             } else {
@@ -552,7 +559,12 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
 
                 if ((mAudioEOS || mAudioDecoder == NULL)
                         && (mVideoEOS || mVideoDecoder == NULL)) {
-                    notifyListener(MEDIA_PLAYBACK_COMPLETE, 0, 0);
+                     if ((mSourceType == kHttpDashSource) &&
+                         (finalResult == ERROR_END_OF_STREAM)) {
+                        notifyListener(MEDIA_PLAYBACK_COMPLETE, 0, 0);
+                     } else if (mSourceType != kHttpDashSource) {
+                       notifyListener(MEDIA_PLAYBACK_COMPLETE, 0, 0);
+                     }
                 }
             } else if (what == Renderer::kWhatPosition) {
                 int64_t positionUs;
@@ -801,7 +813,6 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 break;
             }
             if (mSource->isPrepareDone()) {
-                notifyListener(MEDIA_PREPARED, 0, 0);
                 int64_t durationUs;
                 if (mDriver != NULL && mSource->getDuration(&durationUs) == OK) {
                     sp<DashPlayerDriver> driver = mDriver.promote();
@@ -809,6 +820,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                         driver->notifyDuration(durationUs);
                     }
                 }
+                notifyListener(MEDIA_PREPARED, 0, 0);
             } else {
                 msg->post(100000ll);
             }
@@ -859,6 +871,9 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                   ALOGE("Source Notified Buffering End for %s ",mTrackName);
                         mBufferingNotification = false;
                   notifyListener(MEDIA_INFO, MEDIA_INFO_BUFFERING_END, 0);
+                  if(mStats != NULL) {
+                    mStats->notifyBufferingEvent();
+                  }
                 }
                 else {
                   ALOGE("No need to notify Buffering end as mBufferingNotification is (%d) "
@@ -933,6 +948,10 @@ void DashPlayer::finishFlushIfPossible() {
         if ( (mSourceType == kHttpDashSource) &&
              (mTextDecoder != NULL) )
         {
+          if (mSource != NULL) {
+           ALOGV("finishFlushIfPossible calling mSource->stop");
+           mSource->stop();
+          }
           sp<AMessage> codecRequest;
           mTextNotify->findMessage("codec-request", &codecRequest);
           codecRequest = NULL;
@@ -955,6 +974,7 @@ void DashPlayer::finishReset() {
     }
 
     if (mSource != NULL) {
+        ALOGV("finishReset calling mSource->stop");
         mSource->stop();
         mSource.clear();
     }
@@ -1059,7 +1079,7 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
         mTextNotify = new AMessage(kWhatTextNotify ,id());
         *decoder = new Decoder(mTextNotify);
         sp<AMessage> codecRequest = new AMessage;
-        codecRequest->setInt32("what", ACodec::kWhatFillThisBuffer);
+        codecRequest->setInt32("what", DashCodec::kWhatFillThisBuffer);
         mTextNotify->setMessage("codec-request", codecRequest);
         ALOGV("Creating Dummy Text Decoder ");
         if ((mSource != NULL) && (mSourceType == kHttpDashSource)) {

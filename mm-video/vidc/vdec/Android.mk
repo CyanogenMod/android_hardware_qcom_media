@@ -68,7 +68,6 @@ libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libgralloc
-libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libgenlock
 libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
 libmm-vdec-inc          += hardware/qcom/media/libc2dcolorconvert
@@ -77,6 +76,7 @@ libmm-vdec-inc          += frameworks/av/include/media/stagefright
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqservice
 libmm-vdec-inc          += frameworks/av/media/libmediaplayerservice
 libmm-vdec-inc          += frameworks/native/include/binder
+libmm-vdec-inc          += hardware/qcom/display/libqdutils
 
 
 LOCAL_MODULE                    := libOmxVdec
@@ -87,9 +87,9 @@ LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
 LOCAL_PRELINK_MODULE    := false
 LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
 
-LOCAL_SHARED_LIBRARIES += libgenlock
 LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
 LOCAL_SHARED_LIBRARIES += libqservice
+LOCAL_SHARED_LIBRARIES  += libqdMetaData
 
 LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
@@ -98,6 +98,8 @@ LOCAL_SRC_FILES         += src/mp4_utils.cpp
 LOCAL_SRC_FILES         += src/omx_vdec.cpp
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
+
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -120,6 +122,8 @@ LOCAL_SHARED_LIBRARIES    := libutils libOmxCore libOmxVdec libbinder libcutils
 LOCAL_SRC_FILES           := src/queue.c
 LOCAL_SRC_FILES           += test/omx_vdec_test.cpp
 
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
 include $(BUILD_EXECUTABLE)
 
 # ---------------------------------------------------------------------------------
@@ -138,6 +142,8 @@ LOCAL_PRELINK_MODULE            := false
 
 LOCAL_SRC_FILES                 := src/message_queue.c
 LOCAL_SRC_FILES                 += test/decoder_driver_test.c
+
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_EXECUTABLE)
 

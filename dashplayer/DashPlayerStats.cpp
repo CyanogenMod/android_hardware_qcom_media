@@ -27,7 +27,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define LOG_NDEBUG 0
+//#define LOG_NDEBUG 0
 #define LOG_TAG "DashPlayerStats"
 #include <utils/Log.h>
 
@@ -65,12 +65,14 @@ DashPlayerStats::DashPlayerStats() {
         mSeekPerformed = false;
         mTotalTime = 0;
         mFirstFrameTime = 0;
+        mTotalRenderingFrames = 0;
+        mBufferingEvent = false;
     }
 }
 
 DashPlayerStats::~DashPlayerStats() {
     if(mMIME) {
-        delete mMIME;
+        delete[] mMIME;
     }
 }
 
@@ -78,8 +80,8 @@ void DashPlayerStats::setMime(const char* mime) {
     Mutex::Autolock autoLock(mStatsLock);
     if(mime != NULL) {
         int mimeLen = strlen(mime);
-  if(mMIME) {
-            delete mMIME;
+        if(mMIME) {
+            delete[] mMIME;
         }
 
         mMIME = new char[mimeLen+1];
@@ -96,6 +98,11 @@ void DashPlayerStats::notifySeek() {
     Mutex::Autolock autoLock(mStatsLock);
     mFirstFrameLatencyStartUs = getTimeOfDayUs();
     mSeekPerformed = true;
+}
+
+void DashPlayerStats::notifyBufferingEvent() {
+    Mutex::Autolock autoLock(mStatsLock);
+    mBufferingEvent = true;
 }
 
 void DashPlayerStats::incrementTotalFrames() {
@@ -179,15 +186,16 @@ void DashPlayerStats::logSyncLoss() {
 void DashPlayerStats::logFps() {
     if (mStatistics) {
         Mutex::Autolock autoLock(mStatsLock);
+        int64_t now = getTimeOfDayUs();
+
         if(mTotalRenderingFrames < 2){
-           mLastFrameUs = getTimeOfDayUs();
-           mFirstFrameTime = getTimeOfDayUs();
+           mLastFrameUs = now;
+           mFirstFrameTime = now;
         }
 
-        mTotalTime = getTimeOfDayUs() - mFirstFrameTime;
-        int64_t now = getTimeOfDayUs();
+        mTotalTime = now - mFirstFrameTime;
         int64_t diff = now - mLastFrameUs;
-        if (diff > 250000 && !mVeryFirstFrame) {
+        if (diff > 250000 && !mVeryFirstFrame && !mBufferingEvent) {
              double fps =((mTotalRenderingFrames - mLastFrame) * 1E6)/diff;
              if (mStatisticsFrames == 0) {
                  fps =((mTotalRenderingFrames - mLastFrame - 1) * 1E6)/diff;
@@ -205,8 +213,12 @@ void DashPlayerStats::logFps() {
         } else if(mVeryFirstFrame) {
             logFirstFrame();
             ALOGW("setting first frame time");
-            mLastFrameUs = getTimeOfDayUs();
+            mLastFrameUs = now;
+        } else if(mBufferingEvent) {
+            mLastFrameUs = now;
+            mLastFrame = mTotalRenderingFrames;
         }
+        mBufferingEvent = false;
     }
 }
 
