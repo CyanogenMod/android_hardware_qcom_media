@@ -254,8 +254,7 @@ void* venc_dev::async_venc_message_thread (void *input)
 				venc_msg.buf.flags = 0;
 				venc_msg.buf.ptrbuffer = (OMX_U8 *)omx_venc_base->m_pOutput_pmem[v4l2_buf.index].buffer;
 				venc_msg.buf.clientdata=(void*)omxhdr;
-				venc_msg.buf.timestamp = v4l2_buf.timestamp.tv_sec * 1000000 + v4l2_buf.timestamp.tv_usec;
-
+				venc_msg.buf.timestamp = (uint64_t) v4l2_buf.timestamp.tv_sec * (uint64_t) 1000000 + (uint64_t) v4l2_buf.timestamp.tv_usec;
 				/* TODO: ideally report other types of frames as well
 				 * for now it doesn't look like IL client cares about
 				 * other types
