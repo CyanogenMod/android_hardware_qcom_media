@@ -205,16 +205,7 @@ void* async_message_thread (void *input)
         struct vdec_msginfo vdec_msg;
         vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
         vdec_msg.status_code=VDEC_S_SUCCESS;
-        DEBUG_PRINT_HIGH("\n VIDC Port Reconfig recieved \n");
-        if (omx->async_message_process(input,&vdec_msg) < 0) {
-          DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
-          break;
-        }
-      } else if(dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT ) {
-        struct vdec_msginfo vdec_msg;
-        vdec_msg.msgcode=VDEC_MSG_EVT_INFO_CONFIG_CHANGED;
-        vdec_msg.status_code=VDEC_S_SUCCESS;
-        DEBUG_PRINT_HIGH("\n VIDC Port Reconfig recieved \n");
+        DEBUG_PRINT_HIGH("\n VIDC Port Reconfig recieved insufficient\n");
         if (omx->async_message_process(input,&vdec_msg) < 0) {
           DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
           break;
@@ -578,6 +569,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     dec_time.start();
     proc_frms = latency = 0;
   }
+  prev_n_filled_len = 0;
   property_value[0] = '\0';
   property_get("vidc.dec.debug.ts", property_value, "0");
   m_debug_timestamp = atoi(property_value);
@@ -1325,8 +1317,12 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
 
 }
 
-void omx_vdec::update_resolution(int width, int height, int stride, int scan_lines)
+int omx_vdec::update_resolution(int width, int height, int stride, int scan_lines)
 {
+	int format_changed = 0;
+	if ((height != drv_ctx.video_resolution.frame_height) ||
+		(width != drv_ctx.video_resolution.frame_width))
+		format_changed = 1;
     drv_ctx.video_resolution.frame_height = height;
     drv_ctx.video_resolution.frame_width = width;
     drv_ctx.video_resolution.scan_lines = scan_lines;
@@ -1335,6 +1331,7 @@ void omx_vdec::update_resolution(int width, int height, int stride, int scan_lin
     rectangle.nTop = 0;
     rectangle.nWidth = drv_ctx.video_resolution.frame_width;
     rectangle.nHeight = drv_ctx.video_resolution.frame_height;
+	return format_changed;
 }
 
 OMX_ERRORTYPE omx_vdec::is_video_session_supported()
@@ -6979,6 +6976,26 @@ int omx_vdec::async_message_process (void *context, void* message)
   }
   vdec_msg->msgdata.output_frame.bufferaddr =
       omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
+  int format_notably_changed = 0;
+  if (omxhdr->nFilledLen &&
+	  (omxhdr->nFilledLen != omx->prev_n_filled_len))
+  {
+	  struct v4l2_format fmt;
+	  int ret;
+	  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	  ret = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+	  if (ret) {
+		  DEBUG_PRINT_HIGH("Failed to get format from driver\n");
+	  } else {
+		  if(omx->update_resolution(fmt.fmt.pix_mp.width,
+					  fmt.fmt.pix_mp.height,
+					  fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
+					  fmt.fmt.pix_mp.plane_fmt[0].reserved[0])) {
+			  DEBUG_PRINT_HIGH("\n Height/Width information has changed\n");
+			  format_notably_changed = 1;
+		  }
+	  }
+  }
   if (omxhdr->nFilledLen && (((unsigned)omx->rectangle.nLeft !=
                       vdec_msg->msgdata.output_frame.framesize.left)
         || ((unsigned)omx->rectangle.nTop != vdec_msg->msgdata.output_frame.framesize.top)
@@ -6989,9 +7006,20 @@ int omx_vdec::async_message_process (void *context, void* message)
     omx->rectangle.nWidth = vdec_msg->msgdata.output_frame.framesize.right;
     omx->rectangle.nHeight = vdec_msg->msgdata.output_frame.framesize.bottom;
     DEBUG_PRINT_HIGH("\n Crop information has changed\n");
-    omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexConfigCommonOutputCrop,
-        OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+	format_notably_changed = 1;
   }
+  if (format_notably_changed) {
+	  if(omx->is_video_session_supported()) {
+		  omx->post_event (NULL, vdec_msg->status_code,
+				  OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING);
+	  } else {
+		  omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexConfigCommonOutputCrop,
+				  OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+	  }
+  }
+  if (omxhdr->nFilledLen)
+	  omx->prev_n_filled_len = omxhdr->nFilledLen;
+
         output_respbuf = (struct vdec_output_frameinfo *)\
                           omxhdr->pOutputPortPrivate;
         output_respbuf->len = vdec_msg->msgdata.output_frame.len;
@@ -7031,34 +7059,6 @@ int omx_vdec::async_message_process (void *context, void* message)
     omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexParamPortDefinition,
         OMX_COMPONENT_GENERATE_PORT_RECONFIG);
     break;
-  case VDEC_MSG_EVT_INFO_CONFIG_CHANGED:
-  {
-    DEBUG_PRINT_HIGH("\n Port settings changed info");
-    // get_buffer_req and populate port defn structure
-    OMX_ERRORTYPE eRet = OMX_ErrorNone;
-    struct v4l2_format fmt;
-    int ret;
-    fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-    ret = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
-    omx->update_resolution(fmt.fmt.pix_mp.width,
-		fmt.fmt.pix_mp.height,
-		fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
-		fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
-    ret = omx->is_video_session_supported();
-    if (ret) {
-      omx->post_event (NULL, vdec_msg->status_code,
-                       OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING);
-    }
-    else {
-      omx->drv_ctx.video_resolution.stride = fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
-      omx->drv_ctx.video_resolution.scan_lines = fmt.fmt.pix_mp.plane_fmt[0].reserved[0];
-      omx->m_port_def.nPortIndex = 1;
-      eRet = omx->update_portdef(&(omx->m_port_def));
-      omx->post_event ((unsigned)NULL,vdec_msg->status_code,\
-                  OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG);
-    }
-    break;
-  }
   default:
     break;
   }
