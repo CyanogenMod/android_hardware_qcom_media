@@ -269,6 +269,12 @@ struct video_driver_context
 class DivXDrmDecrypt;
 #endif //_ANDROID_
 
+struct video_decoder_capability {
+    unsigned int min_width;
+    unsigned int max_width;
+    unsigned int min_height;
+    unsigned int max_height;
+};
 // OMX video decoder class
 class omx_vdec: public qc_omx_component
 {
@@ -399,6 +405,7 @@ public:
     OMX_ERRORTYPE allocate_extradata();
 	void free_extradata();
     void update_resolution(int width, int height);
+    OMX_ERRORTYPE is_video_session_supported();
 #endif
     int  m_pipe_in;
     int  m_pipe_out;
@@ -469,6 +476,7 @@ private:
         OMX_COMPONENT_GENERATE_EOS_DONE = 0x14,
         OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG = 0x15,
         OMX_COMPONENT_GENERATE_INFO_FIELD_DROPPED = 0x16,
+        OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING = 0x17,
     };
 
     enum vc1_profile_type
@@ -692,6 +700,18 @@ private:
             m_error_propogated = true;
             m_cb.EventHandler(&m_cmp,m_app_data,
                   OMX_EventError,OMX_ErrorHardware,0,NULL);
+        }
+    }
+
+    inline void omx_report_unsupported_setting ()
+    {
+        if (m_cb.EventHandler && !m_error_propogated)
+        {
+            DEBUG_PRINT_ERROR(
+               "\nERROR: Sending OMX_ErrorUnsupportedSetting to Client");
+            m_error_propogated = true;
+            m_cb.EventHandler(&m_cmp,m_app_data,
+                  OMX_EventError,OMX_ErrorUnsupportedSetting,0,NULL);
         }
     }
 #ifdef _ANDROID_
@@ -940,6 +960,7 @@ private:
 #if  defined (_MSM8960_) || defined (_MSM8974_)
     allocate_color_convert_buf client_buffers;
 #endif
+    struct video_decoder_capability m_decoder_capability;
 };
 
 #ifdef _MSM8974_
