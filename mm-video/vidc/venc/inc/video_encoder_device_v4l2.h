@@ -158,6 +158,13 @@ struct msm_venc_headerextension{
 	 unsigned long	header_extension;
 };
 
+struct msm_venc_video_capability {
+    unsigned int min_width;
+    unsigned int max_width;
+    unsigned int min_height;
+    unsigned int max_height;
+};
+
 enum v4l2_ports {
 	CAPTURE_PORT,
 	OUTPUT_PORT,
@@ -212,6 +219,7 @@ public:
   bool venc_loaded_stop(void);
   bool venc_loaded_start_done(void);
   bool venc_loaded_stop_done(void);
+  bool venc_is_video_session_supported(unsigned long width, unsigned long height);
   OMX_U32 m_nDriver_fd;
   bool m_profile_set;
   bool m_level_set;
@@ -255,6 +263,7 @@ private:
   struct msm_venc_intrarefresh        intra_refresh;
   struct msm_venc_headerextension     hec;
   struct msm_venc_voptimingcfg        voptimecfg;
+  struct msm_venc_video_capability    capability;
 
   bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
   bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);

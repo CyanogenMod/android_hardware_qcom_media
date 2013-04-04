@@ -515,6 +515,12 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
       if(PORT_INDEX_IN == portDefn->nPortIndex)
       {
+        if (!dev_is_video_session_supported(portDefn->format.video.nFrameWidth,
+                   portDefn->format.video.nFrameHeight)) {
+            DEBUG_PRINT_ERROR("video session not supported\n");
+            omx_report_unsupported_setting();
+            return OMX_ErrorUnsupportedSetting;
+        }
         DEBUG_PRINT_LOW("\n i/p actual cnt requested = %d\n", portDefn->nBufferCountActual);
         DEBUG_PRINT_LOW("\n i/p min cnt requested = %d\n", portDefn->nBufferCountMin);
         DEBUG_PRINT_LOW("\n i/p buffersize requested = %d\n", portDefn->nBufferSize);
@@ -1732,6 +1738,16 @@ bool omx_venc::dev_set_buf_req(OMX_U32 *min_buff_count,
                                   buff_size,
                                   port);
 
+}
+
+bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
+{
+#ifdef _MSM8974_
+  return handle->venc_is_video_session_supported(width,height);
+#else
+  DEBUG_PRINT_LOW("Check against video capability not supported");
+  return true;
+#endif
 }
 
 #ifdef _MSM8974_
