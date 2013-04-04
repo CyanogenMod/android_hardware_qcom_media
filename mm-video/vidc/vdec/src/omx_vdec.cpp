@@ -4280,7 +4280,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
         drv_ctx.ptr_outputbuffer[i].bufferaddr = buff;
         drv_ctx.ptr_outputbuffer[i].mmaped_size =
             drv_ctx.ptr_outputbuffer[i].buffer_len = drv_ctx.op_buf.buffer_size;
-#if defined(_ANDROID_ICS_)
+#if defined(_ANDROID_ICS_) && defined(DISPLAYCAF)
         if (drv_ctx.interlace != VDEC_InterlaceFrameProgressive) {
             int enable = 1;
             setMetaData(handle, PP_PARAM_INTERLACED, (void*)&enable);
@@ -8561,7 +8561,11 @@ void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     {
       p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
       append_interlace_extradata(p_extra,
+#ifdef DISPLAYCAF
              ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format, index);
+#else
+             ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format);
+#endif
       p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
     }
     if (client_extradata & OMX_FRAMEINFO_EXTRADATA && p_extra &&
@@ -8758,7 +8762,11 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
   {
     p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
     append_interlace_extradata(p_extra,
+#ifdef DISPLAYCAF
          ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format, index);
+#else
+         ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format);
+#endif
     p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
   }
   if (client_extradata & OMX_FRAMEINFO_EXTRADATA && p_extra &&
@@ -8979,11 +8987,15 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 }
 
 void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+#ifdef DISPLAYCAF
                                           OMX_U32 interlaced_format_type, OMX_U32 buf_index)
+#else
+                                          OMX_U32 interlaced_format_type)
+#endif
 {
   OMX_STREAMINTERLACEFORMAT *interlace_format;
   OMX_U32 mbaff = 0;
-#if defined(_ANDROID_ICS_)
+#if defined(_ANDROID_ICS_) && defined(DISPLAYCAF)
   OMX_U32 enable = 0;
   private_handle_t *handle = NULL;
   handle = (private_handle_t *)native_buffer[buf_index].nativehandle;
@@ -9005,7 +9017,7 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     interlace_format->bInterlaceFormat = OMX_FALSE;
     interlace_format->nInterlaceFormats = OMX_InterlaceFrameProgressive;
     drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-#if defined(_ANDROID_ICS_)
+#if defined(_ANDROID_ICS_) && defined(DISPLAYCAF)
     if(handle)
     {
       setMetaData(handle, PP_PARAM_INTERLACED, (void*)&enable);
@@ -9017,7 +9029,7 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     interlace_format->bInterlaceFormat = OMX_TRUE;
     interlace_format->nInterlaceFormats = OMX_InterlaceInterleaveFrameTopFieldFirst;
     drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
-#if defined(_ANDROID_ICS_)
+#if defined(_ANDROID_ICS_) && defined(DISPLAYCAF)
     enable = 1;
     if(handle)
     {
