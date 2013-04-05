@@ -1389,7 +1389,16 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	int fds[2];
 	int r,ret=0;
 	bool codec_ambiguous = false;
-	OMX_STRING device_name = (OMX_STRING)"/dev/video32";
+	OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_dec";
+
+#ifdef _ANDROID_
+	char platform_name[64];
+	property_get("ro.board.platform", platform_name, "0");
+	if (!strncmp(platform_name, "msm8610", 7)) {
+	    device_name = (OMX_STRING)"/dev/video/q6_dec";
+	}
+#endif
+
 	if(!strncmp(role, "OMX.qcom.video.decoder.avc.secure",OMX_MAX_STRINGNAME_SIZE)){
 		struct v4l2_control control;
 		secure_mode = true;
@@ -1397,13 +1406,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		role = (OMX_STRING)"OMX.qcom.video.decoder.avc";
 	}
 
-	drv_ctx.video_driver_fd = open("/dev/video32", O_RDWR);
+	drv_ctx.video_driver_fd = open(device_name, O_RDWR);
 
 	DEBUG_PRINT_HIGH("\n omx_vdec::component_init(): Open returned fd %d, errno %d",
 			drv_ctx.video_driver_fd, errno);
 
 	if(drv_ctx.video_driver_fd == 0){
-		drv_ctx.video_driver_fd = open(device_name, O_RDWR);
+	    DEBUG_PRINT_ERROR("Omx_vdec:: Got fd as 0 for msm_vidc_dec, Opening again\n");
+	    drv_ctx.video_driver_fd = open(device_name, O_RDWR);
 	}
 
 	if(drv_ctx.video_driver_fd < 0)

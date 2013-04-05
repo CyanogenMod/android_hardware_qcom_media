@@ -38,6 +38,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <linux/msm_ion.h>
 #endif
 #include <media/msm_media_info.h>
+#include <cutils/properties.h>
 
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 
@@ -437,12 +438,19 @@ bool venc_dev::venc_open(OMX_U32 codec)
   int r;
   unsigned int alignment = 0,buffer_size = 0, temp =0;
   struct v4l2_control control;
+  OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_enc";
 
-  m_nDriver_fd = open ("/dev/video33",O_RDWR);
+  char platform_name[64];
+  property_get("ro.board.platform", platform_name, "0");
+  if (!strncmp(platform_name, "msm8610", 7)) {
+    device_name = (OMX_STRING)"/dev/video/q6_enc";
+  }
+
+  m_nDriver_fd = open (device_name, O_RDWR);
   if(m_nDriver_fd == 0)
   {
     DEBUG_PRINT_ERROR("ERROR: Got fd as 0 for msm_vidc_enc, Opening again\n");
-    m_nDriver_fd = open ("/dev/video33",O_RDWR);
+    m_nDriver_fd = open (device_name, O_RDWR);
   }
 
   if((int)m_nDriver_fd < 0)
