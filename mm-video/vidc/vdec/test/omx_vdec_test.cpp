@@ -391,7 +391,7 @@ static unsigned use_buf_virt_addr[32];
 OMX_QCOM_PLATFORM_PRIVATE_LIST      *pPlatformList = NULL;
 OMX_QCOM_PLATFORM_PRIVATE_ENTRY     *pPlatformEntry = NULL;
 OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pPMEMInfo = NULL;
-
+OMX_CONFIG_RECTTYPE crop_rect = {0,0,0,0};
 
 static int bHdrflag = 0;
 
@@ -843,17 +843,22 @@ void* fbd_thread(void* pArg)
       {
           if (color_fmt == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m)
           {
-             unsigned int stride = ((width + 127) & (~127));
-             unsigned int scanlines = ((height+31) & (~31));
+             printf("\n width: %d height: %d\n", crop_rect.nWidth, crop_rect.nHeight);
+             unsigned int stride = ((crop_rect.nWidth + 127) & (~127));
+             unsigned int scanlines = ((crop_rect.nHeight + 31) & (~31));
              char *temp = (char *) pBuffer->pBuffer;
              int i = 0;
-             for (i = 0; i < height; i++) {
-                bytes_written = fwrite(temp, width, 1, outputBufferFile);
+
+             temp += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
+             for (i = 0; i < crop_rect.nHeight; i++) {
+                bytes_written = fwrite(temp, crop_rect.nWidth, 1, outputBufferFile);
                 temp += stride;
              }
+
              temp = (char *)pBuffer->pBuffer + stride * scanlines;
-             for(i = 0; i < height/2; i++) {
-                 bytes_written += fwrite(temp, width, 1, outputBufferFile);
+             temp += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
+             for(i = 0; i < crop_rect.nHeight/2; i++) {
+                 bytes_written += fwrite(temp, crop_rect.nWidth, 1, outputBufferFile);
                  temp += stride;
              }
          }
@@ -1161,6 +1166,23 @@ OMX_ERRORTYPE EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
             break;
         case OMX_EventPortSettingsChanged:
             DEBUG_PRINT("OMX_EventPortSettingsChanged port[%d]\n", nData1);
+            if (nData2 == OMX_IndexConfigCommonOutputCrop) {
+                OMX_U32 outPortIndex = 1;
+                 if (nData1 == outPortIndex) {
+                     crop_rect.nPortIndex = outPortIndex;
+                     OMX_ERRORTYPE ret = OMX_GetConfig(dec_handle,
+                                                       OMX_IndexConfigCommonOutputCrop, &crop_rect);
+                     if (FAILED(ret)) {
+                         DEBUG_PRINT_ERROR("Failed to get crop rectangle\n");
+                         break;
+                     } else
+                         DEBUG_PRINT("Got Crop Rect: (%d, %d) (%d x %d)\n",
+                             crop_rect.nLeft, crop_rect.nTop, crop_rect.nWidth, crop_rect.nHeight);
+                 }
+                 currentStatus = GOOD_STATE;
+                 break;
+            }
+
 #ifdef _MSM8974_
             if (nData2 != OMX_IndexParamPortDefinition)
               break;
@@ -1282,6 +1304,12 @@ int main(int argc, char **argv)
     OMX_ERRORTYPE result;
     sliceheight = height = 144;
     stride = width = 176;
+
+    crop_rect.nLeft = 0;
+    crop_rect.nTop = 0;
+    crop_rect.nWidth = width;
+    crop_rect.nHeight = height;
+
 
     if (argc < 2)
     {
@@ -2200,6 +2228,9 @@ int Play_Decoder()
         DEBUG_PRINT("\n RCV clip width = %u height = %u \n",width, height);
     }
 #endif
+    crop_rect.nWidth = width;
+    crop_rect.nHeight = height;
+
     bufCnt = 0;
     portFmt.format.video.nFrameHeight = height;
     portFmt.format.video.nFrameWidth  = width;
@@ -4268,6 +4299,9 @@ int output_port_reconfig()
     width = portFmt.format.video.nFrameWidth;
     stride = portFmt.format.video.nStride;
     sliceheight = portFmt.format.video.nSliceHeight;
+
+    crop_rect.nWidth = width;
+    crop_rect.nHeight = height;
 
     if (displayYuv == 2)
     {
