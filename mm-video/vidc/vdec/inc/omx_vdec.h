@@ -404,7 +404,7 @@ public:
 #ifdef _MSM8974_
     OMX_ERRORTYPE allocate_extradata();
 	void free_extradata();
-    void update_resolution(int width, int height, int stride, int scan_lines);
+    int update_resolution(int width, int height, int stride, int scan_lines);
     OMX_ERRORTYPE is_video_session_supported();
 #endif
     int  m_pipe_in;
@@ -898,6 +898,7 @@ private:
     int output_capability;
     bool streaming[MAX_PORT];
     OMX_CONFIG_RECTTYPE rectangle;
+	int prev_n_filled_len;
 #endif
     bool m_power_hinted;
     OMX_ERRORTYPE power_module_register();
