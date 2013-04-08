@@ -79,7 +79,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define EGL_BUFFER_HANDLE_QCOM 0x4F00
 #define EGL_BUFFER_OFFSET_QCOM 0x4F01
 #endif
-
 #ifdef INPUT_BUFFER_LOG
 #define INPUT_BUFFER_FILE_NAME "/data/input-bitstream.\0\0\0\0"
 #define INPUT_BUFFER_FILE_NAME_LEN 30
@@ -89,6 +88,7 @@ char inputfilename [INPUT_BUFFER_FILE_NAME_LEN] = "\0";
 #ifdef OUTPUT_BUFFER_LOG
 FILE *outputBufferFile1;
 char outputfilename [] = "/data/output.yuv";
+
 #endif
 #ifdef OUTPUT_EXTRADATA_LOG
 FILE *outputExtradataFile;
@@ -1325,12 +1325,12 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
 
 }
 
-void omx_vdec::update_resolution(int width, int height)
+void omx_vdec::update_resolution(int width, int height, int stride, int scan_lines)
 {
     drv_ctx.video_resolution.frame_height = height;
     drv_ctx.video_resolution.frame_width = width;
-    drv_ctx.video_resolution.scan_lines = height;
-    drv_ctx.video_resolution.stride = width;
+    drv_ctx.video_resolution.scan_lines = scan_lines;
+    drv_ctx.video_resolution.stride = stride;
     rectangle.nLeft = 0;
     rectangle.nTop = 0;
     rectangle.nWidth = drv_ctx.video_resolution.frame_width;
@@ -1644,7 +1644,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 					fdesc.pixelformat, fdesc.flags);
 			fdesc.index++;
 		}
-        update_resolution(320, 240);
+        update_resolution(320, 240, 320, 240);
 		fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
 		fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -3170,7 +3170,9 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                  portDefn->format.video.nFrameWidth != 0x0)
              {
                  update_resolution(portDefn->format.video.nFrameWidth,
-                    portDefn->format.video.nFrameHeight);
+                    portDefn->format.video.nFrameHeight,
+					portDefn->format.video.nFrameWidth,
+					portDefn->format.video.nFrameHeight);
                  eRet = is_video_session_supported();
                  if (eRet)
                     break;
@@ -7054,7 +7056,10 @@ int omx_vdec::async_message_process (void *context, void* message)
     int ret;
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     ret = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
-    omx->update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height);
+    omx->update_resolution(fmt.fmt.pix_mp.width,
+		fmt.fmt.pix_mp.height,
+		fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
+		fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
     ret = omx->is_video_session_supported();
     if (ret) {
       omx->post_event (NULL, vdec_msg->status_code,
@@ -7909,7 +7914,10 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
 
   ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
 
-  update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height);
+  update_resolution(fmt.fmt.pix_mp.width,
+		fmt.fmt.pix_mp.height,
+		fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
+		fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
   if (fmt.type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE)
       drv_ctx.num_planes = fmt.fmt.pix_mp.num_planes;
   DEBUG_PRINT_HIGH("Buffer Size = %d \n ",fmt.fmt.pix_mp.plane_fmt[0].sizeimage);
