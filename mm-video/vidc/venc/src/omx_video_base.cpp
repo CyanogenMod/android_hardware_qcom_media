@@ -3542,6 +3542,9 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
       private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
       Input_pmem_info.buffer = media_buffer;
       Input_pmem_info.fd = handle->fd;
+#ifdef _MSM8974_
+      fd = Input_pmem_info.fd;
+#endif
       Input_pmem_info.offset = 0;
       Input_pmem_info.size = handle->size;
     }

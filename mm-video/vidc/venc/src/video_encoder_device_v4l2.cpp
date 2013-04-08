@@ -1505,7 +1505,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
 
 		rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
 		if (rc)
-			DEBUG_PRINT_ERROR("VIDIOC_PREPARE_BUF Failed\n");
+			DEBUG_PRINT_LOW("VIDIOC_PREPARE_BUF Failed\n");
 	}
 	else if(port == PORT_INDEX_OUT)
 	{
@@ -1540,7 +1540,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
 		}
 		rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
 		if (rc)
-			DEBUG_PRINT_ERROR("VIDIOC_PREPARE_BUF Failed\n");
+			DEBUG_PRINT_LOW("VIDIOC_PREPARE_BUF Failed\n");
 	} else {
 		DEBUG_PRINT_ERROR("\nERROR: venc_use_buf:Invalid Port Index ");
 		return false;
