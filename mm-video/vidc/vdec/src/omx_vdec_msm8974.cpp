@@ -7017,6 +7017,20 @@ int omx_vdec::async_message_process (void *context, void* message)
         || ((unsigned)omx->rectangle.nTop != vdec_msg->msgdata.output_frame.framesize.top)
         || (omx->rectangle.nWidth != vdec_msg->msgdata.output_frame.framesize.right)
         || (omx->rectangle.nHeight != vdec_msg->msgdata.output_frame.framesize.bottom))) {
+	  struct v4l2_format fmt;
+	  int ret;
+	  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+	  ret = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+	  if (ret) {
+		  DEBUG_PRINT_HIGH("Failed to get format from driver\n");
+	  } else {
+		  if(omx->update_resolution(fmt.fmt.pix_mp.width,
+					  fmt.fmt.pix_mp.height,
+					  fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
+					  fmt.fmt.pix_mp.plane_fmt[0].reserved[0])) {
+			  DEBUG_PRINT_HIGH("\n Height/Width information has changed\n");
+		  }
+	  }
     omx->rectangle.nLeft = vdec_msg->msgdata.output_frame.framesize.left;
     omx->rectangle.nTop = vdec_msg->msgdata.output_frame.framesize.top;
     omx->rectangle.nWidth = vdec_msg->msgdata.output_frame.framesize.right;
