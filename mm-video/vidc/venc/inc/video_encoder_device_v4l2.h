@@ -165,6 +165,10 @@ struct msm_venc_video_capability {
     unsigned int max_height;
 };
 
+struct msm_venc_idrperiod {
+	unsigned long idrperiod;
+};
+
 enum v4l2_ports {
 	CAPTURE_PORT,
 	OUTPUT_PORT,
@@ -265,6 +269,7 @@ private:
   struct msm_venc_headerextension     hec;
   struct msm_venc_voptimingcfg        voptimecfg;
   struct msm_venc_video_capability    capability;
+  struct msm_venc_idrperiod           idrperiod;
 
   bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
   bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -284,6 +289,7 @@ private:
   void venc_config_print();
   bool venc_set_slice_delivery_mode(OMX_U32 enable);
   bool venc_set_extradata(OMX_U32 extra_data);
+  bool venc_set_idr_period(OMX_U32 nPFrames, OMX_U32 nIDRPeriod);
 #ifdef MAX_RES_1080P
   OMX_U32 pmem_free();
   OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);

@@ -1547,6 +1547,18 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
       return OMX_ErrorUnsupportedSetting;
       break;
     }
+  case OMX_IndexConfigVideoAVCIntraPeriod:
+    {
+      OMX_VIDEO_CONFIG_AVCINTRAPERIOD *pParam = (OMX_VIDEO_CONFIG_AVCINTRAPERIOD*) configData;
+      DEBUG_PRINT_LOW("set_config: OMX_IndexConfigVideoAVCIntraPeriod");
+      if(!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_IndexConfigVideoAVCIntraPeriod))
+      {
+        DEBUG_PRINT_ERROR("ERROR: Setting OMX_IndexConfigVideoAVCIntraPeriod failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      memcpy(&m_sConfigAVCIDRPeriod, pParam, sizeof(m_sConfigAVCIDRPeriod));
+      break;
+    }
   default:
     DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
     break;

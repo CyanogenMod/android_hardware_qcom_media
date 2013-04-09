@@ -541,6 +541,7 @@ public:
   QOMX_VIDEO_PARAM_LTRCOUNT_TYPE m_sParamLTRCount;
   QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE m_sConfigLTRPeriod;
   QOMX_VIDEO_CONFIG_LTRUSE_TYPE m_sConfigLTRUse;
+  OMX_VIDEO_CONFIG_AVCINTRAPERIOD m_sConfigAVCIDRPeriod;
   OMX_U32 m_sExtraData;
 
   // fill this buffer queue
