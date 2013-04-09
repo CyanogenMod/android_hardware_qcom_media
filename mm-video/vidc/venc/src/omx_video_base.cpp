@@ -1839,7 +1839,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         DEBUG_PRINT_LOW("Supporting capability index in encoder node");
         break;
    }
-#ifndef MAX_RES_720P
+#if !defined(MAX_RES_720P) || defined(_MSM8974_)
   case OMX_QcomIndexParamIndexExtraDataType:
     {
       DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamIndexExtraDataType");
