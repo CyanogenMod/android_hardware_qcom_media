@@ -1321,8 +1321,12 @@ int omx_vdec::update_resolution(int width, int height, int stride, int scan_line
 {
 	int format_changed = 0;
 	if ((height != drv_ctx.video_resolution.frame_height) ||
-		(width != drv_ctx.video_resolution.frame_width))
+		(width != drv_ctx.video_resolution.frame_width)) {
+		DEBUG_PRINT_HIGH("NOTE_CIF: W/H %d (%d), %d (%d)\n",
+			width, drv_ctx.video_resolution.frame_width,
+			height,drv_ctx.video_resolution.frame_height);
 		format_changed = 1;
+	}
     drv_ctx.video_resolution.frame_height = height;
     drv_ctx.video_resolution.frame_width = width;
     drv_ctx.video_resolution.scan_lines = scan_lines;
@@ -7005,20 +7009,12 @@ int omx_vdec::async_message_process (void *context, void* message)
   if (omxhdr->nFilledLen &&
 	  (omxhdr->nFilledLen != omx->prev_n_filled_len))
   {
-	  struct v4l2_format fmt;
-	  int ret;
-	  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	  ret = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
-	  if (ret) {
-		  DEBUG_PRINT_HIGH("Failed to get format from driver\n");
-	  } else {
-		  if(omx->update_resolution(fmt.fmt.pix_mp.width,
-					  fmt.fmt.pix_mp.height,
-					  fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
-					  fmt.fmt.pix_mp.plane_fmt[0].reserved[0])) {
-			  DEBUG_PRINT_HIGH("\n Height/Width information has changed\n");
-			  format_notably_changed = 1;
-		  }
+	  if ((vdec_msg->msgdata.output_frame.framesize.bottom != omx->drv_ctx.video_resolution.frame_height) ||
+			  (vdec_msg->msgdata.output_frame.framesize.right != omx->drv_ctx.video_resolution.frame_width)) {
+		  DEBUG_PRINT_HIGH("\n Height/Width information has changed\n");
+		  omx->drv_ctx.video_resolution.frame_height = vdec_msg->msgdata.output_frame.framesize.bottom;
+		  omx->drv_ctx.video_resolution.frame_width = vdec_msg->msgdata.output_frame.framesize.right;
+		  format_notably_changed = 1;
 	  }
   }
   if (omxhdr->nFilledLen && (((unsigned)omx->rectangle.nLeft !=
@@ -7026,25 +7022,21 @@ int omx_vdec::async_message_process (void *context, void* message)
         || ((unsigned)omx->rectangle.nTop != vdec_msg->msgdata.output_frame.framesize.top)
         || (omx->rectangle.nWidth != vdec_msg->msgdata.output_frame.framesize.right)
         || (omx->rectangle.nHeight != vdec_msg->msgdata.output_frame.framesize.bottom))) {
-	  struct v4l2_format fmt;
-	  int ret;
-	  fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	  ret = ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
-	  if (ret) {
-		  DEBUG_PRINT_HIGH("Failed to get format from driver\n");
-	  } else {
-		  if(omx->update_resolution(fmt.fmt.pix_mp.width,
-					  fmt.fmt.pix_mp.height,
-					  fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
-					  fmt.fmt.pix_mp.plane_fmt[0].reserved[0])) {
-			  DEBUG_PRINT_HIGH("\n Height/Width information has changed\n");
-		  }
+	  if ((vdec_msg->msgdata.output_frame.framesize.bottom != omx->drv_ctx.video_resolution.frame_height) ||
+				  (vdec_msg->msgdata.output_frame.framesize.right != omx->drv_ctx.video_resolution.frame_width)) {
+			  omx->drv_ctx.video_resolution.frame_height = vdec_msg->msgdata.output_frame.framesize.bottom;
+			  omx->drv_ctx.video_resolution.frame_width = vdec_msg->msgdata.output_frame.framesize.right;
+			  DEBUG_PRINT_HIGH("\n Height/Width information has changed. W: %d --> %d, H: %d --> %d\n",
+					  omx->drv_ctx.video_resolution.frame_width, vdec_msg->msgdata.output_frame.framesize.right,
+					  omx->drv_ctx.video_resolution.frame_height, vdec_msg->msgdata.output_frame.framesize.bottom);
 	  }
+    DEBUG_PRINT_HIGH("\n Crop information changed. W: %d --> %d, H: %d -> %d\n",
+		omx->rectangle.nWidth, vdec_msg->msgdata.output_frame.framesize.right,
+		omx->rectangle.nHeight, vdec_msg->msgdata.output_frame.framesize.bottom);
     omx->rectangle.nLeft = vdec_msg->msgdata.output_frame.framesize.left;
     omx->rectangle.nTop = vdec_msg->msgdata.output_frame.framesize.top;
     omx->rectangle.nWidth = vdec_msg->msgdata.output_frame.framesize.right;
     omx->rectangle.nHeight = vdec_msg->msgdata.output_frame.framesize.bottom;
-    DEBUG_PRINT_HIGH("\n Crop information has changed\n");
 	format_notably_changed = 1;
   }
   if (format_notably_changed) {
