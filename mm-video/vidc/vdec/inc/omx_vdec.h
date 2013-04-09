@@ -51,6 +51,8 @@ static ptrdiff_t x;
 #ifdef _ANDROID_
 #ifdef USE_ION
 #include <linux/msm_ion.h>
+#else
+#include <linux/android_pmem.h>
 #endif
 #include <binder/MemoryHeapBase.h>
 #include <ui/ANativeObjectBase.h>
@@ -112,7 +114,6 @@ extern "C"{
 #ifdef MAX_RES_1080P
 #include "mp4_utils.h"
 #endif
-#include <linux/android_pmem.h>
 #include "extra_data_handler.h"
 #include "ts_parser.h"
 #include "vidc_color_converter.h"
@@ -611,13 +612,14 @@ private:
     OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
     OMX_U32 count_MB_in_extradata(OMX_OTHER_EXTRADATATYPE *extra);
 
-    bool align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
-                            OMX_U32 alignment);
 #ifdef USE_ION
     int alloc_map_ion_memory(OMX_U32 buffer_size,
               OMX_U32 alignment, struct ion_allocation_data *alloc_data,
               struct ion_fd_data *fd_data,int flag);
     void free_ion_memory(struct vdec_ion *buf_ion_info);
+#else
+    bool align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
+                            OMX_U32 alignment);
 #endif
 
 

@@ -32,10 +32,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include "video_encoder_device.h"
 #include "omx_video_encoder.h"
-#include <linux/android_pmem.h>
 #include <media/hardware/HardwareAPI.h>
 #ifdef USE_ION
 #include <linux/msm_ion.h>
+#else
+#include <linux/android_pmem.h>
 #endif
 
 #define MPEG4_SP_START 0

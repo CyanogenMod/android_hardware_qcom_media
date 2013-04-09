@@ -7059,24 +7059,6 @@ OMX_ERRORTYPE omx_vdec::push_input_vc1 (OMX_HANDLETYPE hComp)
     return OMX_ErrorNone;
 }
 
-bool omx_vdec::align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
-                                  OMX_U32 alignment)
-{
-  struct pmem_allocation allocation;
-  allocation.size = buffer_size;
-  allocation.align = clip2(alignment);
-  if (allocation.align < 4096)
-  {
-    allocation.align = 4096;
-  }
-  if (ioctl(pmem_fd, PMEM_ALLOCATE_ALIGNED, &allocation) < 0)
-  {
-    DEBUG_PRINT_ERROR("\n Aligment(%u) failed with pmem driver Sz(%lu)",
-      allocation.align, allocation.size);
-    return false;
-  }
-  return true;
-}
 #ifdef USE_ION
 int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
               OMX_U32 alignment, struct ion_allocation_data *alloc_data,
@@ -7151,6 +7133,25 @@ void omx_vdec::free_ion_memory(struct vdec_ion *buf_ion_info) {
      buf_ion_info->ion_device_fd = -1;
      buf_ion_info->ion_alloc_data.handle = NULL;
      buf_ion_info->fd_ion_data.fd = -1;
+}
+#else
+bool omx_vdec::align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
+                                  OMX_U32 alignment)
+{
+  struct pmem_allocation allocation;
+  allocation.size = buffer_size;
+  allocation.align = clip2(alignment);
+  if (allocation.align < 4096)
+  {
+    allocation.align = 4096;
+  }
+  if (ioctl(pmem_fd, PMEM_ALLOCATE_ALIGNED, &allocation) < 0)
+  {
+    DEBUG_PRINT_ERROR("\n Aligment(%u) failed with pmem driver Sz(%lu)",
+      allocation.align, allocation.size);
+    return false;
+  }
+  return true;
 }
 #endif
 void omx_vdec::free_output_buffer_header()
