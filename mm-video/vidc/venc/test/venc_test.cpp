@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -70,22 +70,25 @@ REFERENCES
 #ifdef USE_ION
 #include <linux/msm_ion.h>
 #endif
+#ifdef _MSM8974_
+#include <media/msm_media_info.h>
+#endif
 
 //////////////////////////
 // MACROS
 //////////////////////////
 
-#define CHK(result) if (result != OMX_ErrorNone) { E("*************** error *************"); exit(0); }
+#define CHK(result) if ((result != OMX_ErrorNone) && (result != OMX_ErrorNoMore)) { E("*************** error *************"); exit(0); }
 #define TEST_LOG
 #ifdef VENC_SYSLOG
-#include "cutils/log.h"
+#include <cutils/log.h>
 /// Debug message macro
-#define D(fmt, ...) LOGE("venc_test Debug %s::%d "fmt"\n",              \
+#define D(fmt, ...) ALOGE("venc_test Debug %s::%d "fmt,              \
                          __FUNCTION__, __LINE__,                        \
                          ## __VA_ARGS__)
 
 /// Error message macro
-#define E(fmt, ...) LOGE("venc_test Error %s::%d "fmt"\n",            \
+#define E(fmt, ...) ALOGE("venc_test Error %s::%d "fmt,            \
                          __FUNCTION__, __LINE__,                      \
                          ## __VA_ARGS__)
 
@@ -132,6 +135,10 @@ static const unsigned int mpeg4_profile_level_table[][5]=
     {1200,36000,4000000,OMX_VIDEO_MPEG4Level4a,OMX_VIDEO_MPEG4ProfileSimple},
     {1620,40500,8000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
     {3600,108000,12000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
+    {34560,1036800,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple},
+#endif
     {0,0,0,0,0},
 
     {99,1485,128000,OMX_VIDEO_MPEG4Level0,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
@@ -140,6 +147,10 @@ static const unsigned int mpeg4_profile_level_table[][5]=
     {396,11880,768000,OMX_VIDEO_MPEG4Level3,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
     {792,23760,3000000,OMX_VIDEO_MPEG4Level4,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
     {1620,48600,8000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
+    {34560,1036800,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileAdvancedSimple},
+#endif
     {0,0,0,0,0},
 };
 
@@ -159,6 +170,10 @@ static const unsigned int h264_profile_level_table[][5]=
     {3600,108000,14000000,OMX_VIDEO_AVCLevel31,OMX_VIDEO_AVCProfileBaseline},
     {5120,216000,20000000,OMX_VIDEO_AVCLevel32,OMX_VIDEO_AVCProfileBaseline},
     {8192,245760,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileBaseline},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileBaseline},
+    {34560,1036800,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileBaseline},
+#endif
     {0,0,0,0,0},
 
     {99,1485,64000,OMX_VIDEO_AVCLevel1,OMX_VIDEO_AVCProfileHigh},
@@ -173,6 +188,10 @@ static const unsigned int h264_profile_level_table[][5]=
     {3600,108000,17500000,OMX_VIDEO_AVCLevel31,OMX_VIDEO_AVCProfileHigh},
     {5120,216000,25000000,OMX_VIDEO_AVCLevel32,OMX_VIDEO_AVCProfileHigh},
     {8192,245760,25000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileHigh},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileHigh},
+    {34560,1036800,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileHigh},
+#endif
     {0,0,0,0,0},
 
     {99,1485,64000,OMX_VIDEO_AVCLevel1,OMX_VIDEO_AVCProfileMain},
@@ -187,6 +206,10 @@ static const unsigned int h264_profile_level_table[][5]=
     {3600,108000,14000000,OMX_VIDEO_AVCLevel31,OMX_VIDEO_AVCProfileMain},
     {5120,216000,20000000,OMX_VIDEO_AVCLevel32,OMX_VIDEO_AVCProfileMain},
     {8192,245760,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileMain},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileMain},
+    {34560,1036800,20000000,OMX_VIDEO_AVCLevel4,OMX_VIDEO_AVCProfileMain},
+#endif
     {0,0,0,0,0}
 
 };
@@ -203,8 +226,29 @@ static const unsigned int h263_profile_level_table[][5]=
     {396,19800,4096000,OMX_VIDEO_H263Level50,OMX_VIDEO_H263ProfileBaseline},
     {810,40500,8192000,OMX_VIDEO_H263Level60,OMX_VIDEO_H263ProfileBaseline},
     {1620,81000,16384000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+#ifdef _MSM8974_
+    {32400,972000,20000000,OMX_VIDEO_H263Level60,OMX_VIDEO_H263ProfileBaseline},
+    {34560,1036800,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+#endif
     {0,0,0,0,0}
 };
+#ifdef _MSM8974_
+static const unsigned int VP8_profile_level_table[][5]=
+{
+    /*max mb per frame, max mb per sec, max bitrate, level, profile*/
+    {99,1485,64000,OMX_VIDEO_H263Level10,OMX_VIDEO_H263ProfileBaseline},
+    {396,5940,128000,OMX_VIDEO_H263Level20,OMX_VIDEO_H263ProfileBaseline},
+    {396,11880,384000,OMX_VIDEO_H263Level30,OMX_VIDEO_H263ProfileBaseline},
+    {396,11880,2048000,OMX_VIDEO_H263Level40,OMX_VIDEO_H263ProfileBaseline},
+    {99,1485,128000,OMX_VIDEO_H263Level45,OMX_VIDEO_H263ProfileBaseline},
+    {396,19800,4096000,OMX_VIDEO_H263Level50,OMX_VIDEO_H263ProfileBaseline},
+    {810,40500,8192000,OMX_VIDEO_H263Level60,OMX_VIDEO_H263ProfileBaseline},
+    {1620,81000,16384000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+    {32400,972000,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+    {34560,1036800,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline},
+    {0,0,0,0,0}
+};
+#endif
 
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define FractionToQ16(q,num,den) { OMX_U32 power; Log2(den,power); q = num << (16 - power); }
@@ -221,7 +265,7 @@ struct ProfileType
    OMX_U32 nFrameWidth;
    OMX_U32 nFrameHeight;
    OMX_U32 nFrameBytes;
-#ifdef BADGER
+#ifdef _MSM8974_
    OMX_U32 nFramestride;
    OMX_U32 nFrameScanlines;
    OMX_U32 nFrameRead;
@@ -363,7 +407,7 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
       return NULL;
 
 #ifdef USE_ION
-  ion_data.ion_device_fd = open (PMEM_DEVICE,O_RDONLY);
+  ion_data.ion_device_fd = open (PMEM_DEVICE, O_RDONLY);
   if(ion_data.ion_device_fd < 0)
   {
       E("\nERROR: ION Device open() Failed");
@@ -373,11 +417,11 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
   ion_data.alloc_data.len = nSize;
   ion_data.alloc_data.heap_mask = 0x1 << ION_CP_MM_HEAP_ID;
   ion_data.alloc_data.align = 4096;
-  ion_data.alloc_data.flags = 0;
+  ion_data.alloc_data.flags = ION_SECURE;
 
   rc = ioctl(ion_data.ion_device_fd,ION_IOC_ALLOC,&ion_data.alloc_data);
   if(rc || !ion_data.alloc_data.handle) {
-         E("\n ION ALLOC memory failed ");
+         E("\n ION ALLOC memory failed rc: %d, handle: %p", rc, ion_data.alloc_data.handle);
          ion_data.alloc_data.handle=NULL;
          return NULL;
   }
@@ -417,7 +461,7 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
 #endif
       return NULL;
    }
-   D("allocated pMem->fd = %d pvirt=0x%x, pMem->phys=0x%x, size = %d", pMem->pmem_fd,
+   D("allocated pMem->fd = %lu pvirt=0x%p, pMem->phys=0x%lx, size = %d", pMem->pmem_fd,
        pvirt, pMem->offset, nSize);
    return pvirt;
 }
@@ -445,41 +489,41 @@ int PmemFree(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, void* pvirt, int nSize)
 }
 void PrintFramePackArrangement(OMX_QCOM_FRAME_PACK_ARRANGEMENT framePackingArrangement)
 {
-    printf("id (%d)\n",
+    printf("id (%lu)\n",
            framePackingArrangement.id);
-    printf("cancel_flag (%d)\n",
+    printf("cancel_flag (%lu)\n",
            framePackingArrangement.cancel_flag);
-    printf("type (%d)\n",
+    printf("type (%lu)\n",
            framePackingArrangement.type);
-    printf("quincunx_sampling_flag (%d)\n",
+    printf("quincunx_sampling_flag (%lu)\n",
            framePackingArrangement.quincunx_sampling_flag);
-   printf("content_interpretation_type (%d)\n",
+   printf("content_interpretation_type (%lu)\n",
           framePackingArrangement.content_interpretation_type);
-   printf("spatial_flipping_flag (%d)\n",
+   printf("spatial_flipping_flag (%lu)\n",
           framePackingArrangement.spatial_flipping_flag);
-   printf("frame0_flipped_flag (%d)\n",
+   printf("frame0_flipped_flag (%lu)\n",
           framePackingArrangement.frame0_flipped_flag);
-   printf("field_views_flag (%d)\n",
+   printf("field_views_flag (%lu)\n",
           framePackingArrangement.field_views_flag);
-   printf("current_frame_is_frame0_flag (%d)\n",
+   printf("current_frame_is_frame0_flag (%lu)\n",
           framePackingArrangement.current_frame_is_frame0_flag);
-   printf("frame0_self_contained_flag (%d)\n",
+   printf("frame0_self_contained_flag (%lu)\n",
           framePackingArrangement.frame0_self_contained_flag);
-   printf("frame1_self_contained_flag (%d)\n",
+   printf("frame1_self_contained_flag (%lu)\n",
           framePackingArrangement.frame1_self_contained_flag);
-   printf("frame0_grid_position_x (%d)\n",
+   printf("frame0_grid_position_x (%lu)\n",
           framePackingArrangement.frame0_grid_position_x);
-   printf("frame0_grid_position_y (%d)\n",
+   printf("frame0_grid_position_y (%lu)\n",
           framePackingArrangement.frame0_grid_position_y);
-   printf("frame1_grid_position_x (%d)\n",
+   printf("frame1_grid_position_x (%lu)\n",
           framePackingArrangement.frame1_grid_position_x);
-   printf("frame1_grid_position_y (%d)\n",
+   printf("frame1_grid_position_y (%lu)\n",
           framePackingArrangement.frame1_grid_position_y);
-   printf("reserved_byte (%d)\n",
+   printf("reserved_byte (%lu)\n",
           framePackingArrangement.reserved_byte);
-   printf("repetition_period (%d)\n",
+   printf("repetition_period (%lu)\n",
           framePackingArrangement.repetition_period);
-   printf("extension_flag (%d)\n",
+   printf("extension_flag (%lu)\n",
           framePackingArrangement.extension_flag);
 }
 void SetState(OMX_STATETYPE eState)
@@ -532,7 +576,7 @@ OMX_ERRORTYPE ConfigureEncoder()
    portdef.format.video.nFrameWidth = m_sProfile.nFrameWidth;
    portdef.format.video.nFrameHeight = m_sProfile.nFrameHeight;
 
-   E ("\n Height %d width %d bit rate %d",portdef.format.video.nFrameHeight
+   E ("\n Height %lu width %lu bit rate %lu",portdef.format.video.nFrameHeight
       ,portdef.format.video.nFrameWidth,portdef.format.video.nBitrate);
    result = OMX_SetParameter(m_hHandle,
                              OMX_IndexParamPortDefinition,
@@ -589,22 +633,27 @@ result = OMX_SetParameter(m_hHandle,
    {
      profile_tbl = (unsigned int const *)h263_profile_level_table;
    }
-
+#ifdef _MSM8974_
+   else if(m_sProfile.eCodec == OMX_VIDEO_CodingVPX)
+   {
+     profile_tbl = (unsigned int const *)VP8_profile_level_table;
+   }
+#endif
    mb_per_frame = ((m_sProfile.nFrameHeight+15)>>4)*
                 ((m_sProfile.nFrameWidth+15)>>4);
 
    mb_per_sec = mb_per_frame*(m_sProfile.nFramerate);
 
    do{
-      if(mb_per_frame <= (int)profile_tbl[0])
+      if(mb_per_frame <= (unsigned int)profile_tbl[0])
       {
-          if(mb_per_sec <= (int)profile_tbl[1])
+          if(mb_per_sec <= (unsigned int)profile_tbl[1])
           {
-            if(m_sProfile.nBitrate <= (int)profile_tbl[2])
+            if(m_sProfile.nBitrate <= (unsigned int)profile_tbl[2])
             {
               eLevel = (int)profile_tbl[3];
               eProfile = (int)profile_tbl[4];
-              E("\n profile/level found: %d/%d\n",eProfile/eLevel);
+              E("\n profile/level found: %lu/%lu\n",eProfile, eLevel);
               profile_level_found = true;
               break;
             }
@@ -665,7 +714,7 @@ result = OMX_SetParameter(m_hHandle,
                                 OMX_IndexParamVideoProfileLevelCurrent,
                                 &profileLevel);
       E("\n OMX_IndexParamVideoProfileLevelCurrent Get Paramter port");
-      D ("\n Profile = %d level = %d",profileLevel.eProfile,profileLevel.eLevel);
+      D ("\n Profile = %lu level = %lu",profileLevel.eProfile,profileLevel.eLevel);
       CHK(result);
 
         if (m_sProfile.eCodec == OMX_VIDEO_CodingMPEG4)
@@ -791,7 +840,8 @@ result = OMX_SetParameter(m_hHandle,
    else if (m_sProfile.eCodec == OMX_VIDEO_CodingH263)
    {
 //H263
-      eResyncMarkerType = RESYNC_MARKER_GOB;
+      //eResyncMarkerType = RESYNC_MARKER_GOB;
+	  eResyncMarkerType = RESYNC_MARKER_NONE;
       nResyncMarkerSpacing = 0;
    }
    else if (m_sProfile.eCodec == OMX_VIDEO_CodingAVC)
@@ -815,8 +865,8 @@ result = OMX_SetParameter(m_hHandle,
       }
       else
       {
-         eResyncMarkerType = RESYNC_MARKER_MB;
-          nResyncMarkerSpacing = 50;
+         eResyncMarkerType = RESYNC_MARKER_NONE;
+          nResyncMarkerSpacing = 0;
       }
    }
 
@@ -1177,6 +1227,16 @@ OMX_ERRORTYPE VencTest_Initialize()
                              &sCallbacks);
       CHK(result);
    }
+#ifdef _MSM8974_
+   else if (m_sProfile.eCodec == OMX_VIDEO_CodingVPX)
+   {
+      result = OMX_GetHandle(&m_hHandle,
+                             "OMX.qcom.video.encoder.vp8",
+                             NULL,
+                             &sCallbacks);
+      CHK(result);
+   }
+#endif
    else
    {
       result = OMX_GetHandle(&m_hHandle,
@@ -1430,24 +1490,45 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
 {
    OMX_ERRORTYPE result = OMX_ErrorNone;
 #ifdef T_ARM
-#ifdef MAX_RES_720P
+#if defined(MAX_RES_720P) && !defined(_MSM8974_)
    if (read(m_nInFd,
             pYUVBuffer->pBuffer,
             m_sProfile.nFrameBytes) != m_sProfile.nFrameBytes)
    {
       return OMX_ErrorUndefined;
    }
-#elif BADGER
-   int bytes;
-   E("will read YUV now: %d bytes to buffer %p\n", m_sProfile.nFrameRead, pYUVBuffer->pBuffer);
-   E("W: %d H: %d Str: %d scal: %d \n", m_sProfile.nFrameWidth, m_sProfile.nFrameHeight,
-		m_sProfile.nFramestride, m_sProfile.nFrameScanlines);
-   bytes = read(m_nInFd, pYUVBuffer->pBuffer, m_sProfile.nFrameRead);
-   if (bytes != m_sProfile.nFrameRead) {
-		E("read failed: %d != %d\n", read, m_sProfile.nFrameRead);
-		return OMX_ErrorUndefined;
+#elif _MSM8974_
+   int i, lscanl, lstride, cscanl, cstride, height, width;
+   int bytes = 0, read_bytes = 0;
+   OMX_U8 *yuv = pYUVBuffer->pBuffer;
+   height = m_sProfile.nFrameHeight;
+   width = m_sProfile.nFrameWidth;
+   lstride = VENUS_Y_STRIDE(COLOR_FMT_NV12, width);
+   lscanl = VENUS_Y_SCANLINES(COLOR_FMT_NV12, height);
+   cstride = VENUS_UV_STRIDE(COLOR_FMT_NV12, width);
+   cscanl = VENUS_UV_SCANLINES(COLOR_FMT_NV12, height);
+
+   for(i = 0; i < height; i++) {
+	   bytes = read(m_nInFd, yuv, width);
+	   if (bytes != width) {
+		   E("read failed: %d != %d\n", read, width);
+		   return OMX_ErrorUndefined;
+	   }
+	   read_bytes += bytes;
+	   yuv += lstride;
    }
-   E("\n\nRead %d bytes\n\n\n", m_sProfile.nFrameRead);
+   yuv = pYUVBuffer->pBuffer + (lscanl * lstride);
+   for (i = 0; i < ((height + 1) >> 1); i++) {
+	   bytes = read(m_nInFd, yuv, width);
+	   if (bytes != width) {
+		   E("read failed: %d != %d\n", read, width);
+		   return OMX_ErrorUndefined;
+	   }
+	   read_bytes += bytes;
+	   yuv += cstride;
+   }
+   m_sProfile.nFrameRead = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height);
+   E("\n\nActual read bytes: %d, NV12 buffer size: %d\n\n\n", read_bytes, m_sProfile.nFrameRead);
 #else
          OMX_U32 bytestoread = m_sProfile.nFrameWidth*m_sProfile.nFrameHeight;
          // read Y first
@@ -1488,7 +1569,7 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
    D("about to call VencTest_EncodeFrame...");
    pthread_mutex_lock(&m_mutex);
    ++m_nFrameIn;
-#ifdef BADGER
+#ifdef _MSM8974_
    pYUVBuffer->nFilledLen = m_sProfile.nFrameRead;
 #else
    pYUVBuffer->nFilledLen = m_sProfile.nFrameBytes;
@@ -1846,6 +1927,22 @@ void parseArgs(int argc, char** argv)
       m_sProfile.nFrameBytes = 1920*1080*3/2;
       m_sProfile.eLevel = OMX_VIDEO_MPEG4Level1;
    }
+#ifdef _MSM8974_
+   else if (strcmp("4K2K", argv[2]) == 0)
+   {
+      m_sProfile.nFrameWidth = 4096;
+      m_sProfile.nFrameHeight = 2160;
+      m_sProfile.nFrameBytes = 4096*2160*3/2;
+      m_sProfile.eLevel = OMX_VIDEO_MPEG4Level1;
+   }
+   else if (strcmp("2160P", argv[2]) == 0)
+   {
+      m_sProfile.nFrameWidth = 3840;
+      m_sProfile.nFrameHeight = 2160;
+      m_sProfile.nFrameBytes = 3840*2160*3/2;
+      m_sProfile.eLevel = OMX_VIDEO_MPEG4Level1;
+   }
+#endif
    else if (parseWxH(argv[2], &m_sProfile.nFrameWidth, &m_sProfile.nFrameHeight))
    {
       m_sProfile.nFrameBytes = m_sProfile.nFrameWidth*m_sProfile.nFrameHeight*3/2;
@@ -1856,12 +1953,10 @@ void parseArgs(int argc, char** argv)
       usage(argv[0]);
    }
 
-#ifdef BADGER
+#ifdef _MSM8974_
    m_sProfile.nFramestride =  (m_sProfile.nFrameWidth + 31) & (~31);
    m_sProfile.nFrameScanlines = (m_sProfile.nFrameHeight + 31) & (~31);
    m_sProfile.nFrameBytes = ((m_sProfile.nFramestride * m_sProfile.nFrameScanlines * 3/2) + 4095) & (~4095);
-   E("stride: %d, Scanlines: %d, Size: %d",
-     m_sProfile.nFramestride, m_sProfile.nFrameScanlines, m_sProfile.nFrameBytes);
    m_sProfile.nFrameRead = m_sProfile.nFramestride * m_sProfile.nFrameScanlines * 3/2;
 #endif
    if (m_eMode == MODE_DISPLAY ||
@@ -1887,6 +1982,12 @@ void parseArgs(int argc, char** argv)
       {
          m_sProfile.eCodec = OMX_VIDEO_CodingAVC;
       }
+#ifdef _MSM8974_
+      else if ((!strcmp(argv[3], "VP8")) || (!strcmp(argv[3], "vp8")))
+      {
+         m_sProfile.eCodec = OMX_VIDEO_CodingVPX;
+      }
+#endif
       else
       {
          usage(argv[0]);
@@ -1935,13 +2036,21 @@ int main(int argc, char** argv)
    m_nFrameOut = 0;
 
    memset(&m_sMsgQ, 0, sizeof(MsgQ));
+   memset(&m_sProfile, 0, sizeof(m_sProfile));
    parseArgs(argc, argv);
 
-   D("fps=%d, bitrate=%d, width=%d, height=%d",
+   D("fps=%f, bitrate=%u, width=%u, height=%u, frame bytes=%u",
      m_sProfile.nFramerate,
      m_sProfile.nBitrate,
      m_sProfile.nFrameWidth,
-     m_sProfile.nFrameHeight);
+     m_sProfile.nFrameHeight,
+     m_sProfile.nFrameBytes);
+#ifdef _MSM8974_
+   D("Frame stride=%u, scanlines=%u, read=%u",
+		   m_sProfile.nFramestride,
+		   m_sProfile.nFrameScanlines,
+		   m_sProfile.nFrameRead);
+#endif
 
 
    //if (m_eMode != MODE_PREVIEW && m_eMode != MODE_DISPLAY)
@@ -2053,8 +2162,7 @@ int main(int argc, char** argv)
    result = OMX_GetParameter(m_hHandle, OMX_IndexParamPortDefinition, &portDef);
    CHK(result);
 
-   D("allocating output buffers");
-   D("Calling UseBuffer for Output port");
+   D("allocating & calling usebuffer for Output port");
    num_out_buffers = portDef.nBufferCountActual;
    for (i = 0; i < portDef.nBufferCountActual; i++)
    {

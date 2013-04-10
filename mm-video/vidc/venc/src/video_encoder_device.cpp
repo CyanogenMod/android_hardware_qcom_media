@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -32,7 +32,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include "video_encoder_device.h"
 #include "omx_video_encoder.h"
-#include <media/hardware/HardwareAPI.h>
 #ifdef USE_ION
 #include <linux/msm_ion.h>
 #else
@@ -151,7 +150,6 @@ venc_dev::venc_dev(class omx_venc *venc_class)
   m_eProfile = 0;
   pthread_mutex_init(&loaded_start_stop_mlock, NULL);
   pthread_cond_init (&loaded_start_stop_cond, NULL);
-  venc_encoder = reinterpret_cast<omx_venc*>(venc_class);
   DEBUG_PRINT_LOW("venc_dev constructor");
 }
 
@@ -185,7 +183,7 @@ void* async_venc_message_thread (void *input)
     }
     else if (error_code <0)
     {
-        DEBUG_PRINT_ERROR("\nioctl VEN_IOCTL_CMD_READ_NEXT_MSG failed");
+        DEBUG_PRINT_LOW("\nioctl VEN_IOCTL_CMD_READ_NEXT_MSG failed");
         break;
     }
     else if(omx->async_message_process(input,&venc_msg) < 0)
@@ -203,16 +201,12 @@ bool venc_dev::venc_open(OMX_U32 codec)
   struct venc_ioctl_msg ioctl_msg = {NULL,NULL};
   int r;
   unsigned int   alignment = 0,buffer_size = 0, temp =0;
-  OMX_STRING device_name = "/dev/msm_vidc_enc";
-  DEBUG_PRINT_ERROR("\n Is component secure %d",
-                  venc_encoder->is_secure_session());
-  if(venc_encoder->is_secure_session())
-    device_name = "/dev/msm_vidc_enc_sec";
-  m_nDriver_fd = open (device_name,O_RDWR|O_NONBLOCK);
+
+  m_nDriver_fd = open ("/dev/msm_vidc_enc",O_RDWR|O_NONBLOCK);
   if(m_nDriver_fd == 0)
   {
     DEBUG_PRINT_ERROR("ERROR: Got fd as 0 for msm_vidc_enc, Opening again\n");
-    m_nDriver_fd = open (device_name,O_RDWR|O_NONBLOCK);
+    m_nDriver_fd = open ("/dev/msm_vidc_enc",O_RDWR|O_NONBLOCK);
   }
 
   if((int)m_nDriver_fd < 0)
@@ -250,6 +244,13 @@ bool venc_dev::venc_open(OMX_U32 codec)
 #else
   m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV12;
 #endif
+// initializing QP range parameters
+  qp_range.minqp = 2;
+  if(codec == OMX_VIDEO_CodingAVC)
+    qp_range.maxqp = 51;
+  else
+    qp_range.maxqp = 31;
+
   if(codec == OMX_VIDEO_CodingMPEG4)
   {
     m_sVenc_cfg.codectype = VEN_CODEC_MPEG4;
@@ -314,6 +315,10 @@ bool venc_dev::venc_open(OMX_U32 codec)
         __func__);
   }
   recon_buffers_count = MAX_RECON_BUFFERS;
+  ltrmode.ltr_mode = 0;
+  ltrcount.ltr_count = 0;
+  ltrperiod.ltr_period = 0;
+
   return true;
 }
 
@@ -503,6 +508,30 @@ bool venc_dev::venc_get_seq_hdr(void *buffer,
   return true;
 }
 
+bool venc_dev::venc_get_capability_ltrcount(unsigned long *min,
+    unsigned long *max, unsigned long *step_size)
+{
+  struct venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_range  cap_ltr_count;
+  ioctl_msg.in = NULL;
+  ioctl_msg.out = (void*)&cap_ltr_count;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_CAPABILITY_LTRCOUNT,
+            (void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("ERROR: Get LTR Capability failed");
+    return false;
+  }
+  else
+  {
+    *min = cap_ltr_count.min;
+    *max = cap_ltr_count.max;
+    *step_size = cap_ltr_count.step_size;
+    DEBUG_PRINT_HIGH("LTR Capability: min=%x, max=%d, step_size=%d",
+      *min, *max, *step_size);
+  }
+  return true;
+}
+
 bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
                                 unsigned long *actual_buff_count,
                                 unsigned long *buff_size,
@@ -558,7 +587,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
     {
       OMX_PARAM_PORTDEFINITIONTYPE *portDefn;
       portDefn = (OMX_PARAM_PORTDEFINITIONTYPE *) paramData;
-      DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamPortDefinition\n");
+      DEBUG_PRINT_HIGH("venc_set_param: OMX_IndexParamPortDefinition");
       if(portDefn->nPortIndex == PORT_INDEX_IN)
       {
 
@@ -572,7 +601,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
           return false;
         }
 
-        DEBUG_PRINT_LOW("\n Basic parameter has changed");
+        DEBUG_PRINT_LOW("Basic parameter has changed");
         m_sVenc_cfg.input_height = portDefn->format.video.nFrameHeight;
         m_sVenc_cfg.input_width = portDefn->format.video.nFrameWidth;
 
@@ -582,15 +611,19 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
             DEBUG_PRINT_ERROR("\nERROR: Request for setting base config failed");
             return false;
         }
+        DEBUG_PRINT_HIGH("WxH (%dx%d), codec (%d), fps(nr/dr) (%d/%d), bitrate (%d), "
+            "color_format (%d)", m_sVenc_cfg.input_width, m_sVenc_cfg.input_height,
+            m_sVenc_cfg.codectype, m_sVenc_cfg.fps_num, m_sVenc_cfg.fps_den,
+            m_sVenc_cfg.targetbitrate, m_sVenc_cfg.inputformat);
 
-        DEBUG_PRINT_LOW("\n Updating the buffer count/size for the new resolution");
+        DEBUG_PRINT_LOW("Updating the buffer count/size for the new resolution");
         ioctl_msg.in = NULL;
         ioctl_msg.out = (void*)&m_sInput_buff_property;
         if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
             DEBUG_PRINT_ERROR("\nERROR: Request for getting i/p bufreq failed");
             return false;
         }
-        DEBUG_PRINT_LOW("\n Got updated m_sInput_buff_property values: "
+        DEBUG_PRINT_HIGH("Got updated m_sInput_buff_property values: "
                         "datasize = %u, maxcount = %u, actualcnt = %u, "
                         "mincount = %u", m_sInput_buff_property.datasize,
                         m_sInput_buff_property.maxcount, m_sInput_buff_property.actualcount,
@@ -603,7 +636,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
             return false;
         }
 
-        DEBUG_PRINT_LOW("\n Got updated m_sOutput_buff_property values: "
+        DEBUG_PRINT_HIGH("Got updated m_sOutput_buff_property values: "
                         "datasize = %u, maxcount = %u, actualcnt = %u, "
                         "mincount = %u", m_sOutput_buff_property.datasize,
                         m_sOutput_buff_property.maxcount, m_sOutput_buff_property.actualcount,
@@ -633,7 +666,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
         }
         m_level_set = false;
         if(venc_set_profile_level(0, 0)) {
-          DEBUG_PRINT_HIGH("\n %s(): Profile/Level setting success", __func__);
+          DEBUG_PRINT_LOW("%s(): Profile/Level setting success", __func__);
         }
       }
       else if(portDefn->nPortIndex == PORT_INDEX_OUT)
@@ -957,6 +990,28 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
       }
       break;
     }
+
+  case OMX_QcomIndexParamVideoQPRange:
+    {
+      DEBUG_PRINT_LOW("venc_set_param:OMX_QcomIndexParamVideoQPRange\n");
+      OMX_QCOM_VIDEO_PARAM_QPRANGETYPE *qp_range =
+        (OMX_QCOM_VIDEO_PARAM_QPRANGETYPE *)paramData;
+      if(qp_range->nPortIndex == (OMX_U32) PORT_INDEX_OUT)
+      {
+        if(venc_set_qp_range (qp_range->minQP,
+                                qp_range->maxQP) == false)
+        {
+          DEBUG_PRINT_ERROR("\nERROR: Setting QP Range failed");
+          return false;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_QcomIndexParamVideoQPRange");
+      }
+      break;
+    }
+
   case OMX_ExtraDataVideoEncoderSliceInfo:
     {
       DEBUG_PRINT_LOW("venc_set_param: OMX_ExtraDataVideoEncoderSliceInfo");
@@ -964,7 +1019,19 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
       if(venc_set_extradata(extra_data) == false)
       {
          DEBUG_PRINT_ERROR("ERROR: Setting "
-            "OMX_QcomIndexParamIndexExtraDataType failed");
+            "OMX_ExtraDataVideoEncoderSliceInfo failed");
+         return false;
+      }
+      break;
+    }
+  case OMX_ExtraDataVideoLTRInfo:
+    {
+      DEBUG_PRINT_LOW("venc_set_param: OMX_ExtraDataVideoLTRInfo");
+      OMX_U32 extra_data = *(OMX_U32 *)paramData;
+      if(venc_set_extradata(extra_data) == false)
+      {
+         DEBUG_PRINT_ERROR("ERROR: Setting "
+            "OMX_ExtraDataVideoLTRInfo failed");
          return false;
       }
       break;
@@ -989,36 +1056,71 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
        }
        break;
     }
-  case OMX_QcomIndexParamSequenceHeaderWithIDR:
+  case OMX_QcomIndexEnableH263PlusPType:
     {
-       PrependSPSPPSToIDRFramesParams * pParam =
-          (PrependSPSPPSToIDRFramesParams *)paramData;
-
-       if(venc_set_inband_video_header(pParam->bEnable) == false)
+       QOMX_EXTNINDEX_PARAMTYPE* pParam =
+          (QOMX_EXTNINDEX_PARAMTYPE*)paramData;
+       DEBUG_PRINT_LOW("OMX_QcomIndexEnableH263PlusPType");
+       if(pParam->nPortIndex == PORT_INDEX_OUT)
        {
-         DEBUG_PRINT_ERROR("Setting inband sps/pps failed");
-         return false;
+         if(venc_set_plusptype(pParam->bEnable) == false)
+         {
+           DEBUG_PRINT_ERROR("Setting PlusPType failed for H263");
+           return OMX_ErrorUnsupportedSetting;
+         }
+       }
+       else
+       {
+         DEBUG_PRINT_ERROR("OMX_QcomIndexEnableH263PlusPType "
+            "called on wrong port(%d)", pParam->nPortIndex);
+         return OMX_ErrorBadPortIndex;
        }
        break;
     }
-  case OMX_QcomIndexParamEnableVUIStreamRestrictFlag:
+  case QOMX_IndexParamVideoLTRMode:
     {
-       QOMX_VUI_BITSTREAM_RESTRICT *pParam =
-          (QOMX_VUI_BITSTREAM_RESTRICT *)paramData;
-
-       if(venc_set_bitstream_restrict_in_vui(pParam->bEnable) == false)
-       {
-         DEBUG_PRINT_ERROR("Setting bitstream_restrict flag in VUI failed");
-         return false;
-       }
-       break;
+      QOMX_VIDEO_PARAM_LTRMODE_TYPE* pParam =
+          (QOMX_VIDEO_PARAM_LTRMODE_TYPE*)paramData;
+      if(pParam->nPortIndex == PORT_INDEX_OUT)
+      {
+        if(!venc_set_ltrmode(pParam->eLTRMode))
+        {
+            DEBUG_PRINT_ERROR("Setting ltr mode failed");
+            return OMX_ErrorUnsupportedSetting;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("QOMX_IndexParamVideoLTRMode "
+            "called on wrong port(%d)", pParam->nPortIndex);
+            return OMX_ErrorBadPortIndex;
+      }
+      break;
+    }
+  case QOMX_IndexParamVideoLTRCount:
+    {
+      QOMX_VIDEO_PARAM_LTRCOUNT_TYPE* pParam =
+          (QOMX_VIDEO_PARAM_LTRCOUNT_TYPE*)paramData;
+      if(pParam->nPortIndex == PORT_INDEX_OUT)
+      {
+        if(!venc_set_ltrcount(pParam->nCount))
+        {
+            DEBUG_PRINT_ERROR("Setting ltr count failed");
+            return OMX_ErrorUnsupportedSetting;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("QOMX_IndexParamVideoLTRCount "
+            "called on wrong port(%d)", pParam->nPortIndex);
+            return OMX_ErrorBadPortIndex;
+      }
+      break;
     }
   case OMX_IndexParamVideoSliceFMO:
   default:
-	  DEBUG_PRINT_ERROR("\nERROR: Unsupported parameter in venc_set_param: %u",
-      index);
+    DEBUG_PRINT_ERROR("venc_set_param: Unsupported index 0x%x", index);
     break;
-    //case
   }
 
   return true;
@@ -1128,8 +1230,48 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
       }
       break;
     }
+  case QOMX_IndexConfigVideoLTRPeriod:
+    {
+      QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE* pParam =
+          (QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE*)configData;
+      if(pParam->nPortIndex == PORT_INDEX_OUT)
+      {
+        if(!venc_set_ltrperiod(pParam->nFrames))
+        {
+            DEBUG_PRINT_ERROR("Setting ltr period failed");
+            return OMX_ErrorUnsupportedSetting;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("QOMX_IndexConfigVideoLTRPeriod "
+            "called on wrong port(%d)", pParam->nPortIndex);
+            return OMX_ErrorBadPortIndex;
+      }
+      break;
+    }
+  case QOMX_IndexConfigVideoLTRUse:
+    {
+      QOMX_VIDEO_CONFIG_LTRUSE_TYPE* pParam =
+          (QOMX_VIDEO_CONFIG_LTRUSE_TYPE*)configData;
+      if(pParam->nPortIndex == PORT_INDEX_OUT)
+      {
+        if(!venc_set_ltruse(pParam->nID, pParam->nFrames))
+        {
+            DEBUG_PRINT_ERROR("Setting ltr use failed");
+            return OMX_ErrorUnsupportedSetting;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("QOMX_IndexConfigVideoLTRUse "
+            "called on wrong port(%d)", pParam->nPortIndex);
+            return OMX_ErrorBadPortIndex;
+      }
+      break;
+    }
   default:
-    DEBUG_PRINT_ERROR("\n Unsupported config index = %u", index);
+    DEBUG_PRINT_ERROR("venc_set_config: Unsupported index = 0x%x", index);
     break;
   }
 
@@ -1159,7 +1301,7 @@ unsigned venc_dev::venc_start_done(void)
   return 0;
 }
 
-unsigned venc_dev::venc_stop_done(void)
+unsigned venc_dev::venc_set_message_thread_id(pthread_t)
 {
   return 0;
 }
@@ -1195,6 +1337,13 @@ unsigned venc_dev::venc_start(void)
     recon_buffers_count = MAX_RECON_BUFFERS - 2;
   else
     recon_buffers_count = MAX_RECON_BUFFERS;
+
+  if (ltrmode.ltr_mode == (unsigned long)QOMX_VIDEO_LTRMode_Auto)
+  {
+    recon_buffers_count = MAX_RECON_BUFFERS;
+    DEBUG_PRINT_HIGH("ltr mode enabled, so set recon buffers "
+       "count to %d", recon_buffers_count);
+  }
 
   if (!venc_allocate_recon_buffers())
     return ioctl(m_nDriver_fd, VEN_IOCTL_CMD_START, NULL);
@@ -1256,18 +1405,21 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
   int rc = 0;
 
 #ifdef USE_ION
-  recon_buff[count].ion_device_fd = open (MEM_DEVICE,O_RDONLY | O_DSYNC);
+  recon_buff[count].ion_device_fd = open (MEM_DEVICE,O_RDONLY);
   if(recon_buff[count].ion_device_fd < 0)
   {
       DEBUG_PRINT_ERROR("\nERROR: ION Device open() Failed");
       return -1;
   }
 
-  recon_buff[count].alloc_data.flags = 0;
   recon_buff[count].alloc_data.len = size;
+#ifdef MAX_RES_720P
+  recon_buff[count].alloc_data.heap_mask = ION_HEAP(MEM_HEAP_ID);
+#else
   recon_buff[count].alloc_data.heap_mask = (ION_HEAP(MEM_HEAP_ID) |
-                  (venc_encoder->is_secure_session() ? ION_SECURE
-                   : ION_HEAP(ION_IOMMU_HEAP_ID)));
+                                        ION_HEAP(ION_IOMMU_HEAP_ID));
+#endif
+  recon_buff[count].alloc_data.flags = ION_FLAG_CACHED;
   recon_buff[count].alloc_data.align = clip2(alignment);
   if (recon_buff[count].alloc_data.align != 8192)
     recon_buff[count].alloc_data.align = 8192;
@@ -1311,28 +1463,26 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
     return -1;
   }
 #endif
-  if(!venc_encoder->is_secure_session()) {
-    buf_addr = mmap(NULL, size,
-                 PROT_READ | PROT_WRITE,
-                 MAP_SHARED, pmem_fd, 0);
+  buf_addr = mmap(NULL, size,
+               PROT_READ | PROT_WRITE,
+               MAP_SHARED, pmem_fd, 0);
 
-    if (buf_addr == (void*) MAP_FAILED)
-    {
-      close(pmem_fd);
-      pmem_fd = -1;
-      DEBUG_PRINT_ERROR("Error returned in allocating recon buffers buf_addr: %p\n",buf_addr);
-  #ifdef USE_ION
-      if(ioctl(recon_buff[count].ion_device_fd,ION_IOC_FREE,
-         &recon_buff[count].alloc_data.handle)) {
-        DEBUG_PRINT_ERROR("ion recon buffer free failed");
-      }
-      recon_buff[count].alloc_data.handle = NULL;
-      recon_buff[count].ion_alloc_fd.fd =-1;
-      close(recon_buff[count].ion_device_fd);
-      recon_buff[count].ion_device_fd =-1;
-  #endif
-      return -1;
+  if (buf_addr == (void*) MAP_FAILED)
+  {
+    close(pmem_fd);
+    pmem_fd = -1;
+    DEBUG_PRINT_ERROR("Error returned in allocating recon buffers buf_addr: %p\n",buf_addr);
+#ifdef USE_ION
+    if(ioctl(recon_buff[count].ion_device_fd,ION_IOC_FREE,
+       &recon_buff[count].alloc_data.handle)) {
+      DEBUG_PRINT_LOW("ion recon buffer free failed");
     }
+    recon_buff[count].alloc_data.handle = NULL;
+    recon_buff[count].ion_alloc_fd.fd =-1;
+    close(recon_buff[count].ion_device_fd);
+    recon_buff[count].ion_device_fd =-1;
+#endif
+    return -1;
   }
 
   DEBUG_PRINT_HIGH("\n Allocated virt:%p, FD: %d of size %d \n", buf_addr, pmem_fd, size);
@@ -1340,10 +1490,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
   recon_addr.buffer_size = size;
   recon_addr.pmem_fd = pmem_fd;
   recon_addr.offset = 0;
-  if(!venc_encoder->is_secure_session())
-    recon_addr.pbuffer = (unsigned char *)buf_addr;
-  else
-    recon_addr.pbuffer = (unsigned char *)(pmem_fd + 1);
+  recon_addr.pbuffer = (unsigned char *)buf_addr;
 
   ioctl_msg.in = (void*)&recon_addr;
   ioctl_msg.out = NULL;
@@ -1381,13 +1528,12 @@ OMX_U32 venc_dev::pmem_free()
       ioctl_msg.out = NULL;
       if(ioctl(m_nDriver_fd, VEN_IOCTL_FREE_RECON_BUFFER ,&ioctl_msg) < 0)
         DEBUG_PRINT_ERROR("VEN_IOCTL_FREE_RECON_BUFFER failed");
-      if(!venc_encoder->is_secure_session())
-        munmap(recon_buff[cnt].virtual_address, recon_buff[cnt].size);
+      munmap(recon_buff[cnt].virtual_address, recon_buff[cnt].size);
       close(recon_buff[cnt].pmem_fd);
 #ifdef USE_ION
       if(ioctl(recon_buff[cnt].ion_device_fd,ION_IOC_FREE,
          &recon_buff[cnt].alloc_data.handle)) {
-        DEBUG_PRINT_ERROR("ion recon buffer free failed");
+        DEBUG_PRINT_LOW("ion recon buffer free failed");
       }
       recon_buff[cnt].alloc_data.handle = NULL;
       recon_buff[cnt].ion_alloc_fd.fd =-1;
@@ -1421,6 +1567,9 @@ void venc_dev::venc_config_print()
 
   DEBUG_PRINT_HIGH("\nENC_CONFIG: qpI: %d, qpP: %d, qpb: 0",
                    session_qp.iframeqp, session_qp.pframqp);
+
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: minQP: %d, maxQP: %d",
+                   qp_range.minqp, qp_range.maxqp);
 
   DEBUG_PRINT_HIGH("\nENC_CONFIG: VOP_Resolution: %d, Slice-Mode: %d, Slize_Size: %d",
                    voptimecfg.voptime_resolution, multislice.mslice_mode,
@@ -1778,25 +1927,85 @@ bool venc_dev::venc_set_slice_delivery_mode(OMX_BOOL enable)
   return true;
 }
 
-bool venc_dev::venc_set_inband_video_header(OMX_BOOL enable)
+bool venc_dev::venc_set_plusptype(OMX_BOOL enable)
 {
-  venc_ioctl_msg ioctl_msg = {(void *)&enable, NULL};
-  DEBUG_PRINT_HIGH("Set inband sps/pps: %d", enable);
-  if(ioctl(m_nDriver_fd, VEN_IOCTL_SET_SPS_PPS_FOR_IDR, (void *)&ioctl_msg) < 0)
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  struct venc_plusptype plusptype = {0};
+  DEBUG_PRINT_LOW("Set plusptype: %d", enable);
+  plusptype.plusptype_enable = enable;
+  ioctl_msg.in = (void*)&plusptype;
+  ioctl_msg.out = NULL;
+  if(ioctl(m_nDriver_fd, VEN_IOCTL_SET_H263_PLUSPTYPE,(void*)&ioctl_msg) < 0)
   {
-    DEBUG_PRINT_ERROR("Request for inband sps/pps failed");
+    DEBUG_PRINT_ERROR("Request for setting plusptype for h263 failed");
     return false;
   }
   return true;
 }
 
-bool venc_dev::venc_set_bitstream_restrict_in_vui(OMX_BOOL enable)
+bool venc_dev::venc_set_ltrmode(QOMX_VIDEO_LTRMODETYPE mode)
 {
-  venc_ioctl_msg ioctl_msg = {NULL, NULL};
-  DEBUG_PRINT_HIGH("Set bistream_restrict in vui: %d", enable);
-  if(ioctl(m_nDriver_fd, VEN_IOCTL_SET_VUI_BITSTREAM_RESTRICT_FLAG, (void *)&ioctl_msg) < 0)
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_ltrmode ltr_mode;
+  ltr_mode.ltr_mode = (unsigned long)mode;
+  DEBUG_PRINT_HIGH("Set ltr mode: %d", mode);
+  ioctl_msg.in = (void*)&ltr_mode;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_LTRMODE, (void*)&ioctl_msg) < 0)
   {
-    DEBUG_PRINT_ERROR("Request for setting bitstream_restrict flag in VUI failed");
+    DEBUG_PRINT_ERROR("ERROR: Setting ltrmode failed");
+    return false;
+  }
+  ltrmode.ltr_mode = (unsigned long)mode;
+  return true;
+}
+
+bool venc_dev::venc_set_ltrcount(OMX_U32 count)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_ltrcount ltr_count;
+  ltr_count.ltr_count = (unsigned long)count;
+  DEBUG_PRINT_HIGH("Set ltr count: %d", count);
+  ioctl_msg.in = (void*)&ltr_count;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_LTRCOUNT, (void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("ERROR: Setting ltrcount failed");
+    return false;
+  }
+  ltrcount.ltr_count = (unsigned long)count;
+  return true;
+}
+
+bool venc_dev::venc_set_ltrperiod(OMX_U32 period)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_ltrperiod ltr_period;
+  ltr_period.ltr_period = (unsigned long)period;
+  DEBUG_PRINT_HIGH("Set ltr period: %d", period);
+  ioctl_msg.in = (void*)&ltr_period;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_LTRPERIOD, (void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("ERROR: Setting ltrperiod failed");
+    return false;
+  }
+  ltrperiod.ltr_period = (unsigned long)period;
+  return true;
+}
+
+bool venc_dev::venc_set_ltruse(OMX_U32 id, OMX_U32 frames)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_ltruse ltr_use;
+  ltr_use.ltr_id = (unsigned long)id;
+  ltr_use.ltr_frames = (unsigned long)frames;
+  DEBUG_PRINT_HIGH("Set ltr use: id = %d, ltr_frames = %d", id, frames);
+  ioctl_msg.in = (void*)&ltr_use;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_LTRUSE, (void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("ERROR: Setting ltruse failed");
     return false;
   }
   return true;
@@ -1821,7 +2030,7 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp)
 {
   venc_ioctl_msg ioctl_msg = {NULL,NULL};
   struct venc_sessionqp qp = {0, 0};
-  DEBUG_PRINT_LOW("venc_set_session_qp:: i_frame_qp = %d, p_frame_qp = %d", i_frame_qp,
+  DEBUG_PRINT_HIGH("venc_set_session_qp:: i_frame_qp = %d, p_frame_qp = %d", i_frame_qp,
     p_frame_qp);
 
   qp.iframeqp = i_frame_qp;
@@ -1841,6 +2050,30 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp)
   return true;
 }
 
+bool venc_dev::venc_set_qp_range(OMX_U32 min_qp, OMX_U32 max_qp)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  struct venc_qprange qp = {0, 0};
+  DEBUG_PRINT_LOW("venc_set_qp_range:: min_qp = %d, max_qp = %d", min_qp,
+    max_qp);
+
+  qp.minqp = min_qp;
+  qp.maxqp = max_qp;
+
+  ioctl_msg.in = (void*)&qp;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_QP_RANGE,(void*)&ioctl_msg)< 0)
+  {
+    DEBUG_PRINT_ERROR("\nERROR: Request for setting qp range failed");
+    return false;
+  }
+
+  qp_range.minqp= min_qp;
+  qp_range.maxqp= max_qp;
+
+  return true;
+}
+
 bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
 {
   venc_ioctl_msg ioctl_msg = {NULL,NULL};
@@ -1848,13 +2081,13 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
   struct ven_profilelevel requested_level;
   unsigned const int *profile_tbl = NULL;
   unsigned long mb_per_frame = 0, mb_per_sec = 0;
-  DEBUG_PRINT_LOW("venc_set_profile_level:: eProfile = %d, Level = %d",
+  DEBUG_PRINT_HIGH("venc_set_profile_level:: eProfile = %d, Level = %d",
     eProfile, eLevel);
   mb_per_frame = ((m_sVenc_cfg.input_height + 15) >> 4)*
                   ((m_sVenc_cfg.input_width + 15) >> 4);
   if((eProfile == 0) && (eLevel == 0) && m_profile_set && m_level_set)
   {
-    DEBUG_PRINT_LOW("\n Profile/Level setting complete before venc_start");
+    DEBUG_PRINT_HIGH("Set profile/level was done already");
     return true;
   }
 
@@ -1863,10 +2096,11 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
     /* non-zero values will be set by user, saving the same*/
     m_eProfile = eProfile;
     m_eLevel = eLevel;
-    DEBUG_PRINT_HIGH("Profile/Level set equal to %d/%d",m_eProfile, m_eLevel);
+    DEBUG_PRINT_HIGH("Save profile/level (%d/%d) for max allowed bitrate check",
+      m_eProfile, m_eLevel);
   }
 
-  DEBUG_PRINT_LOW("\n Validating Profile/Level from table");
+  DEBUG_PRINT_LOW("Validating Profile/Level from table");
   if(!venc_validate_profile_level(&eProfile, &eLevel))
   {
     DEBUG_PRINT_LOW("\nERROR: Profile/Level validation failed");
@@ -2072,6 +2306,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
     }
     codec_profile.profile = requested_profile.profile;
     m_profile_set = true;
+    DEBUG_PRINT_HIGH("Set codec profile = 0x%x", codec_profile.profile);
   }
 
   if(!m_level_set)
@@ -2085,6 +2320,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
     }
     profile_level.level = requested_level.level;
     m_level_set = true;
+    DEBUG_PRINT_HIGH("Set codec level = 0x%x", profile_level.level);
   }
 
   return true;
@@ -2095,7 +2331,7 @@ bool venc_dev::venc_set_voptiming_cfg( OMX_U32 TimeIncRes)
   venc_ioctl_msg ioctl_msg = {NULL,NULL};
   struct venc_voptimingcfg vop_timing_cfg;
 
-  DEBUG_PRINT_LOW("\n venc_set_voptiming_cfg: TimeRes = %u",
+  DEBUG_PRINT_HIGH("venc_set_voptiming_cfg: TimeRes = %u",
     TimeIncRes);
 
   vop_timing_cfg.voptime_resolution = TimeIncRes;
@@ -2117,7 +2353,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
   venc_ioctl_msg ioctl_msg = {NULL,NULL};
   struct venc_intraperiod intraperiod_cfg;
 
-  DEBUG_PRINT_LOW("\n venc_set_intra_period: nPFrames = %u",
+  DEBUG_PRINT_LOW("venc_set_intra_period: nPFrames = %u",
     nPFrames);
   intraperiod_cfg.num_pframes = nPFrames;
   if((codec_profile.profile == VEN_PROFILE_MPEG4_ASP) ||
@@ -2148,7 +2384,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
   else
     intraperiod_cfg.num_bframes = 0;
 
-  DEBUG_PRINT_ERROR("\n venc_set_intra_period: nPFrames = %u nBFrames = %u",
+  DEBUG_PRINT_HIGH("venc_set_intra_period: nPFrames = %u nBFrames = %u",
                     intraperiod_cfg.num_pframes, intraperiod_cfg.num_bframes);
   ioctl_msg.in = (void*)&intraperiod_cfg;
   ioctl_msg.out = NULL;
@@ -2387,7 +2623,7 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
   venc_ioctl_msg ioctl_msg = {NULL, NULL};
   struct venc_targetbitrate bitrate_cfg;
 
-  DEBUG_PRINT_LOW("\n venc_set_target_bitrate: bitrate = %u",
+  DEBUG_PRINT_HIGH("venc_set_target_bitrate: bitrate = %u",
     nTargetBitrate);
   bitrate_cfg.target_bitrate = nTargetBitrate ;
   ioctl_msg.in = (void*)&bitrate_cfg;
@@ -2417,7 +2653,7 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
 
   Q16ToFraction(encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
 
-  DEBUG_PRINT_LOW("\n venc_set_encode_framerate: framerate(Q16) = %u,NR: %d, DR: %d",
+  DEBUG_PRINT_HIGH("venc_set_encode_framerate: framerate(Q16) = %u, NR: %d, DR: %d",
                   encode_framerate,frame_rate_cfg.fps_numerator,frame_rate_cfg.fps_denominator);
 
   ioctl_msg.in = (void*)&frame_rate_cfg;
@@ -2436,7 +2672,7 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
     m_level_set = false;
     if(venc_set_profile_level(0, 0))
     {
-      DEBUG_PRINT_LOW("Calling set level (Framerate) with %d\n",profile_level.level);
+      DEBUG_PRINT_LOW("Calling set level (Framerate) with %d",profile_level.level);
     }
   }
   return true;
@@ -2445,8 +2681,6 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
 bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
 {
   venc_ioctl_msg ioctl_msg = {NULL, NULL};
-  DEBUG_PRINT_LOW("\n venc_set_color_format: color_format = %u ", color_format);
-
   if(color_format == OMX_COLOR_FormatYUV420SemiPlanar)
   {
 #ifdef MAX_RES_1080P

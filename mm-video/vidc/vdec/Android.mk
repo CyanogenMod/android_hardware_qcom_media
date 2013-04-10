@@ -9,8 +9,10 @@ LOCAL_PATH:= $(ROOT_DIR)
 # 				Common definitons
 # ---------------------------------------------------------------------------------
 
+libOmxVdec-def := -D__alignx\(x\)=__attribute__\(\(__aligned__\(x\)\)\)
 libOmxVdec-def += -D__align=__alignx
 libOmxVdec-def += -Dinline=__inline
+libOmxVdec-def += -g -O3
 libOmxVdec-def += -DIMAGE_APPS_PROC
 libOmxVdec-def += -D_ANDROID_
 libOmxVdec-def += -DCDECL
@@ -30,19 +32,38 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -D_MSM8960_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libOmxVdec-def += -D_COPPER_
+libOmxVdec-def += -D_MSM8974_
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
+libOmxVdec-def += -DMAX_RES_720P
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),msm7630_surf)
+libOmxVdec-def += -DMAX_RES_720P
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
+libOmxVdec-def += -DMAX_RES_1080P
+libOmxVdec-def += -DMAX_RES_1080P_EBI
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -D_MSM8974_
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
+libOmxVdec-def += -DMAX_RES_1080P
+libOmxVdec-def += -DMAX_RES_1080P_EBI
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -D_MSM8974_
 endif
 
 libOmxVdec-def += -D_ANDROID_ICS_
 
-#ifeq ($(TARGET_USES_ION),true)
+ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
-#endif
+endif
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
@@ -61,10 +82,10 @@ libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
 libmm-vdec-inc          += hardware/qcom/display/libgralloc
 libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
-libmm-vdec-inc          += hardware/qcom/media/libc2dcolorconvert
-libmm-vdec-inc          += hardware/qcom/display/libcopybit
-libmm-vdec-inc          += frameworks/av/include/media/stagefright
-libmm-vdec-inc          += hardware/qcom/display/libqservice
+libmm-vdec-inc          += hardware/qcom/display/libqdutils
+libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
+libmm-vdec-inc      += hardware/qcom/display/libcopybit
+libmm-vdec-inc      += frameworks/av/include/media/stagefright
 
 
 LOCAL_MODULE                    := libOmxVdec
@@ -76,13 +97,21 @@ LOCAL_PRELINK_MODULE    := false
 LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
 
 LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
-LOCAL_SHARED_LIBRARIES += libqservice
+LOCAL_SHARED_LIBRARIES  += libqdMetaData
 
 LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
+ifneq ($(filter msm8974 msm8610 msm8226,$(TARGET_BOARD_PLATFORM)),)
+LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
+else
+LOCAL_SHARED_LIBRARIES  += libhardware
+libmm-vdec-inc          += hardware/qcom/display/libhwcomposer
+LOCAL_SRC_FILES         += src/power_module.cpp
 LOCAL_SRC_FILES         += src/omx_vdec.cpp
+endif
+
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
 
@@ -102,7 +131,7 @@ LOCAL_CFLAGS                    := $(libOmxVdec-def)
 LOCAL_C_INCLUDES                := $(mm-vdec-test-inc)
 
 LOCAL_PRELINK_MODULE      := false
-LOCAL_SHARED_LIBRARIES    := libutils liblog libOmxCore libOmxVdec libbinder
+LOCAL_SHARED_LIBRARIES    := libutils libOmxCore libOmxVdec libbinder libcutils
 
 LOCAL_SRC_FILES           := src/queue.c
 LOCAL_SRC_FILES           += test/omx_vdec_test.cpp

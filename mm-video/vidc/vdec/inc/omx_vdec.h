@@ -1,29 +1,31 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
+  Redistribution and use in source and binary forms, with or without
+  modification, are permitted provided that the following conditions
+  are met:
+
     * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
-      the names of its contributors may be used to endorse or promote
-      products derived from this software without specific prior written
-      permission.
+  notice, this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above
+  copyright notice, this list of conditions and the following
+      disclaimer in the documentation and/or other materials provided
+      with the distribution.
+    * Neither the name of The Linux Foundation nor the names of its
+      contributors may be used to endorse or promote products derived
+      from this software without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-NON-INFRINGEMENT ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
-CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
-EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
-OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
+WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
+ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
+IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #ifndef __OMX_VDEC_H__
 #define __OMX_VDEC_H__
@@ -49,20 +51,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 static ptrdiff_t x;
 
 #ifdef _ANDROID_
-#ifdef USE_ION
-#include <linux/msm_ion.h>
-#else
-#include <linux/android_pmem.h>
-#endif
-#include <binder/MemoryHeapBase.h>
-#include <ui/ANativeObjectBase.h>
-#include <binder/IServiceManager.h>
-extern "C"{
-#include<utils/Log.h>
-}
-#include <linux/videodev2.h>
-#include <poll.h>
-#define TIMEOUT 5000
 #ifdef MAX_RES_720P
 #define LOG_TAG "OMX-VDEC-720P"
 #elif MAX_RES_1080P
@@ -70,21 +58,21 @@ extern "C"{
 #else
 #define LOG_TAG "OMX-VDEC"
 #endif
-#ifdef ENABLE_DEBUG_LOW
-#define DEBUG_PRINT_LOW ALOGE
+
+#ifdef USE_ION
+#include <linux/msm_ion.h>
+//#include <binder/MemoryHeapIon.h>
 #else
-#define DEBUG_PRINT_LOW
+#include <linux/android_pmem.h>
 #endif
-#ifdef ENABLE_DEBUG_HIGH
-#define DEBUG_PRINT_HIGH ALOGE
-#else
-#define DEBUG_PRINT_HIGH
-#endif
-#ifdef ENABLE_DEBUG_ERROR
-#define DEBUG_PRINT_ERROR ALOGE
-#else
-#define DEBUG_PRINT_ERROR
-#endif
+#include <binder/MemoryHeapBase.h>
+#include <ui/ANativeObjectBase.h>
+extern "C"{
+#include <utils/Log.h>
+}
+#include <linux/videodev2.h>
+#include <poll.h>
+#define TIMEOUT 5000
 
 #else //_ANDROID_
 #define DEBUG_PRINT_LOW printf
@@ -92,15 +80,17 @@ extern "C"{
 #define DEBUG_PRINT_ERROR printf
 #endif // _ANDROID_
 
+#ifdef _MSM8974_
+#define DEBUG_PRINT_LOW
+#define DEBUG_PRINT_HIGH printf
+#define DEBUG_PRINT_ERROR printf
+#endif
+
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
 #include <media/hardware/HardwareAPI.h>
 #endif
 
 #include <unistd.h>
-
-#if defined (_ANDROID_ICS_)
-#include <IQService.h>
-#endif
 
 #include <pthread.h>
 #ifndef PC_DEBUG
@@ -110,6 +100,7 @@ extern "C"{
 #include "OMX_QCOMExtns.h"
 #include "qc_omx_component.h"
 #include <linux/msm_vidc_dec.h>
+#include <media/msm_vidc.h>
 #include "frameparser.h"
 #ifdef MAX_RES_1080P
 #include "mp4_utils.h"
@@ -194,6 +185,7 @@ extern "C" {
 #define OMX_INTERLACE_EXTRADATA 0x00020000
 #define OMX_TIMEINFO_EXTRADATA  0x00040000
 #define OMX_PORTDEF_EXTRADATA   0x00080000
+#define OMX_EXTNUSER_EXTRADATA  0x00100000
 #define DRIVER_EXTRADATA_MASK   0x0000FFFF
 
 #define OMX_INTERLACE_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
@@ -225,6 +217,18 @@ struct vdec_ion
 };
 #endif
 
+#ifdef _MSM8974_
+struct extradata_buffer_info {
+	int buffer_size;
+	char* uaddr;
+	int count;
+	int size;
+#ifdef USE_ION
+	struct vdec_ion ion;
+#endif
+};
+#endif
+
 struct video_driver_context
 {
     int video_driver_fd;
@@ -242,6 +246,8 @@ struct video_driver_context
     struct vdec_ion *ip_buf_ion_info;
     struct vdec_ion *op_buf_ion_info;
     struct vdec_ion h264_mv;
+    struct vdec_ion meta_buffer;
+    struct vdec_ion meta_buffer_iommu;
 #endif
     struct vdec_framerate frame_rate;
     unsigned extradata;
@@ -249,6 +255,10 @@ struct video_driver_context
     char kind[128];
     bool idr_only_decoding;
     unsigned disable_dmx;
+#ifdef _MSM8974_
+	struct extradata_buffer_info extradata_info;
+	int num_planes;
+#endif
 };
 
 #ifdef _ANDROID_
@@ -381,6 +391,11 @@ public:
                                 void *               eglImage);
     void complete_pending_buffer_done_cbs();
     struct video_driver_context drv_ctx;
+#ifdef _MSM8974_
+    OMX_ERRORTYPE allocate_extradata();
+	void free_extradata();
+    void update_resolution(int width, int height);
+#endif
     int  m_pipe_in;
     int  m_pipe_out;
     pthread_t msg_thread_id;
@@ -458,7 +473,7 @@ private:
         VC1_AP = 2
     };
 
-#ifdef _COPPER_
+#ifdef _MSM8974_
     enum v4l2_ports
     {
         CAPTURE_PORT,
@@ -525,7 +540,7 @@ private:
     OMX_ERRORTYPE free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
     void free_output_buffer_header();
     void free_input_buffer_header();
-    OMX_ERRORTYPE update_color_format(OMX_COLOR_FORMATTYPE eColorFormat);
+
     OMX_ERRORTYPE allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
                                              OMX_BUFFERHEADERTYPE **bufferHdr,
                                              OMX_U32              port,
@@ -588,14 +603,28 @@ private:
     OMX_ERRORTYPE set_buffer_req(vdec_allocatorproperty *buffer_prop);
     OMX_ERRORTYPE start_port_reconfig();
     OMX_ERRORTYPE update_picture_resolution();
-	void stream_off();
+    int stream_off(OMX_U32 port);
     void adjust_timestamp(OMX_S64 &act_timestamp);
     void set_frame_rate(OMX_S64 act_timestamp);
+    void handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr);
     void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
-    OMX_ERRORTYPE enable_extradata(OMX_U32 requested_extradata, bool enable = true);
     void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
+#ifdef _MSM8974_
     void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
                                     OMX_U32 interlaced_format_type);
+    OMX_ERRORTYPE enable_extradata(OMX_U32 requested_extradata, bool is_internal,
+		 bool enable = true);
+    void append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+                               OMX_U32 num_conceal_mb,
+                               OMX_U32 picture_type,
+                               OMX_U32 frame_rate,
+                               struct msm_vidc_panscan_window_payload *panscan_payload,
+                               struct vdec_aspectratioinfo *aspect_ratio_info);
+#else
+    void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+                                    OMX_U32 interlaced_format_type, OMX_U32 buf_index);
+    OMX_ERRORTYPE enable_extradata(OMX_U32 requested_extradata, bool enable = true);
+#endif
     void append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
                                OMX_U32 num_conceal_mb,
                                OMX_U32 picture_type,
@@ -607,6 +636,8 @@ private:
     void append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra);
     OMX_ERRORTYPE update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn);
     void append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra);
+    void append_extn_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_extn);
+    void append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_user);
     void insert_demux_addr_offset(OMX_U32 address_offset);
     void extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr);
     OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
@@ -645,6 +676,8 @@ private:
 #ifdef MAX_RES_1080P
     OMX_ERRORTYPE vdec_alloc_h264_mv();
     void vdec_dealloc_h264_mv();
+    OMX_ERRORTYPE vdec_alloc_meta_buffers();
+    void vdec_dealloc_meta_buffers();
 #endif
 
     inline void omx_report_error ()
@@ -668,6 +701,7 @@ private:
     //*******************MEMBER VARIABLES *************************
     //*************************************************************
     pthread_mutex_t       m_lock;
+    pthread_mutex_t       c_lock;
     //sem to handle the minimum procesing of commands
     sem_t                 m_cmd_lock;
     bool              m_error_propogated;
@@ -768,6 +802,8 @@ private:
     OMX_U32 h264_last_au_flags;
     OMX_U32 m_demux_offsets[8192];
     OMX_U32 m_demux_entries;
+    OMX_U32 m_disp_hor_size;
+    OMX_U32 m_disp_vert_size;
 
     OMX_S64 prev_ts;
     bool rst_prev_ts;
@@ -801,6 +837,16 @@ private:
         int offset;
     };
     h264_mv_buffer h264_mv_buff;
+
+    struct meta_buffer{
+        unsigned char* buffer;
+        int size;
+        int count;
+        int pmem_fd;
+        int pmem_fd_iommu;
+        int offset;
+    };
+    meta_buffer meta_buff;
 	extra_data_handler extra_data_handle;
 #ifdef _ANDROID_
     DivXDrmDecrypt* iDivXDrmDecrypt;
@@ -809,13 +855,22 @@ private:
     omx_time_stamp_reorder time_stamp_dts;
     desc_buffer_hdr *m_desc_buffer_ptr;
     bool secure_mode;
+    bool external_meta_buffer;
+    bool external_meta_buffer_iommu;
     OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
     bool codec_config_flag;
-#ifdef _COPPER_
+#ifdef _MSM8974_
     int capture_capability;
     int output_capability;
     bool streaming[MAX_PORT];
+    OMX_CONFIG_RECTTYPE rectangle;
 #endif
+    bool m_power_hinted;
+    OMX_ERRORTYPE power_module_register();
+    OMX_ERRORTYPE power_module_deregister();
+    bool msg_thread_created;
+    bool async_thread_created;
+
     unsigned int m_fill_output_msg;
     class allocate_color_convert_buf {
     public:
@@ -852,7 +907,9 @@ private:
         OMX_QCOM_PLATFORM_PRIVATE_ENTRY     m_platform_entry_client[MAX_COUNT];
         OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO m_pmem_info_client[MAX_COUNT];
         OMX_BUFFERHEADERTYPE  m_out_mem_ptr_client[MAX_COUNT];
+#ifdef USE_ION
         struct vdec_ion op_buf_ion_info[MAX_COUNT];
+#endif
         unsigned char *pmem_baseaddress[MAX_COUNT];
         int pmem_fd[MAX_COUNT];
         struct vidc_heap
@@ -861,13 +918,12 @@ private:
         };
         struct vidc_heap m_heap_ptr[MAX_COUNT];
     };
+#if  defined (_MSM8960_) || defined (_MSM8974_)
     allocate_color_convert_buf client_buffers;
-    static bool m_secure_display; //For qservice
-    int secureDisplay(int mode);
-    int unsecureDisplay(int mode);
+#endif
 };
 
-#ifdef _COPPER_
+#ifdef _MSM8974_
 enum instance_state {
 	MSM_VIDC_CORE_UNINIT_DONE = 0x0001,
 	MSM_VIDC_CORE_INIT,
@@ -892,6 +948,6 @@ enum vidc_resposes_id {
 	MSM_VIDC_DECODER_EVENT_CHANGE,
 };
 
-#endif // _COPPER_
+#endif // _MSM8974_
 
 #endif // __OMX_VDEC_H__
