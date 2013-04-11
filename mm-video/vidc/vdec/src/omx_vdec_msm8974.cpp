@@ -1588,6 +1588,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		eCompressionFormat = OMX_VIDEO_CodingVPX;
 		codec_type_parse = CODEC_TYPE_VP8;
 		arbitrary_bytes = false;
+#ifdef INPUT_BUFFER_LOG
+                strcat(inputfilename, "ivf");
+#endif
+
 	}
 	else
 	{
@@ -1596,6 +1600,34 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	}
 #ifdef INPUT_BUFFER_LOG
 	inputBufferFile1 = fopen (inputfilename, "ab");
+	if (output_capability == V4L2_PIX_FMT_VP8) {
+		struct ivf_file_header
+		{
+			OMX_U8 signature[4]; //='DKIF';
+			OMX_U8 version         ; //= 0;
+			OMX_U8 headersize      ; //= 32;
+			OMX_U32 FourCC;
+			OMX_U8 width;
+			OMX_U8 height;
+			OMX_U32 rate;
+			OMX_U32 scale;
+			OMX_U32 length;
+			OMX_U8 unused[4];
+		} file_header;
+		 memset((void *)&file_header,0,sizeof(file_header));
+		file_header.signature[0] = 'D';
+		file_header.signature[1] = 'K';
+		file_header.signature[2] = 'I';
+		file_header.signature[3] = 'F';
+		file_header.version = 0;
+		file_header.headersize = 32;
+		file_header.FourCC = 0x30385056;
+		if (inputBufferFile1)
+		{
+			fwrite((const char *)&file_header,
+					sizeof(file_header),1,inputBufferFile1);
+		}
+	}
 #endif
 	if (eRet == OMX_ErrorNone)
 	{
@@ -5776,10 +5808,29 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 #endif
 
 #ifdef INPUT_BUFFER_LOG
-  if (inputBufferFile1)
-  {
-    fwrite((const char *)temp_buffer->bufferaddr,
-      temp_buffer->buffer_len,1,inputBufferFile1);
+  if (output_capability == V4L2_PIX_FMT_VP8) {
+    struct vp8_ivf_frame_header{
+       OMX_U32 framesize;
+       OMX_U32 timestamp_lo;
+       OMX_U32 timestamp_hi;
+    } vp8_frame_header;
+    vp8_frame_header.framesize = temp_buffer->buffer_len;
+    /* Currently FW doesn't use timestamp values */
+    vp8_frame_header.timestamp_lo = 0;
+    vp8_frame_header.timestamp_hi = 0;
+    if (inputBufferFile1)
+    {
+      fwrite((const char *)&vp8_frame_header,
+        sizeof(vp8_frame_header),1,inputBufferFile1);
+      fwrite((const char *)temp_buffer->bufferaddr,
+        temp_buffer->buffer_len,1,inputBufferFile1);
+      }
+  } else {
+    if (inputBufferFile1)
+    {
+      fwrite((const char *)temp_buffer->bufferaddr,
+        temp_buffer->buffer_len,1,inputBufferFile1);
+    }
   }
 #endif
 
