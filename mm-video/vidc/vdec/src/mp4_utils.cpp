@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of The Linux Foundation nor
+    * Neither the name of Code Aurora nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -26,7 +26,7 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #include "mp4_utils.h"
-//#include "omx_vdec.h"
+#include "omx_vdec.h"
 # include <stdio.h>
 #ifdef _ANDROID_
     extern "C"{
@@ -299,4 +299,46 @@ bool MP4_Utils::is_notcodec_vop(unsigned char *pbuffer, unsigned int len)
       }
    }
    return false;
+}
+
+void mp4_fill_aspect_ratio_info(struct vdec_aspectratioinfo *aspect_ratio_info,
+                           OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info)
+{
+   switch(aspect_ratio_info->aspect_ratio) {
+        case 1 :
+             frame_info->aspectRatio.aspectRatioX  = 1;
+             frame_info->aspectRatio.aspectRatioY  = 1;
+             break;
+
+        case 2 :
+             frame_info->aspectRatio.aspectRatioX  = 12;
+             frame_info->aspectRatio.aspectRatioY  = 11;
+             break;
+
+        case 3 :
+             frame_info->aspectRatio.aspectRatioX  = 10;
+             frame_info->aspectRatio.aspectRatioY  = 11;
+             break;
+
+        case 4 :
+             frame_info->aspectRatio.aspectRatioX  = 16;
+             frame_info->aspectRatio.aspectRatioY  = 11;
+             break;
+
+        case 5 :
+            frame_info->aspectRatio.aspectRatioX  = 40;
+            frame_info->aspectRatio.aspectRatioY  = 33;
+            break;
+
+        case 15:
+           frame_info->aspectRatio.aspectRatioX =
+              aspect_ratio_info->par_width;
+           frame_info->aspectRatio.aspectRatioY =
+              aspect_ratio_info->par_height;
+           break;
+
+        default:
+           ALOGE(" Incorrect aspect_ratio = %d",
+                aspect_ratio_info->aspect_ratio);
+      }
 }

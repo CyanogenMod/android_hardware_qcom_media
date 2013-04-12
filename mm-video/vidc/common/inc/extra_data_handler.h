@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of The Linux Foundation nor
+    * Neither the name of Code Aurora nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -43,12 +43,12 @@ extern "C"{
 #include<utils/Log.h>
 }
 #ifdef ENABLE_DEBUG_LOW
-#define DEBUG_PRINT_LOW ALOGE
+#define DEBUG_PRINT_LOW ALOGV
 #else
 #define DEBUG_PRINT_LOW
 #endif
 #ifdef ENABLE_DEBUG_HIGH
-#define DEBUG_PRINT_HIGH ALOGE
+#define DEBUG_PRINT_HIGH ALOGV
 #else
 #define DEBUG_PRINT_HIGH
 #endif
@@ -97,8 +97,6 @@ private:
   OMX_S32 create_rbsp(OMX_U8 *buf, OMX_U32 nalu_type);
   OMX_U32 create_sei(OMX_U8 *buffer);
   OMX_S32 parse_sliceinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
-     OMX_OTHER_EXTRADATATYPE *pExtra);
-  OMX_S32 parse_ltrinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
      OMX_OTHER_EXTRADATATYPE *pExtra);
 };
   

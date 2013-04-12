@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of The Linux Foundation nor
+    * Neither the name of Code Aurora nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -243,6 +243,26 @@ bool omx_time_stamp_reorder::get_next_timestamp(OMX_BUFFERHEADERTYPE *header, bo
 		phead->entries_filled--;
 		duplicate->in_use = false;
 	}
+	else if(is_interlaced && status)
+	{
+		for(int i=0; i < TIME_SZ; i++) {
+			if (phead->input_timestamps[i].in_use) {
+				if (!duplicate)
+					duplicate = &phead->input_timestamps[i];
+				else {
+					if (duplicate->timestamps > phead->input_timestamps[i].timestamps)
+						duplicate = &phead->input_timestamps[i];
+				}
+			}
+		}
+		if (duplicate) {
+			phead->entries_filled--;
+			if (print_debug)
+				DEBUG("Getnext Duplicate Time stamp %lld", header->nTimeStamp);
+			duplicate->in_use = false;
+		}
+	}
+
 	if (!phead->entries_filled) {
 		if (!update_head()) {
 			handle_error();

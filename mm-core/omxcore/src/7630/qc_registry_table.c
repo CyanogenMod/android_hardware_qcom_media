@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009,2012 The Linux Foundation. All rights reserved.
+Copyright (c) 2009, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of The Linux Foundation nor
+    * Neither the name of Code Aurora nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -48,7 +48,11 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,   // Shared object library handle
+    #ifdef _ANDROID_
     "libOmxVdec.so",
+    #else
+    "libmm-vdec-omxh264.so.1",
+    #endif
     {
       "video_decoder.avc"
     }
@@ -64,7 +68,11 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,   // Shared object library handle
+    #ifdef _ANDROID_
     "libOmxVdec.so",
+    #else
+    "libmm-vdec-omxmp4.so.1",
+    #endif
     {
       "video_decoder.mpeg4"
     }
@@ -80,7 +88,11 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,   // Shared object library handle
+    #ifdef _ANDROID_
     "libOmxVdec.so",
+    #else
+    "libmm-vdec-omxwmv.so.1",
+    #endif
     {
       "video_decoder.vc1"
     }
@@ -96,44 +108,16 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,   // Shared object library handle
+    #ifdef _ANDROID_
     "libOmxVdec.so",
+    #else
+    "libmm-vdec-omxmp4.so.1",
+    #endif
     {
       "video_decoder.h263"
     }
   },
    {
-    "OMX.qcom.video.decoder.divx4",
-    NULL,   // Create instance function
-    // Unique instance handle
-    {
-       NULL,
-       NULL,
-       NULL,
-       NULL
-    },
-    NULL,   // Shared object library handle
-    "libOmxVdec.so",
-    {
-      "video_decoder.divx"
-    }
-  },
-   {
-    "OMX.qcom.video.decoder.divx",
-    NULL,   // Create instance function
-    // Unique instance handle
-    {
-       NULL,
-       NULL,
-       NULL,
-       NULL
-    },
-    NULL,   // Shared object library handle
-    "libOmxVdec.so",
-    {
-      "video_decoder.divx"
-    }
-  },
-  {
     "OMX.qcom.video.encoder.mpeg4",
     NULL,   // Create instance function
     // Unique instance handle
@@ -144,7 +128,11 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,   // Shared object library handle
+    #ifdef _ANDROID_
     "libOmxVenc.so",
+    #else
+    "libmm-venc-omx.so.1",
+    #endif
     {
       "video_encoder.mpeg4"
     }
@@ -160,7 +148,11 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,   // Shared object library handle
+    #ifdef _ANDROID_
     "libOmxVenc.so",
+    #else
+    "libmm-venc-omx.so.1",
+    #endif
     {
       "video_encoder.h263",
     }
@@ -176,7 +168,11 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,   // Shared object library handle
+    #ifdef _ANDROID_
     "libOmxVenc.so",
+    #else
+    "libmm-venc-omx.so.1",
+    #endif
     {
       "video_encoder.avc"
     }
@@ -322,47 +318,6 @@ omx_core_cb_type core[] =
     }
   },
   {
-    "OMX.qcom.audio.encoder.aac",
-    NULL,   // Create instance function
-    // Unique instance handle
-    {
-      NULL,
-      NULL,
-      NULL,
-      NULL
-    },
-    NULL,   // Shared object library handle
-    #ifdef _ANDROID_
-    "libOmxAacEnc.so",
-    #else
-    "libmm-aenc-omxaac.so.1",
-    #endif
-    {
-      "audio_encoder.aac"
-    }
-  },
-  {
-    "OMX.qcom.audio.decoder.Qcelp13Hw",
-    NULL,   // Create instance function
-    // Unique instance handle
-    {
-      NULL,
-      NULL,
-      NULL,
-      NULL
-    },
-    NULL,   // Shared object library handle
-    #ifdef _ANDROID_
-    "libOmxQcelpHwDec.so",
-    #else
-    "libmm-adec-omxQcelp13.so.1",
-    #endif
-    {
-      "audio_decoder.Qcelp13"
-    }
-  },
-#ifdef _ANDROID_
-  {
     "OMX.qcom.audio.decoder.Qcelp13",
     NULL,   // Create instance function
     // Unique instance handle
@@ -373,14 +328,17 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,   // Shared object library handle
-    "libOmxQcelp13Dec.so",
+    #ifdef _ANDROID_
+    "libOmxQcelpDec.so",
+    #else
+    "libmm-adec-omxQcelp13.so.1",
+    #endif
     {
       "audio_decoder.Qcelp13"
     }
   },
-#endif
   {
-    "OMX.qcom.audio.decoder.tunneled.Qcelp13Hw",
+    "OMX.qcom.audio.decoder.tunneled.Qcelp13",
     NULL,   // Create instance function
     // Unique instance handle
     {
@@ -391,7 +349,7 @@ omx_core_cb_type core[] =
     },
     NULL,   // Shared object library handle
     #ifdef _ANDROID_
-    "libOmxQcelpHwDec.so",
+    "libOmxQcelpDec.so",
     #else
     "libmm-adec-omxQcelp13.so.1",
     #endif
@@ -640,47 +598,7 @@ omx_core_cb_type core[] =
     }
   },
   {
-    "OMX.qcom.audio.encoder.qcelp13",
-    NULL,   // Create instance function
-    // Unique instance handle
-    {
-      NULL,
-      NULL,
-      NULL,
-      NULL
-    },
-    NULL,   // Shared object library handle
-    #ifdef _ANDROID_
-    "libOmxQcelp13Enc.so",
-    #else
-    "libmm-aenc-omxqcelp13.so.1",
-    #endif
-    {
-      "audio_encoder.qcelp13"
-    }
-  },
-  {
     "OMX.qcom.audio.encoder.tunneled.evrc",
-    NULL,   // Create instance function
-    // Unique instance handle
-    {
-      NULL,
-      NULL,
-      NULL,
-      NULL
-    },
-    NULL,   // Shared object library handle
-    #ifdef _ANDROID_
-    "libOmxEvrcEnc.so",
-    #else
-    "libmm-aenc-omxevrc.so.1",
-    #endif
-    {
-      "audio_encoder.evrc"
-    }
-  },
-  {
-    "OMX.qcom.audio.encoder.evrc",
     NULL,   // Create instance function
     // Unique instance handle
     {

@@ -1,30 +1,29 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2012, Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
+modification, are permitted provided that the following conditions are met:
     * Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above
-      copyright notice, this list of conditions and the following
-      disclaimer in the documentation and/or other materials provided
-      with the distribution.
-    * Neither the name of The Linux Foundation nor the names of its
-      contributors may be used to endorse or promote products derived
-      from this software without specific prior written permission.
+    * Redistributions in binary form must reproduce the above copyright
+      notice, this list of conditions and the following disclaimer in the
+      documentation and/or other materials provided with the distribution.
+    * Neither the name of Code Aurora nor
+      the names of its contributors may be used to endorse or promote
+      products derived from this software without specific prior written
+      permission.
 
-THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
-WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
-ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
-BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NON-INFRINGEMENT ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #ifndef __OMX_VENC_DEV__
 #define __OMX_VENC_DEV__
@@ -38,8 +37,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_video_encoder.h"
 #include <linux/videodev2.h>
 #include <poll.h>
-
-#define TIMEOUT 5*60*1000
+#define TIMEOUT 5000
+#define MAX_RECON_BUFFERS 4
 
 void* async_venc_message_thread (void *);
 
@@ -49,6 +48,7 @@ struct msm_venc_switch{
 
 struct msm_venc_allocatorproperty{
 	unsigned long	 mincount;
+	unsigned long	 maxcount;
 	unsigned long	 actualcount;
 	unsigned long	 datasize;
 	unsigned long	 suffixsize;
@@ -159,23 +159,6 @@ struct msm_venc_headerextension{
 	 unsigned long	header_extension;
 };
 
-enum v4l2_ports {
-	CAPTURE_PORT,
-	OUTPUT_PORT,
-	MAX_PORT
-};
-
-struct extradata_buffer_info {
-	int buffer_size;
-	char* uaddr;
-	int count;
-	int size;
-	int allocated;
-#ifdef USE_ION
-	struct venc_ion ion;
-#endif
-};
-
 class venc_dev
 {
 public:
@@ -194,7 +177,6 @@ public:
   unsigned venc_resume(void);
   unsigned venc_start_done(void);
   unsigned venc_stop_done(void);
-  unsigned venc_set_message_thread_id(pthread_t);
   bool venc_use_buf(void*, unsigned,unsigned);
   bool venc_free_buf(void*, unsigned);
   bool venc_empty_buf(void *, void *,unsigned,unsigned);
@@ -215,7 +197,6 @@ public:
   OMX_U32 m_nDriver_fd;
   bool m_profile_set;
   bool m_level_set;
-  int num_planes;
   struct recon_buffer {
 	  unsigned char* virtual_address;
 	  int pmem_fd;
@@ -229,14 +210,11 @@ public:
 #endif
 	  };
 
-  int stopped;
+  recon_buffer recon_buff[MAX_RECON_BUFFERS];
+  int recon_buffers_count;
   bool m_max_allowed_bitrate_check;
   int etb_count;
-  pthread_t m_tid;
   class omx_venc *venc_handle;
-  OMX_ERRORTYPE allocate_extradata();
-  void free_extradata();
-  bool handle_extradata(void *, int);
 private:
   struct msm_venc_basecfg             m_sVenc_cfg;
   struct msm_venc_ratectrlcfg         rate_ctrl;
@@ -272,8 +250,6 @@ private:
   bool venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* error_resilience);
   bool venc_set_voptiming_cfg(OMX_U32 nTimeIncRes);
   void venc_config_print();
-  bool venc_set_slice_delivery_mode(OMX_U32 enable);
-  bool venc_set_extradata(OMX_U32 extra_data);
 #ifdef MAX_RES_1080P
   OMX_U32 pmem_free();
   OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
@@ -289,10 +265,6 @@ private:
 	  return x;
   }
 #endif
-  int metadatamode;
-  bool streaming[MAX_PORT];
-  bool extradata;
-  struct extradata_buffer_info extradata_info;
 };
 
 enum instance_state {
@@ -314,4 +286,3 @@ enum instance_state {
 	MSM_VIDC_CORE_UNINIT,
 };
 #endif
-

@@ -3,8 +3,6 @@ ifneq ($(BUILD_TINY_ANDROID),true)
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
-OMXCORE_CFLAGS := -g -O3 -DVERBOSE
-OMXCORE_CFLAGS += -O0 -fno-inline -fno-short-enums
 OMXCORE_CFLAGS += -D_ANDROID_
 OMXCORE_CFLAGS += -U_ENABLE_QC_MSG_LOG_
 
@@ -14,8 +12,6 @@ OMXCORE_CFLAGS += -U_ENABLE_QC_MSG_LOG_
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
 MM_CORE_TARGET = 7627A
-else ifeq ($(TARGET_BOARD_PLATFORM),msm7630_surf)
-MM_CORE_TARGET = 7630
 else ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
 MM_CORE_TARGET = 8660
 #Comment out following line to disable drm.play component
@@ -24,10 +20,6 @@ else ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
 MM_CORE_TARGET = 8960
 else ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
 MM_CORE_TARGET = 8974
-else ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
-MM_CORE_TARGET = 8610
-else ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
-MM_CORE_TARGET = 8226
 else
 MM_CORE_TARGET = default
 endif
@@ -61,8 +53,7 @@ LOCAL_COPY_HEADERS      += inc/QOMX_SourceExtensions.h
 LOCAL_COPY_HEADERS      += inc/QOMX_VideoExtensions.h
 LOCAL_COPY_HEADERS      += inc/OMX_IndexExt.h
 LOCAL_COPY_HEADERS      += inc/QOMX_StreamingExtensions.h
-LOCAL_COPY_HEADERS      += inc/QCMediaDefs.h
-LOCAL_COPY_HEADERS      += inc/QCMetaData.h
+
 
 #===============================================================================
 #             LIBRARY for Android apps
