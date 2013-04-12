@@ -2225,6 +2225,9 @@ int Play_Decoder()
             }
             lseek64(inputBufferFileFd, 0, SEEK_SET);
         }
+	if ((temp & 0xFF000000) == 0x85000000) {
+		lseek64(inputBufferFileFd, 0, SEEK_SET);
+	}
         DEBUG_PRINT("\n RCV clip width = %u height = %u \n",width, height);
     }
 #endif
