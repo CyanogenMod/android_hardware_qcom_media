@@ -1,3 +1,4 @@
+ifneq ($(call is-board-platform,msm8960),true)
 LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
@@ -48,4 +49,4 @@ LOCAL_MODULE:= libdashplayer
 LOCAL_MODULE_TAGS := eng
 
 include $(BUILD_SHARED_LIBRARY)
-
+endif
