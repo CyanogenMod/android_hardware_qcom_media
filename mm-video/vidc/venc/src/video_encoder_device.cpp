@@ -1631,16 +1631,12 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned,unsigne
   }
   bufhdr = (OMX_BUFFERHEADERTYPE *)buffer;
 
-  DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
-
   if(pmem_data_buf)
   {
-    DEBUG_PRINT_LOW("\n Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
     frameinfo.ptrbuffer = (OMX_U8 *)pmem_data_buf;
   }
   else
   {
-    DEBUG_PRINT_LOW("\n Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
     frameinfo.ptrbuffer = (OMX_U8 *)bufhdr->pBuffer;
   }
 
@@ -1650,12 +1646,13 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned,unsigne
   frameinfo.flags = bufhdr->nFlags;
   frameinfo.offset = bufhdr->nOffset;
   frameinfo.timestamp = bufhdr->nTimeStamp;
-  DEBUG_PRINT_LOW("\n i/p TS = %u", (OMX_U32)frameinfo.timestamp);
   ioctl_msg.in = &frameinfo;
   ioctl_msg.out = NULL;
 
-  DEBUG_PRINT_LOW("DBG: i/p frameinfo: bufhdr->pBuffer = %p, ptrbuffer = %p, offset = %u, len = %u",
-      bufhdr->pBuffer, frameinfo.ptrbuffer, frameinfo.offset, frameinfo.len);
+  DEBUG_PRINT_LOW("i/p frameinfo: pBuffer = 0x%x, ptrbuffer = 0x%x, nFilledlen = %d, "
+      "Ts = %lld, nFlags = 0x%x, nOffset = %d", bufhdr->pBuffer,
+      frameinfo.ptrbuffer, frameinfo.len, frameinfo.timestamp,
+      frameinfo.flags, frameinfo.offset);
   if(ioctl(m_nDriver_fd,VEN_IOCTL_CMD_ENCODE_FRAME,&ioctl_msg) < 0)
   {
     /*Generate an async error and move to invalid state*/

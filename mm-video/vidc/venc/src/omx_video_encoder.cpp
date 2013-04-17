@@ -393,13 +393,6 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
 
   m_state                   = OMX_StateLoaded;
   m_sExtraData = 0;
-  m_sDebugSliceinfo = 0;
-#ifdef _ANDROID_
-  char value[PROPERTY_VALUE_MAX] = {0};
-  property_get("vidc.venc.debug.sliceinfo", value, "0");
-  m_sDebugSliceinfo = (OMX_U32)atoi(value);
-  DEBUG_PRINT_HIGH("vidc.venc.debug.sliceinfo value is %d", m_sDebugSliceinfo);
-#endif
 
   if(eRet == OMX_ErrorNone)
   {
@@ -1674,11 +1667,19 @@ int omx_venc::async_message_process (void *context, void* message)
     {
       if(m_sVenc_msg->buf.len <=  omxhdr->nAllocLen)
       {
+        int idx = omxhdr - omx->m_out_mem_ptr;
         omxhdr->nFilledLen = m_sVenc_msg->buf.len;
         omxhdr->nOffset = m_sVenc_msg->buf.offset;
         omxhdr->nTimeStamp = m_sVenc_msg->buf.timestamp;
-        DEBUG_PRINT_LOW("\n o/p TS = %u", (OMX_U32)m_sVenc_msg->buf.timestamp);
         omxhdr->nFlags = m_sVenc_msg->buf.flags;
+        omx->extradata_len[idx] = m_sVenc_msg->buf.metadata_len;
+        omx->extradata_offset[idx] = m_sVenc_msg->buf.metadata_offset;
+        DEBUG_PRINT_LOW("[RespBufDone]: pBuffer = 0x%x, nFilledLen = %d, "\
+            "nAllocLen = %d, Ts = %lld, nFlags = 0x%x, nOffset = %d, "\
+            "Extradata Info: Idx = %d, Offset(%d), len(%d)",
+            omxhdr->pBuffer, omxhdr->nFilledLen, omxhdr->nAllocLen,
+            omxhdr->nTimeStamp, omxhdr->nFlags, omxhdr->nOffset,
+            idx, omx->extradata_offset[idx], omx->extradata_len[idx]);
 
         /*Use buffer case*/
         if(omx->output_use_buffer && !omx->m_use_output_pmem)
@@ -1691,6 +1692,8 @@ int omx_venc::async_message_process (void *context, void* message)
       }
       else
       {
+        DEBUG_PRINT_HIGH("nFilledLen[%d] is more than nAllocLen[%d]",
+            omxhdr->nFilledLen, omxhdr->nAllocLen);
         omxhdr->nFilledLen = 0;
       }
 
