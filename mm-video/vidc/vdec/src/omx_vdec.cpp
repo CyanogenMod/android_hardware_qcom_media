@@ -7246,18 +7246,49 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
         if ( (pdest_frame->nAllocLen - pdest_frame->nFilledLen) >=
              h264_scratch.nFilledLen)
         {
-          memcpy ((pdest_frame->pBuffer + pdest_frame->nFilledLen),
-                  h264_scratch.pBuffer,h264_scratch.nFilledLen);
-          pdest_frame->nFilledLen += h264_scratch.nFilledLen;
-          h264_scratch.nFilledLen = 0;
+            if (pdest_frame->nFilledLen == 0)
+            {
+                /* No residual frame from before, send whatever
+                 * we have left */
+                memcpy((pdest_frame->pBuffer + pdest_frame->nFilledLen),
+                h264_scratch.pBuffer, h264_scratch.nFilledLen);
+                pdest_frame->nFilledLen += h264_scratch.nFilledLen;
+                h264_scratch.nFilledLen = 0;
+            }
+            else
+            {
+                m_frame_parser.mutils->isNewFrame(&h264_scratch, 0, isNewFrame);
+                if (!isNewFrame)
+                {
+                    /* Have a residual frame, but we know that the
+                     * AU in this frame is belonging to whatever
+                     * frame we had left over.  So append it */
+                    memcpy((pdest_frame->pBuffer + pdest_frame->nFilledLen),
+                    h264_scratch.pBuffer, h264_scratch.nFilledLen);
+                    pdest_frame->nFilledLen += h264_scratch.nFilledLen;
+                    h264_scratch.nFilledLen = 0;
+                }
+                else
+                {
+                    /* Completely new frame, let's just push what
+                     * we have now.  The resulting EBD would trigger
+                     * another push */
+                    generate_ebd = OMX_FALSE;
+                }
+            }
         }
         else
         {
           DEBUG_PRINT_ERROR("\nERROR:4: Destination buffer overflow for H264");
           return OMX_ErrorBadParameter;
         }
+
         pdest_frame->nTimeStamp = h264_scratch.nTimeStamp;
-        pdest_frame->nFlags = h264_scratch.nFlags | psource_frame->nFlags;
+        /* Iff we coalesced two buffers, inherit the flags of both bufs */
+        if (generate_ebd == OMX_TRUE)
+        {
+            pdest_frame->nFlags = h264_scratch.nFlags | psource_frame->nFlags;
+        }
 #ifdef MAX_RES_720P
         if (frame_count == 0)
         {
