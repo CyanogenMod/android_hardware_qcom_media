@@ -7539,6 +7539,15 @@ void omx_vdec::free_input_buffer_header()
       free (m_inp_mem_ptr);
       m_inp_mem_ptr = NULL;
     }
+
+    /* We just freed all the buffer headers, every thing in m_input_free_q
+     * is now invalid */
+    while (m_input_free_q.m_size)
+    {
+      unsigned address,p2,id;
+      m_input_free_q.pop_entry(&address,&p2,&id);
+    }
+
     if (drv_ctx.ptr_inputbuffer)
     {
       DEBUG_PRINT_LOW("\n Free Driver Context pointer");
