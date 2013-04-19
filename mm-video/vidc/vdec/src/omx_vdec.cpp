@@ -7169,7 +7169,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
           return OMX_ErrorBadParameter;
         }
       }
-      else
+      else if(h264_scratch.nFilledLen)
       {
         look_ahead_nal = true;
         DEBUG_PRINT_LOW("\n Frame Found start Decoding Size =%d TimeStamp = %x",
@@ -7254,6 +7254,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
                 h264_scratch.pBuffer, h264_scratch.nFilledLen);
                 pdest_frame->nFilledLen += h264_scratch.nFilledLen;
                 h264_scratch.nFilledLen = 0;
+                pdest_frame->nTimeStamp = h264_scratch.nTimeStamp;
             }
             else
             {
@@ -7267,6 +7268,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
                     h264_scratch.pBuffer, h264_scratch.nFilledLen);
                     pdest_frame->nFilledLen += h264_scratch.nFilledLen;
                     h264_scratch.nFilledLen = 0;
+                    pdest_frame->nTimeStamp = h264_last_au_ts;
                 }
                 else
                 {
@@ -7274,6 +7276,8 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
                      * we have now.  The resulting EBD would trigger
                      * another push */
                     generate_ebd = OMX_FALSE;
+                    pdest_frame->nTimeStamp = h264_last_au_ts;
+                    h264_last_au_ts = h264_scratch.nTimeStamp;
                 }
             }
         }
@@ -7283,7 +7287,6 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
           return OMX_ErrorBadParameter;
         }
 
-        pdest_frame->nTimeStamp = h264_scratch.nTimeStamp;
         /* Iff we coalesced two buffers, inherit the flags of both bufs */
         if (generate_ebd == OMX_TRUE)
         {
