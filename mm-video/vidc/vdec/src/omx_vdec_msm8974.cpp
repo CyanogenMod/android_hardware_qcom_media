@@ -3126,6 +3126,9 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
               {
                   drv_ctx.op_buf.actualcount = portDefn->nBufferCountActual;
                   drv_ctx.op_buf.buffer_size = portDefn->nBufferSize;
+                  drv_ctx.extradata_info.count = drv_ctx.op_buf.actualcount;
+                  drv_ctx.extradata_info.size = drv_ctx.extradata_info.count *
+                                        drv_ctx.extradata_info.buffer_size;
                   eRet = set_buffer_req(&drv_ctx.op_buf);
                   if (eRet == OMX_ErrorNone)
                       m_port_def = *portDefn;
@@ -4089,7 +4092,7 @@ OMX_ERRORTYPE omx_vdec::allocate_extradata()
     }
     drv_ctx.extradata_info.size = (drv_ctx.extradata_info.size + 4095) & (~4095);
     drv_ctx.extradata_info.ion.ion_device_fd = alloc_map_ion_memory(
-        drv_ctx.extradata_info.count * drv_ctx.extradata_info.size, 4096,
+        drv_ctx.extradata_info.size, 4096,
         &drv_ctx.extradata_info.ion.ion_alloc_data,
         &drv_ctx.extradata_info.ion.fd_ion_data, 0);
     if (drv_ctx.extradata_info.ion.ion_device_fd < 0) {
