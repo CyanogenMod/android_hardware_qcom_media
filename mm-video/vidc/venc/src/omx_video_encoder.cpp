@@ -201,6 +201,14 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   m_sSessionQuantization.nQpP = 6;
   m_sSessionQuantization.nQpB = 2;
 
+  OMX_INIT_STRUCT(&m_sSessionQPRange, OMX_QCOM_VIDEO_PARAM_QPRANGETYPE);
+  m_sSessionQPRange.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+  m_sSessionQPRange.minQP = 2;
+  if(codec_type == OMX_VIDEO_CodingAVC)
+    m_sSessionQPRange.maxQP = 51;
+  else
+    m_sSessionQPRange.maxQP = 31;
+
   OMX_INIT_STRUCT(&m_sAVCSliceFMO, OMX_VIDEO_PARAM_AVCSLICEFMO);
   m_sAVCSliceFMO.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
   m_sAVCSliceFMO.eSliceMode = OMX_VIDEO_SLICEMODE_AVCDefault;
@@ -913,6 +921,28 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       else
       {
         DEBUG_PRINT_ERROR("\nERROR: Unsupported port Index for Session QP setting\n");
+        eRet = OMX_ErrorBadPortIndex;
+      }
+      break;
+    }
+
+  case OMX_QcomIndexParamVideoQPRange:
+    {
+      DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoQPRange\n");
+      OMX_QCOM_VIDEO_PARAM_QPRANGETYPE *qp_range = (OMX_QCOM_VIDEO_PARAM_QPRANGETYPE*) paramData;
+      if(qp_range->nPortIndex == PORT_INDEX_OUT)
+      {
+        if(handle->venc_set_param(paramData,
+              (OMX_INDEXTYPE)OMX_QcomIndexParamVideoQPRange) != true)
+        {
+          return OMX_ErrorUnsupportedSetting;
+        }
+        m_sSessionQPRange.minQP= qp_range->minQP;
+        m_sSessionQPRange.maxQP= qp_range->maxQP;
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("\nERROR: Unsupported port Index for QP range setting\n");
         eRet = OMX_ErrorBadPortIndex;
       }
       break;
