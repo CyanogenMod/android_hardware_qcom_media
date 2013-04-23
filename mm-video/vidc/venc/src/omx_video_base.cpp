@@ -671,7 +671,6 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
 
   }
   while(qsize>0);
-  DEBUG_PRINT_LOW("\n exited the while loop\n");
 
 }
 
@@ -2835,7 +2834,6 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
   OMX_BUFFERHEADERTYPE       *bufHdr= NULL; // buffer header
   unsigned                         i= 0; // Temporary counter
 
-  DEBUG_PRINT_HIGH("\n allocate_output_buffer()::");
   if(!m_out_mem_ptr)
   {
     int nBufHdrSize        = 0;
@@ -2896,7 +2894,6 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
     }
   }
 
-  DEBUG_PRINT_HIGH("\n actual cnt = %u", m_sOutPortDef.nBufferCountActual);
   for(i=0; i< m_sOutPortDef.nBufferCountActual; i++)
   {
     if(BITMASK_ABSENT_U32(m_out_bm_count,i))
@@ -2957,6 +2954,12 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
       (*bufferHdr)->pAppPrivate = appData;
 
       m_out_bm_count = BITMASK_SET_U32(m_out_bm_count,i);
+
+      DEBUG_PRINT_HIGH("alloc_output: idx = %d, fd = %d, addr = %p, offset = %d, "
+         "ion_device_fd = %d, ion_handle = %p, length = %d", i,
+         m_pOutput_pmem[i].fd, m_pOutput_pmem[i].buffer, m_pOutput_pmem[i].offset,
+         m_pOutput_ion[i].ion_device_fd, m_pOutput_ion[i].ion_alloc_data.handle,
+         m_pOutput_pmem[i].size);
 
       if(dev_use_buf(&m_pOutput_pmem[i],PORT_INDEX_OUT,i) != true)
       {
@@ -3976,10 +3979,13 @@ bool omx_video::release_input_done(void)
 OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
                                           OMX_BUFFERHEADERTYPE * buffer)
 {
+  int idx = buffer - m_out_mem_ptr;
   DEBUG_PRINT_LOW("fill_buffer_done: buffer->pBuffer[%p], flags=0x%x size = %d",
      buffer->pBuffer, buffer->nFlags,buffer->nFilledLen);
   if(buffer == NULL || ((buffer - m_out_mem_ptr) > m_sOutPortDef.nBufferCountActual))
   {
+    DEBUG_PRINT_ERROR("\n ERR: buffer = %p, idx = %d, act_count = %d",
+       buffer, idx, m_sOutPortDef.nBufferCountActual);
     return OMX_ErrorBadParameter;
   }
 
@@ -3989,12 +3995,11 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
     extra_data_handle.create_extra_data(buffer);
   }
 
-  if (!secure_session && m_sDebugSliceinfo) {
-    if(buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
-       DEBUG_PRINT_HIGH("parsing extradata");
-       extra_data_handle.parse_extra_data(buffer);
-    }
+  if (!secure_session && (buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA))
+  {
+    extra_data_handle.parse_extra_data(buffer, extradata_offset[idx]);
   }
+
   /* For use buffer we need to copy the data */
   if(m_pCallbacks.FillBufferDone)
   {
@@ -4013,6 +4018,7 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
   }
   else
   {
+    DEBUG_PRINT_ERROR("\n ERR: m_pCallbacks.FillBufferDone is NULL");
     return OMX_ErrorBadParameter;
   }
   return OMX_ErrorNone;
@@ -4332,6 +4338,10 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
             fd_data->fd =-1;
             ion_device_fd =-1;
         }
+        DEBUG_PRINT_HIGH("ion_alloc: device_fd = %d, len = %d, align = %d, "
+           "flags = 0x%x, heap_mask = 0x%x, handle = %p, fd = %d", ion_device_fd,
+           alloc_data->len, alloc_data->align, alloc_data->flags,
+           alloc_data->heap_mask, fd_data->handle, fd_data->fd);
         return ion_device_fd;
 }
 

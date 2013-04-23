@@ -70,12 +70,14 @@ extern "C"{
 #define VDEC_OMX_SEI 0x7F000007
 #define FRAME_PACK_SIZE 18
 #define H264_EMULATION_BYTE 0x03
+#define OMX_SPEC_VERSION  0x00000101
+
 class extra_data_handler 
 {
 public:
   extra_data_handler();
   ~extra_data_handler();
-  OMX_U32 parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr);
+  OMX_U32 parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr, OMX_U32 extradata_offset);
   OMX_U32 create_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr);
   OMX_U32 get_frame_pack_data(OMX_QCOM_FRAME_PACK_ARRANGEMENT *frame_pack);
   OMX_U32 set_frame_pack_data(OMX_QCOM_FRAME_PACK_ARRANGEMENT *frame_pack);
