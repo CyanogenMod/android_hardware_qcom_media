@@ -541,6 +541,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 	prev_ts(LLONG_MAX),
 	rst_prev_ts(true),
 	frm_int(0),
+	m_disp_hor_size(0),
+	m_disp_vert_size(0),
 	in_reconfig(false),
 	m_display_id(NULL),
 	h264_parser(NULL),
@@ -8546,6 +8548,14 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       case EXTRADATA_PANSCAN_WINDOW:
         panscan_payload = (struct msm_vidc_panscan_window_payload *)data->data;
         break;
+      case EXTRADATA_MPEG2_SEQDISP:
+        struct msm_vidc_mpeg2_seqdisp_payload *seqdisp_payload;
+        seqdisp_payload = (struct msm_vidc_mpeg2_seqdisp_payload *)data->data;
+        if (seqdisp_payload) {
+          m_disp_hor_size = seqdisp_payload->disp_width;
+          m_disp_vert_size = seqdisp_payload->disp_height;
+        }
+        break;
       default:
         goto unrecognized_extradata;
       }
@@ -8619,6 +8629,14 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
       control.value = V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO;
       if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
         DEBUG_PRINT_HIGH("Failed to set panscan extradata\n");
+      }
+      if (output_capability == V4L2_PIX_FMT_MPEG2)
+      {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+        control.value =  V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
+        if(ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+          DEBUG_PRINT_HIGH("Failed to set panscan extradata\n");
+        }
       }
     } else if (requested_extradata & OMX_TIMEINFO_EXTRADATA)
     {
@@ -8811,6 +8829,15 @@ void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
   frame_info->nConcealedMacroblocks = num_conceal_mb;
   frame_info->nFrameRate = frame_rate;
   frame_info->panScan.numWindows = 0;
+  if (output_capability == V4L2_PIX_FMT_MPEG2)
+  {
+    if (m_disp_hor_size && m_disp_vert_size)
+    {
+      frame_info->displayAspectRatio.displayHorizontalSize = m_disp_hor_size;
+      frame_info->displayAspectRatio.displayVerticalSize = m_disp_vert_size;
+    }
+  }
+
   if(panscan_payload) {
   frame_info->panScan.numWindows = panscan_payload->num_panscan_windows;
   panscan_window = &panscan_payload->wnd[0];
