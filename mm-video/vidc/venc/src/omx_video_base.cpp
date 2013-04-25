@@ -90,7 +90,6 @@ typedef struct OMXComponentCapabilityFlagsType
 
 } OMXComponentCapabilityFlagsType;
 #define OMX_COMPONENT_CAPABILITY_TYPE_INDEX 0xFF7A347
-
 #ifdef OUTPUT_BUFFER_LOG
 extern FILE *outputBufferFile1;
 #endif
@@ -245,7 +244,11 @@ omx_video::omx_video():
 	m_flags(0),
 	m_etb_count(0),
 	m_fbd_count(0),
-	m_event_port_settings_sent(false)
+	m_event_port_settings_sent(false),
+  m_input_msg_id(OMX_COMPONENT_GENERATE_ETB),
+  psource_frame(NULL),
+  pdest_frame(NULL),
+  c2d_opened(false)
 {
   DEBUG_PRINT_HIGH("\n omx_video(): Inside Constructor()");
   memset(&m_cmp,0,sizeof(m_cmp));
@@ -418,8 +421,17 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
           DEBUG_PRINT_ERROR("ERROR: ProcessMsgCb NULL callbacks\n");
         }
         break;
-
+      case OMX_COMPONENT_GENERATE_ETB_OPQ:
+        DEBUG_PRINT_LOW("OMX_COMPONENT_GENERATE_ETB_OPQ\n");
+        if(pThis->empty_this_buffer_opaque((OMX_HANDLETYPE)p1,\
+                                          (OMX_BUFFERHEADERTYPE *)p2) != OMX_ErrorNone)
+        {
+          DEBUG_PRINT_ERROR("\nERROR: ETBProxy() failed!\n");
+          pThis->omx_report_error ();
+        }
+        break;
       case OMX_COMPONENT_GENERATE_ETB:
+        DEBUG_PRINT_LOW("OMX_COMPONENT_GENERATE_ETB\n");
         if(pThis->empty_this_buffer_proxy((OMX_HANDLETYPE)p1,\
                                           (OMX_BUFFERHEADERTYPE *)p2) != OMX_ErrorNone)
         {
@@ -1412,8 +1424,27 @@ bool omx_video::execute_input_flush(void)
     {
       empty_buffer_done(&m_cmp,(OMX_BUFFERHEADERTYPE *)p1);
     }
+    else if(ident == OMX_COMPONENT_GENERATE_ETB_OPQ)
+    {
+      m_pCallbacks.EmptyBufferDone(&m_cmp,m_app_data,(OMX_BUFFERHEADERTYPE *)p2);
+    }
   }
-
+  if(mUseProxyColorFormat) {
+    if(psource_frame) {
+      m_pCallbacks.EmptyBufferDone(&m_cmp,m_app_data,psource_frame);
+      psource_frame = NULL;
+    }
+    while(m_opq_meta_q.m_size) {
+      unsigned p1,p2,id;
+      m_opq_meta_q.pop_entry(&p1,&p2,&id);
+      m_pCallbacks.EmptyBufferDone(&m_cmp,m_app_data,
+         (OMX_BUFFERHEADERTYPE  *)p1);
+    }
+    if(pdest_frame){
+      m_opq_pmem_q.insert_entry((unsigned int)pdest_frame,0,0);
+      pdest_frame = NULL;
+    }
+  }
   pthread_mutex_unlock(&m_lock);
   /*Check if there are buffers with the Driver*/
   if(dev_flush(PORT_INDEX_IN))
@@ -1594,9 +1625,9 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         {
           portDefn->nBufferSize = sizeof(encoder_media_buffer_type);
         }
-
         if (mUseProxyColorFormat) {
-            portDefn->format.video.eColorFormat = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque;
+            portDefn->format.video.eColorFormat =
+              (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque;
         }
 #endif
       }
@@ -2637,7 +2668,7 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
     return OMX_ErrorBadParameter;
   }
 
-  index = bufferHdr - m_inp_mem_ptr;
+  index = bufferHdr - ((!mUseProxyColorFormat)?m_inp_mem_ptr:meta_buffer_hdr);
 #ifdef _ANDROID_ICS_
   if(meta_mode_enable)
   {
@@ -2646,13 +2677,16 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
       memset(&meta_buffer_hdr[index], 0, sizeof(meta_buffer_hdr[index]));
       memset(&meta_buffers[index], 0, sizeof(meta_buffers[index]));
     }
-    return OMX_ErrorNone;
+    if(!mUseProxyColorFormat)
+      return OMX_ErrorNone;
+    else
+      c2d_conv.close();
   }
 #endif
-  if(index < m_sInPortDef.nBufferCountActual &&
+  if(index < m_sInPortDef.nBufferCountActual && !mUseProxyColorFormat &&
      dev_free_buf(&m_pInput_pmem[index],PORT_INDEX_IN) != true)
   {
-    DEBUG_PRINT_ERROR("\nERROR: dev_free_buf() Failed for i/p buf");
+    DEBUG_PRINT_LOW("\nERROR: dev_free_buf() Failed for i/p buf");
   }
 
   if(index < m_sInPortDef.nBufferCountActual && m_pInput_pmem)
@@ -2684,7 +2718,7 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
     }
     else
     {
-      DEBUG_PRINT_LOW("\n FreeBuffer:: fd is invalid or i/p PMEM UseBuffer case");
+      DEBUG_PRINT_ERROR("\n FreeBuffer:: fd is invalid or i/p PMEM UseBuffer case");
     }
   }
   return OMX_ErrorNone;
@@ -2745,6 +2779,7 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
 }
 #ifdef _ANDROID_ICS_
 OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
+                    OMX_HANDLETYPE       hComp,
                     OMX_BUFFERHEADERTYPE **bufferHdr,
                     OMX_PTR              appData,
                     OMX_U32              bytes)
@@ -2756,7 +2791,8 @@ OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
                      bufferHdr,bytes);
     return OMX_ErrorBadParameter;
   }
-  if(!m_inp_mem_ptr)
+
+  if(!m_inp_mem_ptr && !mUseProxyColorFormat)
     m_inp_mem_ptr = meta_buffer_hdr;
   for(index = 0;((index < m_sInPortDef.nBufferCountActual) &&
       meta_buffer_hdr[index].pBuffer); index++);
@@ -2764,6 +2800,17 @@ OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
   {
     DEBUG_PRINT_ERROR("All buffers are allocated input_meta_buffer");
     return OMX_ErrorBadParameter;
+  }
+  if(mUseProxyColorFormat){
+    if(opaque_buffer_hdr[index]){
+      DEBUG_PRINT_ERROR("All buffers are allocated opaque_buffer_hdr");
+      return OMX_ErrorBadParameter;
+    }
+    if(allocate_input_buffer(hComp,&opaque_buffer_hdr[index],
+       PORT_INDEX_IN,appData,m_sInPortDef.nBufferSize) != OMX_ErrorNone) {
+      DEBUG_PRINT_ERROR("All buffers are allocated opaque_buffer_hdr");
+      return OMX_ErrorBadParameter;
+    }
   }
   BITMASK_SET(&m_inp_bm_count,index);
   *bufferHdr = &meta_buffer_hdr[index];
@@ -2774,6 +2821,10 @@ OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
   meta_buffer_hdr[index].nInputPortIndex = PORT_INDEX_IN;
   meta_buffer_hdr[index].pBuffer = (OMX_U8*)&meta_buffers[index];
   meta_buffer_hdr[index].pAppPrivate = appData;
+  if(mUseProxyColorFormat) {
+    m_opq_pmem_q.insert_entry((unsigned int)opaque_buffer_hdr[index],0,0);
+    DEBUG_PRINT_HIGH("\n opaque_buffer_hdr insert %p", opaque_buffer_hdr[index]);
+  }
   return OMX_ErrorNone;
 }
 #endif
@@ -2911,10 +2962,10 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
     }
 
     (*bufferHdr)->pBuffer           = (OMX_U8 *)m_pInput_pmem[i].buffer;
-
+    DEBUG_PRINT_LOW("\n Virtual address in allocate buffer is %p", m_pInput_pmem[i].buffer);
     BITMASK_SET(&m_inp_bm_count,i);
     //here change the I/P param here from buf_adr to pmem
-    if( dev_use_buf(&m_pInput_pmem[i],PORT_INDEX_IN,i) != true)
+    if(!mUseProxyColorFormat && (dev_use_buf(&m_pInput_pmem[i],PORT_INDEX_IN,i) != true))
     {
       DEBUG_PRINT_ERROR("\nERROR: dev_use_buf FAILED for i/p buf\n");
       return OMX_ErrorInsufficientResources;
@@ -3140,10 +3191,10 @@ OMX_ERRORTYPE  omx_video::allocate_buffer(OMX_IN OMX_HANDLETYPE                h
   {
 #ifdef _ANDROID_ICS_
     if(meta_mode_enable)
-      eRet = allocate_input_meta_buffer(bufferHdr,appData,bytes);
+      eRet = allocate_input_meta_buffer(hComp,bufferHdr,appData,bytes);
     else
 #endif
-    eRet = allocate_input_buffer(hComp,bufferHdr,port,appData,bytes);
+      eRet = allocate_input_buffer(hComp,bufferHdr,port,appData,bytes);
   }
   else if(port == PORT_INDEX_OUT)
   {
@@ -3246,7 +3297,7 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
   if(port == PORT_INDEX_IN)
   {
     // check if the buffer is valid
-    nPortIndex = buffer - m_inp_mem_ptr;
+    nPortIndex = buffer - ((!mUseProxyColorFormat)?m_inp_mem_ptr:meta_buffer_hdr);
 
     DEBUG_PRINT_LOW("free_buffer on i/p port - Port idx %d, actual cnt %d \n",
                     nPortIndex, m_sInPortDef.nBufferCountActual);
@@ -3439,7 +3490,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     return OMX_ErrorIncorrectStateOperation;
   }
 
-  nBufferIndex = buffer - m_inp_mem_ptr;
+  nBufferIndex = buffer - ((!mUseProxyColorFormat)?m_inp_mem_ptr:meta_buffer_hdr);
 
   if(nBufferIndex > m_sInPortDef.nBufferCountActual )
   {
@@ -3449,11 +3500,9 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
 
   m_etb_count++;
   DEBUG_PRINT_LOW("\n DBG: i/p nTimestamp = %u", (unsigned)buffer->nTimeStamp);
-  post_event ((unsigned)hComp,(unsigned)buffer,OMX_COMPONENT_GENERATE_ETB);
+  post_event ((unsigned)hComp,(unsigned)buffer,m_input_msg_id);
   return OMX_ErrorNone;
 }
-
-
 /* ======================================================================
 FUNCTION
   omx_video::empty_this_buffer_proxy
@@ -3474,8 +3523,10 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
 {
   OMX_U8 *pmem_data_buf = NULL;
   int push_cnt = 0;
-  unsigned nBufIndex = 0;
+  unsigned nBufIndex = 0, nBufIndex_meta = 0;
   OMX_ERRORTYPE ret = OMX_ErrorNone;
+  encoder_media_buffer_type *media_buffer;
+
 #ifdef _MSM8974_
   int fd = 0;
 #endif
@@ -3486,13 +3537,14 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
     return OMX_ErrorBadParameter;
   }
   nBufIndex = buffer - ((OMX_BUFFERHEADERTYPE *)m_inp_mem_ptr);
-
-  if(nBufIndex >= m_sInPortDef.nBufferCountActual)
+  nBufIndex_meta = buffer - meta_buffer_hdr;
+  media_buffer = (encoder_media_buffer_type *)meta_buffer_hdr[nBufIndex].pBuffer;
+  if(nBufIndex >= m_sInPortDef.nBufferCountActual &&
+     nBufIndex_meta >= m_sInPortDef.nBufferCountActual)
   {
     DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Invalid bufindex = %u\n", nBufIndex);
     return OMX_ErrorBadParameter;
   }
-
   pending_input_buffers++;
   if(input_flush_progress == true)
   {
@@ -3502,36 +3554,32 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
     return OMX_ErrorNone;
   }
 #ifdef _MSM8974_
-  if(!meta_mode_enable)
+  if(!meta_mode_enable ||
+     (media_buffer && media_buffer->buffer_type == kMetadataBufferTypeGrallocSource)) {
     fd = m_pInput_pmem[nBufIndex].fd;
+  }
 #endif
 #ifdef _ANDROID_ICS_
-  if(meta_mode_enable)
+  if(meta_mode_enable && !mUseProxyColorFormat)
   {
-    encoder_media_buffer_type *media_buffer;
     bool met_error = false;
-    media_buffer = (encoder_media_buffer_type *)meta_buffer_hdr[nBufIndex].pBuffer;
     if(media_buffer)
     {
       if (media_buffer->buffer_type != kMetadataBufferTypeCameraSource &&
-          media_buffer->buffer_type != kMetadataBufferTypeGrallocSource) {
+          media_buffer->buffer_type != kMetadataBufferTypeGrallocSource)
           met_error = true;
-      } else {
+      else {
         if(media_buffer->buffer_type == kMetadataBufferTypeCameraSource)
         {
-          if(media_buffer->meta_handle == NULL) {
+          if(media_buffer->meta_handle == NULL)
             met_error = true;
-          }
           else if((media_buffer->meta_handle->numFds != 1 &&
                    media_buffer->meta_handle->numInts != 2))
-          {
             met_error = true;
-          }
         }
       }
-    } else {
+    } else
       met_error = true;
-    }
     if(met_error)
     {
       DEBUG_PRINT_ERROR("\nERROR: Unkown source/metahandle in ETB call");
@@ -3593,7 +3641,6 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
     pending_input_buffers--;
     return OMX_ErrorBadParameter;
   }
-
   return ret;
 }
 
@@ -4128,8 +4175,8 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
 #ifdef _MSM8974_
     int index = buffer - m_out_mem_ptr;
 #endif
-  DEBUG_PRINT_LOW("fill_buffer_done: buffer->pBuffer[%p], flags=0x%x",
-     buffer->pBuffer, buffer->nFlags);
+    DEBUG_PRINT_LOW("fill_buffer_done: buffer->pBuffer[%p], flags=0x%x size = %d",
+                    buffer->pBuffer, buffer->nFlags,buffer->nFilledLen);
   if(buffer == NULL || ((buffer - m_out_mem_ptr) > m_sOutPortDef.nBufferCountActual))
   {
     return OMX_ErrorBadParameter;
@@ -4176,16 +4223,36 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
 OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
                                            OMX_BUFFERHEADERTYPE* buffer)
 {
-  DEBUG_PRINT_LOW("empty_buffer_done: buffer->pBuffer[%p]", buffer->pBuffer);
-  if(buffer == NULL || ((buffer - m_inp_mem_ptr) > m_sInPortDef.nBufferCountActual))
+  int buffer_index  = -1;
+  int buffer_index_meta = -1;
+
+  buffer_index = (buffer - m_inp_mem_ptr);
+  buffer_index_meta = (buffer - meta_buffer_hdr);
+  DEBUG_PRINT_LOW("\n empty_buffer_done: buffer[%p]", buffer);
+  if(buffer == NULL ||
+     ((buffer_index > m_sInPortDef.nBufferCountActual) &&
+      (buffer_index_meta > m_sInPortDef.nBufferCountActual)))
   {
+    DEBUG_PRINT_ERROR("\n ERROR in empty_buffer_done due to index buffer");
     return OMX_ErrorBadParameter;
   }
 
   pending_input_buffers--;
 
-  if(m_pCallbacks.EmptyBufferDone)
-  {
+  if(mUseProxyColorFormat && (buffer_index < m_sInPortDef.nBufferCountActual)) {
+    if(!pdest_frame) {
+      pdest_frame = buffer;
+      DEBUG_PRINT_LOW("\n empty_buffer_done pdest_frame address is %p",pdest_frame);
+      return push_input_buffer(hComp);
+
+    } else {
+      DEBUG_PRINT_LOW("\n empty_buffer_done insert address is %p",buffer);
+      if (!m_opq_pmem_q.insert_entry((unsigned int)buffer, 0, 0)) {
+        DEBUG_PRINT_ERROR("\n empty_buffer_done: pmem queue is full");
+        return OMX_ErrorBadParameter;
+      }
+    }
+  } else if(m_pCallbacks.EmptyBufferDone) {
     m_pCallbacks.EmptyBufferDone(hComp ,m_app_data, buffer);
   }
   return OMX_ErrorNone;
@@ -4243,7 +4310,7 @@ void omx_video::complete_pending_buffer_done_cbs()
     pending_bd_q.pop_entry(&p1,&p2,&ident);
     switch(ident)
     {
-      case OMX_COMPONENT_GENERATE_EBD:
+    case OMX_COMPONENT_GENERATE_EBD:
         if(empty_buffer_done(&m_cmp, (OMX_BUFFERHEADERTYPE *)p1) != OMX_ErrorNone)
         {
           DEBUG_PRINT_ERROR("\nERROR: empty_buffer_done() failed!\n");
@@ -4518,38 +4585,399 @@ void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
   {
     encoder_media_buffer_type *media_ptr;
     struct pmem Input_pmem;
+    unsigned int index_pmem = 0;
     bool meta_error = false;
-    media_ptr = (encoder_media_buffer_type *) buffer->pBuffer;
-    if(media_ptr && media_ptr->meta_handle)
-    {
-      if(media_ptr->buffer_type == kMetadataBufferTypeCameraSource &&
-         media_ptr->meta_handle->numFds == 1 &&
-         media_ptr->meta_handle->numInts == 2) {
-        Input_pmem.fd = media_ptr->meta_handle->data[0];
-        Input_pmem.buffer = media_ptr;
-        Input_pmem.size = media_ptr->meta_handle->data[2];
-        Input_pmem.offset = media_ptr->meta_handle->data[1];
-        DEBUG_PRINT_LOW("EBD fd = %d, offset = %d, size = %d",Input_pmem.fd,
-                          Input_pmem.offset,
-                          Input_pmem.size);
-      } else if(media_ptr->buffer_type == kMetadataBufferTypeGrallocSource) {
-        private_handle_t *handle = (private_handle_t *)media_ptr->meta_handle;
-        Input_pmem.buffer = media_ptr;
-        Input_pmem.fd = handle->fd;
-        Input_pmem.offset = 0;
-        Input_pmem.size = handle->size;
-      } else {
-        meta_error = true;
-        DEBUG_PRINT_ERROR(" Meta Error set in EBD");
-      }
-      if(!meta_error)
-         meta_error = !dev_free_buf(&Input_pmem,PORT_INDEX_IN);
-        if(meta_error)
-        {
-         DEBUG_PRINT_ERROR(" Warning dev_free_buf failed flush value is %d",
-             input_flush_progress);
+
+    index_pmem = (buffer - m_inp_mem_ptr);
+    if(mUseProxyColorFormat &&
+       (index_pmem < m_sInPortDef.nBufferCountActual)) {
+        if(!dev_free_buf((&m_pInput_pmem[index_pmem]),PORT_INDEX_IN)){
+          DEBUG_PRINT_ERROR("\n omx_release_meta_buffer dev free failed");
         }
-      }
-    }
+    } else {
+      media_ptr = (encoder_media_buffer_type *) buffer->pBuffer;
+      if(media_ptr && media_ptr->meta_handle)
+      {
+        if(media_ptr->buffer_type == kMetadataBufferTypeCameraSource &&
+           media_ptr->meta_handle->numFds == 1 &&
+           media_ptr->meta_handle->numInts == 2) {
+          Input_pmem.fd = media_ptr->meta_handle->data[0];
+          Input_pmem.buffer = media_ptr;
+          Input_pmem.size = media_ptr->meta_handle->data[2];
+          Input_pmem.offset = media_ptr->meta_handle->data[1];
+          DEBUG_PRINT_LOW("EBD fd = %d, offset = %d, size = %d",Input_pmem.fd,
+                            Input_pmem.offset,
+                            Input_pmem.size);
+        } else if(media_ptr->buffer_type == kMetadataBufferTypeGrallocSource) {
+          private_handle_t *handle = (private_handle_t *)media_ptr->meta_handle;
+          Input_pmem.buffer = media_ptr;
+          Input_pmem.fd = handle->fd;
+          Input_pmem.offset = 0;
+          Input_pmem.size = handle->size;
+        } else {
+          meta_error = true;
+          DEBUG_PRINT_ERROR(" Meta Error set in EBD");
+        }
+        if(!meta_error)
+           meta_error = !dev_free_buf(&Input_pmem,PORT_INDEX_IN);
+          if(meta_error)
+          {
+           DEBUG_PRINT_ERROR(" Warning dev_free_buf failed flush value is %d",
+               input_flush_progress);
+          }
+        }
+     }
+  }
 }
 #endif
+omx_video::omx_c2d_conv::omx_c2d_conv()
+{
+  c2dcc = NULL;
+  mLibHandle = NULL;
+  mConvertOpen = NULL;
+  mConvertClose = NULL;
+  src_format = NV12_128m;
+  pthread_mutex_init(&c_lock, NULL);
+}
+
+bool omx_video::omx_c2d_conv::init() {
+  bool status = true;
+  if(mLibHandle || mConvertOpen || mConvertClose) {
+    DEBUG_PRINT_ERROR("\n omx_c2d_conv::init called twice");
+    status = false;
+  }
+  if(status) {
+    mLibHandle = dlopen("libc2dcolorconvert.so", RTLD_LAZY);
+    if(mLibHandle){
+       mConvertOpen = (createC2DColorConverter_t *)
+       dlsym(mLibHandle,"createC2DColorConverter");
+       mConvertClose = (destroyC2DColorConverter_t *)
+       dlsym(mLibHandle,"destroyC2DColorConverter");
+       if(!mConvertOpen || !mConvertClose)
+         status = false;
+    } else
+      status = false;
+  }
+  if(!status && mLibHandle){
+    dlclose(mLibHandle);
+    mLibHandle = NULL;
+    mConvertOpen = NULL;
+    mConvertClose = NULL;
+  }
+  return status;
+}
+
+bool omx_video::omx_c2d_conv::convert(int src_fd, void *src_viraddr,
+     int dest_fd,void *dest_viraddr)
+{
+  int result;
+  if(!src_viraddr || !dest_viraddr || !c2dcc){
+    DEBUG_PRINT_ERROR("\n Invalid arguments omx_c2d_conv::convert");
+    return false;
+  }
+  pthread_mutex_lock(&c_lock);
+  result =  c2dcc->convertC2D(src_fd,src_viraddr,
+                              dest_fd,dest_viraddr);
+  pthread_mutex_unlock(&c_lock);
+  DEBUG_PRINT_LOW("\n Color convert status %d",result);
+  return ((result < 0)?false:true);
+}
+
+bool omx_video::omx_c2d_conv::open(unsigned int height,unsigned int width,
+     ColorConvertFormat src, ColorConvertFormat dest)
+{
+  bool status = false;
+  pthread_mutex_lock(&c_lock);
+  if(!c2dcc) {
+     c2dcc = mConvertOpen(width, height, width, height,
+             src,dest,0);
+     if(c2dcc) {
+       src_format = src;
+       status = true;
+     } else
+       DEBUG_PRINT_ERROR("\n mConvertOpen failed");
+  }
+  pthread_mutex_unlock(&c_lock);
+  return status;
+}
+
+void omx_video::omx_c2d_conv::close()
+{
+  if(mLibHandle) {
+    pthread_mutex_lock(&c_lock);
+    if(mConvertClose && c2dcc)
+     mConvertClose(c2dcc);
+    pthread_mutex_unlock(&c_lock);
+    c2dcc = NULL;
+  }
+}
+omx_video::omx_c2d_conv::~omx_c2d_conv()
+{
+  DEBUG_PRINT_ERROR("\n Destroy C2D instance");
+  if(mLibHandle) {
+    if(mConvertClose && c2dcc) {
+      pthread_mutex_lock(&c_lock);
+      mConvertClose(c2dcc);
+      pthread_mutex_unlock(&c_lock);
+    }
+    dlclose(mLibHandle);
+  }
+  c2dcc = NULL;
+  mLibHandle = NULL;
+  mConvertOpen = NULL;
+  mConvertClose = NULL;
+  pthread_mutex_destroy(&c_lock);
+}
+
+int omx_video::omx_c2d_conv::get_src_format()
+{
+  int format = -1;
+  if(src_format == NV12_128m) {
+    format = HAL_PIXEL_FORMAT_NV12_ENCODEABLE;
+  } else if(src_format == RGBA8888) {
+    format = HAL_PIXEL_FORMAT_RGBA_8888;
+  }
+  return format;
+}
+
+bool omx_video::omx_c2d_conv::get_buffer_size(int port,unsigned int &buf_size)
+{
+  int cret = 0;
+  bool ret = false;
+  C2DBuffReq bufferreq;
+  if(c2dcc){
+    bufferreq.size = 0;
+    pthread_mutex_lock(&c_lock);
+    cret = c2dcc->getBuffReq(port,&bufferreq);
+    pthread_mutex_unlock(&c_lock);
+    DEBUG_PRINT_LOW("\n Status of getbuffer is %d", cret);
+    ret = (cret)?false:true;
+    buf_size = bufferreq.size;
+  }
+  return ret;
+}
+
+OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
+                                                  OMX_IN OMX_BUFFERHEADERTYPE* buffer)
+{
+  unsigned nBufIndex = 0;
+  OMX_ERRORTYPE ret = OMX_ErrorNone;
+  encoder_media_buffer_type *media_buffer;
+  DEBUG_PRINT_LOW("\n ETBProxyOpaque: buffer[%p]\n", buffer);
+
+  if(buffer == NULL) {
+    DEBUG_PRINT_ERROR("\nERROR: ETBProxyA: Invalid buffer[%p]\n",buffer);
+    return OMX_ErrorBadParameter;
+  }
+  nBufIndex = buffer - meta_buffer_hdr;
+  if(nBufIndex >= m_sInPortDef.nBufferCountActual) {
+    DEBUG_PRINT_ERROR("\nERROR: ETBProxyA: Invalid bufindex = %u\n",
+                      nBufIndex);
+    return OMX_ErrorBadParameter;
+  }
+  media_buffer = (encoder_media_buffer_type *)buffer->pBuffer;
+  private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
+  /*Enable following code once private handle color format is
+    updated correctly*/
+
+  if(c2d_opened && handle->format != c2d_conv.get_src_format()) {
+    c2d_conv.close();
+    c2d_opened = false;
+  }
+  if (!c2d_opened) {
+      if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888) {
+        DEBUG_PRINT_ERROR("\n open Color conv for RGBA888 W: %d, H: %d\n",
+                          m_sInPortDef.format.video.nFrameWidth,
+                          m_sInPortDef.format.video.nFrameHeight);
+        if(!c2d_conv.open(m_sInPortDef.format.video.nFrameHeight,
+             m_sInPortDef.format.video.nFrameWidth,RGBA8888,NV12_128m)){
+           m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
+           DEBUG_PRINT_ERROR("\n Color conv open failed");
+           return OMX_ErrorBadParameter;
+        }
+        c2d_opened = true;
+#ifdef _MSM8974_
+        if(!dev_set_format(handle->format))
+          DEBUG_PRINT_ERROR("cannot set color format for RGBA8888\n");
+#endif
+      } else if(handle->format != HAL_PIXEL_FORMAT_NV12_ENCODEABLE) {
+        DEBUG_PRINT_ERROR("\n Incorrect color format");
+        m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
+        return OMX_ErrorBadParameter;
+      }
+  }
+  if(input_flush_progress == true)
+  {
+    m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
+    DEBUG_PRINT_ERROR("\nERROR: ETBProxyA: Input flush in progress");
+    return OMX_ErrorNone;
+  }
+
+  if(!psource_frame) {
+    psource_frame = buffer;
+    ret = push_input_buffer(hComp);
+  } else {
+    if (!m_opq_meta_q.insert_entry((unsigned)buffer,0,0)) {
+      DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Queue is full");
+      ret = OMX_ErrorBadParameter;
+    }
+  }
+  if(ret != OMX_ErrorNone) {
+    m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
+    DEBUG_PRINT_LOW("\nERROR: ETBOpaque failed:");
+  }
+  return ret;
+}
+
+OMX_ERRORTYPE omx_video::queue_meta_buffer(OMX_HANDLETYPE hComp,
+     struct pmem &Input_pmem_info) {
+
+  OMX_ERRORTYPE ret = OMX_ErrorNone;
+  unsigned address = 0,p2,id;
+
+  DEBUG_PRINT_LOW("\n In queue Meta Buffer");
+  if(!psource_frame || !pdest_frame) {
+    DEBUG_PRINT_ERROR("\n convert_queue_buffer invalid params");
+    return OMX_ErrorBadParameter;
+  }
+
+  if(dev_use_buf(&Input_pmem_info,PORT_INDEX_IN,0) != true) {
+    DEBUG_PRINT_ERROR("\nERROR: in dev_use_buf");
+    post_event ((unsigned int)psource_frame,0,OMX_COMPONENT_GENERATE_EBD);
+    ret = OMX_ErrorBadParameter;
+  }
+
+  if(ret == OMX_ErrorNone)
+    ret = empty_this_buffer_proxy(hComp,psource_frame);
+
+  if(ret == OMX_ErrorNone) {
+    psource_frame = NULL;
+    if(!psource_frame && m_opq_meta_q.m_size) {
+      m_opq_meta_q.pop_entry(&address,&p2,&id);
+      psource_frame = (OMX_BUFFERHEADERTYPE* ) address;
+    }
+  }
+  return ret;
+}
+
+OMX_ERRORTYPE omx_video::convert_queue_buffer(OMX_HANDLETYPE hComp,
+     struct pmem &Input_pmem_info,unsigned &index){
+
+  unsigned char *uva;
+  OMX_ERRORTYPE ret = OMX_ErrorNone;
+  unsigned address = 0,p2,id;
+
+  DEBUG_PRINT_LOW("\n In Convert and queue Meta Buffer");
+  if(!psource_frame || !pdest_frame) {
+    DEBUG_PRINT_ERROR("\n convert_queue_buffer invalid params");
+    return OMX_ErrorBadParameter;
+  }
+
+  if(!psource_frame->nFilledLen){
+    pdest_frame->nOffset = 0;
+    pdest_frame->nFilledLen = 0;
+    pdest_frame->nTimeStamp = psource_frame->nTimeStamp;
+    pdest_frame->nFlags = psource_frame->nFlags;
+    DEBUG_PRINT_LOW("\n Buffer header %p Filled len size %d",
+         pdest_frame,pdest_frame->nFilledLen);
+  } else {
+     uva = (unsigned char *)mmap(NULL, Input_pmem_info.size,
+                           PROT_READ|PROT_WRITE,
+                           MAP_SHARED,Input_pmem_info.fd,0);
+     if(uva == MAP_FAILED) {
+       ret = OMX_ErrorBadParameter;
+     } else {
+       if(!c2d_conv.convert(Input_pmem_info.fd,uva,
+          m_pInput_pmem[index].fd,pdest_frame->pBuffer)) {
+          DEBUG_PRINT_ERROR("\n Color Conversion failed");
+          ret = OMX_ErrorBadParameter;
+       } else {
+          unsigned int buf_size = 0;
+          if (!c2d_conv.get_buffer_size(C2D_OUTPUT,buf_size))
+            ret = OMX_ErrorBadParameter;
+          else {
+            pdest_frame->nOffset = 0;
+            pdest_frame->nFilledLen = buf_size;
+            pdest_frame->nTimeStamp = psource_frame->nTimeStamp;
+            pdest_frame->nFlags = psource_frame->nFlags;
+            DEBUG_PRINT_LOW("\n Buffer header %p Filled len size %d",
+               pdest_frame,pdest_frame->nFilledLen);
+           }
+         }
+         munmap(uva,Input_pmem_info.size);
+      }
+    }
+    if(dev_use_buf(&m_pInput_pmem[index],PORT_INDEX_IN,0) != true) {
+      DEBUG_PRINT_ERROR("\nERROR: in dev_use_buf");
+      post_event ((unsigned int)pdest_frame,0,OMX_COMPONENT_GENERATE_EBD);
+      ret = OMX_ErrorBadParameter;
+    }
+    if(ret == OMX_ErrorNone)
+      ret = empty_this_buffer_proxy(hComp,pdest_frame);
+    if(ret == OMX_ErrorNone) {
+      m_pCallbacks.EmptyBufferDone(hComp ,m_app_data, psource_frame);
+      psource_frame = NULL;
+      pdest_frame = NULL;
+      if(!psource_frame && m_opq_meta_q.m_size) {
+        m_opq_meta_q.pop_entry(&address,&p2,&id);
+        psource_frame = (OMX_BUFFERHEADERTYPE* ) address;
+      }
+      if(!pdest_frame && m_opq_pmem_q.m_size) {
+        m_opq_pmem_q.pop_entry(&address,&p2,&id);
+        pdest_frame = (OMX_BUFFERHEADERTYPE* ) address;
+        DEBUG_PRINT_LOW("\n pdest_frame pop address is %p",pdest_frame);
+      }
+    }
+    return ret;
+}
+
+OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
+{
+  unsigned address = 0,p2,id, index = 0;
+  OMX_ERRORTYPE ret = OMX_ErrorNone;
+
+  if(!psource_frame && m_opq_meta_q.m_size) {
+    m_opq_meta_q.pop_entry(&address,&p2,&id);
+    psource_frame = (OMX_BUFFERHEADERTYPE* ) address;
+  }
+  if(!pdest_frame && m_opq_pmem_q.m_size) {
+    m_opq_pmem_q.pop_entry(&address,&p2,&id);
+    pdest_frame = (OMX_BUFFERHEADERTYPE* ) address;
+  }
+  while(psource_frame != NULL && pdest_frame != NULL &&
+        ret == OMX_ErrorNone) {
+    struct pmem Input_pmem_info;
+    encoder_media_buffer_type *media_buffer;
+    index = pdest_frame - m_inp_mem_ptr;
+    if(index >= m_sInPortDef.nBufferCountActual){
+       DEBUG_PRINT_ERROR("\n Output buffer index is wrong %d act count %d",
+                         index,m_sInPortDef.nBufferCountActual);
+       return OMX_ErrorBadParameter;
+    }
+    media_buffer = (encoder_media_buffer_type *)psource_frame->pBuffer;
+    /*Will enable to verify camcorder in current TIPS can be removed*/
+    if(media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
+      Input_pmem_info.buffer = media_buffer;
+      Input_pmem_info.fd = media_buffer->meta_handle->data[0];
+      Input_pmem_info.offset = media_buffer->meta_handle->data[1];
+      Input_pmem_info.size = media_buffer->meta_handle->data[2];
+      DEBUG_PRINT_LOW("ETB fd = %d, offset = %d, size = %d",Input_pmem_info.fd,
+                        Input_pmem_info.offset,
+                        Input_pmem_info.size);
+      ret = queue_meta_buffer(hComp,Input_pmem_info);
+    } else {
+      private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
+      Input_pmem_info.buffer = media_buffer;
+      Input_pmem_info.fd = handle->fd;
+      Input_pmem_info.offset = 0;
+      Input_pmem_info.size = handle->size;
+      if(handle->format == HAL_PIXEL_FORMAT_RGBA_8888)
+        ret = convert_queue_buffer(hComp,Input_pmem_info,index);
+      else if(handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE)
+        ret = queue_meta_buffer(hComp,Input_pmem_info);
+      else
+        ret = OMX_ErrorBadParameter;
+    }
+   }
+  return ret;
+}
