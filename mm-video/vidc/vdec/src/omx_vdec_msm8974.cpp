@@ -1340,19 +1340,23 @@ int omx_vdec::update_resolution(int width, int height, int stride, int scan_line
 
 OMX_ERRORTYPE omx_vdec::is_video_session_supported()
 {
-  if (drv_ctx.video_resolution.frame_width < m_decoder_capability.min_width ||
-      drv_ctx.video_resolution.frame_width > m_decoder_capability.max_width ||
-      drv_ctx.video_resolution.frame_height < m_decoder_capability.min_height ||
-      drv_ctx.video_resolution.frame_height > m_decoder_capability.max_height) {
-      DEBUG_PRINT_ERROR("\n Unsupported video resolution width = %u height = %u\n",
-                        drv_ctx.video_resolution.frame_width,
-                        drv_ctx.video_resolution.frame_height);
-      DEBUG_PRINT_ERROR("\n supported range width - min(%u) max(%u\n",
-                        m_decoder_capability.min_width,
-                        m_decoder_capability.max_width);
-      DEBUG_PRINT_ERROR("\n supported range height - min(%u) max(%u)\n",
-                        m_decoder_capability.min_height,
-                        m_decoder_capability.max_height);
+  if ((drv_ctx.video_resolution.frame_width *
+       drv_ctx.video_resolution.frame_height >
+       m_decoder_capability.max_width *
+       m_decoder_capability.max_height) ||
+       (drv_ctx.video_resolution.frame_width*
+       drv_ctx.video_resolution.frame_height <
+       m_decoder_capability.min_width *
+       m_decoder_capability.min_height))
+  {
+      DEBUG_PRINT_ERROR(
+         "Unsupported WxH = (%u)x(%u) supported range is min(%u)x(%u) - max(%u)x(%u)",
+          drv_ctx.video_resolution.frame_width,
+          drv_ctx.video_resolution.frame_height,
+          m_decoder_capability.min_width,
+          m_decoder_capability.min_height,
+          m_decoder_capability.max_width,
+          m_decoder_capability.max_height);
       return OMX_ErrorUnsupportedSetting;
   }
   DEBUG_PRINT_HIGH("\n video session supported\n");
