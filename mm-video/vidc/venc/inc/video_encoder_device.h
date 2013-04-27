@@ -119,6 +119,7 @@ private:
   struct venc_allocatorproperty   m_sInput_buff_property;
   struct venc_allocatorproperty   m_sOutput_buff_property;
   struct venc_sessionqp           session_qp;
+  struct venc_qprange             qp_range;
   struct venc_multiclicecfg       multislice;
   struct venc_entropycfg          entropy;
   struct venc_dbcfg               dbkfilter;
@@ -132,6 +133,7 @@ private:
   bool venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config);
   bool venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate);
   bool venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp);
+  bool venc_set_qp_range(OMX_U32 min_qp, OMX_U32 max_qp);
   bool venc_set_extradata(OMX_U32 extra_data);
   bool venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 config);
   bool venc_set_intra_vop_refresh(OMX_BOOL intra_vop_refresh);

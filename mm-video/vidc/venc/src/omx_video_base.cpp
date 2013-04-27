@@ -1747,6 +1747,14 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       break;
     }
 
+  case OMX_QcomIndexParamVideoQPRange:
+    {
+      OMX_QCOM_VIDEO_PARAM_QPRANGETYPE *qp_range = (OMX_QCOM_VIDEO_PARAM_QPRANGETYPE*) paramData;
+      DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamVideoQPRange\n");
+      memcpy(qp_range, &m_sSessionQPRange, sizeof(m_sSessionQPRange));
+      break;
+    }
+
     case OMX_IndexParamVideoErrorCorrection:
     {
       OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* errorresilience = (OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE*)paramData;
