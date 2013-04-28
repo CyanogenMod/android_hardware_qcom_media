@@ -706,9 +706,9 @@ omx_vdec::~omx_vdec()
   pthread_join(msg_thread_id,NULL);
   DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
   dec.cmd = V4L2_DEC_CMD_STOP;
-  if (ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec))
-  {
-    DEBUG_PRINT_ERROR("\n STOP Command failed\n");
+  if (drv_ctx.video_driver_fd >=0 ) {
+    if (ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec))
+      DEBUG_PRINT_ERROR("\n STOP Command failed\n");
   }
   pthread_join(async_thread_id,NULL);
   unsubscribe_to_events(drv_ctx.video_driver_fd);
@@ -1425,12 +1425,13 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	drv_ctx.frame_rate.fps_numerator = DEFAULT_FPS;
 	drv_ctx.frame_rate.fps_denominator = 1;
 
-    ret = pthread_create(&async_thread_id,0,async_message_thread,this);
-    if(ret < 0) {
-	  close(drv_ctx.video_driver_fd);
+    ret = subscribe_to_events(drv_ctx.video_driver_fd);
+    if (!ret)
+      ret = pthread_create(&async_thread_id,0,async_message_thread,this);
+    if(ret) {
 	  DEBUG_PRINT_ERROR("\n Failed to create async_message_thread \n");
 	  return OMX_ErrorInsufficientResources;
-   }
+    }
 
 #ifdef INPUT_BUFFER_LOG
 	strcpy(inputfilename, INPUT_BUFFER_FILE_NAME);
@@ -1645,11 +1646,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         }
 
 		capture_capability= V4L2_PIX_FMT_NV12;
-		ret = subscribe_to_events(drv_ctx.video_driver_fd);
-		if (ret) {
-			DEBUG_PRINT_ERROR("\n Subscribe Event Failed \n");
-			return OMX_ErrorInsufficientResources;
-		}
 
 		struct v4l2_capability cap;
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_QUERYCAP, &cap);
@@ -1745,7 +1741,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 			ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
 			if (ret) {
 				DEBUG_PRINT_ERROR("Omx_vdec:: Unable to open secure device %d\n", ret);
-				close(drv_ctx.video_driver_fd);
 				return OMX_ErrorInsufficientResources;
 			}
 		}
@@ -1856,12 +1851,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	if (eRet != OMX_ErrorNone)
 	{
 		DEBUG_PRINT_ERROR("\n Component Init Failed");
-		DEBUG_PRINT_HIGH("\n Calling VDEC_IOCTL_STOP_NEXT_MSG");
-		(void)ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_STOP_NEXT_MSG,
-				NULL);
-		DEBUG_PRINT_HIGH("\n Calling close() on Video Driver");
-		close (drv_ctx.video_driver_fd);
-		drv_ctx.video_driver_fd = -1;
 	}
 	else
 	{
