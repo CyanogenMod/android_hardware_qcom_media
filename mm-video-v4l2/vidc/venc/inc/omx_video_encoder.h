@@ -84,6 +84,8 @@ class omx_venc: public omx_video
         bool dev_loaded_stop_done(void);
         bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *);
         bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height);
+        bool dev_color_align(OMX_BUFFERHEADERTYPE *buffer, OMX_U32 width,
+                        OMX_U32 height);
 };
 
 #endif //__OMX_VENC__H

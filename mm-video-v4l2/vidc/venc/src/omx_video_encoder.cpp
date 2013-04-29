@@ -1720,3 +1720,9 @@ int omx_venc::async_message_process (void *context, void* message)
     }
     return 0;
 }
+
+bool omx_venc::dev_color_align(OMX_BUFFERHEADERTYPE *buffer,
+                OMX_U32 width, OMX_U32 height)
+{
+    return handle->venc_color_align(buffer, width,height);
+}

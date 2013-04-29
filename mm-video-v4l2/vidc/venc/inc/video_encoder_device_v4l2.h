@@ -228,6 +228,9 @@ class venc_dev
         bool venc_loaded_start_done(void);
         bool venc_loaded_stop_done(void);
         bool venc_is_video_session_supported(unsigned long width, unsigned long height);
+        bool venc_color_align(OMX_BUFFERHEADERTYPE *buffer, OMX_U32 width,
+                        OMX_U32 height);
+
         OMX_U32 m_nDriver_fd;
         bool m_profile_set;
         bool m_level_set;
