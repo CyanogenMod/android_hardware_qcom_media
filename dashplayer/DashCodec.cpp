@@ -608,6 +608,29 @@ status_t DashCodec::allocateOutputBuffersFromNativeWindow() {
         return err;
     }
 
+    // XXX: Is this the right logic to use?  It's not clear to me what the OMX
+    // buffer counts refer to - how do they account for the renderer holding on
+    // to buffers?
+    if (def.nBufferCountActual < def.nBufferCountMin + minUndequeuedBufs) {
+        OMX_U32 newBufferCount = def.nBufferCountMin + minUndequeuedBufs;
+        def.nBufferCountActual = newBufferCount;
+
+        //Keep an extra buffer for smooth streaming
+        if (mSmoothStreaming) {
+            def.nBufferCountActual += 1;
+        }
+
+        err = mOMX->setParameter(
+                mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
+
+        if (err != OK) {
+            ALOGE("[%s] setting nBufferCountActual to %lu failed: %d",
+                    mComponentName.c_str(), newBufferCount, err);
+            return err;
+        }
+    }
+
+
     err = native_window_set_buffer_count(
             mNativeWindow.get(), def.nBufferCountActual);
 
