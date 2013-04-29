@@ -7046,6 +7046,10 @@ int omx_vdec::async_message_process (void *context, void* message)
   {
     omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
   }
+  if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY)
+  {
+    omxhdr->nFlags |= OMX_BUFFERFLAG_DECODEONLY;
+  }
   vdec_msg->msgdata.output_frame.bufferaddr =
       omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
   int format_notably_changed = 0;
