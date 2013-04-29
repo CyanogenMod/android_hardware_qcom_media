@@ -668,32 +668,33 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 mSource->getNewSeekTime(&newSeekTime);
                 ALOGV("newSeekTime %lld", newSeekTime);
             }
-            else if ( (mSourceType == kHttpDashSource) && (nRet == OK)) // if seek success then flush the audio,video decoder and renderer
-            {
+            else if (mSourceType == kHttpDashSource) {
                 mTimeDiscontinuityPending = true;
-                bool audPresence = false;
-                bool vidPresence = false;
-                bool textPresence = false;
-                mSource->getMediaPresence(audPresence,vidPresence,textPresence);
-                mRenderer->setMediaPresence(true,audPresence); // audio
-                mRenderer->setMediaPresence(false,vidPresence); // video
-                if( (mVideoDecoder != NULL) &&
-                    (mFlushingVideo == NONE || mFlushingVideo == AWAITING_DISCONTINUITY) ) {
-                    flushDecoder( false, true ); // flush video, shutdown
-                }
+                if (nRet == OK) { // if seek success then flush the audio,video decoder and renderer
+                  bool audPresence = false;
+                  bool vidPresence = false;
+                  bool textPresence = false;
+                  mSource->getMediaPresence(audPresence,vidPresence,textPresence);
+                  mRenderer->setMediaPresence(true,audPresence); // audio
+                  mRenderer->setMediaPresence(false,vidPresence); // video
+                  if( (mVideoDecoder != NULL) &&
+                      (mFlushingVideo == NONE || mFlushingVideo == AWAITING_DISCONTINUITY) ) {
+                      flushDecoder( false, true ); // flush video, shutdown
+                  }
 
-               if( (mAudioDecoder != NULL) &&
-                   (mFlushingAudio == NONE|| mFlushingAudio == AWAITING_DISCONTINUITY) )
-               {
-                   flushDecoder( true, true );  // flush audio,  shutdown
-               }
-               if( mAudioDecoder == NULL ) {
-                   ALOGV("Audio is not there, set it to shutdown");
-                   mFlushingAudio = SHUT_DOWN;
-               }
-               if( mVideoDecoder == NULL ) {
-                   ALOGV("Video is not there, set it to shutdown");
-                   mFlushingVideo = SHUT_DOWN;
+                 if( (mAudioDecoder != NULL) &&
+                     (mFlushingAudio == NONE|| mFlushingAudio == AWAITING_DISCONTINUITY) )
+                 {
+                     flushDecoder( true, true );  // flush audio,  shutdown
+                 }
+                 if( mAudioDecoder == NULL ) {
+                     ALOGV("Audio is not there, set it to shutdown");
+                     mFlushingAudio = SHUT_DOWN;
+                 }
+                 if( mVideoDecoder == NULL ) {
+                     ALOGV("Video is not there, set it to shutdown");
+                     mFlushingVideo = SHUT_DOWN;
+                 }
                }
                // get the new seeked position
                newSeekTime = seekTimeUs;
