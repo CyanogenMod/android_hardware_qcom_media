@@ -1714,6 +1714,13 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
     return true;
 }
 
+bool venc_dev::venc_color_align(OMX_BUFFERHEADERTYPE *buffer,
+                OMX_U32 width, OMX_U32 height)
+{
+    DEBUG_PRINT_ERROR("%s not implemented!", __func__);
+    return OMX_ErrorUnsupportedSetting;
+}
+
 bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned,unsigned)
 {
     struct venc_buffer frameinfo;

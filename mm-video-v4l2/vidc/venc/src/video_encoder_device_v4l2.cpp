@@ -26,7 +26,7 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 
-#include<string.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
 #include <unistd.h>
@@ -1702,6 +1702,44 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
                 dev_buffer.maped_size);
     } else {
         DEBUG_PRINT_ERROR("\nERROR: venc_free_buf:Invalid Port Index ");
+        return false;
+    }
+
+    return true;
+}
+
+bool venc_dev::venc_color_align(OMX_BUFFERHEADERTYPE *buffer,
+        OMX_U32 width, OMX_U32 height)
+{
+    OMX_U32 y_stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, width),
+            y_scanlines = VENUS_Y_SCANLINES(COLOR_FMT_NV12, height),
+            uv_stride = VENUS_UV_STRIDE(COLOR_FMT_NV12, width),
+            uv_scanlines = VENUS_UV_SCANLINES(COLOR_FMT_NV12, height),
+            src_chroma_offset = width * height;
+
+    if (buffer->nAllocLen >= VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height)) {
+        OMX_U8* src_buf = buffer->pBuffer, *dst_buf = buffer->pBuffer;
+        //Do chroma first, so that we can convert it in-place
+        src_buf += width * height;
+        dst_buf += y_stride * y_scanlines;
+        for (int line = height / 2 - 1; line >= 0; --line) {
+            memmove(dst_buf + line * uv_stride,
+                    src_buf + line * width,
+                    width);
+        }
+
+        dst_buf = src_buf = buffer->pBuffer;
+        //Copy the Y next
+        for (int line = height - 1; line > 0; --line) {
+            memmove(dst_buf + line * y_stride,
+                    src_buf + line * width,
+                    width);
+        }
+    } else {
+        DEBUG_PRINT_ERROR("Failed to align Chroma. from %u to %u : \
+                Insufficient bufferLen=%u v/s Required=%u",
+                (width*height), src_chroma_offset, buffer->nAllocLen,
+                VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height));
         return false;
     }
 

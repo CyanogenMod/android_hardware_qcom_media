@@ -3184,17 +3184,27 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
         }
     } else if (input_use_buffer && !m_use_input_pmem)
 #else
-        if (input_use_buffer && !m_use_input_pmem)
+    if (input_use_buffer && !m_use_input_pmem)
 #endif
-        {
-            DEBUG_PRINT_LOW("\n Heap UseBuffer case, so memcpy the data");
-            pmem_data_buf = (OMX_U8 *)m_pInput_pmem[nBufIndex].buffer;
-            memcpy (pmem_data_buf, (buffer->pBuffer + buffer->nOffset),
-                    buffer->nFilledLen);
-            DEBUG_PRINT_LOW("memcpy() done in ETBProxy for i/p Heap UseBuf");
-        } else if (mUseProxyColorFormat) {
-            fd = m_pInput_pmem[nBufIndex].fd;
-        }
+    {
+        DEBUG_PRINT_LOW("\n Heap UseBuffer case, so memcpy the data");
+        pmem_data_buf = (OMX_U8 *)m_pInput_pmem[nBufIndex].buffer;
+        memcpy (pmem_data_buf, (buffer->pBuffer + buffer->nOffset),
+                buffer->nFilledLen);
+        DEBUG_PRINT_LOW("memcpy() done in ETBProxy for i/p Heap UseBuf");
+    } else if (mUseProxyColorFormat) {
+        fd = m_pInput_pmem[nBufIndex].fd;
+    } else if (m_sInPortDef.format.video.eColorFormat ==
+                    OMX_COLOR_FormatYUV420SemiPlanar && !mUseProxyColorFormat) {
+            //For the case where YUV420SP buffers are qeueued to component
+            //by sources other than camera (Apps via MediaCodec), conversion
+            //to vendor flavoured NV12 color format is required.
+            if (!dev_color_align(buffer, m_sInPortDef.format.video.nFrameWidth,
+                                    m_sInPortDef.format.video.nFrameHeight)) {
+                    DEBUG_PRINT_ERROR("Failed to adjust buffer color");
+                    return OMX_ErrorUndefined;
+            }
+    }
 #ifdef _MSM8974_
     if (dev_empty_buf(buffer, pmem_data_buf,nBufIndex,fd) != true)
 #else
