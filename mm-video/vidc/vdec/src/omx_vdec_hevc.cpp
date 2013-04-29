@@ -4168,6 +4168,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
             return OMX_ErrorBadParameter;
         }
 
+        drv_ctx.op_buf.buffer_size = (OMX_U32)handle->size;
         if (!m_use_android_native_buffers) {
             if (!secure_mode) {
                 buff =  (OMX_U8*)mmap(0, handle->size,
