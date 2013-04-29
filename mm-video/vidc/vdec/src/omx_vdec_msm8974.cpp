@@ -2686,7 +2686,7 @@ bool omx_vdec::post_event(unsigned int p1,
 
 OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType)
 {
-  OMX_ERRORTYPE eRet = OMX_ErrorNoMore;
+  OMX_ERRORTYPE eRet = OMX_ErrorNone;
   if(!profileLevelType)
     return OMX_ErrorBadParameter;
 
