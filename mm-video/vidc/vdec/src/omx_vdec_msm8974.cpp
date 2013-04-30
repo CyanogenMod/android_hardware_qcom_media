@@ -593,6 +593,10 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
   memset (m_hwdevice_name,0,sizeof(m_hwdevice_name));
   memset(m_demux_offsets, 0, ( sizeof(OMX_U32) * 8192) );
   m_demux_entries = 0;
+  msg_thread_id = 0;
+  async_thread_id = 0;
+  msg_thread_created = false;
+  async_thread_created = false;
 #ifdef _ANDROID_ICS_
   memset(&native_buffer, 0 ,(sizeof(struct nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
 #endif
@@ -703,14 +707,16 @@ omx_vdec::~omx_vdec()
   m_pipe_in = -1;
   m_pipe_out = -1;
   DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
-  pthread_join(msg_thread_id,NULL);
+  if (msg_thread_created)
+    pthread_join(msg_thread_id,NULL);
   DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
   dec.cmd = V4L2_DEC_CMD_STOP;
   if (drv_ctx.video_driver_fd >=0 ) {
     if (ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec))
       DEBUG_PRINT_ERROR("\n STOP Command failed\n");
   }
-  pthread_join(async_thread_id,NULL);
+  if (async_thread_created)
+    pthread_join(async_thread_id,NULL);
   unsubscribe_to_events(drv_ctx.video_driver_fd);
   close(drv_ctx.video_driver_fd);
   pthread_mutex_destroy(&m_lock);
@@ -1426,10 +1432,13 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 	drv_ctx.frame_rate.fps_denominator = 1;
 
     ret = subscribe_to_events(drv_ctx.video_driver_fd);
-    if (!ret)
+    if (!ret) {
+      async_thread_created = true;
       ret = pthread_create(&async_thread_id,0,async_message_thread,this);
+	}
     if(ret) {
 	  DEBUG_PRINT_ERROR("\n Failed to create async_message_thread \n");
+	  async_thread_created = false;
 	  return OMX_ErrorInsufficientResources;
     }
 
@@ -1838,11 +1847,13 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 			}
 			m_pipe_in = fds[0];
 			m_pipe_out = fds[1];
+			msg_thread_created = true;
 			r = pthread_create(&msg_thread_id,0,message_thread,this);
 			
 			if(r < 0)
 			{
 				DEBUG_PRINT_ERROR("\n component_init(): message_thread creation failed");
+				msg_thread_created = false;
 				eRet = OMX_ErrorInsufficientResources;
 			}
 		}
