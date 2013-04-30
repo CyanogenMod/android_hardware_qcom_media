@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009, 2011, Code Aurora Forum. All rights reserved.
+Copyright (c) 2009, 2011, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -61,7 +61,7 @@ extern "C"
 #define OMX_QCOM_INDEX_PARAM_SESSIONID       "OMX.Qualcomm.index.audio.sessionId"
 #define OMX_QCOM_INDEX_PARAM_VOICERECORDTYPE "OMX.Qualcomm.index.audio.VoiceRecord"
 #define OMX_QCOM_INDEX_PARAM_AC3TYPE	     "OMX.Qualcomm.index.audio.ac3"
-#define OMX_QCOM_INDEX_PARAM_AC3PP	     "OMX.Qualcomm.index.audio.ac3.postproc"
+#define OMX_QCOM_INDEX_PARAM_AC3PP	     "OMX.Qualcomm.index.audio.postproc.ac3"
 #define OMX_QCOM_INDEX_PARAM_DAK_BUNDLE      "OMX.Qualcomm.index.audio.dakbundle"
 #define OMX_QCOM_INDEX_PARAM_DAK_M2S         "OMX.Qualcomm.index.audio.dak_m2s"
 #define OMX_QCOM_INDEX_PARAM_DAK_SSE         "OMX.Qualcomm.index.audio.dak_sse"
@@ -176,22 +176,22 @@ typedef enum OMX_AUDIO_AC3_CHANNEL_CONFIG
    OMX_AUDIO_AC3_CHANNEL_CONFIG_1_0,
    OMX_AUDIO_AC3_CHANNEL_CONFIG_2_0,
    OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_1, 
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_1,
    OMX_AUDIO_AC3_CHANNEL_CONFIG_3_1,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2, 
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2,
    OMX_AUDIO_AC3_CHANNEL_CONFIG_3_2,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0_1, 
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2_1, 
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_2_1,   
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0_2, 
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2_2, 
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0_1,
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2_1,
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_2_1,
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0_2,
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2_2,
    OMX_AUDIO_AC3_CHANNEL_CONFIG_3_2_2,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_DEFAULT = 0xFFFF 
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_DEFAULT = 0xFFFF
 } OMX_AUDIO_AC3_CHANNEL_CONFIG;
 
-/** 
+/**
  * AC-3 type
- * 
+ *
  *  STRUCT MEMBERS:
  *  nSize               : Size of the structure in bytes
  *  nVersion            : OMX specification version information
@@ -205,10 +205,10 @@ typedef enum OMX_AUDIO_AC3_CHANNEL_CONFIG
  *  bCompressionOn      : Flag to enable Compression
  *  bLfeOn              : Flag for LFE on/off
  *  bDelaySurroundChannels : Flag to put delay on surround channels
- * 
+ *
  */
 typedef struct QOMX_AUDIO_PARAM_AC3TYPE {
-   OMX_U32 nSize;            
+   OMX_U32 nSize;
    OMX_VERSIONTYPE nVersion;
    OMX_U32 nPortIndex;
    OMX_U16 nChannels;
@@ -272,7 +272,7 @@ typedef enum OMX_AUDIO_AC3_KARAOKE_MODE
 
 typedef struct QOMX_AUDIO_PARAM_AC3PP
 {
-   OMX_U32 nSize;            
+   OMX_U32 nSize;
    OMX_VERSIONTYPE nVersion;
    OMX_U32 nPortIndex;
    OMX_AUDIO_AC3_CHANNEL_ROUTING eChannelRouting[8];
@@ -283,7 +283,7 @@ typedef struct QOMX_AUDIO_PARAM_AC3PP
    OMX_U32 usDynamicScaleBoost;
    OMX_U32 usDynamicScaleCut;
    OMX_AUDIO_AC3_KARAOKE_MODE eKaraokeMode;
-} QOMX_AUDIO_PARAM_AC3PP;   
+} QOMX_AUDIO_PARAM_AC3PP;
 
 
 /**
@@ -406,7 +406,7 @@ typedef struct OMX_DAK_CONFIG_VOLTYPE {
 	OMX_U8 nInternalGain;		/**< Audio volume scale */
 	OMX_U8 nExternalGain;		/**< Audio volume scale applied by external volume control */
 	OMX_S8 nBalance;		/**< L/R panning for output audio */
-	OMX_BOOL bMute;			/**< Audio Mute */ 
+	OMX_BOOL bMute;			/**< Audio Mute */
 } OMX_DAK_CONFIG_VOLTYPE;
 
 /** Dolby Audio Kernel Natural Bass */

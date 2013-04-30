@@ -20,6 +20,10 @@ else ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
 MM_CORE_TARGET = 8960
 else ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
 MM_CORE_TARGET = 8974
+else ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
+MM_CORE_TARGET = 8610
+else ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
+MM_CORE_TARGET = 8226
 else
 MM_CORE_TARGET = default
 endif
@@ -53,7 +57,8 @@ LOCAL_COPY_HEADERS      += inc/QOMX_SourceExtensions.h
 LOCAL_COPY_HEADERS      += inc/QOMX_VideoExtensions.h
 LOCAL_COPY_HEADERS      += inc/OMX_IndexExt.h
 LOCAL_COPY_HEADERS      += inc/QOMX_StreamingExtensions.h
-
+LOCAL_COPY_HEADERS      += inc/QCMediaDefs.h
+LOCAL_COPY_HEADERS      += inc/QCMetaData.h
 
 #===============================================================================
 #             LIBRARY for Android apps

@@ -1,4 +1,4 @@
-/* copyright (c) 2012, code aurora forum. all rights reserved.
+/* Copyright (c) 2012 - 2013, The Linux Foundation. All rights reserved.
  *
  * redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -9,7 +9,7 @@
  *       copyright notice, this list of conditions and the following
  *       disclaimer in the documentation and/or other materials provided
  *       with the distribution.
- *     * neither the name of code aurora forum, inc. nor the names of its
+ *     * neither the name of The Linux Foundation nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *
@@ -26,9 +26,6 @@
  * if advised of the possibility of such damage.
  *
  */
-/*--------------------------------------------------------------------------
-Copyright (c) 2012 Code Aurora Forum. All rights reserved.
---------------------------------------------------------------------------*/
 
 #ifndef C2D_ColorConverter_H_
 #define C2D_ColorConverter_H_
@@ -67,6 +64,7 @@ typedef C2D_STATUS (*LINK_c2dDestroySurface)( uint32 surface_id );
 
 namespace android {
 
+
 enum ColorConvertFormat {
     RGB565 = 1,
     YCbCr420Tile,
@@ -75,6 +73,7 @@ enum ColorConvertFormat {
     YCrCb420P,
     RGBA8888,
     NV12_2K,
+    NV12_128m,
 };
 
 typedef struct {
