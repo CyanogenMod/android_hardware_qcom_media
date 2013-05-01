@@ -520,7 +520,7 @@ omx_core_cb_type core[] =
     }
   },
   {
-    "AIV.play",
+    "AIV.play.generic",
     NULL, // Create instance function
     // Unique instance handle
     {
@@ -532,7 +532,7 @@ omx_core_cb_type core[] =
     NULL,  // Shared object library handle
     "libAivPlay.so",
     {
-      "AIV.play.101"
+      "AIV.play.role.generic"
     }
   },
   {
