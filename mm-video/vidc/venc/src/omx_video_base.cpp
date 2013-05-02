@@ -250,7 +250,8 @@ omx_video::omx_video():
   DEBUG_PRINT_HIGH("\n omx_video(): Inside Constructor()");
   memset(&m_cmp,0,sizeof(m_cmp));
   memset(&m_pCallbacks,0,sizeof(m_pCallbacks));
-
+  async_thread_created = false;
+  msg_thread_created = false;
 
   pthread_mutex_init(&m_lock, NULL);
   sem_init(&m_cmd_lock,0,0);
@@ -276,9 +277,15 @@ omx_video::~omx_video()
   if(m_pipe_in) close(m_pipe_in);
   if(m_pipe_out) close(m_pipe_out);
   DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit\n");
-  pthread_join(msg_thread_id,NULL);
+  if (msg_thread_created)
+	  pthread_join(msg_thread_id,NULL);
   DEBUG_PRINT_HIGH("omx_video: Waiting on Async Thread exit\n");
-  pthread_join(async_thread_id,NULL);
+  /*For V4L2 based drivers, pthread_join is done in device_close
+   * so no need to do it here*/
+#ifndef _MSM8974_
+  if (async_thread_created)
+	  pthread_join(async_thread_id,NULL);
+#endif
   pthread_mutex_destroy(&m_lock);
   sem_destroy(&m_cmd_lock);
   DEBUG_PRINT_HIGH("\n m_etb_count = %u, m_fbd_count = %u\n", m_etb_count,
