@@ -83,6 +83,18 @@ DashPlayer::DashPlayer()
 }
 
 DashPlayer::~DashPlayer() {
+    if (mRenderer != NULL) {
+        looper()->unregisterHandler(mRenderer->id());
+    }
+    if (mAudioDecoder != NULL) {
+      looper()->unregisterHandler(mAudioDecoder->id());
+    }
+    if (mVideoDecoder != NULL) {
+      looper()->unregisterHandler(mVideoDecoder->id());
+    }
+    if (mTextDecoder != NULL) {
+      looper()->unregisterHandler(mTextDecoder->id());
+    }
     if(mStats != NULL) {
         mStats->logFpsSummary();
         mStats = NULL;
@@ -497,12 +509,18 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 ALOGV("%s shutdown completed", mTrackName);
                 if (track == kAudio) {
                     ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: audio");
+                    if (mAudioDecoder != NULL) {
+                        looper()->unregisterHandler(mAudioDecoder->id());
+                    }
                     mAudioDecoder.clear();
 
                     CHECK_EQ((int)mFlushingAudio, (int)SHUTTING_DOWN_DECODER);
                     mFlushingAudio = SHUT_DOWN;
                 } else if (track == kVideo) {
                     ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: Video");
+                    if (mVideoDecoder != NULL) {
+                        looper()->unregisterHandler(mVideoDecoder->id());
+                    }
                     mVideoDecoder.clear();
 
                     CHECK_EQ((int)mFlushingVideo, (int)SHUTTING_DOWN_DECODER);
@@ -668,32 +686,33 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 mSource->getNewSeekTime(&newSeekTime);
                 ALOGV("newSeekTime %lld", newSeekTime);
             }
-            else if ( (mSourceType == kHttpDashSource) && (nRet == OK)) // if seek success then flush the audio,video decoder and renderer
-            {
+            else if (mSourceType == kHttpDashSource) {
                 mTimeDiscontinuityPending = true;
-                bool audPresence = false;
-                bool vidPresence = false;
-                bool textPresence = false;
-                mSource->getMediaPresence(audPresence,vidPresence,textPresence);
-                mRenderer->setMediaPresence(true,audPresence); // audio
-                mRenderer->setMediaPresence(false,vidPresence); // video
-                if( (mVideoDecoder != NULL) &&
-                    (mFlushingVideo == NONE || mFlushingVideo == AWAITING_DISCONTINUITY) ) {
-                    flushDecoder( false, true ); // flush video, shutdown
-                }
+                if (nRet == OK) { // if seek success then flush the audio,video decoder and renderer
+                  bool audPresence = false;
+                  bool vidPresence = false;
+                  bool textPresence = false;
+                  mSource->getMediaPresence(audPresence,vidPresence,textPresence);
+                  mRenderer->setMediaPresence(true,audPresence); // audio
+                  mRenderer->setMediaPresence(false,vidPresence); // video
+                  if( (mVideoDecoder != NULL) &&
+                      (mFlushingVideo == NONE || mFlushingVideo == AWAITING_DISCONTINUITY) ) {
+                      flushDecoder( false, true ); // flush video, shutdown
+                  }
 
-               if( (mAudioDecoder != NULL) &&
-                   (mFlushingAudio == NONE|| mFlushingAudio == AWAITING_DISCONTINUITY) )
-               {
-                   flushDecoder( true, true );  // flush audio,  shutdown
-               }
-               if( mAudioDecoder == NULL ) {
-                   ALOGV("Audio is not there, set it to shutdown");
-                   mFlushingAudio = SHUT_DOWN;
-               }
-               if( mVideoDecoder == NULL ) {
-                   ALOGV("Video is not there, set it to shutdown");
-                   mFlushingVideo = SHUT_DOWN;
+                 if( (mAudioDecoder != NULL) &&
+                     (mFlushingAudio == NONE|| mFlushingAudio == AWAITING_DISCONTINUITY) )
+                 {
+                     flushDecoder( true, true );  // flush audio,  shutdown
+                 }
+                 if( mAudioDecoder == NULL ) {
+                     ALOGV("Audio is not there, set it to shutdown");
+                     mFlushingAudio = SHUT_DOWN;
+                 }
+                 if( mVideoDecoder == NULL ) {
+                     ALOGV("Video is not there, set it to shutdown");
+                     mFlushingVideo = SHUT_DOWN;
+                 }
                }
                // get the new seeked position
                newSeekTime = seekTimeUs;
@@ -956,6 +975,7 @@ void DashPlayer::finishFlushIfPossible() {
           mTextNotify->findMessage("codec-request", &codecRequest);
           codecRequest = NULL;
           mTextNotify = NULL;
+          looper()->unregisterHandler(mTextDecoder->id());
           mTextDecoder.clear();
         }
         postScanSources();
@@ -969,6 +989,9 @@ void DashPlayer::finishReset() {
     ++mScanSourcesGeneration;
     mScanSourcesPending = false;
 
+    if (mRenderer != NULL) {
+        looper()->unregisterHandler(mRenderer->id());
+    }
     if(mRenderer != NULL) {
         mRenderer.clear();
     }
@@ -985,6 +1008,7 @@ void DashPlayer::finishReset() {
       mTextNotify->findMessage("codec-request", &codecRequest);
       codecRequest = NULL;
       mTextNotify = NULL;
+      looper()->unregisterHandler(mTextDecoder->id());
       mTextDecoder.clear();
       ALOGE("Text Dummy Decoder Deleted");
     }

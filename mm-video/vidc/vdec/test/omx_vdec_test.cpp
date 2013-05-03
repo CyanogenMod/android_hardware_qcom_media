@@ -289,6 +289,8 @@ OMX_COMPONENTTYPE* dec_handle = 0;
 
 OMX_BUFFERHEADERTYPE  **pInputBufHdrs = NULL;
 OMX_BUFFERHEADERTYPE  **pOutYUVBufHdrs= NULL;
+OMX_BUFFERHEADERTYPE  *pLastBuff = NULL;
+
 
 static OMX_BOOL use_external_pmem_buf = OMX_FALSE;
 
@@ -926,6 +928,7 @@ void* fbd_thread(void* pArg)
           pthread_mutex_unlock(&eos_lock);
           pthread_mutex_unlock(&fbd_lock);
         }
+        pLastBuff = pBuffer;
     }
     pthread_mutex_unlock(&enable_lock);
     if(cmd_data <= fbd_cnt)
@@ -3676,6 +3679,12 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
 int disable_output_port()
 {
     DEBUG_PRINT("DISABLING OP PORT\n");
+    pthread_mutex_lock(&fbd_lock);
+    if ( pLastBuff != NULL ) {
+        push(fbd_queue, (void *)pLastBuff);
+        pLastBuff = NULL;
+    }
+    pthread_mutex_unlock(&fbd_lock);
     pthread_mutex_lock(&enable_lock);
     sent_disabled = 1;
     // Send DISABLE command

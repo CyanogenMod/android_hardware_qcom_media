@@ -249,6 +249,13 @@ bool venc_dev::venc_open(OMX_U32 codec)
 #else
   m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV12;
 #endif
+// initializing QP range parameters
+  qp_range.minqp = 2;
+  if(codec == OMX_VIDEO_CodingAVC)
+    qp_range.maxqp = 51;
+  else
+    qp_range.maxqp = 31;
+
   if(codec == OMX_VIDEO_CodingMPEG4)
   {
     m_sVenc_cfg.codectype = VEN_CODEC_MPEG4;
@@ -956,6 +963,28 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
       }
       break;
     }
+
+  case OMX_QcomIndexParamVideoQPRange:
+    {
+      DEBUG_PRINT_LOW("venc_set_param:OMX_QcomIndexParamVideoQPRange\n");
+      OMX_QCOM_VIDEO_PARAM_QPRANGETYPE *qp_range =
+        (OMX_QCOM_VIDEO_PARAM_QPRANGETYPE *)paramData;
+      if(qp_range->nPortIndex == (OMX_U32) PORT_INDEX_OUT)
+      {
+        if(venc_set_qp_range (qp_range->minQP,
+                                qp_range->maxQP) == false)
+        {
+          DEBUG_PRINT_ERROR("\nERROR: Setting QP Range failed");
+          return false;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_QcomIndexParamVideoQPRange");
+      }
+      break;
+    }
+
   case OMX_ExtraDataVideoEncoderSliceInfo:
     {
       DEBUG_PRINT_LOW("venc_set_param: OMX_ExtraDataVideoEncoderSliceInfo");
@@ -1409,6 +1438,9 @@ void venc_dev::venc_config_print()
   DEBUG_PRINT_HIGH("\nENC_CONFIG: qpI: %d, qpP: %d, qpb: 0",
                    session_qp.iframeqp, session_qp.pframqp);
 
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: minQP: %d, maxQP: %d",
+                   qp_range.minqp, qp_range.maxqp);
+
   DEBUG_PRINT_HIGH("\nENC_CONFIG: VOP_Resolution: %d, Slice-Mode: %d, Slize_Size: %d",
                    voptimecfg.voptime_resolution, multislice.mslice_mode,
                    multislice.mslice_size);
@@ -1631,16 +1663,12 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned,unsigne
   }
   bufhdr = (OMX_BUFFERHEADERTYPE *)buffer;
 
-  DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
-
   if(pmem_data_buf)
   {
-    DEBUG_PRINT_LOW("\n Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
     frameinfo.ptrbuffer = (OMX_U8 *)pmem_data_buf;
   }
   else
   {
-    DEBUG_PRINT_LOW("\n Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
     frameinfo.ptrbuffer = (OMX_U8 *)bufhdr->pBuffer;
   }
 
@@ -1650,12 +1678,13 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned,unsigne
   frameinfo.flags = bufhdr->nFlags;
   frameinfo.offset = bufhdr->nOffset;
   frameinfo.timestamp = bufhdr->nTimeStamp;
-  DEBUG_PRINT_LOW("\n i/p TS = %u", (OMX_U32)frameinfo.timestamp);
   ioctl_msg.in = &frameinfo;
   ioctl_msg.out = NULL;
 
-  DEBUG_PRINT_LOW("DBG: i/p frameinfo: bufhdr->pBuffer = %p, ptrbuffer = %p, offset = %u, len = %u",
-      bufhdr->pBuffer, frameinfo.ptrbuffer, frameinfo.offset, frameinfo.len);
+  DEBUG_PRINT_LOW("i/p frameinfo: pBuffer = 0x%x, ptrbuffer = 0x%x, nFilledlen = %d, "
+      "Ts = %lld, nFlags = 0x%x, nOffset = %d", bufhdr->pBuffer,
+      frameinfo.ptrbuffer, frameinfo.len, frameinfo.timestamp,
+      frameinfo.flags, frameinfo.offset);
   if(ioctl(m_nDriver_fd,VEN_IOCTL_CMD_ENCODE_FRAME,&ioctl_msg) < 0)
   {
     /*Generate an async error and move to invalid state*/
@@ -1812,6 +1841,30 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp)
 
   session_qp.iframeqp = i_frame_qp;
   session_qp.pframqp = p_frame_qp;
+
+  return true;
+}
+
+bool venc_dev::venc_set_qp_range(OMX_U32 min_qp, OMX_U32 max_qp)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  struct venc_qprange qp = {0, 0};
+  DEBUG_PRINT_LOW("venc_set_qp_range:: min_qp = %d, max_qp = %d", min_qp,
+    max_qp);
+
+  qp.minqp = min_qp;
+  qp.maxqp = max_qp;
+
+  ioctl_msg.in = (void*)&qp;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd,VEN_IOCTL_SET_QP_RANGE,(void*)&ioctl_msg)< 0)
+  {
+    DEBUG_PRINT_ERROR("\nERROR: Request for setting qp range failed");
+    return false;
+  }
+
+  qp_range.minqp= min_qp;
+  qp_range.maxqp= max_qp;
 
   return true;
 }

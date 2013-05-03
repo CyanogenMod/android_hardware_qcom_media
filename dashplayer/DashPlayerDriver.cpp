@@ -52,6 +52,7 @@ DashPlayerDriver::DashPlayerDriver()
 
 DashPlayerDriver::~DashPlayerDriver() {
     mLooper->stop();
+    mLooper->unregisterHandler(mPlayer->id());
 }
 
 status_t DashPlayerDriver::initCheck() {
