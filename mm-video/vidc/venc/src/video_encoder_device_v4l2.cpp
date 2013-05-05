@@ -177,6 +177,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 		streaming[i] = false;
 
 	paused = false;
+	async_thread_created = false;
 	pthread_mutex_init(&pause_resume_mlock, NULL);
 	pthread_cond_init(&pause_resume_cond, NULL);
 }
@@ -644,7 +645,10 @@ void venc_dev::venc_close()
   {
     enc.cmd = V4L2_ENC_CMD_STOP;
     ioctl(m_nDriver_fd, VIDIOC_ENCODER_CMD, &enc);
-    pthread_join(m_tid,NULL);
+    DEBUG_PRINT_HIGH("venc_close E\n");
+    if (async_thread_created)
+		pthread_join(m_tid,NULL);
+    DEBUG_PRINT_HIGH("venc_close X\n");
     unsubscribe_to_events(m_nDriver_fd);
     close(m_nDriver_fd);
     m_nDriver_fd = -1;
@@ -1393,6 +1397,7 @@ unsigned venc_dev::venc_stop_done(void)
 
 unsigned venc_dev::venc_set_message_thread_id(pthread_t tid)
 {
+ async_thread_created = true;
  m_tid=tid;
  return 0;
 }

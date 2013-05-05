@@ -301,6 +301,8 @@ public:
 
   pthread_t msg_thread_id;
   pthread_t async_thread_id;
+  bool async_thread_created;
+  bool msg_thread_created;
 
   OMX_U8 m_nkind[128];
 

@@ -435,20 +435,23 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         m_pipe_out = fds[1];
       }
     }
+    msg_thread_created = true;
     r = pthread_create(&msg_thread_id,0, message_thread, this);
-
     if(r < 0)
     {
       eRet = OMX_ErrorInsufficientResources;
+      msg_thread_created = false;
     }
     else
     {
-    r = pthread_create(&async_thread_id,0, venc_dev::async_venc_message_thread, this);
-      dev_set_message_thread_id(async_thread_id);
+      async_thread_created = true;
+      r = pthread_create(&async_thread_id,0, venc_dev::async_venc_message_thread, this);
       if(r < 0)
       {
         eRet = OMX_ErrorInsufficientResources;
-      }
+		async_thread_created = false;
+      } else
+		  dev_set_message_thread_id(async_thread_id);
     }
   }
 

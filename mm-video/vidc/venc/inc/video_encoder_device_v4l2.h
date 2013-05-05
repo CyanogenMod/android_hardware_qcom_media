@@ -241,6 +241,7 @@ public:
   bool m_max_allowed_bitrate_check;
   int etb_count;
   pthread_t m_tid;
+  bool async_thread_created;
   class omx_venc *venc_handle;
   OMX_ERRORTYPE allocate_extradata();
   void free_extradata();
