@@ -567,7 +567,7 @@ status_t DashCodec::allocateOutputBuffersFromNativeWindow() {
         usage = 0;
     }
 
-    if (mFlags & kFlagIsSecure) {
+    if (mFlags & kFlagIsSecure || mFlags & kFlagIsSecureOPOnly) {
         usage |= GRALLOC_USAGE_PROTECTED;
     }
 
@@ -3331,6 +3331,9 @@ bool DashCodec::LoadedState::onConfigureComponent(
         }
     }
 
+    if (msg->findInt32("secure-op", &value) && (value == 1)) {
+        mCodec->mFlags |= kFlagIsSecureOPOnly;
+    }
 
     AString mime;
     CHECK(msg->findString("mime", &mime));
