@@ -4397,6 +4397,9 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
      }
      m_pmem_info[i].offset = drv_ctx.ptr_outputbuffer[i].offset;
      m_pmem_info[i].pmem_fd = drv_ctx.ptr_outputbuffer[i].pmem_fd;
+     m_pmem_info[i].size = drv_ctx.ptr_outputbuffer[i].buffer_len;
+     m_pmem_info[i].mapped_size = drv_ctx.ptr_outputbuffer[i].mmaped_size;
+     m_pmem_info[i].buffer = drv_ctx.ptr_outputbuffer[i].bufferaddr;
 
      *bufferHdr = (m_out_mem_ptr + i );
      if(secure_mode) {
@@ -5327,6 +5330,10 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
 #else
     m_pmem_info[i].pmem_fd = drv_ctx.ptr_outputbuffer[i].pmem_fd ;
 #endif
+    m_pmem_info[i].size = drv_ctx.ptr_outputbuffer[i].buffer_len;
+    m_pmem_info[i].mapped_size = drv_ctx.ptr_outputbuffer[i].mmaped_size;
+    m_pmem_info[i].buffer = drv_ctx.ptr_outputbuffer[i].bufferaddr;
+
     setbuffers.buffer_type = VDEC_BUFFER_TYPE_OUTPUT;
     memcpy (&setbuffers.buffer,&drv_ctx.ptr_outputbuffer [i],
             sizeof (vdec_bufferpayload));
@@ -8612,10 +8619,12 @@ void omx_vdec::handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 {
   OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL, *p_extn_user[32];
+  OMX_OTHER_EXTRADATATYPE *p_concealmb = NULL;
   OMX_U32 num_conceal_MB = 0;
   OMX_S64 ts_in_sei = 0;
   OMX_U32 frame_rate = 0;
   OMX_U32 extn_user_data_cnt = 0;
+  OMX_U8 *conceal_mb_data = NULL;
   struct vdec_output_frameinfo *output_respbuf =
      (struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate;
   OMX_U32 index = p_buf_hdr - m_out_mem_ptr;
@@ -8658,8 +8667,19 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         if (client_extradata & OMX_FRAMEINFO_EXTRADATA)
           num_conceal_MB = count_MB_in_extradata(p_extra);
         if (client_extradata & VDEC_EXTRADATA_MB_ERROR_MAP)
+        {
+          p_concealmb = (OMX_OTHER_EXTRADATATYPE *) \
+            calloc(1, (sizeof(OMX_OTHER_EXTRADATATYPE)));
+          conceal_mb_data = (OMX_U8 *) calloc(p_extra->nDataSize, sizeof(OMX_U8) );
+          if (p_concealmb && conceal_mb_data)
+          {
+              memcpy(conceal_mb_data, p_extra->data, p_extra->nDataSize);
+              p_concealmb->nSize = p_extra->nSize;
+              p_concealmb->nDataSize = p_extra->nDataSize;
+          }
           // Map driver extradata to corresponding OMX type
           p_extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataConcealMB;
+        }
         else
           p_extra->eType = OMX_ExtraDataMax; // Invalid type to avoid expose this extradata to OMX client
 #ifdef _ANDROID_
@@ -8716,15 +8736,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
           p_extra->nDataSize == 0 || p_extra->nSize == 0)
         p_extra = NULL;
     }
-    if (!(client_extradata & VDEC_EXTRADATA_MB_ERROR_MAP))
-    {
-      // Driver extradata is only exposed if MB map is requested by client,
-      // otherwise can be overwritten by omx extradata.
-      p_extra = (OMX_OTHER_EXTRADATATYPE *)
+    p_extra = (OMX_OTHER_EXTRADATATYPE *)
                ((unsigned)(pBuffer + p_buf_hdr->nOffset +
                 p_buf_hdr->nFilledLen + 3)&(~3));
-      p_buf_hdr->nFlags &= ~OMX_BUFFERFLAG_EXTRADATA;
-    }
   }
 
 #ifdef PROCESS_EXTRADATA_IN_OUTPUT_PORT
@@ -8790,6 +8804,16 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
           p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info);
     p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
   }
+  if ((client_extradata & VDEC_EXTRADATA_MB_ERROR_MAP) && p_extra &&
+    p_concealmb && conceal_mb_data)
+  {
+    if (((OMX_U8*)p_extra + p_concealmb->nSize) < (pBuffer + p_buf_hdr->nAllocLen))
+    {
+      p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
+      append_concealmb_extradata(p_extra, p_concealmb, conceal_mb_data);
+      p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+    }
+  }
   if ((client_extradata & OMX_PORTDEF_EXTRADATA) &&
        p_extra != NULL &&
       ((OMX_U8*)p_extra + OMX_PORTDEF_EXTRADATA_SIZE) <
@@ -8812,6 +8836,16 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       DEBUG_PRINT_ERROR("ERROR: Terminator extradata cannot be added");
       p_buf_hdr->nFlags &= ~OMX_BUFFERFLAG_EXTRADATA;
     }
+  }
+  if(p_concealmb)
+  {
+    free(p_concealmb);
+    p_concealmb = NULL;
+  }
+  if(conceal_mb_data)
+  {
+    free(conceal_mb_data);
+    conceal_mb_data = NULL;
   }
 }
 
@@ -9210,6 +9244,18 @@ void omx_vdec::append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra,
   extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMP2UserData;
   if (extra->data && p_user->data && extra->nDataSize)
     memcpy(extra->data, p_user->data, extra->nDataSize);
+}
+
+void omx_vdec::append_concealmb_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+  OMX_OTHER_EXTRADATATYPE *p_concealmb, OMX_U8 *conceal_mb_data)
+{
+  extra->nSize = p_concealmb->nSize;
+  extra->nVersion.nVersion = OMX_SPEC_VERSION;
+  extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
+  extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataConcealMB;
+  extra->nDataSize = p_concealmb->nDataSize;
+  if(extra->data && conceal_mb_data && extra->nDataSize)
+    memcpy(extra->data, conceal_mb_data, extra->nDataSize);
 }
 
 void omx_vdec::append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra)

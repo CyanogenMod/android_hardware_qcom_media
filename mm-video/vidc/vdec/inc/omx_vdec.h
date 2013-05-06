@@ -613,6 +613,8 @@ private:
     void append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra);
     void append_extn_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_extn);
     void append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_user);
+    void append_concealmb_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+      OMX_OTHER_EXTRADATATYPE *p_concealmb, OMX_U8 *conceal_mb_data);
     void insert_demux_addr_offset(OMX_U32 address_offset);
     void extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr);
     OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
