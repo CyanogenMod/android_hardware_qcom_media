@@ -377,6 +377,7 @@ public:
                                 OMX_PTR              appData,
                                 void *               eglImage);
     void complete_pending_buffer_done_cbs();
+    void update_resolution(int width, int height);
     struct video_driver_context drv_ctx;
     int  m_pipe_in;
     int  m_pipe_out;
@@ -839,6 +840,7 @@ private:
     bool external_meta_buffer_iommu;
     OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
     bool codec_config_flag;
+    OMX_CONFIG_RECTTYPE rectangle;
 #ifdef _COPPER_
     int capture_capability;
     int output_capability;
