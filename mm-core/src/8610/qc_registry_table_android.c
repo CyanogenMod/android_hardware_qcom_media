@@ -297,7 +297,7 @@ omx_core_cb_type core[] =
     }
   },
   {
-    "OMX.qcom.audio.decoder.wma10Pro",
+    "OMX.qcom.audio.decoder.amrwbplus",
     NULL,   // Create instance function
     // Unique instance handle
     {
@@ -307,9 +307,9 @@ omx_core_cb_type core[] =
      NULL
     },
     NULL,   // Shared object library handle
-    "libOmxWmaDec.so",
+    "libOmxAmrwbplusDec.so",
     {
-     "audio_decoder.wma"
+     "audio_decoder.awbplus"
     }
   },
   {
