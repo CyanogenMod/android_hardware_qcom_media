@@ -2576,18 +2576,32 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
 
 bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
 {
+  struct v4l2_format fmt;
   DEBUG_PRINT_LOW("\n venc_set_color_format: color_format = %u ", color_format);
 
   if(color_format == OMX_COLOR_FormatYUV420SemiPlanar)
   {
-  m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV12_16M2KA;
+    m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+  }
+  else if(color_format == QOMX_COLOR_FormatYVU420SemiPlanar)
+  {
+    m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV21;
   }
   else
   {
     DEBUG_PRINT_ERROR("\nWARNING: Unsupported Color format [%d]", color_format);
-    m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV12_16M2KA;
+    m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
     DEBUG_PRINT_HIGH("\n Default color format YUV420SemiPlanar is set");
   }
+  fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+  fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
+  fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
+  fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+  if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
+    DEBUG_PRINT_ERROR("Failed setting color format %x", color_format);
+    return false;
+  }
+
   return true;
 }
 
