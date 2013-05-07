@@ -2063,20 +2063,8 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
        else if(eState == OMX_StatePause)
        {
          DEBUG_PRINT_LOW("\n PAUSE Command Issued");
-         if (/*ioctl (drv_ctx.video_driver_fd,VDEC_IOCTL_CMD_PAUSE,
-                    NULL) < */0)
-         {
-           DEBUG_PRINT_ERROR("\n Error In Pause State");
-           post_event(OMX_EventError,OMX_ErrorHardware,\
-                      OMX_COMPONENT_GENERATE_EVENT);
-           eRet = OMX_ErrorHardware;
-         }
-         else
-         {
-           BITMASK_SET(&m_flags,OMX_COMPONENT_PAUSE_PENDING);
-           DEBUG_PRINT_LOW("send_command_proxy(): Executing-->Pause\n");
-           bFlag = 0;
-         }
+         m_state = OMX_StatePause;
+         bFlag = 1;
        }
        /* Requesting transition from Executing to Loaded */
        else if(eState == OMX_StateLoaded)
@@ -2124,22 +2112,8 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
       if(eState == OMX_StateExecuting)
       {
         DEBUG_PRINT_LOW("\n Pause --> Executing \n");
-        if (/*ioctl (drv_ctx.video_driver_fd,VDEC_IOCTL_CMD_RESUME,
-                   NULL) < */0)
-        {
-          DEBUG_PRINT_ERROR("\n VDEC_IOCTL_CMD_RESUME failed");
-          post_event(OMX_EventError,OMX_ErrorHardware,\
-                     OMX_COMPONENT_GENERATE_EVENT);
-          eRet = OMX_ErrorHardware;
-        }
-        else
-        {
-          BITMASK_SET(&m_flags,OMX_COMPONENT_EXECUTE_PENDING);
-          DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
-          post_event ((unsigned int)NULL, VDEC_S_SUCCESS,\
-                      OMX_COMPONENT_GENERATE_RESUME_DONE);
-          bFlag = 0;
-        }
+        m_state = OMX_StateExecuting;
+        bFlag = 1;
       }
       /* Requesting transition from Pause to Idle */
       else if(eState == OMX_StateIdle)
