@@ -1057,6 +1057,18 @@ typedef enum {
     QOMX_VIDEO_CONTENT_RL_VIEW = 2,
 } QOMX_VIDEO_CONTENT_INTERPRETATION;
 
+/**
+ * Specifies the extended picture types. These values should be
+ * OR'd along with the types defined in OMX_VIDEO_PICTURETYPE to
+ * signal all pictures types which are allowed.
+ *
+ * ENUMS:
+ *  H.264 Specific Picture Types:   IDR
+ */
+typedef enum QOMX_VIDEO_PICTURETYPE {
+    QOMX_VIDEO_PictureTypeIDR = OMX_VIDEO_PictureTypeVendorStartUnused + 0x1000
+} QOMX_VIDEO_PICTURETYPE;
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
