@@ -1298,17 +1298,15 @@ bool omx_video::execute_omx_flush(OMX_U32 flushType)
   bool bRet = false;
   DEBUG_PRINT_LOW("\n execute_omx_flush -  %d\n", flushType);
 #ifdef _MSM8974_
-  if(flushType == OMX_ALL)
-  {
-    input_flush_progress = true;
-    output_flush_progress = true;
-    bRet = execute_flush_all();
-  }
-  else
-  {
-    DEBUG_PRINT_ERROR("Invalid index (%lu) for flush\n", flushType);
-    return bRet;
-  }
+  /* XXX: The driver/hardware does not support flushing of individual ports
+   * in all states. So we pretty much need to flush both ports internally,
+   * but client should only get the FLUSH_(INPUT|OUTPUT)_DONE for the one it
+   * requested.  Since OMX_COMPONENT_(OUTPUT|INPUT)_FLUSH_PENDING isn't set,
+   * we automatically omit sending the FLUSH done for the "opposite" port. */
+
+  input_flush_progress = true;
+  output_flush_progress = true;
+  bRet = execute_flush_all();
 #else
   if(flushType == 0 || flushType == OMX_ALL)
   {
