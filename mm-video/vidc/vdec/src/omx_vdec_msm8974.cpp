@@ -8501,6 +8501,8 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
   int consumed_len = 0;
   OMX_U32 num_MB_in_frame;
   OMX_U32 recovery_sei_flags = 1;
+  int enable = 0;
+  OMX_U32 mbaff = 0;
   int buf_index = p_buf_hdr - m_out_mem_ptr;
   struct msm_vidc_panscan_window_payload *panscan_payload = NULL;
   OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr) +
@@ -8525,18 +8527,16 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
       case EXTRADATA_INTERLACE_VIDEO:
         struct msm_vidc_interlace_payload *payload;
         payload = (struct msm_vidc_interlace_payload *)data->data;
-        if (payload->format != INTERLACE_FRAME_PROGRESSIVE) {
-          int enable = 1;
-          OMX_U32 mbaff = 0;
-          mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
-          if ((payload->format == INTERLACE_FRAME_PROGRESSIVE)  && !mbaff)
-            drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-          else
-            drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
-          if(m_enable_android_native_buffers)
-            setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
-              PP_PARAM_INTERLACED, (void*)&enable);
+        mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
+        if (payload && (payload->format == INTERLACE_FRAME_PROGRESSIVE)  && !mbaff)
+          drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
+        else {
+          drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
+          enable = 1;
         }
+        if(m_enable_android_native_buffers)
+          setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+            PP_PARAM_INTERLACED, (void*)&enable);
         if (!secure_mode && (client_extradata & OMX_INTERLACE_EXTRADATA)) {
           append_interlace_extradata(p_extra, payload->format);
           p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
