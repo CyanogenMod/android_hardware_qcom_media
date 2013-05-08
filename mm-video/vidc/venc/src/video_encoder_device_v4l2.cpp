@@ -180,6 +180,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 	async_thread_created = false;
 	pthread_mutex_init(&pause_resume_mlock, NULL);
 	pthread_cond_init(&pause_resume_cond, NULL);
+	memset(&extradata_info, 0, sizeof(extradata_info));
 }
 
 venc_dev::~venc_dev()
