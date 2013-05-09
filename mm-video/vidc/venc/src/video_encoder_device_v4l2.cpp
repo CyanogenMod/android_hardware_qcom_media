@@ -181,6 +181,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 	pthread_mutex_init(&pause_resume_mlock, NULL);
 	pthread_cond_init(&pause_resume_cond, NULL);
 	memset(&extradata_info, 0, sizeof(extradata_info));
+	memset(&idrperiod, 0, sizeof(idrperiod));
 }
 
 venc_dev::~venc_dev()
@@ -262,6 +263,8 @@ void* venc_dev::async_venc_message_thread (void *input)
 				 * for now it doesn't look like IL client cares about
 				 * other types
 				 */
+				if (v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_IDRFRAME)
+					venc_msg.buf.flags |= QOMX_VIDEO_PictureTypeIDR;
 				if (v4l2_buf.flags & V4L2_BUF_FLAG_KEYFRAME)
 					venc_msg.buf.flags |= OMX_BUFFERFLAG_SYNCFRAME;
 				if(v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_CODECCONFIG)
@@ -1283,7 +1286,7 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
           return false;
         }
       }
-      break;
+	  break;
     }
   case OMX_IndexConfigVideoIntraVOPRefresh:
     {
@@ -1320,6 +1323,19 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
       }
       break;
     }
+  case OMX_IndexConfigVideoAVCIntraPeriod:
+	{
+		OMX_VIDEO_CONFIG_AVCINTRAPERIOD *avc_iperiod = (OMX_VIDEO_CONFIG_AVCINTRAPERIOD*) configData;
+		DEBUG_PRINT_LOW("venc_set_param: OMX_IndexConfigVideoAVCIntraPeriod");
+		if(venc_set_idr_period(avc_iperiod->nPFrames, avc_iperiod->nIDRPeriod)
+			== false)
+		{
+			DEBUG_PRINT_ERROR("ERROR: Setting "
+				"OMX_IndexConfigVideoAVCIntraPeriod failed");
+			return false;
+		}
+		break;
+	}
   default:
     DEBUG_PRINT_ERROR("\n Unsupported config index = %u", index);
     break;
@@ -1461,8 +1477,9 @@ void venc_dev::venc_config_print()
                    dbkfilter.db_mode, dbkfilter.slicealpha_offset,
                    dbkfilter.slicebeta_offset);
 
-  DEBUG_PRINT_HIGH("\nENC_CONFIG: IntraMB/Frame: %ld, HEC: %ld\n",
-                   intra_refresh.mbcount, hec.header_extension);
+  DEBUG_PRINT_HIGH("\nENC_CONFIG: IntraMB/Frame: %ld, HEC: %ld, IDR Period: %ld\n",
+                   intra_refresh.mbcount, hec.header_extension, idrperiod.idrperiod);
+
 }
 
 unsigned venc_dev::venc_flush( unsigned port)
@@ -2238,8 +2255,50 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
 	DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
 
 
-  intra_period.num_bframes = control.value;
+	intra_period.num_bframes = control.value;
+	if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264){
+		control.id = V4L2_CID_MPEG_VIDC_VIDEO_IDR_PERIOD;
+		control.value = 1;
+
+		rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+		if (rc) {
+			DEBUG_PRINT_ERROR("Failed to set control\n");
+			return false;
+		}
+		idrperiod.idrperiod = 1;
+	}
   return true;
+}
+
+bool venc_dev::venc_set_idr_period(OMX_U32 nPFrames, OMX_U32 nIDRPeriod)
+{
+	int rc = 0;
+	struct v4l2_control control;
+	DEBUG_PRINT_LOW("\n venc_set_idr_period: nPFrames = %u, nIDRPeriod: %u\n",
+		nPFrames, nIDRPeriod);
+
+	if (m_sVenc_cfg.codectype != V4L2_PIX_FMT_H264){
+		DEBUG_PRINT_ERROR("\nERROR: IDR period valid for H264 only!!");
+		return false;
+	}
+
+	if(venc_set_intra_period (nPFrames, intra_period.num_bframes) == false) {
+		DEBUG_PRINT_ERROR("\nERROR: Request for setting intra period failed");
+		return false;
+	}
+
+	intra_period.num_pframes = nPFrames;
+	control.id = V4L2_CID_MPEG_VIDC_VIDEO_IDR_PERIOD;
+	control.value = nIDRPeriod;
+
+	rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+	if (rc) {
+		DEBUG_PRINT_ERROR("Failed to set control\n");
+		return false;
+	}
+
+	idrperiod.idrperiod = nIDRPeriod;
+	return true;
 }
 
 bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)

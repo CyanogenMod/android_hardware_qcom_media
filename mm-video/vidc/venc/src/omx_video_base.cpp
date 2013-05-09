@@ -2053,6 +2053,14 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
       memcpy(pParam, &m_sIntraperiod, sizeof(m_sIntraperiod));
       break;
     }
+  case OMX_IndexConfigVideoAVCIntraPeriod:
+    {
+      OMX_VIDEO_CONFIG_AVCINTRAPERIOD *pParam =
+        reinterpret_cast<OMX_VIDEO_CONFIG_AVCINTRAPERIOD*>(configData);
+      DEBUG_PRINT_LOW("get_config: OMX_IndexConfigVideoAVCIntraPeriod");
+      memcpy(pParam, &m_sConfigAVCIDRPeriod, sizeof(m_sConfigAVCIDRPeriod));
+      break;
+    }
   default:
     DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
     return OMX_ErrorUnsupportedIndex;
