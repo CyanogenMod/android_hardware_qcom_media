@@ -7129,8 +7129,6 @@ int omx_vdec::async_message_process (void *context, void* message)
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
     omx->m_port_def.nPortIndex = 1;
     eRet = omx->update_portdef(&(omx->m_port_def));
-    omx->post_event ((unsigned int)omxhdr,vdec_msg->status_code,
-                     OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG);
     break;
   }
   default:
