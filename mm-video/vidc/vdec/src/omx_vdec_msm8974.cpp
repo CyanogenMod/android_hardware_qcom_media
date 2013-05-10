@@ -214,14 +214,14 @@ void* async_message_thread (void *input)
         struct vdec_msginfo vdec_msg;
         vdec_msg.msgcode=VDEC_MSG_RESP_FLUSH_INPUT_DONE;
         vdec_msg.status_code=VDEC_S_SUCCESS;
-        DEBUG_PRINT_HIGH("\n VIDC Flush Done Recieved \n");
+        DEBUG_PRINT_HIGH("VIDC Input Flush Done Recieved \n");
         if (omx->async_message_process(input,&vdec_msg) < 0) {
           DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
           break;
         }
         vdec_msg.msgcode=VDEC_MSG_RESP_FLUSH_OUTPUT_DONE;
         vdec_msg.status_code=VDEC_S_SUCCESS;
-        DEBUG_PRINT_HIGH("\n VIDC Flush Done Recieved \n");
+        DEBUG_PRINT_HIGH("VIDC Output Flush Done Recieved \n");
         if (omx->async_message_process(input,&vdec_msg) < 0) {
           DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
           break;
@@ -2485,24 +2485,27 @@ bool omx_vdec::execute_omx_flush(OMX_U32 flushType)
   struct v4l2_plane plane;
   struct v4l2_buffer v4l2_buf;
   struct v4l2_decoder_cmd dec;
-  DEBUG_PRINT_LOW("in %s", __func__);
+  DEBUG_PRINT_LOW("in %s, flushing %d", __func__, flushType);
   memset((void *)&v4l2_buf,0,sizeof(v4l2_buf));
   dec.cmd = V4L2_DEC_QCOM_CMD_FLUSH;
-  switch (flushType)
+
+  DEBUG_PRINT_ERROR("in %s: reconfig? %d", __func__, in_reconfig);
+
+  if (in_reconfig && flushType == OMX_CORE_OUTPUT_PORT_INDEX)
   {
-    case OMX_CORE_INPUT_PORT_INDEX:
-      input_flush_progress = true;
-      dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT;
-    break;
-    case OMX_CORE_OUTPUT_PORT_INDEX:
-      output_flush_progress = true;
-      dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
-    break;
-    default:
-      input_flush_progress = true;
-      output_flush_progress = true;
-      dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT |
-		  V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
+    output_flush_progress = true;
+    dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
+  }
+  else
+  {
+    /* XXX: The driver/hardware does not support flushing of individual ports
+     * in all states. So we pretty much need to flush both ports internally,
+     * but client should only get the FLUSH_(INPUT|OUTPUT)_DONE for the one it
+     * requested.  Since OMX_COMPONENT_(OUTPUT|INPUT)_FLUSH_PENDING isn't set,
+     * we automatically omit sending the FLUSH done for the "opposite" port. */
+    input_flush_progress = true;
+    output_flush_progress = true;
+    dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT | V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
   }
 
   if (ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec))
