@@ -5330,6 +5330,13 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     {
         DEBUG_PRINT_LOW("Free Buffer while port %d disabled\n", port);
     }
+    else if ((port == OMX_CORE_INPUT_PORT_INDEX &&
+              BITMASK_PRESENT(&m_flags, OMX_COMPONENT_INPUT_ENABLE_PENDING)) ||
+             (port == OMX_CORE_OUTPUT_PORT_INDEX &&
+              BITMASK_PRESENT(&m_flags, OMX_COMPONENT_OUTPUT_ENABLE_PENDING)))
+    {
+        DEBUG_PRINT_LOW("Free Buffer while port %d enable pending\n", port);
+    }
     else if(m_state == OMX_StateExecuting || m_state == OMX_StatePause)
     {
         DEBUG_PRINT_ERROR("Invalid state to free buffer,ports need to be disabled\n");
