@@ -562,6 +562,10 @@ if (codec == OMX_VIDEO_CodingVPX)
 		/*TODO: Return values not handled properly in this function anywhere.
 		 * Need to handle those.*/
 		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
+		if (ret) {
+			DEBUG_PRINT_ERROR("Failed to set format on capture port\n");
+			return false;
+		}
 		m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
 
 		fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -1686,7 +1690,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 
   etb_count++;
 
-  if(etb_count == 1)
+  if(!streaming[OUTPUT_PORT])
   {
 	  enum v4l2_buf_type buf_type;
 	  buf_type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -1694,9 +1698,10 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 	  ret = ioctl(m_nDriver_fd, VIDIOC_STREAMON, &buf_type);
 	  if (ret) {
 		  DEBUG_PRINT_ERROR("Failed to call streamon\n");
+		  return false;
 	  } else {
-			streaming[OUTPUT_PORT] = true;
-		}
+		  streaming[OUTPUT_PORT] = true;
+	  }
   }
 #ifdef INPUT_BUFFER_LOG
 	  int i;

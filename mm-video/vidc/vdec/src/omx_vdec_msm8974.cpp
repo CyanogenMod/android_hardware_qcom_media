@@ -1693,6 +1693,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		if (ret) {
 			/*TODO: How to handle this case */
 			DEBUG_PRINT_ERROR("Failed to set format on output port\n");
+			return OMX_ErrorInsufficientResources;
 				}
 		DEBUG_PRINT_HIGH("\n Set Format was successful \n ");
 		if (codec_ambiguous) {
@@ -5924,8 +5925,16 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 		DEBUG_PRINT_HIGH("Streamon on OUTPUT Plane was successful \n");
 		streaming[OUTPUT_PORT] = true;
 	} else{
-		/*TODO: How to handle this case */	
+		/*TODO: How to handle this case */
 		DEBUG_PRINT_ERROR(" \n Failed to call streamon on OUTPUT \n");
+		pending_input_buffers--;
+		if (!arbitrary_bytes)
+		{
+			DEBUG_PRINT_LOW("If Stream on failed no buffer should be queued");
+			post_event ((unsigned int)buffer,VDEC_S_SUCCESS,
+				OMX_COMPONENT_GENERATE_EBD);
+		}
+		return OMX_ErrorBadParameter;
 	}
 }
   DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%d)",
