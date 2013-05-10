@@ -855,7 +855,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                   BITMASK_SET(&pThis->m_flags, OMX_COMPONENT_DISABLE_OUTPUT_DEFERRED);
                   break;
                 }
-                if (p2 == OMX_CORE_OUTPUT_PORT_INDEX && pThis->in_reconfig)
+                if (p2 == OMX_CORE_OUTPUT_PORT_INDEX)
                 {
 				  OMX_ERRORTYPE eRet = OMX_ErrorNone;
 				  pThis->stream_off(OMX_CORE_OUTPUT_PORT_INDEX);
