@@ -6723,6 +6723,26 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     buffer->nFlags &= ~OMX_BUFFERFLAG_DATACORRUPT;
   }
 
+  if (m_debug_extradata)
+  {
+    if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ)
+    {
+      DEBUG_PRINT_HIGH("\n");
+      DEBUG_PRINT_HIGH("***************************************************\n");
+      DEBUG_PRINT_HIGH("FillBufferDone: End Of Sequence Received\n");
+      DEBUG_PRINT_HIGH("***************************************************\n");
+    }
+
+    if (buffer->nFlags & OMX_BUFFERFLAG_DATACORRUPT)
+    {
+      DEBUG_PRINT_HIGH("\n");
+      DEBUG_PRINT_HIGH("***************************************************\n");
+      DEBUG_PRINT_HIGH("FillBufferDone: OMX_BUFFERFLAG_DATACORRUPT Received\n");
+      DEBUG_PRINT_HIGH("***************************************************\n");
+    }
+  }
+
+
   DEBUG_PRINT_LOW("\n fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p",
       buffer, buffer->pBuffer);
   pending_output_buffers --;
@@ -7064,6 +7084,10 @@ int omx_vdec::async_message_process (void *context, void* message)
   if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY)
   {
     omxhdr->nFlags |= OMX_BUFFERFLAG_DECODEONLY;
+  }
+  if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT)
+  {
+    omxhdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
   }
   vdec_msg->msgdata.output_frame.bufferaddr =
       omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
@@ -8563,22 +8587,31 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                      (drv_ctx.video_resolution.frame_height + 15)) >> 8;
         num_conceal_MB = ((num_MB_in_frame > 0)?(conceal_mb_payload->num_mbs * 100 / num_MB_in_frame) : 0);
       break;
-      case EXTRADATA_ASPECT_RATIO:
+      case EXTRADATA_INDEX:
+	int *etype;
+	etype  = (int *)(data->data);
+	if (etype && *etype == EXTRADATA_ASPECT_RATIO) {
         struct msm_vidc_aspect_ratio_payload *aspect_ratio_payload;
-        aspect_ratio_payload = (struct msm_vidc_aspect_ratio_payload *)data->data;
-        ((struct vdec_output_frameinfo *)
-            p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info.par_width = aspect_ratio_payload->aspect_width;
-        ((struct vdec_output_frameinfo *)
-            p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info.par_height = aspect_ratio_payload->aspect_height;
+        aspect_ratio_payload = (struct msm_vidc_aspect_ratio_payload *)(++etype);
+        if (aspect_ratio_payload) {
+          ((struct vdec_output_frameinfo *)
+              p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info.par_width = aspect_ratio_payload->aspect_width;
+          ((struct vdec_output_frameinfo *)
+              p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info.par_height = aspect_ratio_payload->aspect_height;
+          }
+	}
       break;
       case EXTRADATA_RECOVERY_POINT_SEI:
         struct msm_vidc_recoverysei_payload *recovery_sei_payload;
         recovery_sei_payload = (struct msm_vidc_recoverysei_payload *)data->data;
         recovery_sei_flags = recovery_sei_payload->flags;
        if (recovery_sei_flags != FRAME_RECONSTRUCTION_CORRECT) {
-        p_buf_hdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
-        DEBUG_PRINT_HIGH("Extradata: OMX_BUFFERFLAG_DATACORRUPT Received\n");
-       }
+         p_buf_hdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
+         DEBUG_PRINT_HIGH("\n");
+         DEBUG_PRINT_HIGH("***************************************************\n");
+         DEBUG_PRINT_HIGH("FillBufferDone: OMX_BUFFERFLAG_DATACORRUPT Received\n");
+         DEBUG_PRINT_HIGH("***************************************************\n");
+      }
       break;
       case EXTRADATA_PANSCAN_WINDOW:
         panscan_payload = (struct msm_vidc_panscan_window_payload *)data->data;
