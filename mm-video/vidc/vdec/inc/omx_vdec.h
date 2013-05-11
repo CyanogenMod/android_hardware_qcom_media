@@ -617,7 +617,6 @@ private:
     OMX_ERRORTYPE update_picture_resolution();
     int stream_off(OMX_U32 port);
     void adjust_timestamp(OMX_S64 &act_timestamp);
-    void enableAdditionalCores(int frm_int);
     void set_frame_rate(OMX_S64 act_timestamp);
     void handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr);
     void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
@@ -892,7 +891,6 @@ private:
     bool external_meta_buffer_iommu;
     OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
     bool codec_config_flag;
-    void* opt_handle;
 #ifdef _MSM8974_
     int capture_capability;
     int output_capability;
@@ -907,11 +905,6 @@ private:
     bool async_thread_created;
 
     unsigned int m_fill_output_msg;
-
-    int (*perf_lock_acq)(int handle, int duration, int list[], int numArgs);
-    int (*perf_lock_rel)(int handle);
-    void (*perf_cpu_boost)(int ntasks);
-    int perf_lock_handle;
     class allocate_color_convert_buf {
     public:
         allocate_color_convert_buf();
