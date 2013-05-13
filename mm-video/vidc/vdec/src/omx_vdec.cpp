@@ -9361,23 +9361,29 @@ void omx_vdec::extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr)
 
   while (index < bytes_to_parse)
   {
-    if ( ((buf[index] == 0x00) && (buf[index+1] == 0x00) &&
-          (buf[index+2] == 0x00) && (buf[index+3] == 0x01)) ||
-         ((buf[index] == 0x00) && (buf[index+1] == 0x00) &&
-          (buf[index+2] == 0x01)) )
-    {
-      if ((((index+3) - prev_sc_index) <= 4) && m_demux_entries)
-      {
-	 DEBUG_PRINT_ERROR("FOUND Consecutive start Code, Hence skip one");
-         m_demux_entries--;
+    if (((buf[index] == 0x00) && (buf[index+1] == 0x00) &&
+        (buf[index+2] == 0x00) && (buf[index+3] == 0x01))) {      // 4 byte start code
+      if ((((index+3) - prev_sc_index) <= 4) && m_demux_entries) {
+        DEBUG_PRINT_ERROR("FOUND Consecutive start Code, Hence skip one");
+        m_demux_entries--;
       }
       //Found start code, insert address offset
       insert_demux_addr_offset(index);
-      if (buf[index+2] == 0x01) // 3 byte start code
+      index += 4;
+    }
+    else if ((buf[index] == 0x00) && (buf[index+1] == 0x00) &&          // 3 byte start code
+             (buf[index+2] == 0x01)) {
+           if ((((index+3) - prev_sc_index) <= 4) && m_demux_entries) {
+             DEBUG_PRINT_ERROR("FOUND Consecutive start Code, Hence skip one");
+             m_demux_entries--;
+           }
+
+           if (m_demux_entries>0)
+             insert_demux_addr_offset(index-1);
+           else
+             insert_demux_addr_offset(index);
+
         index += 3;
-      else                      //4 byte start code
-        index += 4;
-      prev_sc_index = index;
     }
     else
       index++;
