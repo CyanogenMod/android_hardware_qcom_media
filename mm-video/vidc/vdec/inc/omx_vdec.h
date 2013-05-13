@@ -905,6 +905,7 @@ private:
     bool async_thread_created;
 
     unsigned int m_fill_output_msg;
+    bool client_set_fps;
     class allocate_color_convert_buf {
     public:
         allocate_color_convert_buf();

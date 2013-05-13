@@ -48,6 +48,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_vdec.h"
 #include <fcntl.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <media/msm_media_info.h>
 
 #ifndef _ANDROID_
@@ -553,7 +554,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 	iDivXDrmDecrypt(NULL),
 #endif
 	m_desc_buffer_ptr(NULL),
-	secure_mode(false)
+	secure_mode(false),
+	client_set_fps(false)
 {
   /* Assumption is that , to begin with , we have all the frames with decoder */
   DEBUG_PRINT_HIGH("In OMX vdec Constructor");
@@ -3814,13 +3816,13 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
       }
       break;
     }
-	case OMX_IndexConfigCommonOutputCrop:
+  case OMX_IndexConfigCommonOutputCrop:
     {
       OMX_CONFIG_RECTTYPE *rect = (OMX_CONFIG_RECTTYPE *) configData;
       memcpy(rect, &rectangle, sizeof(OMX_CONFIG_RECTTYPE));
       break;
     }
-    default:
+  default:
     {
       DEBUG_PRINT_ERROR("get_config: unknown param %d\n",configIndex);
       eRet = OMX_ErrorBadParameter;
@@ -3858,12 +3860,6 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
   OMX_VIDEO_CONFIG_NALSIZE *pNal;
 
   DEBUG_PRINT_LOW("\n Set Config Called");
-
-  if (m_state == OMX_StateExecuting)
-  {
-     DEBUG_PRINT_ERROR("set_config:Ignore in Exe state\n");
-     return ret;
-  }
 
   if (configIndex == (OMX_INDEXTYPE)OMX_IndexVendorVideoExtraData)
   {
@@ -3992,6 +3988,76 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     nal_length = pNal->nNaluBytes;
     m_frame_parser.init_nal_length(nal_length);
     DEBUG_PRINT_LOW("\n OMX_IndexConfigVideoNalSize called with Size %d",nal_length);
+    return ret;
+  }
+  else if (configIndex == OMX_IndexVendorVideoFrameRate)
+  {
+    OMX_VENDOR_VIDEOFRAMERATE *config = (OMX_VENDOR_VIDEOFRAMERATE *) configData;
+    DEBUG_PRINT_HIGH("Index OMX_IndexVendorVideoFrameRate %d", config->nFps);
+
+    if (config->nPortIndex == OMX_CORE_INPUT_PORT_INDEX)
+    {
+      if (config->bEnabled)
+      {
+        if ((config->nFps >> 16) > 0)
+        {
+            DEBUG_PRINT_HIGH("set_config: frame rate set by omx client : %d",
+                            config->nFps >> 16);
+            Q16ToFraction(config->nFps, drv_ctx.frame_rate.fps_numerator,
+                          drv_ctx.frame_rate.fps_denominator);
+
+            if (!drv_ctx.frame_rate.fps_numerator)
+            {
+              DEBUG_PRINT_ERROR("Numerator is zero setting to 30");
+              drv_ctx.frame_rate.fps_numerator = 30;
+            }
+
+            if (drv_ctx.frame_rate.fps_denominator)
+            {
+              drv_ctx.frame_rate.fps_numerator = (int)
+                  drv_ctx.frame_rate.fps_numerator / drv_ctx.frame_rate.fps_denominator;
+            }
+
+            drv_ctx.frame_rate.fps_denominator = 1;
+            frm_int = drv_ctx.frame_rate.fps_denominator * 1e6 /
+                      drv_ctx.frame_rate.fps_numerator;
+
+            struct v4l2_outputparm oparm;
+            /*XXX: we're providing timing info as seconds per frame rather than frames
+             * per second.*/
+            oparm.timeperframe.numerator = drv_ctx.frame_rate.fps_denominator;
+            oparm.timeperframe.denominator = drv_ctx.frame_rate.fps_numerator;
+
+            struct v4l2_streamparm sparm;
+            sparm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+            sparm.parm.output = oparm;
+            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_PARM, &sparm))
+            {
+              DEBUG_PRINT_ERROR("Unable to convey fps info to driver, \
+                  performance might be affected");
+              ret = OMX_ErrorHardware;
+            }
+            client_set_fps = true;
+        }
+        else
+        {
+          DEBUG_PRINT_ERROR("Frame rate not supported.");
+          ret = OMX_ErrorUnsupportedSetting;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_HIGH("set_config: Disabled client's frame rate");
+        client_set_fps = false;
+      }
+    }
+    else
+    {
+        DEBUG_PRINT_ERROR(" Set_config: Bad Port idx %d",
+                      (int)config->nPortIndex);
+        ret = OMX_ErrorBadPortIndex;
+    }
+
     return ret;
   }
 
@@ -8458,12 +8524,11 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
 {
   OMX_U32 new_frame_interval = 0;
   if (VALID_TS(act_timestamp) && VALID_TS(prev_ts) && act_timestamp != prev_ts
-     && (((act_timestamp > prev_ts )? act_timestamp - prev_ts: prev_ts-act_timestamp)>2000))
+     && llabs(act_timestamp - prev_ts) > 2000)
   {
-    new_frame_interval = (act_timestamp > prev_ts)?
-                          act_timestamp - prev_ts :
-                          prev_ts - act_timestamp;
-    if (new_frame_interval < frm_int || frm_int == 0)
+    new_frame_interval = client_set_fps ? frm_int :
+        llabs(act_timestamp - prev_ts);
+    if (new_frame_interval != frm_int || frm_int == 0)
     {
       frm_int = new_frame_interval;
       if(frm_int)
