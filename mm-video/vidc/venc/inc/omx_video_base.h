@@ -61,6 +61,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_video_common.h"
 #include "extra_data_handler.h"
 #include <linux/videodev2.h>
+#include <dlfcn.h>
+#include "C2DColorConverter.h"
 
 #ifdef _ANDROID_
 using namespace android;
@@ -150,10 +152,36 @@ class omx_video: public qc_omx_component
 protected:
 #ifdef _ANDROID_ICS_
   bool meta_mode_enable;
+  bool c2d_opened;
   encoder_media_buffer_type meta_buffers[MAX_NUM_INPUT_BUFFERS];
-  OMX_BUFFERHEADERTYPE meta_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
+  OMX_BUFFERHEADERTYPE *opaque_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
   bool mUseProxyColorFormat;
   bool get_syntaxhdr_enable;
+  OMX_BUFFERHEADERTYPE  *psource_frame;
+  OMX_BUFFERHEADERTYPE  *pdest_frame;
+
+  class omx_c2d_conv {
+  public:
+    omx_c2d_conv();
+    ~omx_c2d_conv();
+    bool init();
+    bool open(unsigned int height,unsigned int width,
+              ColorConvertFormat src,
+              ColorConvertFormat dest);
+    bool convert(int src_fd, void *src_viraddr,
+                 int dest_fd,void *dest_viraddr);
+    bool get_buffer_size(int port,unsigned int &buf_size);
+    int get_src_format();
+    void close();
+  private:
+    C2DColorConverterBase *c2dcc;
+    pthread_mutex_t c_lock;
+    void *mLibHandle;
+    ColorConvertFormat src_format;
+    createC2DColorConverter_t *mConvertOpen;
+    destroyC2DColorConverter_t *mConvertClose;
+  };
+  omx_c2d_conv c2d_conv;
 #endif
 public:
   omx_video();  // constructor
@@ -194,6 +222,7 @@ public:
   virtual bool dev_loaded_stop_done(void) = 0;
 #ifdef _MSM8974_
   virtual int dev_handle_extradata(void*, int) = 0;
+  virtual int dev_set_format(int) = 0;
 #endif
   virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
   virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
@@ -378,6 +407,7 @@ public:
     OMX_COMPONENT_GENERATE_STOP_DONE = 0x10,
     OMX_COMPONENT_GENERATE_HARDWARE_ERROR = 0x11,
     OMX_COMPONENT_GENERATE_LTRUSE_FAILED = 0x12,
+    OMX_COMPONENT_GENERATE_ETB_OPQ = 0x13
   };
 
   struct omx_event
@@ -416,7 +446,8 @@ public:
                                       OMX_PTR              appData,
                                       OMX_U32              bytes);
 #ifdef _ANDROID_ICS_
-  OMX_ERRORTYPE allocate_input_meta_buffer(OMX_BUFFERHEADERTYPE **bufferHdr,
+  OMX_ERRORTYPE allocate_input_meta_buffer(OMX_HANDLETYPE       hComp,
+                                      OMX_BUFFERHEADERTYPE **bufferHdr,
                                       OMX_PTR              appData,
                                       OMX_U32              bytes);
 #endif
@@ -450,11 +481,17 @@ public:
 
   OMX_ERRORTYPE fill_buffer_done(OMX_HANDLETYPE hComp,
                                  OMX_BUFFERHEADERTYPE * buffer);
-  OMX_ERRORTYPE empty_this_buffer_proxy(OMX_HANDLETYPE       hComp,
+  OMX_ERRORTYPE empty_this_buffer_proxy(OMX_HANDLETYPE hComp,
                                         OMX_BUFFERHEADERTYPE *buffer);
-
-  OMX_ERRORTYPE fill_this_buffer_proxy(OMX_HANDLETYPE       hComp,
-                                       OMX_BUFFERHEADERTYPE *buffer);
+  OMX_ERRORTYPE empty_this_buffer_opaque(OMX_HANDLETYPE hComp,
+                                  OMX_BUFFERHEADERTYPE *buffer);
+  OMX_ERRORTYPE push_input_buffer(OMX_HANDLETYPE hComp);
+  OMX_ERRORTYPE convert_queue_buffer(OMX_HANDLETYPE hComp,
+     struct pmem &Input_pmem_info,unsigned &index);
+  OMX_ERRORTYPE queue_meta_buffer(OMX_HANDLETYPE hComp,
+     struct pmem &Input_pmem_info);
+  OMX_ERRORTYPE fill_this_buffer_proxy(OMX_HANDLETYPE hComp,
+     OMX_BUFFERHEADERTYPE *buffer);
   bool release_done();
 
   bool release_output_done();
@@ -543,16 +580,20 @@ public:
   QOMX_VIDEO_CONFIG_LTRUSE_TYPE m_sConfigLTRUse;
   OMX_VIDEO_CONFIG_AVCINTRAPERIOD m_sConfigAVCIDRPeriod;
   OMX_U32 m_sExtraData;
+  OMX_U32 m_input_msg_id;
 
   // fill this buffer queue
-  omx_cmd_queue         m_ftb_q;
+  omx_cmd_queue m_ftb_q;
   // Command Q for rest of the events
-  omx_cmd_queue         m_cmd_q;
-  omx_cmd_queue         m_etb_q;
+  omx_cmd_queue m_cmd_q;
+  omx_cmd_queue m_etb_q;
   // Input memory pointer
-  OMX_BUFFERHEADERTYPE  *m_inp_mem_ptr;
+  OMX_BUFFERHEADERTYPE *m_inp_mem_ptr;
   // Output memory pointer
-  OMX_BUFFERHEADERTYPE  *m_out_mem_ptr;
+  OMX_BUFFERHEADERTYPE *m_out_mem_ptr;
+  omx_cmd_queue m_opq_meta_q;
+  omx_cmd_queue m_opq_pmem_q;
+  OMX_BUFFERHEADERTYPE meta_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
 
   bool input_flush_progress;
   bool output_flush_progress;

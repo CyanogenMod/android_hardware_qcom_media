@@ -178,6 +178,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 
 	paused = false;
 	async_thread_created = false;
+	color_format = 0;
 	pthread_mutex_init(&pause_resume_mlock, NULL);
 	pthread_cond_init(&pause_resume_cond, NULL);
 	memset(&extradata_info, 0, sizeof(extradata_info));
@@ -388,6 +389,19 @@ bool venc_dev::handle_extradata(void *buffer, int index)
 	}
 	memcpy(p_extra, p_extradata, extradata_info.buffer_size);
 	return true;
+}
+
+int venc_dev::venc_set_format(int format)
+{
+	int rc = true;
+	if (format)
+		color_format = format;
+	else
+	{
+		color_format = 0;
+		rc = false;
+	}
+	return rc;
 }
 
 OMX_ERRORTYPE venc_dev::allocate_extradata()
@@ -1633,7 +1647,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 
   memset (&buf, 0, sizeof(buf));
   memset (&plane, 0, sizeof(plane));
-
   if(buffer == NULL)
   {
     DEBUG_PRINT_ERROR("\nERROR: venc_etb: buffer is NULL");
@@ -1642,7 +1655,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
   bufhdr = (OMX_BUFFERHEADERTYPE *)buffer;
 
   DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
-
   if(pmem_data_buf)
   {
     DEBUG_PRINT_LOW("\n Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
@@ -1654,18 +1666,17 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
   else
   {
     DEBUG_PRINT_LOW("\n Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
-	if (metadatamode) {
+	if (metadatamode && !color_format) { // meta Buffer + Camera buffers
 		meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
-		if (!meta_buf) {
+		if (!meta_buf)
 			return false;
-		}
 		plane.m.userptr = index;
 		plane.data_offset = meta_buf->meta_handle->data[1];
 		plane.length = meta_buf->meta_handle->data[2];
 		plane.bytesused = meta_buf->meta_handle->data[2];
 	}
 	else
-	{
+	{ // meta Buffer + Gralloc buffers || pmem buffers
 		plane.m.userptr = (unsigned long) bufhdr->pBuffer;
 		plane.data_offset = bufhdr->nOffset;
 		plane.length = bufhdr->nAllocLen;
@@ -1689,7 +1700,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 	  DEBUG_PRINT_ERROR("Failed to qbuf (etb) to driver");
 	  return false;
   }
-
   etb_count++;
 
   if(!streaming[OUTPUT_PORT])
@@ -1704,7 +1714,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 	  } else {
 		  streaming[OUTPUT_PORT] = true;
 	  }
-  }
+}
 #ifdef INPUT_BUFFER_LOG
 	  int i;
 	  int stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, m_sVenc_cfg.input_width);

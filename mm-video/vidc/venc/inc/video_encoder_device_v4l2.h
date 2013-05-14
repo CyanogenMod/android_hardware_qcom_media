@@ -250,6 +250,7 @@ public:
   OMX_ERRORTYPE allocate_extradata();
   void free_extradata();
   bool handle_extradata(void *, int);
+  int venc_set_format(int);
 private:
   struct msm_venc_basecfg             m_sVenc_cfg;
   struct msm_venc_ratectrlcfg         rate_ctrl;
@@ -313,6 +314,7 @@ private:
   pthread_mutex_t pause_resume_mlock;
   pthread_cond_t pause_resume_cond;
   bool paused;
+  int color_format;
 };
 
 enum instance_state {

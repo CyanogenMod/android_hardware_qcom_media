@@ -65,6 +65,7 @@ omx_venc::omx_venc()
   meta_mode_enable = false;
   memset(meta_buffer_hdr,0,sizeof(meta_buffer_hdr));
   memset(meta_buffers,0,sizeof(meta_buffers));
+  memset(opaque_buffer_hdr,0,sizeof(opaque_buffer_hdr));
   mUseProxyColorFormat = false;
   get_syntaxhdr_enable = false;
 #endif
@@ -541,8 +542,17 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         if (portDefn->format.video.eColorFormat == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque) {
             m_sInPortDef.format.video.eColorFormat =
                 OMX_COLOR_FormatYUV420SemiPlanar;
+            if(!mUseProxyColorFormat){
+              if (!c2d_conv.init()) {
+                DEBUG_PRINT_ERROR("\n C2D init failed");
+                return OMX_ErrorUnsupportedSetting;
+              }
+              DEBUG_PRINT_ERROR("\nC2D init is successful");
+            }
             mUseProxyColorFormat = true;
-        } //else case not needed as color format is already updated in the memcpy above
+            m_input_msg_id = OMX_COMPONENT_GENERATE_ETB_OPQ;
+        } else
+          mUseProxyColorFormat = false;
 #endif
         /*Query Input Buffer Requirements*/
         dev_get_buf_req   (&m_sInPortDef.nBufferCountMin,
@@ -615,12 +625,22 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         if (portFmt->eColorFormat ==
             (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque) {
             m_sInPortFormat.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+            if(!mUseProxyColorFormat){
+              if (!c2d_conv.init()) {
+                DEBUG_PRINT_ERROR("\n C2D init failed");
+                return OMX_ErrorUnsupportedSetting;
+              }
+              DEBUG_PRINT_ERROR("\nC2D init is successful");
+            }
             mUseProxyColorFormat = true;
+            m_input_msg_id = OMX_COMPONENT_GENERATE_ETB_OPQ;
         }
         else
 #endif
         {
             m_sInPortFormat.eColorFormat = portFmt->eColorFormat;
+            m_input_msg_id = OMX_COMPONENT_GENERATE_ETB;
+            mUseProxyColorFormat = false;
         }
         m_sInPortFormat.xFramerate = portFmt->xFramerate;
       }
@@ -1770,6 +1790,11 @@ int omx_venc::dev_handle_extradata(void *buffer, int index)
 {
   return handle->handle_extradata(buffer, index);
 }
+
+int omx_venc::dev_set_format(int color)
+{
+  return handle->venc_set_format(color);
+}
 #endif
 
 int omx_venc::async_message_process (void *context, void* message)
@@ -1829,13 +1854,15 @@ int omx_venc::async_message_process (void *context, void* message)
              m_sVenc_msg->buf.clientdata;
 
     if(omxhdr == NULL ||
-       ((OMX_U32)(omxhdr - omx->m_inp_mem_ptr) > omx->m_sInPortDef.nBufferCountActual) )
+       (((OMX_U32)(omxhdr - omx->m_inp_mem_ptr) > omx->m_sInPortDef.nBufferCountActual) &&
+        ((OMX_U32)(omxhdr - omx->meta_buffer_hdr) > omx->m_sInPortDef.nBufferCountActual)))
     {
       omxhdr = NULL;
       m_sVenc_msg->statuscode = VEN_S_EFAIL;
     }
+
 #ifdef _ANDROID_ICS_
-    omx->omx_release_meta_buffer(omxhdr);
+      omx->omx_release_meta_buffer(omxhdr);
 #endif
     omx->post_event ((unsigned int)omxhdr,m_sVenc_msg->statuscode,
                      OMX_COMPONENT_GENERATE_EBD);
