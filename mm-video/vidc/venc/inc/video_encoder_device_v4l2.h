@@ -169,6 +169,10 @@ struct msm_venc_idrperiod {
 	unsigned long idrperiod;
 };
 
+struct msm_venc_slice_delivery {
+	unsigned long enable;
+};
+
 enum v4l2_ports {
 	CAPTURE_PORT,
 	OUTPUT_PORT,
@@ -271,6 +275,7 @@ private:
   struct msm_venc_voptimingcfg        voptimecfg;
   struct msm_venc_video_capability    capability;
   struct msm_venc_idrperiod           idrperiod;
+  struct msm_venc_slice_delivery      slice_mode;
 
   bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
   bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
