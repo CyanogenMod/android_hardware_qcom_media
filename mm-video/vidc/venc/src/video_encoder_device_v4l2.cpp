@@ -43,8 +43,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 
 #define MPEG4_SP_START 0
-#define MPEG4_ASP_START (MPEG4_SP_START + 8)
-#define MPEG4_720P_LEVEL 6
+#define MPEG4_ASP_START (MPEG4_SP_START + 10)
 #define H263_BP_START 0
 #define H264_BP_START 0
 #define H264_HP_START (H264_BP_START + 17)
@@ -1894,8 +1893,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
 {
   struct venc_profile requested_profile = {0};
   struct ven_profilelevel requested_level = {0};
-  unsigned const int *profile_tbl = NULL;
-  unsigned long mb_per_frame = 0, mb_per_sec = 0;
+  unsigned long mb_per_frame = 0;
   DEBUG_PRINT_LOW("venc_set_profile_level:: eProfile = %d, Level = %d",
     eProfile, eLevel);
   mb_per_frame = ((m_sVenc_cfg.input_height + 15) >> 4)*
@@ -1921,16 +1919,10 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
     if(eProfile == OMX_VIDEO_MPEG4ProfileSimple)
     {
       requested_profile.profile = V4L2_MPEG_VIDEO_MPEG4_PROFILE_SIMPLE;
-      profile_tbl = (unsigned int const *)
-          (&mpeg4_profile_level_table[MPEG4_SP_START]);
-      profile_tbl += MPEG4_720P_LEVEL*5;
     }
     else if(eProfile == OMX_VIDEO_MPEG4ProfileAdvancedSimple)
     {
       requested_profile.profile = V4L2_MPEG_VIDEO_MPEG4_PROFILE_ADVANCED_SIMPLE;
-      profile_tbl = (unsigned int const *)
-          (&mpeg4_profile_level_table[MPEG4_ASP_START]);
-      profile_tbl += MPEG4_720P_LEVEL*5;
     }
     else
     {
@@ -1974,18 +1966,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
         requested_level.level = V4L2_MPEG_VIDEO_MPEG4_LEVEL_4;
         break;
       case OMX_VIDEO_MPEG4Level5:
-        mb_per_sec = mb_per_frame * (m_sVenc_cfg.fps_num / m_sVenc_cfg.fps_den);
-		if((requested_profile.profile == V4L2_MPEG_VIDEO_MPEG4_PROFILE_ADVANCED_SIMPLE) && (mb_per_frame >= profile_tbl[0]) &&
-           (mb_per_sec >= profile_tbl[1]))
-        {
-          DEBUG_PRINT_LOW("\nMPEG4 Level 6 is set for 720p resolution");
-          requested_level.level = V4L2_MPEG_VIDEO_MPEG4_LEVEL_5;
-        }
-        else
-        {
-          DEBUG_PRINT_LOW("\nMPEG4 Level 5 is set for non-720p resolution");
-          requested_level.level = V4L2_MPEG_VIDEO_MPEG4_LEVEL_5;
-        }
+        requested_level.level = V4L2_MPEG_VIDEO_MPEG4_LEVEL_5;
         break;
       default:
         return false;
