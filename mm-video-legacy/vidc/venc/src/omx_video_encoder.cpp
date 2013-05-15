@@ -1020,6 +1020,10 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                m_sOutPortDef.nPortIndex);
           }
         }
+      } else {
+          DEBUG_PRINT_ERROR("set_parameter: metamode is "
+             "valid for input port only");
+          eRet = OMX_ErrorUnsupportedSetting;
       }
       break;
     }
