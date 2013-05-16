@@ -7079,11 +7079,17 @@ int omx_vdec::async_message_process (void *context, void* message)
             || (omx->rectangle.nWidth != vdec_msg->msgdata.output_frame.framesize.right)
             || (omx->rectangle.nHeight != vdec_msg->msgdata.output_frame.framesize.bottom)))
         {
+            DEBUG_PRINT_LOW("Old crop info: left = %u top = %u width = %u height = %u\n",
+                omx->rectangle.nLeft, omx->rectangle.nTop,
+                omx->rectangle.nWidth, omx->rectangle.nHeight);
             omx->rectangle.nLeft = vdec_msg->msgdata.output_frame.framesize.left;
             omx->rectangle.nTop = vdec_msg->msgdata.output_frame.framesize.top;
             omx->rectangle.nWidth = vdec_msg->msgdata.output_frame.framesize.right;
             omx->rectangle.nHeight = vdec_msg->msgdata.output_frame.framesize.bottom;
             DEBUG_PRINT_HIGH(" Crop information has changed");
+            DEBUG_PRINT_LOW("New crop info: left = %u top = %u width = %u height = %u\n",
+                omx->rectangle.nLeft, omx->rectangle.nTop,
+                omx->rectangle.nWidth, omx->rectangle.nHeight);
             omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexConfigCommonOutputCrop,
                 OMX_COMPONENT_GENERATE_PORT_RECONFIG);
         }
@@ -7973,6 +7979,21 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
         buffer_prop->buffer_size, buffer_prop->alignment,
         buffer_prop->buf_poolid, buffer_prop->meta_buffer_size);
     buf_size = buffer_prop->buffer_size;
+
+    ioctl_msg.in = NULL;
+    ioctl_msg.out = &drv_ctx.video_resolution;
+    if (ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_GET_PICRES, &ioctl_msg))
+    {
+      DEBUG_PRINT_ERROR("Error VDEC_IOCTL_GET_PICRES");
+      eRet = OMX_ErrorHardware;
+      return eRet;
+    }
+    else
+    {
+        update_resolution(drv_ctx.video_resolution.frame_width,
+            drv_ctx.video_resolution.frame_height);
+    }
+
     if (client_extradata & OMX_FRAMEINFO_EXTRADATA)
     {
       DEBUG_PRINT_HIGH("Frame info extra data enabled!");
