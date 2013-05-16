@@ -1023,6 +1023,12 @@ OMX_ERRORTYPE EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
             break;
         case OMX_EventPortSettingsChanged:
             DEBUG_PRINT("OMX_EventPortSettingsChanged port[%d]\n", nData1);
+            if (nData2 == OMX_IndexConfigCommonOutputCrop)
+            {
+                DEBUG_PRINT("Received OMX_IndexConfigCommonOutputCrop\n");
+                break;
+            }
+
             currentStatus = PORT_SETTING_CHANGE_STATE;
             if (waitForPortSettingsChanged)
             {
