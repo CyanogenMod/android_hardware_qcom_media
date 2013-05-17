@@ -750,7 +750,10 @@ void* fbd_thread(void* pArg)
       pthread_mutex_unlock(&enable_lock);
       pthread_mutex_lock(&fbd_lock);
       if (pPrevBuff != NULL ) {
-        push(fbd_queue, (void *)pBuffer);
+        if(push(fbd_queue, (void *)pBuffer))
+            DEBUG_PRINT_ERROR("Error in enqueueing fbd_data\n");
+        else
+            sem_post(&fbd_sem);
         pPrevBuff = NULL;
       }
       if (free_op_buf_cnt == portFmt.nBufferCountActual)
@@ -1044,7 +1047,10 @@ void* fbd_thread(void* pArg)
         pBuffer->nFlags &= ~OMX_BUFFERFLAG_EXTRADATA;
         pthread_mutex_lock(&fbd_lock);
         if ( pPrevBuff != NULL ) {
-            push(fbd_queue, (void *)pPrevBuff);
+            if(push(fbd_queue, (void *)pPrevBuff))
+                DEBUG_PRINT_ERROR("Error in enqueueing fbd_data\n");
+            else
+               sem_post(&fbd_sem);
             pPrevBuff = NULL;
         }
         if(push(fbd_queue, (void *)pBuffer) < 0)
