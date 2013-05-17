@@ -52,7 +52,7 @@ namespace android {
 class C2DColorConverter : public C2DColorConverterBase {
 
 public:
-    C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags);
+    C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags,size_t srcStride);
     int32_t getBuffReq(int32_t port, C2DBuffReq *req);
     int32_t dumpOutput(char * filename, char mode);
 protected:
@@ -91,6 +91,7 @@ private:
     C2D_OBJECT mBlit;
     size_t mSrcWidth;
     size_t mSrcHeight;
+    size_t mSrcStride;
     size_t mDstWidth;
     size_t mDstHeight;
     size_t mSrcSize;
@@ -104,7 +105,7 @@ private:
     int mError;
 };
 
-C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags)
+C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags, size_t srcStride)
 {
      mError = 0;
      mC2DLibHandle = dlopen("libC2D2.so", RTLD_NOW);
@@ -132,6 +133,7 @@ C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t d
 
     mSrcWidth = srcWidth;
     mSrcHeight = srcHeight;
+    mSrcStride = srcStride;;
     mDstWidth = dstWidth;
     mDstHeight = dstHeight;
     mSrcFormat = srcFormat;
@@ -397,7 +399,10 @@ size_t C2DColorConverter::calcStride(ColorConvertFormat format, size_t width)
         case RGB565:
             return ALIGN(width, ALIGN32) * 2; // RGB565 has width as twice
         case RGBA8888:
-            return ALIGN(width, ALIGN32) * 4;
+	if (mSrcStride)
+		return mSrcStride * 4;
+	else
+		return ALIGN(width, ALIGN32) * 4;
         case YCbCr420Tile:
             return ALIGN(width, ALIGN128);
         case YCbCr420SP:
@@ -450,7 +455,10 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
             size = ALIGN(size, ALIGN4K);
             break;
         case RGBA8888:
-            size = ALIGN(width, ALIGN32) * ALIGN(height, ALIGN32) * 4;
+            if (mSrcStride)
+              size = mSrcStride *  ALIGN(height, ALIGN32) * 4;
+            else
+              size = ALIGN(width, ALIGN32) * ALIGN(height, ALIGN32) * 4;
             size = ALIGN(size, ALIGN4K);
             break;
         case YCbCr420SP:
@@ -680,9 +688,9 @@ int32_t C2DColorConverter::dumpOutput(char * filename, char mode) {
     return ret < 0 ? ret : 0;
 }
 
-extern "C" C2DColorConverterBase* createC2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags)
+extern "C" C2DColorConverterBase* createC2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags, size_t srcStride)
 {
-    return new C2DColorConverter(srcWidth, srcHeight, dstWidth, dstHeight, srcFormat, dstFormat, flags);
+    return new C2DColorConverter(srcWidth, srcHeight, dstWidth, dstHeight, srcFormat, dstFormat, flags, srcStride);
 }
 
 extern "C" void destroyC2DColorConverter(C2DColorConverterBase* C2DCC)
