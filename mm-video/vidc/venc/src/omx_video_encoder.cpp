@@ -528,6 +528,12 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         DEBUG_PRINT_LOW("\n i/p actual cnt requested = %d\n", portDefn->nBufferCountActual);
         DEBUG_PRINT_LOW("\n i/p min cnt requested = %d\n", portDefn->nBufferCountMin);
         DEBUG_PRINT_LOW("\n i/p buffersize requested = %d\n", portDefn->nBufferSize);
+        if(portDefn->nBufferCountMin > portDefn->nBufferCountActual)
+        {
+          DEBUG_PRINT_ERROR("\nERROR: (In_PORT) Min buffers (%d) > actual count (%d)\n",
+                            portDefn->nBufferCountMin, portDefn->nBufferCountActual);
+          return OMX_ErrorUnsupportedSetting;
+        }
         if(handle->venc_set_param(paramData,OMX_IndexParamPortDefinition) != true)
         {
           DEBUG_PRINT_ERROR("\nERROR: venc_set_param input failed");
@@ -572,6 +578,12 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         DEBUG_PRINT_LOW("\n o/p actual cnt requested = %d\n", portDefn->nBufferCountActual);
         DEBUG_PRINT_LOW("\n o/p min cnt requested = %d\n", portDefn->nBufferCountMin);
         DEBUG_PRINT_LOW("\n o/p buffersize requested = %d\n", portDefn->nBufferSize);
+        if(portDefn->nBufferCountMin > portDefn->nBufferCountActual)
+        {
+          DEBUG_PRINT_ERROR("\nERROR: (Out_PORT) Min buffers (%d) > actual count (%d)\n",
+                            portDefn->nBufferCountMin, portDefn->nBufferCountActual);
+          return OMX_ErrorUnsupportedSetting;
+        }
         if(handle->venc_set_param(paramData,OMX_IndexParamPortDefinition) != true)
         {
           DEBUG_PRINT_ERROR("\nERROR: venc_set_param output failed");
