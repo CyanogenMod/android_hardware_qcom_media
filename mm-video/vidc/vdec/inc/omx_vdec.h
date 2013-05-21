@@ -377,6 +377,7 @@ public:
                                 OMX_PTR              appData,
                                 void *               eglImage);
     void complete_pending_buffer_done_cbs();
+    void update_resolution(int width, int height);
     struct video_driver_context drv_ctx;
     int  m_pipe_in;
     int  m_pipe_out;
@@ -612,6 +613,8 @@ private:
     void append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra);
     void append_extn_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_extn);
     void append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_user);
+    void append_concealmb_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+      OMX_OTHER_EXTRADATATYPE *p_concealmb, OMX_U8 *conceal_mb_data);
     void insert_demux_addr_offset(OMX_U32 address_offset);
     void extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr);
     OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
@@ -839,6 +842,7 @@ private:
     bool external_meta_buffer_iommu;
     OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
     bool codec_config_flag;
+    OMX_CONFIG_RECTTYPE rectangle;
 #ifdef _COPPER_
     int capture_capability;
     int output_capability;
