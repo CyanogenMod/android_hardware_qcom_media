@@ -375,6 +375,8 @@ void DashPlayer::Renderer::onDrainVideoQueue() {
     if (entry->mBuffer == NULL) {
         // EOS
 
+        notifyPosition(true);
+
         notifyEOS(false /* audio */, entry->mFinalResult);
 
         mVideoQueue.erase(mVideoQueue.begin());
@@ -382,7 +384,6 @@ void DashPlayer::Renderer::onDrainVideoQueue() {
 
         mVideoLateByUs = 0ll;
 
-        notifyPosition();
         return;
     }
 
@@ -628,15 +629,15 @@ void DashPlayer::Renderer::onAudioSinkChanged() {
     }
 }
 
-void DashPlayer::Renderer::notifyPosition() {
+void DashPlayer::Renderer::notifyPosition(bool isEOS) {
     if (mAnchorTimeRealUs < 0 || mAnchorTimeMediaUs < 0) {
         return;
     }
 
     int64_t nowUs = ALooper::GetNowUs();
 
-    if (mLastPositionUpdateUs >= 0
-            && nowUs < mLastPositionUpdateUs + kMinPositionUpdateDelayUs) {
+    if ((!isEOS) && (mLastPositionUpdateUs >= 0
+            && nowUs < mLastPositionUpdateUs + kMinPositionUpdateDelayUs)) {
         return;
     }
     mLastPositionUpdateUs = nowUs;
