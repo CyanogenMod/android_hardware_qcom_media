@@ -134,7 +134,7 @@ private:
 
     void notifyEOS(bool audio, status_t finalResult);
     void notifyFlushComplete(bool audio);
-    void notifyPosition();
+    void notifyPosition(bool isEOS = false);
     void notifyVideoLateBy(int64_t lateByUs);
 
     void flushQueue(List<QueueEntry> *queue);
