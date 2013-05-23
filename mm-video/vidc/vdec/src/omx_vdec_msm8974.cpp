@@ -1414,8 +1414,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 			drv_ctx.video_driver_fd, errno);
 
 	if(drv_ctx.video_driver_fd == 0){
-	    DEBUG_PRINT_ERROR("Omx_vdec:: Got fd as 0 for msm_vidc_dec, Opening again\n");
-	    drv_ctx.video_driver_fd = open(device_name, O_RDWR);
+	  DEBUG_PRINT_ERROR("omx_vdec_msm8974 :: Got fd as 0 for msm_vidc_dec, Opening again\n");
+	  drv_ctx.video_driver_fd = open(device_name, O_RDWR);
+	  close(0);
 	}
 
 	if(drv_ctx.video_driver_fd < 0)
