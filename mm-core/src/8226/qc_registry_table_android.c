@@ -361,6 +361,22 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.qcom.audio.decoder.wmaLossLess",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+     NULL,
+     NULL,
+     NULL,
+     NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxWmaDec.so",
+    {
+     "audio_decoder.wma"
+    }
+  },
+  {
     "OMX.qcom.audio.decoder.aac",
     NULL,   // Create instance function
     // Unique instance handle
