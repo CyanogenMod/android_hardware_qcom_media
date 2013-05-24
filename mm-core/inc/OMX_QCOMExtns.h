@@ -708,11 +708,27 @@ typedef struct OMX_VENDOR_EXTRADATATYPE  {
     OMX_U8  *pData;     // cdata (codec_data/extradata)
 } OMX_VENDOR_EXTRADATATYPE;
 
+/**
+ * This structure describes the parameters corresponding to the
+ * OMX_VENDOR_VIDEOFRAMERATE extension. This parameter can be set
+ * dynamically during any state except the state invalid. This is
+ * used for frame rate to be set from the application. This
+ * is set on the in port.
+ */
+typedef struct OMX_VENDOR_VIDEOFRAMERATE  {
+   OMX_U32 nSize;           /** Size of the structure in bytes */
+   OMX_VERSIONTYPE nVersion;/** OMX specification version information */
+   OMX_U32 nPortIndex;      /** Portindex which is extended by this structure */
+   OMX_U32 nFps;            /** Frame rate value */
+   OMX_BOOL bEnabled;       /** Flag to enable or disable client's frame rate value */
+} OMX_VENDOR_VIDEOFRAMERATE;
+
 typedef enum OMX_INDEXVENDORTYPE {
     OMX_IndexVendorFileReadInputFilename = 0xFF000001,
     OMX_IndexVendorParser3gpInputFilename = 0xFF000002,
     OMX_IndexVendorVideoExtraData = 0xFF000003,
-    OMX_IndexVendorAudioExtraData = 0xFF000004
+    OMX_IndexVendorAudioExtraData = 0xFF000004,
+    OMX_IndexVendorVideoFrameRate = 0xFF000005,
 } OMX_INDEXVENDORTYPE;
 
 typedef enum OMX_QCOM_VC1RESOLUTIONTYPE
