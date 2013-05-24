@@ -5981,15 +5981,10 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 		DEBUG_PRINT_HIGH("Streamon on OUTPUT Plane was successful \n");
 		streaming[OUTPUT_PORT] = true;
 	} else{
-		/*TODO: How to handle this case */
 		DEBUG_PRINT_ERROR(" \n Failed to call streamon on OUTPUT \n");
-		pending_input_buffers--;
-		if (!arbitrary_bytes)
-		{
-			DEBUG_PRINT_LOW("If Stream on failed no buffer should be queued");
-			post_event ((unsigned int)buffer,VDEC_S_SUCCESS,
+		DEBUG_PRINT_LOW("If Stream on failed no buffer should be queued");
+		post_event ((unsigned int)buffer,VDEC_S_SUCCESS,
 				OMX_COMPONENT_GENERATE_EBD);
-		}
 		return OMX_ErrorBadParameter;
 	}
 }
