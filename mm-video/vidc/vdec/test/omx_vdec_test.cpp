@@ -3931,6 +3931,7 @@ void overlay_set()
     overlayp->id = MSMFB_NEW_REQUEST;
 
     overlay_vsync_ctrl(OMX_TRUE);
+    drawBG();
     vid_buf_front_id = ioctl(fb_fd, MSMFB_OVERLAY_SET, overlayp);
     if (vid_buf_front_id < 0)
     {
@@ -3938,7 +3939,6 @@ void overlay_set()
     }
     vid_buf_front_id = overlayp->id;
     DEBUG_PRINT("\n vid_buf_front_id = %u", vid_buf_front_id);
-    drawBG();
     displayYuv = 2;
 }
 
