@@ -49,6 +49,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define H264_HP_START (H264_BP_START + 17)
 #define H264_MP_START (H264_BP_START + 34)
 #define POLL_TIMEOUT 1000
+#define MAX_SUPPORTED_SLICES_PER_FRAME 28 /* Max supported slices with 32 output buffers */
 
 /* MPEG4 profile and level table*/
 static const unsigned int mpeg4_profile_level_table[][5]=
@@ -182,6 +183,8 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 	pthread_cond_init(&pause_resume_cond, NULL);
 	memset(&extradata_info, 0, sizeof(extradata_info));
 	memset(&idrperiod, 0, sizeof(idrperiod));
+	memset(&multislice, 0, sizeof(multislice));
+	memset (&slice_mode, 0 , sizeof(slice_mode));
 }
 
 venc_dev::~venc_dev()
@@ -797,10 +800,21 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
 
 		ret = ioctl(m_nDriver_fd, VIDIOC_G_FMT, &fmt);
 		m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
+		bufreq.memory = V4L2_MEMORY_USERPTR;
+		if (*actual_buff_count)
+			bufreq.count = *actual_buff_count;
+		else
+			bufreq.count = 2;
+		bufreq.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+		ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
+		if (ret) {
+			DEBUG_PRINT_ERROR("\n VIDIOC_REQBUFS CAPTURE_MPLANE Failed \n ");
+			return false;
+		}
+		m_sOutput_buff_property.mincount = m_sOutput_buff_property.actualcount = bufreq.count;
 		*min_buff_count = m_sOutput_buff_property.mincount;
 		*actual_buff_count = m_sOutput_buff_property.actualcount;
 		*buff_size = m_sOutput_buff_property.datasize;
-
 		num_planes = fmt.fmt.pix_mp.num_planes;
 		extra_idx = EXTRADATA_IDX(num_planes);
 		if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
@@ -1456,17 +1470,24 @@ unsigned venc_dev::venc_start(void)
       __func__, codec_profile.profile, profile_level.level);
   }
   venc_config_print();
+  /* Check if slice_delivery mode is enabled & max slices is sufficient for encoding complete frame */
+  if (slice_mode.enable && multislice.mslice_size &&
+	  (m_sVenc_cfg.input_width *  m_sVenc_cfg.input_height)/(256 * multislice.mslice_size) >= MAX_SUPPORTED_SLICES_PER_FRAME) {
+	  DEBUG_PRINT_ERROR("slice_mode: %d, max slices (%d) should be less than (%d)\n", slice_mode.enable,
+			(m_sVenc_cfg.input_width *  m_sVenc_cfg.input_height)/(256 * multislice.mslice_size),
+			MAX_SUPPORTED_SLICES_PER_FRAME);
+	  return 1;
+  }
 
   buf_type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
   DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing\n");
+  ret=ioctl(m_nDriver_fd, VIDIOC_STREAMON,&buf_type);
 
-	ret=ioctl(m_nDriver_fd, VIDIOC_STREAMON,&buf_type);
+  if (ret)
+	  return 1;
 
-	if (ret)
-		return -1;
-
-	streaming[CAPTURE_PORT] = true;
-	return 0;
+  streaming[CAPTURE_PORT] = true;
+  return 0;
 }
 
 void venc_dev::venc_config_print()
@@ -1821,8 +1842,10 @@ bool venc_dev::venc_set_slice_delivery_mode(OMX_U32 enable)
 				DEBUG_PRINT_ERROR("Request for setting slice delivery mode failed");
 				return false;
 			}
-			else
+			else {
 				DEBUG_PRINT_LOW("Successfully set Slice delivery mode id: %d, value=%d\n", control.id, control.value);
+				slice_mode.enable = 1;
+			}
 		}
 		else
 		{
