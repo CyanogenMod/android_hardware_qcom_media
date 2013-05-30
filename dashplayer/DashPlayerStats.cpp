@@ -27,53 +27,60 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-//#define LOG_NDEBUG 0
-#define LOG_TAG "DashPlayerStats"
 #include <utils/Log.h>
-
 #include "DashPlayerStats.h"
-#include <cutils/properties.h>
 
 #define NO_MIMETYPE_AVAILABLE "N/A"
 
 namespace android {
 
 DashPlayerStats::DashPlayerStats() {
-    char value[PROPERTY_VALUE_MAX];
-    mStatistics = false;
-    property_get("persist.debug.sf.statistics", value, "0");
-    if(atoi(value)) mStatistics = true;
-    {
-        Mutex::Autolock autoLock(mStatsLock);
-        mMIME = new char[strlen(NO_MIMETYPE_AVAILABLE)+1];
-        strcpy(mMIME,NO_MIMETYPE_AVAILABLE);
-        mNumVideoFramesDecoded = 0;
-        mNumVideoFramesDropped = 0;
-        mConsecutiveFramesDropped = 0;
-        mCatchupTimeStart = 0;
-        mNumTimesSyncLoss = 0;
-        mMaxEarlyDelta = 0;
-        mMaxLateDelta = 0;
-        mMaxTimeSyncLoss = 0;
-        mTotalFrames = 0;
-        mFirstFrameLatencyStartUs = getTimeOfDayUs();
-        mLastFrame = 0;
-        mLastFrameUs = 0;
-        mStatisticsFrames = 0;
-        mFPSSumUs = 0;
-        mVeryFirstFrame = true;
-        mSeekPerformed = false;
-        mTotalTime = 0;
-        mFirstFrameTime = 0;
-        mTotalRenderingFrames = 0;
-        mBufferingEvent = false;
-    }
+      Mutex::Autolock autoLock(mStatsLock);
+      mMIME = new char[strlen(NO_MIMETYPE_AVAILABLE)+1];
+      strcpy(mMIME,NO_MIMETYPE_AVAILABLE);
+      mNumVideoFramesDecoded = 0;
+      mNumVideoFramesDropped = 0;
+      mConsecutiveFramesDropped = 0;
+      mCatchupTimeStart = 0;
+      mNumTimesSyncLoss = 0;
+      mMaxEarlyDelta = 0;
+      mMaxLateDelta = 0;
+      mMaxTimeSyncLoss = 0;
+      mTotalFrames = 0;
+      mFirstFrameLatencyStartUs = getTimeOfDayUs();
+      mLastFrame = 0;
+      mLastFrameUs = 0;
+      mStatisticsFrames = 0;
+      mFPSSumUs = 0;
+      mVeryFirstFrame = true;
+      mSeekPerformed = false;
+      mTotalTime = 0;
+      mFirstFrameTime = 0;
+      mTotalRenderingFrames = 0;
+      mBufferingEvent = false;
+      mFd = -1;
+      mFileOut = NULL;
 }
 
 DashPlayerStats::~DashPlayerStats() {
+    Mutex::Autolock autoLock(mStatsLock);
+    if(mFileOut){
+      fclose(mFileOut);
+      mFileOut = NULL;
+    }
     if(mMIME) {
         delete[] mMIME;
     }
+}
+
+void DashPlayerStats::setFileDescAndOutputStream(int fd) {
+    Mutex::Autolock autoLock(mStatsLock);
+    mFd = fd;
+    if(mFileOut){
+      fclose(mFileOut);
+      mFileOut = NULL;
+    }
+    mFileOut = fdopen(dup(fd), "w");
 }
 
 void DashPlayerStats::setMime(const char* mime) {
@@ -121,70 +128,69 @@ void DashPlayerStats::incrementDroppedFrames() {
 }
 
 void DashPlayerStats::logStatistics() {
-    if(mStatistics) {
+    if(mFileOut) {
         Mutex::Autolock autoLock(mStatsLock);
-        ALOGW("=====================================================");
-        ALOGW("Mime Type: %s",mMIME);
-        ALOGW("Number of frames dropped: %lld",mNumVideoFramesDropped);
-        ALOGW("Number of frames rendered: %llu",mTotalRenderingFrames);
-        ALOGW("=====================================================");
+        fprintf(mFileOut, "=====================================================\n");
+        fprintf(mFileOut, "Mime Type: %s\n",mMIME);
+        fprintf(mFileOut, "Number of total frames: %llu\n",mTotalFrames);
+        fprintf(mFileOut, "Number of frames dropped: %lld\n",mNumVideoFramesDropped);
+        fprintf(mFileOut, "Number of frames rendered: %llu\n",mTotalRenderingFrames);
+        fprintf(mFileOut, "Percentage dropped: %.2f\n",
+                           mTotalFrames == 0 ? 0.0 : (double)mNumVideoFramesDropped / mTotalFrames);
+        fprintf(mFileOut, "=====================================================\n");
     }
 }
 
 void DashPlayerStats::logPause(int64_t positionUs) {
-    if(mStatistics) {
-        ALOGW("=====================================================");
-        ALOGW("Pause position: %lld ms",positionUs/1000);
-        ALOGW("=====================================================");
+    if(mFileOut) {
+        fprintf(mFileOut, "=====================================================\n");
+        fprintf(mFileOut, "Pause position: %lld ms\n",positionUs/1000);
+        fprintf(mFileOut, "=====================================================\n");
     }
 }
 
 void DashPlayerStats::logSeek(int64_t seekTimeUs) {
-    if(mStatistics) {
+    if(mFileOut) {
         Mutex::Autolock autoLock(mStatsLock);
-        ALOGW("=====================================================");
-        ALOGW("Seek position: %lld ms",seekTimeUs/1000);
-        ALOGW("Seek latency: %lld ms",(getTimeOfDayUs() - mFirstFrameLatencyStartUs)/1000);
-        ALOGW("=====================================================");
+        fprintf(mFileOut, "=====================================================\n");
+        fprintf(mFileOut, "Seek position: %lld ms\n",seekTimeUs/1000);
+        fprintf(mFileOut, "Seek latency: %lld ms\n",(getTimeOfDayUs() - mFirstFrameLatencyStartUs)/1000);
+        fprintf(mFileOut, "=====================================================\n");
     }
 }
 
 void DashPlayerStats::recordLate(int64_t ts, int64_t clock, int64_t delta, int64_t anchorTime) {
-    if(mStatistics) {
-        Mutex::Autolock autoLock(mStatsLock);
-        mNumVideoFramesDropped++;
-        mConsecutiveFramesDropped++;
-        if (mConsecutiveFramesDropped == 1){
+    Mutex::Autolock autoLock(mStatsLock);
+    mNumVideoFramesDropped++;
+    mConsecutiveFramesDropped++;
+    if (mConsecutiveFramesDropped == 1){
       mCatchupTimeStart = anchorTime;
-        }
-
-        logLate(ts,clock,delta);
     }
+
+    logLate(ts,clock,delta);
 }
 
 void DashPlayerStats::recordOnTime(int64_t ts, int64_t clock, int64_t delta) {
-    if(mStatistics) {
-        Mutex::Autolock autoLock(mStatsLock);
-        mNumVideoFramesDecoded++;
-        mConsecutiveFramesDropped = 0;
-        logOnTime(ts,clock,delta);
-    }
+    Mutex::Autolock autoLock(mStatsLock);
+    mNumVideoFramesDecoded++;
+    mConsecutiveFramesDropped = 0;
+    logOnTime(ts,clock,delta);
 }
 
 void DashPlayerStats::logSyncLoss() {
-    if(mStatistics) {
+    if(mFileOut) {
         Mutex::Autolock autoLock(mStatsLock);
-        ALOGW("=====================================================");
-        ALOGW("Number of times AV Sync Losses = %u", mNumTimesSyncLoss);
-        ALOGW("Max Video Ahead time delta = %u", -mMaxEarlyDelta/1000);
-        ALOGW("Max Video Behind time delta = %u", mMaxLateDelta/1000);
-        ALOGW("Max Time sync loss = %u",mMaxTimeSyncLoss/1000);
-        ALOGW("=====================================================");
+        fprintf(mFileOut, "=====================================================\n");
+        fprintf(mFileOut, "Number of times AV Sync Losses = %u\n", mNumTimesSyncLoss);
+        fprintf(mFileOut, "Max Video Ahead time delta = %u\n", -mMaxEarlyDelta/1000);
+        fprintf(mFileOut, "Max Video Behind time delta = %u\n", mMaxLateDelta/1000);
+        fprintf(mFileOut, "Max Time sync loss = %u\n",mMaxTimeSyncLoss/1000);
+        fprintf(mFileOut, "=====================================================\n");
     }
 }
 
 void DashPlayerStats::logFps() {
-    if (mStatistics) {
+    if (mFileOut) {
         Mutex::Autolock autoLock(mStatsLock);
         int64_t now = getTimeOfDayUs();
 
@@ -200,7 +206,7 @@ void DashPlayerStats::logFps() {
              if (mStatisticsFrames == 0) {
                  fps =((mTotalRenderingFrames - mLastFrame - 1) * 1E6)/diff;
              }
-             ALOGW("Frames per second: %.4f, Duration of measurement: %lld", fps,diff);
+             fprintf(mFileOut, "Frames per second: %.4f, Duration of measurement: %lld\n", fps,diff);
              mFPSSumUs += fps;
              ++mStatisticsFrames;
              mLastFrameUs = now;
@@ -212,7 +218,7 @@ void DashPlayerStats::logFps() {
             mSeekPerformed = false;
         } else if(mVeryFirstFrame) {
             logFirstFrame();
-            ALOGW("setting first frame time");
+            fprintf(mFileOut, "setting first frame time\n");
             mLastFrameUs = now;
         } else if(mBufferingEvent) {
             mLastFrameUs = now;
@@ -223,15 +229,15 @@ void DashPlayerStats::logFps() {
 }
 
 void DashPlayerStats::logFpsSummary() {
-    if (mStatistics) {
+    if (mFileOut) {
         logStatistics();
         logSyncLoss();
         {
             Mutex::Autolock autoLock(mStatsLock);
-            ALOGW("=========================================================");
-            ALOGW("Average Frames Per Second: %.4f", mFPSSumUs/((double)mStatisticsFrames));
-            ALOGW("Total Frames (rendered) / Total Time: %.4f", ((double)(mTotalRenderingFrames-1)*1E6)/((double)mTotalTime));
-            ALOGW("========================================================");
+            fprintf(mFileOut, "=========================================================\n");
+            fprintf(mFileOut, "Average Frames Per Second: %.4f\n", mFPSSumUs/((double)mStatisticsFrames));
+            fprintf(mFileOut, "Total Frames (rendered) / Total Time: %.4f\n", ((double)(mTotalRenderingFrames-1)*1E6)/((double)mTotalTime));
+            fprintf(mFileOut, "========================================================\n");
         }
     }
 }
@@ -244,46 +250,40 @@ int64_t DashPlayerStats::getTimeOfDayUs() {
 
 // WARNING: Most private functions are only thread-safe within mStatsLock
 inline void DashPlayerStats::logFirstFrame() {
-    ALOGW("=====================================================");
-    ALOGW("First frame latency: %lld ms",(getTimeOfDayUs()-mFirstFrameLatencyStartUs)/1000);
-    ALOGW("=====================================================");
+    fprintf(mFileOut, "=====================================================\n");
+    fprintf(mFileOut, "First frame latency: %lld ms\n",(getTimeOfDayUs()-mFirstFrameLatencyStartUs)/1000);
+    fprintf(mFileOut, "=====================================================\n");
     mVeryFirstFrame = false;
 }
 
 inline void DashPlayerStats::logCatchUp(int64_t ts, int64_t clock, int64_t delta) {
-    if(mStatistics) {
-        if (mConsecutiveFramesDropped > 0) {
-            mNumTimesSyncLoss++;
-            if (mMaxTimeSyncLoss < (clock - mCatchupTimeStart) && clock > 0 && ts > 0) {
-                mMaxTimeSyncLoss = clock - mCatchupTimeStart;
-            }
+    if (mConsecutiveFramesDropped > 0) {
+        mNumTimesSyncLoss++;
+        if (mMaxTimeSyncLoss < (clock - mCatchupTimeStart) && clock > 0 && ts > 0) {
+            mMaxTimeSyncLoss = clock - mCatchupTimeStart;
         }
     }
 }
 
 inline void DashPlayerStats::logLate(int64_t ts, int64_t clock, int64_t delta) {
-    if(mStatistics) {
-        if (mMaxLateDelta < delta && clock > 0 && ts > 0) {
-            mMaxLateDelta = delta;
-        }
+    if (mMaxLateDelta < delta && clock > 0 && ts > 0) {
+        mMaxLateDelta = delta;
     }
 }
 
 inline void DashPlayerStats::logOnTime(int64_t ts, int64_t clock, int64_t delta) {
-    if(mStatistics) {
-        bool needLogLate = false;
-        logCatchUp(ts, clock, delta);
-        if (delta <= 0) {
-            if ((-delta) > (-mMaxEarlyDelta) && clock > 0 && ts > 0) {
-                mMaxEarlyDelta = delta;
-            }
+    bool needLogLate = false;
+    logCatchUp(ts, clock, delta);
+    if (delta <= 0) {
+        if ((-delta) > (-mMaxEarlyDelta) && clock > 0 && ts > 0) {
+            mMaxEarlyDelta = delta;
         }
-        else {
-            needLogLate = true;
-        }
-
-        if(needLogLate) logLate(ts, clock, delta);
     }
+    else {
+        needLogLate = true;
+    }
+
+    if(needLogLate) logLate(ts, clock, delta);
 }
 
 } // namespace android

@@ -67,6 +67,7 @@ struct DashPlayer : public AHandler {
     status_t prepareAsync();
     status_t getParameter(int key, Parcel *reply);
     status_t setParameter(int key, const Parcel &request);
+    status_t dump(int fd, const Vector<String16> &args);
 
 public:
     struct DASHHTTPLiveSource;

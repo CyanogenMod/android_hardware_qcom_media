@@ -340,21 +340,9 @@ void DashPlayerDriver::notifyFrameStats(
 }
 
 status_t DashPlayerDriver::dump(int fd, const Vector<String16> &args) const {
-    Mutex::Autolock autoLock(mLock);
-
-    FILE *out = fdopen(dup(fd), "w");
-
-    fprintf(out, " DashPlayer\n");
-    fprintf(out, "  numFramesTotal(%lld), numFramesDropped(%lld), "
-                 "percentageDropped(%.2f)\n",
-                 mNumFramesTotal,
-                 mNumFramesDropped,
-                 mNumFramesTotal == 0
-                    ? 0.0 : (double)mNumFramesDropped / mNumFramesTotal);
-
-    fclose(out);
-    out = NULL;
-
+    if(mPlayer != NULL) {
+      mPlayer->dump(fd, args);
+    }
     return OK;
 }
 
