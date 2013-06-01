@@ -2601,7 +2601,7 @@ bool omx_vdec::execute_input_flush()
   }
   time_stamp_dts.flush_timestamp();
   /*Check if Heap Buffers are to be flushed*/
-  if (arbitrary_bytes)
+  if (arbitrary_bytes && !(codec_config_flag))
   {
     DEBUG_PRINT_LOW("\n Reset all the variables before flusing");
     h264_scratch.nFilledLen = 0;
@@ -2638,6 +2638,11 @@ bool omx_vdec::execute_input_flush()
       pdest_frame = NULL;
     }
     m_frame_parser.flush();
+  }
+  else if (codec_config_flag)
+  {
+    DEBUG_PRINT_HIGH("frame_parser flushing skipped due to codec config buffer "
+       "is not sent to the driver yet");
   }
   pthread_mutex_unlock(&m_lock);
   input_flush_progress = false;
@@ -5648,6 +5653,16 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
 {
   OMX_ERRORTYPE ret1 = OMX_ErrorNone;
   unsigned int nBufferIndex = drv_ctx.ip_buf.actualcount;
+
+  if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG)
+  {
+    codec_config_flag = true;
+    DEBUG_PRINT_LOW("%s: codec_config buffer", __FUNCTION__);
+  }
+  else
+  {
+    codec_config_flag = false;
+  }
 
   if(m_state == OMX_StateInvalid)
   {
