@@ -3974,11 +3974,38 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
   }
   else if (configIndex == OMX_IndexConfigVideoNalSize)
   {
+    struct v4l2_control temp;
+    temp.id = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_FORMAT;
 
     pNal = reinterpret_cast < OMX_VIDEO_CONFIG_NALSIZE * >(configData);
+    switch (pNal->nNaluBytes) {
+      case 0:
+        temp.value = V4L2_MPEG_VIDC_VIDEO_NAL_FORMAT_STARTCODES;
+        break;
+      case 2:
+        temp.value = V4L2_MPEG_VIDC_VIDEO_NAL_FORMAT_TWO_BYTE_LENGTH;
+        break;
+      case 4:
+        temp.value = V4L2_MPEG_VIDC_VIDEO_NAL_FORMAT_FOUR_BYTE_LENGTH;
+        break;
+      default:
+        return OMX_ErrorUnsupportedSetting;
+    }
+
+    if (!arbitrary_bytes) {
+      /* In arbitrary bytes mode, the assembler strips out nal size and replaces
+       * with start code, so only need to notify driver in frame by frame mode */
+      if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &temp))
+      {
+        DEBUG_PRINT_ERROR("Failed to set V4L2_CID_MPEG_VIDC_VIDEO_STREAM_FORMAT");
+        return OMX_ErrorHardware;
+      }
+    }
+
     nal_length = pNal->nNaluBytes;
     m_frame_parser.init_nal_length(nal_length);
-    DEBUG_PRINT_LOW("\n OMX_IndexConfigVideoNalSize called with Size %d",nal_length);
+
+    DEBUG_PRINT_LOW("\n OMX_IndexConfigVideoNalSize called with Size %d", nal_length);
     return ret;
   }
   else if (configIndex == OMX_IndexVendorVideoFrameRate)
