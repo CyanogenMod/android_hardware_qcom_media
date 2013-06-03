@@ -759,6 +759,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     driver->notifySeekComplete();
                     if( newSeekTime >= 0 ) {
                         driver->notifyPosition( newSeekTime );
+                        mSource->notifyRenderingPosition(newSeekTime);
                      }
                 }
             }
