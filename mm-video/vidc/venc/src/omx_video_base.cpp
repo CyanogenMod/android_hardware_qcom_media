@@ -4667,17 +4667,17 @@ bool omx_video::omx_c2d_conv::init() {
   return status;
 }
 
-bool omx_video::omx_c2d_conv::convert(int src_fd, void *src_viraddr,
-     int dest_fd,void *dest_viraddr)
+bool omx_video::omx_c2d_conv::convert(int src_fd, void *src_base, void *src_viraddr,
+     int dest_fd, void *dest_base, void *dest_viraddr)
 {
   int result;
-  if(!src_viraddr || !dest_viraddr || !c2dcc){
+  if(!src_viraddr || !dest_viraddr || !c2dcc || !src_base || !dest_base){
     DEBUG_PRINT_ERROR("\n Invalid arguments omx_c2d_conv::convert");
     return false;
   }
   pthread_mutex_lock(&c_lock);
-  result =  c2dcc->convertC2D(src_fd,src_viraddr,
-                              dest_fd,dest_viraddr);
+  result =  c2dcc->convertC2D(src_fd, src_base, src_viraddr,
+                              dest_fd, dest_base, dest_viraddr);
   pthread_mutex_unlock(&c_lock);
   DEBUG_PRINT_LOW("\n Color convert status %d",result);
   return ((result < 0)?false:true);
@@ -4887,8 +4887,8 @@ OMX_ERRORTYPE omx_video::convert_queue_buffer(OMX_HANDLETYPE hComp,
      if(uva == MAP_FAILED) {
        ret = OMX_ErrorBadParameter;
      } else {
-       if(!c2d_conv.convert(Input_pmem_info.fd,uva,
-          m_pInput_pmem[index].fd,pdest_frame->pBuffer)) {
+       if(!c2d_conv.convert(Input_pmem_info.fd, uva, uva,
+          m_pInput_pmem[index].fd, pdest_frame->pBuffer, pdest_frame->pBuffer)) {
           DEBUG_PRINT_ERROR("\n Color Conversion failed");
           ret = OMX_ErrorBadParameter;
        } else {

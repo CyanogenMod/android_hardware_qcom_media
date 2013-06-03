@@ -9303,7 +9303,8 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr
     if (!omx->in_reconfig && !omx->output_flush_progress && bufadd->nFilledLen) {
        pthread_mutex_lock(&omx->c_lock);
       status = c2d.convert(omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
-                  bufadd->pBuffer,pmem_fd[index],pmem_baseaddress[index]);
+                  omx->m_out_mem_ptr->pBuffer, bufadd->pBuffer,pmem_fd[index],
+                  pmem_baseaddress[index], pmem_baseaddress[index]);
        pthread_mutex_unlock(&omx->c_lock);
       m_out_mem_ptr_client[index].nFilledLen = buffer_size_req;
       if (!status){
