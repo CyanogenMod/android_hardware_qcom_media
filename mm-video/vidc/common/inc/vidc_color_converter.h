@@ -39,8 +39,8 @@ public:
     bool open(unsigned int height,unsigned int width,
               ColorConvertFormat src,
               ColorConvertFormat dest);
-    bool convert(int src_fd, void *src_viraddr,
-                 int dest_fd,void *dest_viraddr);
+    bool convert(int src_fd, void *src_base, void *src_viraddr,
+                 int dest_fd, void *dest_base, void *dest_viraddr);
     bool get_buffer_size(int port,unsigned int &buf_size);
     int get_src_format();
     void close();
