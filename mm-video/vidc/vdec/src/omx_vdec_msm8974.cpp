@@ -2796,6 +2796,11 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
         eRet = OMX_ErrorNoMore;
       }
     }
+    else
+    {
+      DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported ret NoMore for codec: %s\n", drv_ctx.kind);
+      eRet = OMX_ErrorNoMore;
+    }
   }
   else
   {
