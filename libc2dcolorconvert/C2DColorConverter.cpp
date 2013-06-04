@@ -57,12 +57,12 @@ public:
     int32_t dumpOutput(char * filename, char mode);
 protected:
     virtual ~C2DColorConverter();
-    virtual int convertC2D(int srcFd, void * srcData, int dstFd, void * dstData);
+    virtual int convertC2D(int srcFd, void *srcBase, void * srcData, int dstFd, void *dstBase, void * dstData);
 
 private:
     virtual bool isYUVSurface(ColorConvertFormat format);
     virtual void *getDummySurfaceDef(ColorConvertFormat format, size_t width, size_t height, bool isSource);
-    virtual C2D_STATUS updateYUVSurfaceDef(int fd, void * data, bool isSource);
+    virtual C2D_STATUS updateYUVSurfaceDef(int fd, void *base, void * data, bool isSource);
     virtual C2D_STATUS updateRGBSurfaceDef(int fd, void * data, bool isSource);
     virtual uint32_t getC2DFormat(ColorConvertFormat format);
     virtual size_t calcStride(ColorConvertFormat format, size_t width);
@@ -198,7 +198,7 @@ C2DColorConverter::~C2DColorConverter()
     close(mKgslFd);
 }
 
-int C2DColorConverter::convertC2D(int srcFd, void * srcData, int dstFd, void * dstData)
+int C2DColorConverter::convertC2D(int srcFd, void *srcBase, void * srcData, int dstFd, void *dstBase, void * dstData)
 {
     C2D_STATUS ret;
 
@@ -213,7 +213,7 @@ int C2DColorConverter::convertC2D(int srcFd, void * srcData, int dstFd, void * d
     }
 
     if (isYUVSurface(mSrcFormat)) {
-        ret = updateYUVSurfaceDef(srcFd, srcData, true);
+        ret = updateYUVSurfaceDef(srcFd, srcBase, srcData, true);
     } else {
         ret = updateRGBSurfaceDef(srcFd, srcData, true);
     }
@@ -224,7 +224,7 @@ int C2DColorConverter::convertC2D(int srcFd, void * srcData, int dstFd, void * d
     }
 
     if (isYUVSurface(mDstFormat)) {
-        ret = updateYUVSurfaceDef(dstFd, dstData, false);
+        ret = updateYUVSurfaceDef(dstFd, dstBase, dstData, false);
     } else {
         ret = updateRGBSurfaceDef(dstFd, dstData, false);
     }
@@ -321,12 +321,12 @@ void* C2DColorConverter::getDummySurfaceDef(ColorConvertFormat format, size_t wi
     }
 }
 
-C2D_STATUS C2DColorConverter::updateYUVSurfaceDef(int fd, void * data, bool isSource)
+C2D_STATUS C2DColorConverter::updateYUVSurfaceDef(int fd, void *base, void *data, bool isSource)
 {
     if (isSource) {
         C2D_YUV_SURFACE_DEF * srcSurfaceDef = (C2D_YUV_SURFACE_DEF *)mSrcSurfaceDef;
         srcSurfaceDef->plane0 = data;
-        srcSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mSrcSize);
+        srcSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mSrcSize) + ((uint8_t *)data - (uint8_t *)base);
         srcSurfaceDef->plane1 = (uint8_t *)data + mSrcYSize;
         srcSurfaceDef->phys1  = (uint8_t *)srcSurfaceDef->phys0 + mSrcYSize;
         srcSurfaceDef->plane2 = (uint8_t *)srcSurfaceDef->plane1 + mSrcYSize/4;
@@ -338,7 +338,7 @@ C2D_STATUS C2DColorConverter::updateYUVSurfaceDef(int fd, void * data, bool isSo
     } else {
         C2D_YUV_SURFACE_DEF * dstSurfaceDef = (C2D_YUV_SURFACE_DEF *)mDstSurfaceDef;
         dstSurfaceDef->plane0 = data;
-        dstSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mDstSize);
+        dstSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mDstSize) + ((uint8_t *)data - (uint8_t *)base);
         dstSurfaceDef->plane1 = (uint8_t *)data + mDstYSize;
         dstSurfaceDef->phys1  = (uint8_t *)dstSurfaceDef->phys0 + mDstYSize;
         dstSurfaceDef->plane2 = (uint8_t *)dstSurfaceDef->plane1 + mDstYSize/4;
