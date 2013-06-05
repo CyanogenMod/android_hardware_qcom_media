@@ -3430,7 +3430,7 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
       post_event(OMX_CommandStateSet, OMX_StateLoaded,
                  OMX_COMPONENT_GENERATE_EVENT);
     } else {
-      DEBUG_PRINT_ERROR("in free buffer, release not done, need to free more buffers input 0x%x output 0x%x",
+      DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers input 0x%x output 0x%x",
                        m_out_bm_count, m_inp_bm_count);
     }
   }
@@ -4398,7 +4398,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
     DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported should be queries on Input port only %d\n", profileLevelType->nPortIndex);
     eRet = OMX_ErrorBadPortIndex;
   }
-  DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported for Input port returned Profile:%d, Level:%d\n",
+  DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported for Input port returned Profile:%d, Level:%d\n",
                     profileLevelType->eProfile,profileLevelType->eLevel);
   return eRet;
 }
@@ -4504,7 +4504,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
     DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported should be queries on Input port only %lu\n", profileLevelType->nPortIndex);
     eRet = OMX_ErrorBadPortIndex;
   }
-  DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported for Input port returned Profile:%lu, Level:%lu\n",
+  DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported for Input port returned Profile:%lu, Level:%lu\n",
                     profileLevelType->eProfile,profileLevelType->eLevel);
   return eRet;
 }
@@ -4713,7 +4713,7 @@ void omx_video::omx_c2d_conv::close()
 }
 omx_video::omx_c2d_conv::~omx_c2d_conv()
 {
-  DEBUG_PRINT_ERROR("\n Destroy C2D instance");
+  DEBUG_PRINT_HIGH("\n Destroy C2D instance");
   if(mLibHandle) {
     if(mConvertClose && c2dcc) {
       pthread_mutex_lock(&c_lock);
