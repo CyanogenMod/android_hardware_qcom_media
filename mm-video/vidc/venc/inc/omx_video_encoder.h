@@ -79,6 +79,7 @@ private:
   bool dev_loaded_stop(void);
   bool dev_loaded_start_done(void);
   bool dev_loaded_stop_done(void);
+  bool dev_get_uncache_flag(void);
 };
 
 #endif //__OMX_VENC__H
