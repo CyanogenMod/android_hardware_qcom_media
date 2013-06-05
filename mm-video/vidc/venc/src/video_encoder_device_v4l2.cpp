@@ -172,7 +172,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 	//nothing to do
 	int i = 0;
 	venc_handle = venc_class;
-	etb_count=0;
+	etb = ebd = ftb = fbd = 0;
 	for (i = 0; i < MAX_PORT; i++)
 		streaming[i] = false;
 
@@ -256,7 +256,8 @@ void* venc_dev::async_venc_message_thread (void *input)
 
 	  rc = poll(&pfd, 1, POLL_TIMEOUT);
 		if (!rc) {
-			DEBUG_PRINT_HIGH("Poll timedout\n");
+			DEBUG_PRINT_HIGH("Poll timedout, pipeline stalled due to client/firmware ETB: %d, EBD: %d, FTB: %d, FBD: %d\n",
+							 omx->handle->etb, omx->handle->ebd, omx->handle->ftb, omx->handle->fbd);
 			continue;
 		} else if (rc < 0) {
 			DEBUG_PRINT_ERROR("Error while polling: %d\n", rc);
@@ -292,6 +293,7 @@ void* venc_dev::async_venc_message_thread (void *input)
 					venc_msg.buf.flags |= OMX_BUFFERFLAG_EOS;
 				if(omx->handle->num_planes > 1 && v4l2_buf.m.planes->bytesused)
 					venc_msg.buf.flags |= OMX_BUFFERFLAG_EXTRADATA;
+				omx->handle->fbd++;
 				if(omx->async_message_process(input,&venc_msg) < 0)
 				{
 					DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
@@ -309,6 +311,7 @@ void* venc_dev::async_venc_message_thread (void *input)
 				venc_msg.statuscode=VEN_S_SUCCESS;
 				omxhdr=omx_venc_base->m_inp_mem_ptr+v4l2_buf.index;
 				venc_msg.buf.clientdata=(void*)omxhdr;
+				omx->handle->ebd++;
 				if(omx->async_message_process(input,&venc_msg) < 0)
 				{
 					DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
@@ -1734,8 +1737,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 	  DEBUG_PRINT_ERROR("Failed to qbuf (etb) to driver");
 	  return false;
   }
-  etb_count++;
-
+  etb++;
   if(!streaming[OUTPUT_PORT])
   {
 	  enum v4l2_buf_type buf_type;
@@ -1819,6 +1821,7 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,un
 		DEBUG_PRINT_ERROR("Failed to qbuf (ftb) to driver");
 		return false;
 	}
+	ftb++;
 	return true;
 }
 
