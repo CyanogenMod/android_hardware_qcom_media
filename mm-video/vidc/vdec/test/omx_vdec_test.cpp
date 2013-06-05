@@ -35,6 +35,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <math.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -173,6 +174,11 @@ const uint16 crc_16_l_table[ 256 ] = {
   0xf78f, 0xe606, 0xd49d, 0xc514, 0xb1ab, 0xa022, 0x92b9, 0x8330,
   0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78
 };
+
+//Since this is unavailable on Android, defining it in terms of base 10
+static inline float log2f(const float& x) {
+    return log(x) / log(2);
+}
 
 uint16 crc_16_l_step_nv12 (uint16 seed, const void *buf_ptr,
 	unsigned int byte_len, unsigned int height, unsigned int width)
@@ -3910,6 +3916,8 @@ void overlay_set()
         overlayp->dst_rect.y = 0;
         if (overlayp->dst_rect.h < vinfo.yres)
             overlayp->dst_rect.y = (vinfo.yres - overlayp->dst_rect.h)/2;
+        else
+            overlayp->dst_rect.h = vinfo.yres;
     }
     else
     {
@@ -3917,12 +3925,54 @@ void overlay_set()
         overlayp->dst_rect.h = height;
     }
 
-    overlayp->z_order = 0;
+    //Decimation + MDP Downscale
+    overlayp->horz_deci = 0;
+    overlayp->vert_deci = 0;
+    int minHorDeci = 0;
+    if(overlayp->src_rect.w > 2048) {
+        //If the client sends us something > what a layer mixer supports
+        //then it means it doesn't want to use split-pipe but wants us to
+        //decimate. A minimum decimation of 2 will ensure that the width is
+        //always within layer mixer limits.
+        minHorDeci = 2;
+    }
+
+    float horDscale = ceilf((float)overlayp->src_rect.w /
+            (float)overlayp->dst_rect.w);
+    float verDscale = ceilf((float)overlayp->src_rect.h /
+            (float)overlayp->dst_rect.h);
+
+    //Next power of 2, if not already
+    horDscale = powf(2.0f, ceilf(log2f(horDscale)));
+    verDscale = powf(2.0f, ceilf(log2f(verDscale)));
+
+    //Since MDP can do 1/4 dscale and has better quality, split the task
+    //between decimator and MDP downscale
+    horDscale /= 4.0f;
+    verDscale /= 4.0f;
+
+    if(horDscale < minHorDeci)
+        horDscale = minHorDeci;
+    if((int)horDscale)
+        overlayp->horz_deci = (int)log2f(horDscale);
+
+    if((int)verDscale)
+        overlayp->vert_deci = (int)log2f(verDscale);
+
+    printf("overlayp->src.width = %u \n", overlayp->src.width);
+    printf("overlayp->src.height = %u \n", overlayp->src.height);
+    printf("overlayp->src_rect.x = %u \n", overlayp->src_rect.x);
+    printf("overlayp->src_rect.y = %u \n", overlayp->src_rect.y);
+    printf("overlayp->src_rect.w = %u \n", overlayp->src_rect.w);
+    printf("overlayp->src_rect.h = %u \n", overlayp->src_rect.h);
     printf("overlayp->dst_rect.x = %u \n", overlayp->dst_rect.x);
     printf("overlayp->dst_rect.y = %u \n", overlayp->dst_rect.y);
     printf("overlayp->dst_rect.w = %u \n", overlayp->dst_rect.w);
     printf("overlayp->dst_rect.h = %u \n", overlayp->dst_rect.h);
+    printf("overlayp->vert_deci = %u \n", overlayp->vert_deci);
+    printf("overlayp->horz_deci = %u \n", overlayp->horz_deci);
 
+    overlayp->z_order = 0;
     overlayp->alpha = 0xff;
     overlayp->transp_mask = 0xFFFFFFFF;
     overlayp->flags = 0;
@@ -4425,6 +4475,7 @@ int open_display()
     close(fb_fd);
     return -1;
   }
+  printf("Display xres = %d, yres = %d \n", vinfo.xres, vinfo.yres);
   return 0;
 }
 
