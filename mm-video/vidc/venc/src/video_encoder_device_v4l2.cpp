@@ -266,10 +266,8 @@ void* venc_dev::async_venc_message_thread (void *input)
 				 * for now it doesn't look like IL client cares about
 				 * other types
 				 */
-				if (v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_IDRFRAME) {
+				if (v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_IDRFRAME)
 					venc_msg.buf.flags |= QOMX_VIDEO_PictureTypeIDR;
-					venc_msg.buf.flags |= OMX_BUFFERFLAG_SYNCFRAME;
-				}
 				if (v4l2_buf.flags & V4L2_BUF_FLAG_KEYFRAME)
 					venc_msg.buf.flags |= OMX_BUFFERFLAG_SYNCFRAME;
 				if(v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_CODECCONFIG)
