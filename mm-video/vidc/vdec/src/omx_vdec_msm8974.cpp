@@ -6925,6 +6925,9 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
       {
         OMX_TICKS expected_ts = 0;
         m_timestamp_list.pop_min_ts(expected_ts);
+        if (is_interlaced && is_duplicate_ts_valid) {
+          m_timestamp_list.pop_min_ts(expected_ts);
+        }
         DEBUG_PRINT_LOW("\n Current timestamp (%lld),Popped TIMESTAMP (%lld) from list",
                        buffer->nTimeStamp, expected_ts);
 
