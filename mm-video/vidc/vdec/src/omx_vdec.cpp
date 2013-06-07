@@ -48,6 +48,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_vdec.h"
 #include <fcntl.h>
 #include <limits.h>
+#include <qdMetaData.h>
 
 #ifndef _ANDROID_
 #include <sys/ioctl.h>
@@ -490,6 +491,7 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
 #endif
                     ,m_desc_buffer_ptr(NULL)
                     ,m_extradata(NULL)
+                    ,m_use_smoothstreaming(false)
 {
   /* Assumption is that , to begin with , we have all the frames with decoder */
   DEBUG_PRINT_HIGH("In OMX vdec Constructor");
@@ -540,6 +542,7 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
 #endif
   m_fill_output_msg = OMX_COMPONENT_GENERATE_FTB;
   client_buffers.set_vdec_client(this);
+  memset(native_buffer, 0, sizeof(native_buffer));
 }
 
 
@@ -1170,6 +1173,17 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
   int r;
   OMX_STRING device_name = "/dev/msm_vidc_dec";
 
+  if(!strncmp(role, "OMX.qcom.video.decoder.avc.smoothstreaming",OMX_MAX_STRINGNAME_SIZE)){
+      ALOGI("smooth streaming role");
+      m_use_smoothstreaming = true;
+      role = "OMX.qcom.video.decoder.avc";
+  }
+  if(!strncmp(role, "OMX.qcom.video.decoder.avc.smoothstreaming.secure",OMX_MAX_STRINGNAME_SIZE)){
+      ALOGI("secure smooth streaming role");
+      m_use_smoothstreaming = true;
+      role = "OMX.qcom.video.decoder.avc.secure";
+  }
+
   if(!strncmp(role, "OMX.qcom.video.decoder.avc.secure",OMX_MAX_STRINGNAME_SIZE)){
       secure_mode = true;
       arbitrary_bytes = false;
@@ -1581,6 +1595,13 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
   memset(&h264_mv_buff,0,sizeof(struct h264_mv_buffer));
 
+  if (m_use_smoothstreaming) {
+      int rc = ioctl(drv_ctx.video_driver_fd,
+                      VDEC_IOCTL_SET_CONT_ON_RECONFIG);
+      if(rc < 0) {
+          DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
+      }
+  }
 cleanup:
 
   if (secure_mode && (eRet == OMX_ErrorNone)) {
@@ -4039,6 +4060,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
         drv_ctx.ptr_outputbuffer[i].bufferaddr = buff;
         drv_ctx.ptr_outputbuffer[i].mmaped_size =
             drv_ctx.ptr_outputbuffer[i].buffer_len = drv_ctx.op_buf.buffer_size;
+        native_buffer[i] = handle;
     } else
 #endif
 
@@ -6390,7 +6412,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                                OMX_BUFFERHEADERTYPE * buffer)
 {
   OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pPMEMInfo = NULL;
-
   if (!buffer || (buffer - m_out_mem_ptr) >= drv_ctx.op_buf.actualcount)
   {
     DEBUG_PRINT_ERROR("\n [FBD] ERROR in ptr(%p)", buffer);
@@ -6556,6 +6577,18 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
   else
   {
     return OMX_ErrorBadParameter;
+  }
+
+ // ss change
+ if (m_use_smoothstreaming) {
+    OMX_U32 buf_index = buffer - m_out_mem_ptr;
+    private_handle_t * handle = NULL;
+    BufferDim_t dim;
+    dim.sliceWidth = m_port_def.format.video.nStride;
+    dim.sliceHeight = m_port_def.format.video.nSliceHeight;
+    handle = (private_handle_t *)native_buffer[buf_index];
+    DEBUG_PRINT_LOW("set metadata: update buffer geo with stride %d slice %d", dim.sliceWidth, dim.sliceHeight);
+    setMetaData(handle, UPDATE_BUFFER_GEOMETRY, (void*)&dim);
   }
 
   return OMX_ErrorNone;

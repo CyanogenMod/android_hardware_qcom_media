@@ -45,6 +45,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <inttypes.h>
 #include <cstddef>
+#include <gralloc_priv.h>
 
 static ptrdiff_t x;
 
@@ -818,6 +819,11 @@ private:
     int output_capability;
     bool streaming[MAX_PORT];
 #endif
+
+    // added for smooth streaming
+    private_handle_t * native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
+    bool m_use_smoothstreaming;
+
     unsigned int m_fill_output_msg;
     class allocate_color_convert_buf {
     public:
