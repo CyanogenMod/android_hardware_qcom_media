@@ -185,6 +185,22 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 	memset(&idrperiod, 0, sizeof(idrperiod));
 	memset(&multislice, 0, sizeof(multislice));
 	memset (&slice_mode, 0 , sizeof(slice_mode));
+	memset(&m_sVenc_cfg, 0, sizeof(m_sVenc_cfg));
+	memset(&rate_ctrl, 0, sizeof(rate_ctrl));
+	memset(&bitrate, 0, sizeof(bitrate));
+	memset(&intra_period, 0, sizeof(intra_period));
+	memset(&codec_profile, 0, sizeof(codec_profile));
+	memset(&set_param, 0, sizeof(set_param));
+	memset(&time_inc, 0, sizeof(time_inc));
+	memset(&m_sInput_buff_property, 0, sizeof(m_sInput_buff_property));
+	memset(&m_sOutput_buff_property, 0, sizeof(m_sOutput_buff_property));
+	memset(&session_qp, 0, sizeof(session_qp));
+	memset(&entropy, 0, sizeof(entropy));
+	memset(&dbkfilter, 0, sizeof(dbkfilter));
+	memset(&intra_refresh, 0, sizeof(intra_refresh));
+	memset(&hec, 0, sizeof(hec));
+	memset(&voptimecfg, 0, sizeof(voptimecfg));
+	memset(&capability, 0, sizeof(capability));
 }
 
 venc_dev::~venc_dev()
