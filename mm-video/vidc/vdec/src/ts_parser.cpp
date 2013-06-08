@@ -242,6 +242,21 @@ bool omx_time_stamp_reorder::get_next_timestamp(OMX_BUFFERHEADERTYPE *header, bo
 	if(is_interlaced && duplicate) {
 		phead->entries_filled--;
 		duplicate->in_use = false;
+	} else if (is_interlaced && !duplicate) {
+		element = NULL;
+		for(int i=0; i < TIME_SZ; i++) {
+			if (phead->input_timestamps[i].in_use) {
+				if (!element)
+					element = &phead->input_timestamps[i];
+				else if (element->timestamps > phead->input_timestamps[i].timestamps)
+						element = &phead->input_timestamps[i];
+			}
+		}
+		if (element) {
+			phead->entries_filled--;
+			header->nTimeStamp = element->timestamps;
+			element->in_use = false;
+		}
 	}
 	if (!phead->entries_filled) {
 		if (!update_head()) {
