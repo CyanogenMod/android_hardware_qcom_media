@@ -2368,6 +2368,20 @@ int Play_Decoder()
         return -1;
     }
 
+    if (anti_flickering) {
+        ret = OMX_GetParameter(dec_handle,OMX_IndexParamPortDefinition,&portFmt);
+        if (ret != OMX_ErrorNone) {
+            DEBUG_PRINT_ERROR("%s: OMX_GetParameter failed: %d",__FUNCTION__, ret);
+            return -1;
+        }
+        portFmt.nBufferCountActual += 1;
+        ret = OMX_SetParameter(dec_handle,OMX_IndexParamPortDefinition,&portFmt);
+        if (ret != OMX_ErrorNone) {
+            DEBUG_PRINT_ERROR("%s: OMX_SetParameter failed: %d",__FUNCTION__, ret);
+            return -1;
+        }
+    }
+
 #ifndef USE_EGL_IMAGE_TEST_APP
     if (use_external_pmem_buf)
     {
@@ -4265,6 +4279,21 @@ int enable_output_port()
 #ifndef USE_EGL_IMAGE_TEST_APP
     /* Allocate buffer on decoder's o/p port */
     portFmt.nPortIndex = 1;
+
+    if (anti_flickering) {
+        ret = OMX_GetParameter(dec_handle,OMX_IndexParamPortDefinition,&portFmt);
+        if (ret != OMX_ErrorNone) {
+            DEBUG_PRINT_ERROR("%s: OMX_GetParameter failed: %d",__FUNCTION__, ret);
+            return -1;
+        }
+        portFmt.nBufferCountActual += 1;
+        ret = OMX_SetParameter(dec_handle,OMX_IndexParamPortDefinition,&portFmt);
+        if (ret != OMX_ErrorNone) {
+            DEBUG_PRINT_ERROR("%s: OMX_SetParameter failed: %d",__FUNCTION__, ret);
+            return -1;
+        }
+    }
+
     if (use_external_pmem_buf)
     {
         DEBUG_PRINT("Enable op port: calling use_buffer_mult_fd\n");
