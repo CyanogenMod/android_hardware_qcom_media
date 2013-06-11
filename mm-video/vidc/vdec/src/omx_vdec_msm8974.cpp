@@ -7187,6 +7187,18 @@ int omx_vdec::async_message_process (void *context, void* message)
 	  omxhdr->nFlags |= OMX_BUFFERFLAG_EOS;
 	  //rc = -1;
 	}
+  if (omxhdr->nFilledLen)
+  {
+    omxhdr->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
+  }
+  if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_KEYFRAME || v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_IDRFRAME)
+  {
+    omxhdr->nFlags |= OMX_BUFFERFLAG_SYNCFRAME;
+  }
+  else
+  {
+    omxhdr->nFlags &= ~OMX_BUFFERFLAG_SYNCFRAME;
+  }
   if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOSEQ)
   {
     omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
