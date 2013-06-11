@@ -7191,7 +7191,15 @@ int omx_vdec::async_message_process (void *context, void* message)
        omxhdr = NULL;
        vdec_msg->status_code = VDEC_S_EFATAL;
     }
-    
+    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_INPUT_UNSUPPORTED)
+    {
+      DEBUG_PRINT_HIGH("Unsupported input");
+      omx->omx_report_error ();
+    }
+    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT)
+    {
+      vdec_msg->status_code = VDEC_S_INPUT_BITSTREAM_ERR;
+    }
     omx->post_event ((unsigned int)omxhdr,vdec_msg->status_code,
                      OMX_COMPONENT_GENERATE_EBD);
     break;
