@@ -46,7 +46,12 @@ struct DashPlayer : public AHandler {
 
     void setDataSource(int fd, int64_t offset, int64_t length);
 
+#ifdef ANDROID_JB_MR2
+    void setVideoSurfaceTexture(const sp<IGraphicBufferProducer> &bufferProducer);
+#else
     void setVideoSurfaceTexture(const sp<ISurfaceTexture> &surfaceTexture);
+#endif
+
     void setAudioSink(const sp<MediaPlayerBase::AudioSink> &sink);
     void start();
 

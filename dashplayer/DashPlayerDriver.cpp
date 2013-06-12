@@ -96,12 +96,21 @@ status_t DashPlayerDriver::setDataSource(const sp<IStreamSource> &source) {
     return OK;
 }
 
+#ifdef ANDROID_JB_MR2
+status_t DashPlayerDriver::setVideoSurfaceTexture(
+        const sp<IGraphicBufferProducer> &bufferProducer) {
+    mPlayer->setVideoSurfaceTexture(bufferProducer);
+
+    return OK;
+}
+#else
 status_t DashPlayerDriver::setVideoSurfaceTexture(
         const sp<ISurfaceTexture> &surfaceTexture) {
     mPlayer->setVideoSurfaceTexture(surfaceTexture);
 
     return OK;
 }
+#endif
 
 status_t DashPlayerDriver::prepare() {
     sendEvent(MEDIA_SET_VIDEO_SIZE, 0, 0);

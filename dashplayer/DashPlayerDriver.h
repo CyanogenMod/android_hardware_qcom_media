@@ -37,8 +37,13 @@ struct DashPlayerDriver : public MediaPlayerInterface {
 
     virtual status_t setDataSource(const sp<IStreamSource> &source);
 
+#ifdef ANDROID_JB_MR2
+    virtual status_t setVideoSurfaceTexture(
+            const sp<IGraphicBufferProducer> &bufferProducer);
+#else
     virtual status_t setVideoSurfaceTexture(
             const sp<ISurfaceTexture> &surfaceTexture);
+#endif
     virtual status_t prepare();
     virtual status_t prepareAsync();
     virtual status_t start();
