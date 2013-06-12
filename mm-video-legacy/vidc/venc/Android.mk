@@ -48,11 +48,21 @@ libmm-venc-inc      := $(LOCAL_PATH)/inc
 libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-venc-inc      += hardware/qcom/media/mm-core/inc
 libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
-libmm-venc-inc      += hardware/qcom/display/libgralloc
+
+ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
+libmm-venc-inc      += hardware/qcom/display/msm8974/libgralloc
+else
+libmm-venc-inc      += hardware/qcom/display/msm8960/libgralloc
+endif
+
 libmm-venc-inc      += frameworks/native/include/media/hardware
 libmm-venc-inc      += frameworks/native/include/media/openmax
 libmm-venc-inc      += hardware/qcom/media/libc2dcolorconvert
-libmm-venc-inc      += hardware/qcom/display/libcopybit
+ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
+libmm-venc-inc      += hardware/qcom/display/msm8974/libcopybit
+else
+libmm-venc-inc      += hardware/qcom/display/msm8960/libcopybit
+endif
 libmm-venc-inc      += frameworks/av/include/media/stagefright
 
 
@@ -89,7 +99,11 @@ mm-venc-test720p-inc            := $(TARGET_OUT_HEADERS)/mm-core
 mm-venc-test720p-inc            += $(LOCAL_PATH)/inc
 mm-venc-test720p-inc            += $(OMX_VIDEO_PATH)/vidc/common/inc
 mm-venc-test720p-inc            += hardware/qcom/media/mm-core/inc
-mm-venc-test720p-inc            += hardware/qcom/display/libgralloc
+ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
+mm-venc-test720p-inc            += hardware/qcom/display/msm8974/libgralloc
+else
+mm-venc-test720p-inc            += hardware/qcom/display/msm8960/libgralloc
+endif
 
 LOCAL_MODULE                    := mm-venc-omx-test720p
 LOCAL_MODULE_TAGS               := optional

@@ -58,13 +58,29 @@ libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
-libmm-vdec-inc          += hardware/qcom/display/libgralloc
+
+ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
+libmm-vdec-inc          += hardware/qcom/display/msm8974/libgralloc
+else
+libmm-vdec-inc          += hardware/qcom/display/msm8960/libgralloc
+endif
+
 libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
 libmm-vdec-inc          += hardware/qcom/media/libc2dcolorconvert
-libmm-vdec-inc          += hardware/qcom/display/libcopybit
+
+ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
+libmm-vdec-inc          += hardware/qcom/display/msm8974/libcopybit
+else
+libmm-vdec-inc          += hardware/qcom/display/msm8960/libcopybit
+endif
 libmm-vdec-inc          += frameworks/av/include/media/stagefright
-libmm-vdec-inc          += hardware/qcom/display/libqservice
+
+ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
+libmm-vdec-inc          += hardware/qcom/display/msm8974/libqservice
+else
+libmm-vdec-inc          += hardware/qcom/display/msm8960/libqservice
+endif
 
 
 LOCAL_MODULE                    := libOmxVdec
