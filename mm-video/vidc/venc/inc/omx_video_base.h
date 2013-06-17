@@ -573,6 +573,9 @@ public:
   extra_data_handler extra_data_handle;
   unsigned int extradata_len[MAX_NUM_OUTPUT_BUFFERS];
   unsigned int extradata_offset[MAX_NUM_OUTPUT_BUFFERS];
+  static int m_venc_num_instances;
+  static int m_venc_ion_devicefd;
+  static pthread_mutex_t m_venc_ionlock;
 
 private:
 #ifdef USE_ION

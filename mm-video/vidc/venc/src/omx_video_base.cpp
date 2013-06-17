@@ -94,6 +94,10 @@ typedef struct OMXComponentCapabilityFlagsType
 extern FILE *outputBufferFile1;
 #endif
 
+int omx_video::m_venc_num_instances = 0;
+int omx_video::m_venc_ion_devicefd = 0;
+pthread_mutex_t omx_video::m_venc_ionlock;
+
 void* message_thread(void *input)
 {
   omx_video* omx = reinterpret_cast<omx_video*>(input);
@@ -256,6 +260,23 @@ omx_video::omx_video(): m_state(OMX_StateInvalid),
   secure_color_format = (int) OMX_COLOR_FormatYUV420SemiPlanar;
   pthread_mutex_init(&m_lock, NULL);
   sem_init(&m_cmd_lock,0,0);
+  if (!m_venc_num_instances)
+  {
+    m_venc_ion_devicefd = open(MEM_DEVICE, O_RDONLY);
+    if (m_venc_ion_devicefd < 0)
+    {
+      DEBUG_PRINT_ERROR("Open() venc ion device failed, errno = %d\n",
+         errno);
+      m_venc_ion_devicefd = 0;
+    }
+    DEBUG_PRINT_HIGH("Successfully opened venc ion device fd = %d",
+       m_venc_ion_devicefd);
+    pthread_mutex_init(&m_venc_ionlock, NULL);
+    DEBUG_PRINT_HIGH("Successfully created venc ionlock");
+  }
+  m_venc_num_instances++;
+  DEBUG_PRINT_HIGH("Venc instance = %d, ion device fd = %d",
+     m_venc_num_instances, m_venc_ion_devicefd);
 }
 
 
@@ -274,7 +295,8 @@ RETURN VALUE
 ========================================================================== */
 omx_video::~omx_video()
 {
-  DEBUG_PRINT_HIGH("\n ~omx_video(): Inside Destructor()");
+  DEBUG_PRINT_HIGH("In OMX Venc Destructor() for instance = %d",
+     m_venc_num_instances);
   if(m_pipe_in) close(m_pipe_in);
   if(m_pipe_out) close(m_pipe_out);
   DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit\n");
@@ -283,10 +305,20 @@ omx_video::~omx_video()
   pthread_join(async_thread_id,NULL);
   pthread_mutex_destroy(&m_lock);
   sem_destroy(&m_cmd_lock);
-  DEBUG_PRINT_HIGH("\n m_etb_count = %u, m_fbd_count = %u\n", m_etb_count,
+
+  m_venc_num_instances--;
+  if (!m_venc_num_instances)
+  {
+    DEBUG_PRINT_HIGH("Calling close() on venc ion device fd = %d",
+       m_venc_ion_devicefd);
+    close(m_venc_ion_devicefd);
+    m_venc_ion_devicefd = 0;
+    pthread_mutex_destroy(&m_venc_ionlock);
+    DEBUG_PRINT_HIGH("Successfully destroyed venc ionlock");
+  }
+  DEBUG_PRINT_HIGH("m_etb_count = %u, m_fbd_count = %u", m_etb_count,
       m_fbd_count);
-  DEBUG_PRINT_HIGH("omx_video: Destructor exit\n");
-  DEBUG_PRINT_HIGH("Exiting 7x30 OMX Video Encoder ...\n");
+  DEBUG_PRINT_HIGH("Exiting OMX Video Encoder ...\n");
 }
 
 /* ======================================================================
@@ -2175,10 +2207,12 @@ OMX_ERRORTYPE  omx_video::use_input_buffer(
       if(m_pInput_pmem[i].buffer == MAP_FAILED)
       {
         DEBUG_PRINT_ERROR("\nERROR: mmap() Failed");
+#ifndef USE_ION
         close(m_pInput_pmem[i].fd);
-#ifdef USE_ION
+#else
         free_ion_memory(&m_pInput_ion[i]);
 #endif
+        m_pInput_pmem[i].fd = -1;
         return OMX_ErrorInsufficientResources;
       }
     }
@@ -2374,10 +2408,12 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
         if(m_pOutput_pmem[i].buffer == MAP_FAILED)
         {
           DEBUG_PRINT_ERROR("\nERROR: mmap() Failed");
+#ifndef USE_ION
           close(m_pOutput_pmem[i].fd);
-#ifdef USE_ION
+#else
           free_ion_memory(&m_pOutput_ion[i]);
 #endif
+          m_pOutput_pmem[i].fd = -1;
           return OMX_ErrorInsufficientResources;
         }
       }
@@ -2542,8 +2578,9 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
     {
       DEBUG_PRINT_LOW("\n FreeBuffer:: i/p AllocateBuffer case");
       munmap (m_pInput_pmem[index].buffer,m_pInput_pmem[index].size);
+#ifndef USE_ION
       close (m_pInput_pmem[index].fd);
-#ifdef USE_ION
+#else
       free_ion_memory(&m_pInput_ion[index]);
 #endif
       m_pInput_pmem[index].fd = -1;
@@ -2557,8 +2594,9 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
         DEBUG_PRINT_ERROR("\nERROR: dev_free_buf() Failed for i/p buf");
       }
       munmap (m_pInput_pmem[index].buffer,m_pInput_pmem[index].size);
+#ifndef USE_ION
       close (m_pInput_pmem[index].fd);
-#ifdef USE_ION
+#else
       free_ion_memory(&m_pInput_ion[index]);
 #endif
       m_pInput_pmem[index].fd = -1;
@@ -2597,8 +2635,9 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
       DEBUG_PRINT_LOW("\n FreeBuffer:: o/p AllocateBuffer case");
       if(!secure_session)
         munmap (m_pOutput_pmem[index].buffer,m_pOutput_pmem[index].size);
+#ifndef USE_ION
       close (m_pOutput_pmem[index].fd);
-#ifdef USE_ION
+#else
       free_ion_memory(&m_pOutput_ion[index]);
 #endif
       m_pOutput_pmem[index].fd = -1;
@@ -2612,8 +2651,9 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
         DEBUG_PRINT_ERROR("ERROR: dev_free_buf Failed for o/p buf");
       }
       munmap (m_pOutput_pmem[index].buffer,m_pOutput_pmem[index].size);
+#ifndef USE_ION
       close (m_pOutput_pmem[index].fd);
-#ifdef USE_ION
+#else
       free_ion_memory(&m_pOutput_ion[index]);
 #endif
       m_pOutput_pmem[index].fd = -1;
@@ -2805,10 +2845,12 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
     if(m_pInput_pmem[i].buffer == MAP_FAILED)
     {
       DEBUG_PRINT_ERROR("\nERROR: mmap FAILED= %d\n", errno);
+#ifndef USE_ION
       close(m_pInput_pmem[i].fd);
-#ifdef USE_ION
+#else
       free_ion_memory(&m_pInput_ion[i]);
 #endif
+      m_pInput_pmem[i].fd = -1;
       return OMX_ErrorInsufficientResources;
     }
 
@@ -2960,10 +3002,12 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
           if(m_pOutput_pmem[i].buffer == MAP_FAILED)
           {
               DEBUG_PRINT_ERROR("\nERROR: MMAP_FAILED in o/p alloc buffer");
+#ifndef USE_ION
               close (m_pOutput_pmem[i].fd);
-#ifdef USE_ION
+#else
               free_ion_memory(&m_pOutput_ion[i]);
 #endif
+              m_pOutput_pmem[i].fd = -1;
               return OMX_ErrorInsufficientResources;
           }
       }
@@ -4317,16 +4361,14 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
                                     struct ion_fd_data *fd_data,int flag)
 {
   struct venc_ion buf_ion_info;
-  int ion_device_fd =-1,rc=0,ion_dev_flags = 0;
+  int ion_device_fd =-1,rc=0;
   if (size <=0 || !alloc_data || !fd_data) {
     DEBUG_PRINT_ERROR("\nInvalid input to alloc_map_ion_memory");
     return -EINVAL;
 	}
-    ion_dev_flags = O_RDONLY;
-        ion_device_fd = open (MEM_DEVICE,ion_dev_flags);
-        if(ion_device_fd < 0)
-        {
-           DEBUG_PRINT_ERROR("\nERROR: ION Device open() Failed");
+        ion_device_fd = m_venc_ion_devicefd;
+        if(ion_device_fd <= 0) {
+           DEBUG_PRINT_ERROR("\nERROR: Invalid ION Device fd = %d", ion_device_fd);
            return ion_device_fd;
         }
         alloc_data->len = size;
@@ -4350,30 +4392,38 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
            alloc_data->heap_mask = (ION_HEAP(MEM_HEAP_ID) |
                 ION_HEAP(ION_IOMMU_HEAP_ID));
 
+        pthread_mutex_lock(&m_venc_ionlock);
         rc = ioctl(ion_device_fd,ION_IOC_ALLOC,alloc_data);
         if(rc || !alloc_data->handle) {
-           DEBUG_PRINT_ERROR("\n ION ALLOC memory failed ");
+           DEBUG_PRINT_ERROR("\n ION ALLOC failed, fd = %d, rc = %d, handle = 0x%p, "
+              "errno = %d", ion_device_fd, rc, alloc_data->handle, errno);
            alloc_data->handle =NULL;
-           close(ion_device_fd);
-           ion_device_fd = -1;
-           return ion_device_fd;
+           goto error_case;
         }
         fd_data->handle = alloc_data->handle;
         rc = ioctl(ion_device_fd,ION_IOC_MAP,fd_data);
         if(rc) {
-            DEBUG_PRINT_ERROR("\n ION MAP failed ");
-            buf_ion_info.ion_alloc_data = *alloc_data;
-            buf_ion_info.ion_device_fd = ion_device_fd;
-            buf_ion_info.fd_ion_data = *fd_data;
-            free_ion_memory(&buf_ion_info);
+            DEBUG_PRINT_ERROR("\n ION MAP failed, fd = %d, handle = 0x%p, "
+               "errno = %d", ion_device_fd, fd_data->handle, errno);
             fd_data->fd =-1;
-            ion_device_fd =-1;
+            goto error_case;
         }
         DEBUG_PRINT_HIGH("ion_alloc: device_fd = %d, len = %d, align = %d, "
            "flags = 0x%x, heap_mask = 0x%x, handle = %p, fd = %d", ion_device_fd,
            alloc_data->len, alloc_data->align, alloc_data->flags,
            alloc_data->heap_mask, fd_data->handle, fd_data->fd);
+        pthread_mutex_unlock(&m_venc_ionlock);
         return ion_device_fd;
+
+error_case:
+        if (alloc_data->handle) {
+           if(ioctl(ion_device_fd, ION_IOC_FREE, alloc_data->handle)) {
+              DEBUG_PRINT_ERROR("ION: free failed, fd = %d, handle = 0x%p, "
+                 "errno = %d", ion_device_fd, alloc_data->handle, errno);
+           }
+        }
+        pthread_mutex_unlock(&m_venc_ionlock);
+        return -1;
 }
 
 void omx_video::free_ion_memory(struct venc_ion *buf_ion_info)
@@ -4382,15 +4432,21 @@ void omx_video::free_ion_memory(struct venc_ion *buf_ion_info)
         DEBUG_PRINT_ERROR("\n Invalid input to free_ion_memory");
         return;
      }
+     pthread_mutex_lock(&m_venc_ionlock);
+     if (close(buf_ion_info->fd_ion_data.fd)) {
+       DEBUG_PRINT_ERROR("\n ION: close(%d) failed, errno = %d",
+          buf_ion_info->fd_ion_data.fd, errno);
+     }
      if (ioctl(buf_ion_info->ion_device_fd,ION_IOC_FREE,
               &buf_ion_info->ion_alloc_data.handle)) {
-         DEBUG_PRINT_ERROR("\n ION free failed ");
+         DEBUG_PRINT_ERROR("\n ION: free failed, dev_fd = %d, handle = 0x%p",
+            buf_ion_info->ion_device_fd, buf_ion_info->ion_alloc_data.handle);
          return;
      }
-     close(buf_ion_info->ion_device_fd);
      buf_ion_info->ion_alloc_data.handle = NULL;
      buf_ion_info->ion_device_fd = -1;
      buf_ion_info->fd_ion_data.fd = -1;
+     pthread_mutex_unlock(&m_venc_ionlock);
 }
 #endif
 #endif
