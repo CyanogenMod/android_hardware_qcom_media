@@ -6214,6 +6214,13 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
 	h264_parser = NULL;
     }
 
+    if (m_frame_parser.mutils)
+    {
+        DEBUG_PRINT_LOW("\n Free utils parser");
+        delete (m_frame_parser.mutils);
+        m_frame_parser.mutils = NULL;
+    }
+
     if(m_platform_list)
     {
         free(m_platform_list);
@@ -7897,13 +7904,6 @@ void omx_vdec::free_input_buffer_header()
     input_use_buffer = false;
     if (arbitrary_bytes)
     {
-      if (m_frame_parser.mutils)
-      {
-        DEBUG_PRINT_LOW("Free utils parser");
-        delete (m_frame_parser.mutils);
-        m_frame_parser.mutils = NULL;
-      }
-
       if (m_inp_heap_ptr)
       {
         DEBUG_PRINT_LOW("Free input Heap Pointer");
