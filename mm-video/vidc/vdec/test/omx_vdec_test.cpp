@@ -175,10 +175,12 @@ const uint16 crc_16_l_table[ 256 ] = {
   0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78
 };
 
-//Since this is unavailable on Android, defining it in terms of base 10
+#ifdef ANDROID_JELLYBEAN_MR1
+//Since this is unavailable on Android 4.2.2, defining it in terms of base 10
 static inline float log2f(const float& x) {
     return log(x) / log(2);
 }
+#endif
 
 uint16 crc_16_l_step_nv12 (uint16 seed, const void *buf_ptr,
 	unsigned int byte_len, unsigned int height, unsigned int width)

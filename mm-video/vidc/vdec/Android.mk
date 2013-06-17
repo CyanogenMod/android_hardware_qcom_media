@@ -73,6 +73,10 @@ ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
 endif
 
+ifneq ($(call is-platform-sdk-version-at-least,18),true)
+libOmxVdec-def += -DANDROID_JELLYBEAN_MR1=1
+endif
+
 vdec-inc          = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 # ---------------------------------------------------------------------------------
