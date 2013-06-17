@@ -3679,6 +3679,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       break;
     case OMX_QcomIndexParamEnableSmoothStreaming:
       {
+#ifndef SMOOTH_STREAMING_DISABLED
 	      struct v4l2_control control;
 	      struct v4l2_format fmt;
 	      control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
@@ -3688,6 +3689,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 		      DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
 		      eRet = OMX_ErrorHardware;
 	      }
+#endif
       }
      break;
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
