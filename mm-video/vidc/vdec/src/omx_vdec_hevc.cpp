@@ -7874,7 +7874,7 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
       alloc_data->flags |= ION_SECURE;
 
 #ifdef _HEVC_USE_ADSP_HEAP_
-	  alloc_data->heap_mask |= ION_HEAP(ION_ADSP_HEAP_ID);
+  alloc_data->heap_mask = ION_HEAP(ION_ADSP_HEAP_ID);
 #else
   alloc_data->heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
 #endif
