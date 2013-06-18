@@ -1657,13 +1657,12 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		if (ret) {
 		  DEBUG_PRINT_ERROR("Failed to query capabilities\n");
 		  /*TODO: How to handle this case */
-		  ret = 0;
 		} else {
 		  DEBUG_PRINT_HIGH("Capabilities: driver_name = %s, card = %s, bus_info = %s,"
 				" version = %d, capabilities = %x\n", cap.driver, cap.card,
 				cap.bus_info, cap.version, cap.capabilities);
 		}
-
+		ret=0;
 		fdesc.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		fdesc.index=0;
 		while (ioctl(drv_ctx.video_driver_fd, VIDIOC_ENUM_FMT, &fdesc) == 0) {
@@ -1671,7 +1670,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 					fdesc.pixelformat, fdesc.flags);
 			fdesc.index++;
 		}
-
 		fdesc.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		fdesc.index=0;
 		while (ioctl(drv_ctx.video_driver_fd, VIDIOC_ENUM_FMT, &fdesc) == 0) {
@@ -1680,26 +1678,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 					fdesc.pixelformat, fdesc.flags);
 			fdesc.index++;
 		}
-
-                //Get the codec capabilities
-                memset((void *)&frmsize,0,sizeof(frmsize));
-                frmsize.index = 0;
-                frmsize.pixel_format = output_capability;
-                ret = ioctl(drv_ctx.video_driver_fd,
-                        VIDIOC_ENUM_FRAMESIZES, &frmsize);
-                if (ret || frmsize.type != V4L2_FRMSIZE_TYPE_STEPWISE) {
-                        DEBUG_PRINT_ERROR("Failed to get framesizes\n");
-                        return OMX_ErrorHardware;
-                }
-
-                m_decoder_capability.min_width = frmsize.stepwise.min_width;
-                m_decoder_capability.max_width = frmsize.stepwise.max_width;
-                m_decoder_capability.min_height = frmsize.stepwise.min_height;
-                m_decoder_capability.max_height = frmsize.stepwise.max_height;
-
-                update_resolution(m_decoder_capability.min_width, m_decoder_capability.min_height,
-                                m_decoder_capability.min_width, m_decoder_capability.min_height);
-
+        update_resolution(320, 240, 320, 240);
 		fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
 		fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -1709,8 +1688,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 			/*TODO: How to handle this case */
 			DEBUG_PRINT_ERROR("Failed to set format on output port\n");
 			return OMX_ErrorInsufficientResources;
-		}
-
+				}
 		DEBUG_PRINT_HIGH("\n Set Format was successful \n ");
 		if (codec_ambiguous) {
 			if (output_capability == V4L2_PIX_FMT_DIVX) {
@@ -1732,6 +1710,24 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 			} else {
 				DEBUG_PRINT_ERROR("Codec should not be ambiguous");
 			}
+		}
+
+		//Get the hardware capabilities
+		memset((void *)&frmsize,0,sizeof(frmsize));
+		frmsize.index = 0;
+		frmsize.pixel_format = output_capability;
+		ret = ioctl(drv_ctx.video_driver_fd,
+			VIDIOC_ENUM_FRAMESIZES, &frmsize);
+		if (ret || frmsize.type != V4L2_FRMSIZE_TYPE_STEPWISE) {
+			DEBUG_PRINT_ERROR("Failed to get framesizes\n");
+			return OMX_ErrorHardware;
+		}
+
+		if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE) {
+		    m_decoder_capability.min_width = frmsize.stepwise.min_width;
+		    m_decoder_capability.max_width = frmsize.stepwise.max_width;
+		    m_decoder_capability.min_height = frmsize.stepwise.min_height;
+		    m_decoder_capability.max_height = frmsize.stepwise.max_height;
 		}
 
 		fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
