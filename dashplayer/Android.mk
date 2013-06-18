@@ -47,5 +47,7 @@ LOCAL_MODULE:= libdashplayer
 
 LOCAL_MODULE_TAGS := eng
 
-include $(BUILD_SHARED_LIBRARY)
+ifneq ($(PLATFORM_SDK_VERSION), 18)
+ include $(BUILD_SHARED_LIBRARY)
+endif
 
