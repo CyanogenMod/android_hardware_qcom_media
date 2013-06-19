@@ -56,6 +56,22 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.ittiam.video.decoder.avc",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxIttiamVdec.so",
+    {
+      "video_decoder.avc"
+    }
+  },
+  {
     "OMX.qcom.video.decoder.mpeg4",
     NULL,   // Create instance function
     // Unique instance handle
@@ -67,6 +83,22 @@ omx_core_cb_type core[] =
     },
     NULL,   // Shared object library handle
     "libOmxVdec.so",
+    {
+      "video_decoder.mpeg4"
+    }
+  },
+  {
+    "OMX.ittiam.video.decoder.mpeg4",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxIttiamVdec.so",
     {
       "video_decoder.mpeg4"
     }
@@ -137,6 +169,22 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.ittiam.video.decoder.divx4",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxIttiamVdec.so",
+    {
+      "video_decoder.divx"
+    }
+  },
+  {
     "OMX.qcom.video.decoder.divx",
     NULL,   // Create instance function
     // Unique instance handle
@@ -153,6 +201,22 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.ittiam.video.decoder.divx",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxIttiamVdec.so",
+    {
+      "video_decoder.divx"
+    }
+  },
+  {
     "OMX.qcom.video.decoder.h263",
     NULL,   // Create instance function
     // Unique instance handle
@@ -164,6 +228,22 @@ omx_core_cb_type core[] =
     },
     NULL,   // Shared object library handle
     "libOmxVdec.so",
+    {
+      "video_decoder.h263"
+    }
+  },
+  {
+    "OMX.ittiam.video.decoder.h263",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxIttiamVdec.so",
     {
       "video_decoder.h263"
     }
@@ -229,7 +309,7 @@ omx_core_cb_type core[] =
     NULL,   // Shared object library handle
     "libOmxVenc.so",
     {
-      "video_encoder.h263",
+      "video_encoder.h263"
     }
   },
    {
@@ -244,6 +324,22 @@ omx_core_cb_type core[] =
     },
     NULL,   // Shared object library handle
     "libOmxVenc.so",
+    {
+      "video_encoder.avc"
+    }
+  },
+  {
+    "OMX.ittiam.video.encoder.avc",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxIttiamVenc.so",
     {
       "video_encoder.avc"
     }
