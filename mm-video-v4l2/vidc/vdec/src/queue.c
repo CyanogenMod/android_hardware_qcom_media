@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -26,103 +26,95 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 /*
-	Queue with Linked list
-*/
+   Queue with Linked list
+ */
 
 #include "queue.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 
-typedef struct Node
-{
-  void *element;
-  struct Node *next;
+typedef struct Node {
+    void *element;
+    struct Node *next;
 } Node;
 
-struct Queue
-{
-  Node *head;
-  Node *tail;
-  int  current_size;
+struct Queue {
+    Node *head;
+    Node *tail;
+    int  current_size;
 };
 
 Queue *alloc_queue()
 {
-  Queue *q = (Queue *) malloc(sizeof(Queue));
-  if (q)
-  {
-    q->head = q->tail = NULL;
-    q->current_size = 0;
-  }
-  return q;
+    Queue *q = (Queue *) malloc(sizeof(Queue));
+
+    if (q) {
+        q->head = q->tail = NULL;
+        q->current_size = 0;
+    }
+
+    return q;
 }
 
 void free_queue(Queue *q)
 {
-  while (q->current_size)
-  {
-    pop(q);
-  }
+    while (q->current_size) {
+        pop(q);
+    }
 }
 
 void free_queue_and_qelement(Queue *q)
 {
-  while (q->current_size)
-  {
-    void *element = pop(q);
-    if (element)
-      free(element);
-  }
+    while (q->current_size) {
+        void *element = pop(q);
+
+        if (element)
+            free(element);
+    }
 }
 
 int push(Queue *q, void * element)
 {
-  Node *new_node = (Node *) malloc(sizeof(Node));
+    Node *new_node = (Node *) malloc(sizeof(Node));
 
-  if (new_node == NULL)
-    return -1;
+    if (new_node == NULL)
+        return -1;
 
-  new_node->element = element;
-  new_node->next = NULL;
+    new_node->element = element;
+    new_node->next = NULL;
 
-  if (q->current_size == 0)
-  {
-    q->head = new_node;
-  }
-  else
-  {
-    q->tail->next = new_node;
-  }
+    if (q->current_size == 0) {
+        q->head = new_node;
+    } else {
+        q->tail->next = new_node;
+    }
 
-  q->tail = new_node;
-  q->current_size++;
+    q->tail = new_node;
+    q->current_size++;
 
-  return 0;
+    return 0;
 }
 
 void *pop(Queue *q)
 {
-  Node *temp;
-  void *element;
+    Node *temp;
+    void *element;
 
-  if (q->current_size == 0)
-    return NULL;
+    if (q->current_size == 0)
+        return NULL;
 
-  temp = q->head;
-  element = temp->element;
+    temp = q->head;
+    element = temp->element;
 
-  if (q->current_size == 1)
-  {
-    q->head = q->tail = NULL;
-  }
-  else
-  {
-    q->head = q->head->next;
-  }
+    if (q->current_size == 1) {
+        q->head = q->tail = NULL;
+    } else {
+        q->head = q->head->next;
+    }
 
-  free(temp);
-  q->current_size--;
-  return element;
+    free(temp);
+    q->current_size--;
+    return element;
 }
 

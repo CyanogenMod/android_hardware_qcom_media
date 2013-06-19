@@ -38,51 +38,53 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <inttypes.h>
 
 #ifdef _ANDROID_
-extern "C"{
+extern "C" {
 #include<utils/Log.h>
 }
 #else
 #define ALOGE(fmt, args...) fprintf(stderr, fmt, ##args)
 #endif /* _ANDROID_ */
 
-class omx_time_stamp_reorder {
-public:
-	omx_time_stamp_reorder();
-	~omx_time_stamp_reorder();
-	void set_timestamp_reorder_mode(bool flag);
+class omx_time_stamp_reorder
+{
+    public:
+        omx_time_stamp_reorder();
+        ~omx_time_stamp_reorder();
+        void set_timestamp_reorder_mode(bool flag);
         void enable_debug_print(bool flag);
-	bool insert_timestamp(OMX_BUFFERHEADERTYPE *header);
-	bool get_next_timestamp(OMX_BUFFERHEADERTYPE *header, bool is_interlaced);
-	bool remove_time_stamp(OMX_TICKS ts, bool is_interlaced);
-	void flush_timestamp();
+        bool insert_timestamp(OMX_BUFFERHEADERTYPE *header);
+        bool get_next_timestamp(OMX_BUFFERHEADERTYPE *header, bool is_interlaced);
+        bool remove_time_stamp(OMX_TICKS ts, bool is_interlaced);
+        void flush_timestamp();
 
-private:
-	#define TIME_SZ 64
-	typedef struct timestamp {
-		OMX_TICKS timestamps;
-		bool in_use;
-	}timestamp;
-	typedef struct time_stamp_list {
-		timestamp input_timestamps[TIME_SZ];
-		time_stamp_list *next;
-		time_stamp_list *prev;
-		unsigned int entries_filled;
-	}time_stamp_list;
-	bool error;
-	time_stamp_list *phead,*pcurrent;
-	bool get_current_list();
-	bool add_new_list();
-	bool update_head();
-	void delete_list();
-	void handle_error()
-	{
-		ALOGE("Error handler called for TS Parser");
-		if (error)
-			return;
-		error = true;
-		delete_list();
-	}
-	bool reorder_ts;
+    private:
+#define TIME_SZ 64
+        typedef struct timestamp {
+            OMX_TICKS timestamps;
+            bool in_use;
+        } timestamp;
+        typedef struct time_stamp_list {
+            timestamp input_timestamps[TIME_SZ];
+            time_stamp_list *next;
+            time_stamp_list *prev;
+            unsigned int entries_filled;
+        } time_stamp_list;
+        bool error;
+        time_stamp_list *phead,*pcurrent;
+        bool get_current_list();
+        bool add_new_list();
+        bool update_head();
+        void delete_list();
+        void handle_error() {
+            ALOGE("Error handler called for TS Parser");
+
+            if (error)
+                return;
+
+            error = true;
+            delete_list();
+        }
+        bool reorder_ts;
         bool print_debug;
 };
 #endif

@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------
-Copyright (c) 2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -34,21 +34,21 @@ PowerModule *PowerModule::mPowerModuleInstance = NULL;
 
 PowerModule *PowerModule::getInstance()
 {
-  if (mPowerModuleInstance == NULL) {
-    mPowerModuleInstance = new PowerModule;
+    if (mPowerModuleInstance == NULL) {
+        mPowerModuleInstance = new PowerModule;
 
-    if (mPowerModuleInstance) {
-      mPowerModuleInstance->mPowerModuleHandle = NULL;
+        if (mPowerModuleInstance) {
+            mPowerModuleInstance->mPowerModuleHandle = NULL;
 
-      hw_get_module(POWER_HARDWARE_MODULE_ID,
-          (const hw_module_t **)&(mPowerModuleInstance->mPowerModuleHandle));
+            hw_get_module(POWER_HARDWARE_MODULE_ID,
+                    (const hw_module_t **)&(mPowerModuleInstance->mPowerModuleHandle));
+        }
     }
-  }
 
-  return mPowerModuleInstance;
+    return mPowerModuleInstance;
 }
 
 power_module_t *PowerModule::getPowerModuleHandle()
 {
-  return mPowerModuleHandle;
+    return mPowerModuleHandle;
 }

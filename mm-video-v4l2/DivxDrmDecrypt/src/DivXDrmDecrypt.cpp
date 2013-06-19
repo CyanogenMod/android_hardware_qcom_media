@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -40,11 +40,12 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 static const char* DIVX_DRM_SHIM_LIB = "libSHIMDivxDrm.so";
 
-void* getDecryptHandle() {
+void* getDecryptHandle()
+{
     static void* decryptLib = NULL;
     static bool  decryptLibOpened = false;
 
-    if(decryptLibOpened) {
+    if (decryptLibOpened) {
         return decryptLib;
     }
 
@@ -58,15 +59,17 @@ void* getDecryptHandle() {
     return decryptLib;
 }
 
-DivXDrmDecryptFactory DrmDecryptFactoryFunction() {
+DivXDrmDecryptFactory DrmDecryptFactoryFunction()
+{
     static DivXDrmDecryptFactory drmDecryptFactoryFunction = NULL;
     static bool alreadyTriedToFindFactoryFunction = false;
 
-    if(alreadyTriedToFindFactoryFunction) {
+    if (alreadyTriedToFindFactoryFunction) {
         return drmDecryptFactoryFunction;
     }
 
     void *pDecryptLib = getDecryptHandle();
+
     if (pDecryptLib == NULL) {
         return NULL;
     }
@@ -74,7 +77,7 @@ DivXDrmDecryptFactory DrmDecryptFactoryFunction() {
     drmDecryptFactoryFunction = (DivXDrmDecryptFactory) dlsym(pDecryptLib, MEDIA_CREATE_DIVX_DRM_DECRYPT);
     alreadyTriedToFindFactoryFunction = true;
 
-    if(!drmDecryptFactoryFunction) {
+    if (!drmDecryptFactoryFunction) {
         ALOGE(" dlsym for DrmDecrypt factory function failed \n");
     }
 
@@ -83,16 +86,20 @@ DivXDrmDecryptFactory DrmDecryptFactoryFunction() {
 
 
 
-DivXDrmDecrypt* DivXDrmDecrypt::Create() {
+DivXDrmDecrypt* DivXDrmDecrypt::Create()
+{
     DivXDrmDecryptFactory drmCreateFunc = DrmDecryptFactoryFunction();
-    if( drmCreateFunc == NULL ) {
+
+    if ( drmCreateFunc == NULL ) {
         return NULL;
     }
 
     DivXDrmDecrypt* decrypt = drmCreateFunc();
-    if( decrypt == NULL ) {
+
+    if ( decrypt == NULL ) {
         ALOGE(" failed to instantiate DrmDecoder \n");
     }
+
     return decrypt;
 }
 

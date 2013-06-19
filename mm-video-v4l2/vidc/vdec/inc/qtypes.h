@@ -58,29 +58,29 @@ extern "C" {
 ** Standard Types
 ** ----------------------------------------------------------------------- */
 
-/* The following definitions are the same accross platforms.  This first
-** group are the sanctioned types.
-*/
+    /* The following definitions are the same accross platforms.  This first
+     ** group are the sanctioned types.
+     */
 
-typedef  unsigned char      boolean;     /* Boolean value type. */
+    typedef  unsigned char      boolean;     /* Boolean value type. */
 
-typedef  unsigned int  uint32;      /* Unsigned 32 bit value */
-typedef  unsigned short     uint16;      /* Unsigned 16 bit value */
-typedef  unsigned char      uint8;       /* Unsigned 8  bit value */
+    typedef  unsigned int  uint32;      /* Unsigned 32 bit value */
+    typedef  unsigned short     uint16;      /* Unsigned 16 bit value */
+    typedef  unsigned char      uint8;       /* Unsigned 8  bit value */
 
-typedef  int    int32;       /* Signed 32 bit value */
-typedef  signed short       int16;       /* Signed 16 bit value */
-typedef  signed char        int8;        /* Signed 8  bit value */
+    typedef  int    int32;       /* Signed 32 bit value */
+    typedef  signed short       int16;       /* Signed 16 bit value */
+    typedef  signed char        int8;        /* Signed 8  bit value */
 
-/* This group are the deprecated types.  Their use should be
-** discontinued and new code should use the types above
-*/
-typedef  unsigned char     byte;         /* Unsigned 8  bit value type. */
-typedef  unsigned short    word;         /* Unsinged 16 bit value type. */
-typedef  unsigned long     dword;        /* Unsigned 32 bit value type. */
+    /* This group are the deprecated types.  Their use should be
+     ** discontinued and new code should use the types above
+     */
+    typedef  unsigned char     byte;         /* Unsigned 8  bit value type. */
+    typedef  unsigned short    word;         /* Unsinged 16 bit value type. */
+    typedef  unsigned long     dword;        /* Unsigned 32 bit value type. */
 
-typedef long long           int64;
-typedef unsigned long long  uint64;
+    typedef long long           int64;
+    typedef unsigned long long  uint64;
 
 
 #ifdef __cplusplus

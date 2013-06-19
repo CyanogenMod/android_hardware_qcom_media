@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -26,15 +26,15 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 /*============================================================================
-                    V E N C _ U T I L. H
+  V E N C _ U T I L. H
 
-DESCRIPTION
-
-
-REFERENCES
+  DESCRIPTION
 
 
-============================================================================*/
+  REFERENCES
+
+
+  ============================================================================*/
 
 #ifndef _VENC_UTIL_H
 #define _VENC_UTIL_H
@@ -43,7 +43,7 @@ REFERENCES
 extern "C" {
 #endif
 
-long long GetTimeStamp();
+    long long GetTimeStamp();
 
 
 #ifdef __cplusplus

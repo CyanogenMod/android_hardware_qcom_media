@@ -39,7 +39,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #ifdef _ANDROID_
-extern "C"{
+extern "C" {
 #include<utils/Log.h>
 }
 #ifdef ENABLE_DEBUG_LOW
@@ -79,36 +79,36 @@ extern "C"{
 #define VDEC_OMX_SEI 0x7F000007
 #define FRAME_PACK_SIZE 18
 #define H264_EMULATION_BYTE 0x03
-class extra_data_handler 
+class extra_data_handler
 {
-public:
-  extra_data_handler();
-  ~extra_data_handler();
-  OMX_U32 parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr);
-  OMX_U32 create_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr);
-  OMX_U32 get_frame_pack_data(OMX_QCOM_FRAME_PACK_ARRANGEMENT *frame_pack);
-  OMX_U32 set_frame_pack_data(OMX_QCOM_FRAME_PACK_ARRANGEMENT *frame_pack);
-private:
-  OMX_QCOM_FRAME_PACK_ARRANGEMENT frame_packing_arrangement;
-  OMX_U8 *rbsp_buf;
-  OMX_U32 bit_ptr;
-  OMX_U32 byte_ptr;
-  OMX_U32 pack_sei;
-  OMX_U32 sei_payload_type;
-  OMX_U32 d_u(OMX_U32 num_bits);
-  OMX_U32 d_ue();
-  OMX_U32 parse_frame_pack(OMX_U32 payload_size);
-  OMX_S32 parse_rbsp(OMX_U8 *buf, OMX_U32 len);
-  OMX_S32 parse_sei(OMX_U8 *buffer, OMX_U32 buffer_length);
-  OMX_U32 e_u(OMX_U32 symbol, OMX_U32 num_bits);
-  OMX_U32 e_ue(OMX_U32 symbol);
-  OMX_U32 create_frame_pack();
-  OMX_S32 create_rbsp(OMX_U8 *buf, OMX_U32 nalu_type);
-  OMX_U32 create_sei(OMX_U8 *buffer);
-  OMX_S32 parse_sliceinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
-     OMX_OTHER_EXTRADATATYPE *pExtra);
-  OMX_S32 parse_ltrinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
-     OMX_OTHER_EXTRADATATYPE *pExtra);
+    public:
+        extra_data_handler();
+        ~extra_data_handler();
+        OMX_U32 parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr);
+        OMX_U32 create_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr);
+        OMX_U32 get_frame_pack_data(OMX_QCOM_FRAME_PACK_ARRANGEMENT *frame_pack);
+        OMX_U32 set_frame_pack_data(OMX_QCOM_FRAME_PACK_ARRANGEMENT *frame_pack);
+    private:
+        OMX_QCOM_FRAME_PACK_ARRANGEMENT frame_packing_arrangement;
+        OMX_U8 *rbsp_buf;
+        OMX_U32 bit_ptr;
+        OMX_U32 byte_ptr;
+        OMX_U32 pack_sei;
+        OMX_U32 sei_payload_type;
+        OMX_U32 d_u(OMX_U32 num_bits);
+        OMX_U32 d_ue();
+        OMX_U32 parse_frame_pack(OMX_U32 payload_size);
+        OMX_S32 parse_rbsp(OMX_U8 *buf, OMX_U32 len);
+        OMX_S32 parse_sei(OMX_U8 *buffer, OMX_U32 buffer_length);
+        OMX_U32 e_u(OMX_U32 symbol, OMX_U32 num_bits);
+        OMX_U32 e_ue(OMX_U32 symbol);
+        OMX_U32 create_frame_pack();
+        OMX_S32 create_rbsp(OMX_U8 *buf, OMX_U32 nalu_type);
+        OMX_U32 create_sei(OMX_U8 *buffer);
+        OMX_S32 parse_sliceinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
+                OMX_OTHER_EXTRADATATYPE *pExtra);
+        OMX_S32 parse_ltrinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
+                OMX_OTHER_EXTRADATATYPE *pExtra);
 };
-  
-#endif  
+
+#endif
