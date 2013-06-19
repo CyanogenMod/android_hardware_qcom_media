@@ -8586,7 +8586,7 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
   {
     new_frame_interval = client_set_fps ? frm_int :
         llabs(act_timestamp - prev_ts);
-    if (new_frame_interval != frm_int || frm_int == 0)
+    if (new_frame_interval < frm_int || frm_int == 0)
     {
       frm_int = new_frame_interval;
       if(frm_int)
