@@ -1366,7 +1366,7 @@ int main(int argc, char **argv)
       }
       outputOption = param[idx++];
       test_option = param[idx++];
-      if (test_option != 3) {
+      if ((outputOption == 1 || outputOption ==3) && test_option != 3) {
           displayWindow = param[idx++];
           if (displayWindow > 0)
               printf("Only entire display window supported! Ignoring value\n");
