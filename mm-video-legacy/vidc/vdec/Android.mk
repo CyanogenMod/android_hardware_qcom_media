@@ -78,8 +78,10 @@ libmm-vdec-inc          += frameworks/av/include/media/stagefright
 
 ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
 libmm-vdec-inc          += hardware/qcom/display/msm8974/libqservice
+libmm-vdec-inc          += hardware/qcom/display/msm8974/libqdutils
 else
 libmm-vdec-inc          += hardware/qcom/display/msm8960/libqservice
+libmm-vdec-inc          += hardware/qcom/display/msm8960/libqdutils
 endif
 
 
@@ -93,6 +95,7 @@ LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
 
 LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
 LOCAL_SHARED_LIBRARIES += libqservice
+LOCAL_SHARED_LIBRARIES += libqdMetaData
 
 LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
