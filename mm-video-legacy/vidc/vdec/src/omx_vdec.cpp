@@ -1435,6 +1435,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       eRet = OMX_ErrorInsufficientResources;
     }
 
+  if (m_use_smoothstreaming) {
+      int rc = ioctl(drv_ctx.video_driver_fd,
+                      VDEC_IOCTL_SET_CONT_ON_RECONFIG);
+      if(rc < 0) {
+          DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
+      }
+  }
+
 #ifdef MAX_RES_720P
     update_resolution(1280, 720);
 #endif
@@ -1595,13 +1603,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
   memset(&h264_mv_buff,0,sizeof(struct h264_mv_buffer));
 
-  if (m_use_smoothstreaming) {
-      int rc = ioctl(drv_ctx.video_driver_fd,
-                      VDEC_IOCTL_SET_CONT_ON_RECONFIG);
-      if(rc < 0) {
-          DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
-      }
-  }
 cleanup:
 
   if (secure_mode && (eRet == OMX_ErrorNone)) {
