@@ -6913,6 +6913,13 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
       output_capability == V4L2_PIX_FMT_DIVX_311)
       is_duplicate_ts_valid = false;
 
+    if (output_capability == V4L2_PIX_FMT_H264 && is_interlaced) {
+      bool mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
+      if (mbaff) {
+        is_interlaced = false;
+      }
+    }
+
     if (buffer->nFilledLen > 0) {
       time_stamp_dts.get_next_timestamp(buffer,
         is_interlaced && is_duplicate_ts_valid);
