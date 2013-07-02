@@ -7182,8 +7182,8 @@ int omx_vdec::async_message_process (void *context, void* message)
       {
 	omxhdr->nFilledLen = vdec_msg->msgdata.output_frame.len;
 	omxhdr->nOffset = vdec_msg->msgdata.output_frame.offset;
-        omxhdr->nTimeStamp = vdec_msg->msgdata.output_frame.time_stamp;
-        omxhdr->nFlags = omx->m_out_mem_ptr[v4l2_buf_ptr->index].nFlags;
+    omxhdr->nTimeStamp = vdec_msg->msgdata.output_frame.time_stamp;
+    omxhdr->nFlags = 0;
 	
 	if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_EOS)
 	{
