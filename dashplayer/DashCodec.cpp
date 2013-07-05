@@ -827,8 +827,9 @@ status_t DashCodec::setComponentRole(
             "audio_decoder.amrnb", "audio_encoder.amrnb" },
         { MEDIA_MIMETYPE_AUDIO_AMR_WB,
             "audio_decoder.amrwb", "audio_encoder.amrwb" },
-        { MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS,
-            "audio_decoder.amrwbplus", "audio_encoder.amrwbplus" },
+        // commenting out AMR_WM_PLUS for bringing up dash on MR2
+        /* { MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS,
+            "audio_decoder.amrwbplus", "audio_encoder.amrwbplus" },*/
         { MEDIA_MIMETYPE_AUDIO_AAC,
             "audio_decoder.aac", "audio_encoder.aac" },
         { MEDIA_MIMETYPE_AUDIO_VORBIS,
@@ -1460,7 +1461,10 @@ status_t DashCodec::setSupportedOutputFormat() {
            || format.eColorFormat == OMX_TI_COLOR_FormatYUV420PackedSemiPlanar
            || format.eColorFormat == OMX_QCOM_COLOR_FormatYVU420SemiPlanar
            || format.eColorFormat == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka
-           || format.eColorFormat == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m );
+           /* Commenting OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m for bringing up dash on mr2,
+              also looks like this is needed only for B family*/
+           //|| format.eColorFormat == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m
+          );
 
     return mOMX->setParameter(
             mNode, OMX_IndexParamVideoPortFormat,
