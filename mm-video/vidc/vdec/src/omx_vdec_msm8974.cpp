@@ -6909,6 +6909,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     bool is_interlaced = (drv_ctx.interlace != VDEC_InterlaceFrameProgressive);
 
     if (output_capability == V4L2_PIX_FMT_MPEG4 ||
+      output_capability == V4L2_PIX_FMT_MPEG2 ||
       output_capability == V4L2_PIX_FMT_DIVX ||
       output_capability == V4L2_PIX_FMT_DIVX_311)
       is_duplicate_ts_valid = false;
