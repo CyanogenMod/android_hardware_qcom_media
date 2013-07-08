@@ -403,6 +403,10 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   m_sParamAVC.nCabacInitIdc = 0;
   m_sParamAVC.eLoopFilterMode = OMX_VIDEO_AVCLoopFilterEnable;
 
+  OMX_INIT_STRUCT(&m_sParamLTRMode, QOMX_VIDEO_PARAM_LTRMODE_TYPE);
+  m_sParamLTRMode.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+  m_sParamLTRMode.eLTRMode = QOMX_VIDEO_LTRMode_Disable;
+
   m_state                   = OMX_StateLoaded;
   m_sExtraData = 0;
 
@@ -1097,12 +1101,67 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           eRet = OMX_ErrorUnsupportedIndex;
         }
       }
+      else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoLTRInfo)
+      {
+        if (pParam->nPortIndex == PORT_INDEX_OUT)
+        {
+          if (pParam->bEnabled == OMX_TRUE)
+            m_sExtraData |= VEN_EXTRADATA_LTRINFO;
+          else
+            m_sExtraData &= ~VEN_EXTRADATA_LTRINFO;
+          DEBUG_PRINT_HIGH("LTRInfo extradata %s",
+            ((pParam->bEnabled == OMX_TRUE) ? "enabled" : "disabled"));
+          if(handle->venc_set_param(&m_sExtraData,
+            (OMX_INDEXTYPE)OMX_ExtraDataVideoLTRInfo) != true)
+          {
+            DEBUG_PRINT_ERROR("ERROR: Setting "
+              "OMX_ExtraDataVideoLTRInfo failed");
+            return OMX_ErrorUnsupportedSetting;
+          }
+          else
+          {
+            m_sOutPortDef.nPortIndex = PORT_INDEX_OUT;
+            dev_get_buf_req(&m_sOutPortDef.nBufferCountMin,
+              &m_sOutPortDef.nBufferCountActual,
+              &m_sOutPortDef.nBufferSize,
+              m_sOutPortDef.nPortIndex);
+            DEBUG_PRINT_HIGH("updated out_buf_req: buffer cnt=%d, "
+              "count min=%d, buffer size=%d",
+              m_sOutPortDef.nBufferCountActual,
+              m_sOutPortDef.nBufferCountMin,
+              m_sOutPortDef.nBufferSize);
+          }
+        }
+      }
       else
       {
-        DEBUG_PRINT_ERROR("set_parameter: unsupported index (%x), "
-            "only slice information extradata is supported", pParam->nIndex);
+        DEBUG_PRINT_ERROR("set_parameter: unsupported index (%x)", pParam->nIndex);
         eRet = OMX_ErrorUnsupportedIndex;
       }
+      break;
+    }
+  case QOMX_IndexParamVideoLTRMode:
+    {
+      QOMX_VIDEO_PARAM_LTRMODE_TYPE* pParam =
+        (QOMX_VIDEO_PARAM_LTRMODE_TYPE*)paramData;
+      if(!handle->venc_set_param(paramData, (OMX_INDEXTYPE)QOMX_IndexParamVideoLTRMode))
+      {
+        DEBUG_PRINT_ERROR("\nERROR: Setting LTR mode failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      memcpy(&m_sParamLTRMode, pParam, sizeof(m_sParamLTRMode));
+      break;
+    }
+  case QOMX_IndexParamVideoLTRCount:
+    {
+      QOMX_VIDEO_PARAM_LTRCOUNT_TYPE* pParam =
+        (QOMX_VIDEO_PARAM_LTRCOUNT_TYPE*)paramData;
+      if(!handle->venc_set_param(paramData, (OMX_INDEXTYPE)QOMX_IndexParamVideoLTRCount))
+      {
+        DEBUG_PRINT_ERROR("\nERROR: Setting LTR count failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      memcpy(&m_sParamLTRCount, pParam, sizeof(m_sParamLTRCount));
       break;
     }
 #endif
@@ -1453,6 +1512,35 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
       }
       break;
     }
+  case QOMX_IndexConfigVideoLTRPeriod:
+    {
+      QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE*)configData;
+      if(!handle->venc_set_config(configData, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRPeriod))
+      {
+        DEBUG_PRINT_ERROR("\nERROR: Setting LTR period failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      memcpy(&m_sConfigLTRPeriod, pParam, sizeof(m_sConfigLTRPeriod));
+      break;
+    }
+  case QOMX_IndexConfigVideoLTRUse:
+    {
+      QOMX_VIDEO_CONFIG_LTRUSE_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRUSE_TYPE*)configData;
+      if(!handle->venc_set_config(configData, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRUse))
+      {
+        DEBUG_PRINT_ERROR("\nERROR: Setting LTR use failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      memcpy(&m_sConfigLTRUse, pParam, sizeof(m_sConfigLTRUse));
+      break;
+    }
+  case QOMX_IndexConfigVideoLTRMark:
+    {
+      QOMX_VIDEO_CONFIG_LTRMARK_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRMARK_TYPE*)configData;
+      DEBUG_PRINT_ERROR("Setting ltr mark is not supported");
+      return OMX_ErrorUnsupportedSetting;
+      break;
+    }
   default:
     DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
     break;
@@ -1593,6 +1681,11 @@ bool omx_venc::dev_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,uns
 bool omx_venc::dev_get_seq_hdr(void *buffer, unsigned size, unsigned *hdrlen)
 {
   return handle->venc_get_seq_hdr(buffer, size, hdrlen);
+}
+
+bool omx_venc::dev_get_capability_ltrcount(OMX_U32 *min, OMX_U32 *max, OMX_U32 *step_size)
+{
+  return handle->venc_get_capability_ltrcount(min, max, step_size);
 }
 
 bool omx_venc::dev_loaded_start()
@@ -1736,12 +1829,14 @@ int omx_venc::async_message_process (void *context, void* message)
         omxhdr->nFlags = m_sVenc_msg->buf.flags;
         omx->extradata_len[idx] = m_sVenc_msg->buf.metadata_len;
         omx->extradata_offset[idx] = m_sVenc_msg->buf.metadata_offset;
+        omx->extradata_ltrid[idx] = m_sVenc_msg->buf.metadata_ltrid;
         DEBUG_PRINT_LOW("[RespBufDone]: pBuffer = 0x%x, nFilledLen = %d, "\
             "nAllocLen = %d, Ts = %lld, nFlags = 0x%x, nOffset = %d, "\
-            "Extradata Info: Idx = %d, Offset(%d), len(%d)",
+            "Extradata Info: Idx = %d, Offset(%d), len(%d), ltrid(%d)",
             omxhdr->pBuffer, omxhdr->nFilledLen, omxhdr->nAllocLen,
             omxhdr->nTimeStamp, omxhdr->nFlags, omxhdr->nOffset,
-            idx, omx->extradata_offset[idx], omx->extradata_len[idx]);
+            idx, omx->extradata_offset[idx], omx->extradata_len[idx],
+            omx->extradata_ltrid[idx]);
 
         /*Use buffer case*/
         if(omx->output_use_buffer && !omx->m_use_output_pmem)
@@ -1771,6 +1866,11 @@ int omx_venc::async_message_process (void *context, void* message)
     break;
   case VEN_MSG_NEED_OUTPUT_BUFFER:
     //TBD what action needs to be done here??
+    break;
+  case VEN_MSG_LTRUSE_FAILED:
+    DEBUG_PRINT_ERROR("LTRUSE Failed!");
+    omx->post_event (NULL,m_sVenc_msg->statuscode,
+      OMX_COMPONENT_GENERATE_LTRUSE_FAILED);
     break;
   default:
     break;

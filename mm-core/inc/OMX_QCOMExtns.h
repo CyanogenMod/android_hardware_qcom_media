@@ -86,6 +86,14 @@ struct OMX_QCOM_PARAM_MEMMAPENTRYTYPE
 
 #define QOMX_VIDEO_IntraRefreshRandom (OMX_VIDEO_IntraRefreshVendorStartUnused + 0)
 
+/* This error event is used for H.264 long-term reference (LTR) encoding.
+* When IL client specifies an LTR frame with its identifier via
+* OMX_QCOM_INDEX_CONFIG_VIDEO_LTRUSE to the encoder, if the specified
+* LTR frame can not be located by the encoder in its LTR list, the encoder
+* issues this error event to IL client to notify the failure of LTRUse config.
+*/
+#define QOMX_ErrorLTRUseFailed (OMX_ErrorVendorStartUnused + 1)
+
 #define QOMX_VIDEO_BUFFERFLAG_BFRAME 0x00100000
 
 #define QOMX_VIDEO_BUFFERFLAG_EOSEQ  0x00200000
@@ -386,6 +394,24 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.QCOM.index.param.video.PerformanceLevel" */
     OMX_QcomIndexParamVideoPerformanceLevel = 0x7F000026,
+
+    /*"OMX.QCOM.index.param.video.LTRCountRangeSupported"*/
+    QOMX_IndexParamVideoLTRCountRangeSupported = 0x7F000027,
+
+    /*"OMX.QCOM.index.param.video.LTRMode"*/
+    QOMX_IndexParamVideoLTRMode = 0x7F000028,
+
+    /*"OMX.QCOM.index.param.video.LTRCount"*/
+    QOMX_IndexParamVideoLTRCount = 0x7F000029,
+
+    /*"OMX.QCOM.index.config.video.LTRPeriod"*/
+    QOMX_IndexConfigVideoLTRPeriod = 0x7F00002A,
+
+    /*"OMX.QCOM.index.config.video.LTRUse"*/
+    QOMX_IndexConfigVideoLTRUse = 0x7F00002B,
+
+    /*"OMX.QCOM.index.config.video.LTRMark"*/
+    QOMX_IndexConfigVideoLTRMark = 0x7F00002C
 };
 
 /**
@@ -413,6 +439,141 @@ typedef struct QOMX_EXTNINDEX_PARAMTYPE {
     OMX_U32 nDataSize;
     OMX_PTR pData;
 } QOMX_EXTNINDEX_PARAMTYPE;
+
+/**
+* Range index parameter. This structure is used to enable
+* vendor specific extension on input/output port and
+* to pass the required minimum and maximum values
+*
+* STRUCT MEMBERS:
+* nSize : Size of Structure in bytes
+* nVersion : OpenMAX IL specification version information
+* nPortIndex : Index of the port to which this structure applies
+* nMin : Minimum value
+* nMax : Maximum value
+* nSteSize : Step size
+*/
+typedef struct QOMX_EXTNINDEX_RANGETYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_S32 nMin;
+    OMX_S32 nMax;
+    OMX_S32 nStepSize;
+} QOMX_EXTNINDEX_RANGETYPE;
+
+/**
+* Specifies LTR mode types.
+*/
+typedef enum QOMX_VIDEO_LTRMODETYPE
+{
+    QOMX_VIDEO_LTRMode_Disable = 0x0, /**< LTR encoding is disabled */
+    QOMX_VIDEO_LTRMode_Manual  = 0x1, /**< In this mode, IL client configures
+                                       ** the encoder the LTR count and manually
+                                       ** controls the marking and use of LTR
+                                       ** frames during video encoding.
+                                       */
+    QOMX_VIDEO_LTRMode_Auto    = 0x2, /**< In this mode, IL client configures
+                                       ** the encoder the LTR count and LTR
+                                       ** period. The encoder marks LTR frames
+                                       ** automatically based on the LTR period
+                                       ** during video encoding. IL client controls
+                                       ** the use of LTR frames.
+                                       */
+    QOMX_VIDEO_LTRMode_MAX = 0x7FFFFFFF /** Maximum LTR Mode type */
+} QOMX_VIDEO_LTRMODETYPE;
+
+/**
+* LTR mode index parameter. This structure is used
+* to enable vendor specific extension on output port
+* to pass the LTR mode information.
+*
+* STRUCT MEMBERS:
+* nSize : Size of Structure in bytes
+* nVersion : OpenMAX IL specification version information
+* nPortIndex : Index of the port to which this structure applies
+* eLTRMode : Specifies the LTR mode used in encoder
+*/
+typedef struct QOMX_VIDEO_PARAM_LTRMODE_TYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    QOMX_VIDEO_LTRMODETYPE eLTRMode;
+} QOMX_VIDEO_PARAM_LTRMODE_TYPE;
+
+/**
+* LTR count index parameter. This structure is used
+* to enable vendor specific extension on output port
+* to pass the LTR count information.
+*
+* STRUCT MEMBERS:
+* nSize : Size of Structure in bytes
+* nVersion : OpenMAX IL specification version information
+* nPortIndex : Index of the port to which this structure applies
+* nCount : Specifies the number of LTR frames stored in the
+* encoder component
+*/
+typedef struct QOMX_VIDEO_PARAM_LTRCOUNT_TYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nCount;
+} QOMX_VIDEO_PARAM_LTRCOUNT_TYPE;
+
+/**
+* LTR period index parameter. This structure is used
+* to enable vendor specific extension on output port
+* to pass the LTR period information.
+*
+* STRUCT MEMBERS:
+* nSize : Size of Structure in bytes
+* nVersion : OpenMAX IL specification version information
+* nPortIndex : Index of the port to which this structure applies
+* nFrames : Specifies the number of frames between two consecutive
+* LTR frames.
+*/
+typedef struct QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nFrames;
+} QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE;
+
+/**
+* Marks the next encoded frame as an LTR frame.
+* STRUCT MEMBERS:
+* nSize : Size of Structure in bytes
+* nVersion : OpenMAX IL specification version information
+* nPortIndex : Index of the port to which this structure applies
+*/
+typedef struct QOMX_VIDEO_CONFIG_LTRMARK_TYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+} QOMX_VIDEO_CONFIG_LTRMARK_TYPE;
+
+/**
+* Specifies an LTR frame to encode subsequent frames.
+* STRUCT MEMBERS:
+* nSize : Size of Structure in bytes
+* nVersion : OpenMAX IL specification version information
+* nPortIndex : Index of the port to which this structure applies
+* nID : Specifies the identifier of the LTR frame to be used
+* as reference frame for encoding subsequent frames.
+* nFrames : Specifies the number of subsequent frames to be
+* encoded using the LTR frame with its identifier
+* nID as reference frame. Short-term reference frames
+* will be used thereafter. The value of 0xFFFFFFFF
+* indicates that all subsequent frames will be
+* encodedusing this LTR frame as reference frame.
+*/
+typedef struct QOMX_VIDEO_CONFIG_LTRUSE_TYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nID;
+    OMX_U32 nFrames;
+} QOMX_VIDEO_CONFIG_LTRUSE_TYPE;
 
 /**
  * Enumeration used to define the video encoder modes
@@ -707,7 +868,8 @@ typedef enum OMX_QCOM_EXTRADATATYPE
    OMX_ExtraDataInterlaceFormat = 0x7F000007,
    OMX_ExtraDataPortDef = 0x7F000008,
    OMX_ExtraDataMP2ExtnData = 0x7F000009,
-   OMX_ExtraDataMP2UserData = 0x7F00000a
+   OMX_ExtraDataMP2UserData = 0x7F00000a,
+   OMX_ExtraDataVideoLTRInfo = 0x7F00000b
 } OMX_QCOM_EXTRADATATYPE;
 
 typedef struct  OMX_STREAMINTERLACEFORMATTYPE {

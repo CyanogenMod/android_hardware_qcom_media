@@ -337,6 +337,9 @@ bool venc_dev::venc_open(OMX_U32 codec)
         __func__);
   }
   recon_buffers_count = MAX_RECON_BUFFERS;
+  ltrmode.ltr_mode = 0;
+  ltrcount.ltr_count = 0;
+  ltrperiod.ltr_period = 0;
   return true;
 }
 
@@ -523,6 +526,30 @@ bool venc_dev::venc_get_seq_hdr(void *buffer,
   DEBUG_PRINT_LOW("seq_out: buf=%x, sz=%d, hdrlen=%d", seq_out.hdrbufptr,
     seq_out.bufsize, seq_out.hdrlen);
 
+  return true;
+}
+
+bool venc_dev::venc_get_capability_ltrcount(unsigned long *min,
+    unsigned long *max, unsigned long *step_size)
+{
+  struct venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_range cap_ltr_count;
+  ioctl_msg.in = NULL;
+  ioctl_msg.out = (void*)&cap_ltr_count;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_GET_CAPABILITY_LTRCOUNT,
+    (void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("ERROR: Get LTR Capability failed");
+    return false;
+  }
+  else
+  {
+    *min = cap_ltr_count.min;
+    *max = cap_ltr_count.max;
+    *step_size = cap_ltr_count.step_size;
+    DEBUG_PRINT_HIGH("LTR Capability: min=%x, max=%d, step_size=%d",
+      *min, *max, *step_size);
+  }
   return true;
 }
 
@@ -1027,6 +1054,18 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
       }
       break;
     }
+  case OMX_ExtraDataVideoLTRInfo:
+    {
+      DEBUG_PRINT_LOW("venc_set_param: OMX_ExtraDataVideoLTRInfo");
+      OMX_U32 extra_data = *(OMX_U32 *)paramData;
+      if(venc_set_extradata(extra_data) == false)
+      {
+        DEBUG_PRINT_ERROR("ERROR: Setting "
+           "OMX_ExtraDataVideoLTRInfo failed");
+        return false;
+      }
+      break;
+    }
   case OMX_QcomIndexEnableSliceDeliveryMode:
     {
        QOMX_EXTNINDEX_PARAMTYPE* pParam =
@@ -1071,12 +1110,51 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
        }
        break;
     }
+  case QOMX_IndexParamVideoLTRMode:
+  {
+    QOMX_VIDEO_PARAM_LTRMODE_TYPE* pParam =
+      (QOMX_VIDEO_PARAM_LTRMODE_TYPE*)paramData;
+    if(pParam->nPortIndex == PORT_INDEX_OUT)
+    {
+      if(!venc_set_ltrmode(pParam->eLTRMode))
+      {
+        DEBUG_PRINT_ERROR("Setting ltr mode failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+    }
+    else
+    {
+      DEBUG_PRINT_ERROR("QOMX_IndexParamVideoLTRMode "
+         "called on wrong port(%d)", pParam->nPortIndex);
+      return OMX_ErrorBadPortIndex;
+    }
+    break;
+  }
+  case QOMX_IndexParamVideoLTRCount:
+  {
+    QOMX_VIDEO_PARAM_LTRCOUNT_TYPE* pParam =
+      (QOMX_VIDEO_PARAM_LTRCOUNT_TYPE*)paramData;
+    if(pParam->nPortIndex == PORT_INDEX_OUT)
+    {
+      if(!venc_set_ltrcount(pParam->nCount))
+      {
+        DEBUG_PRINT_ERROR("Setting ltr count failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+    }
+    else
+    {
+      DEBUG_PRINT_ERROR("QOMX_IndexParamVideoLTRCount "
+         "called on wrong port(%d)", pParam->nPortIndex);
+      return OMX_ErrorBadPortIndex;
+    }
+    break;
+  }
   case OMX_IndexParamVideoSliceFMO:
   default:
-	  DEBUG_PRINT_ERROR("\nERROR: Unsupported parameter in venc_set_param: %u",
+    DEBUG_PRINT_ERROR("\nERROR: Unsupported parameter in venc_set_param: %u",
       index);
     break;
-    //case
   }
 
   return true;
@@ -1186,6 +1264,46 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
       }
       break;
     }
+  case QOMX_IndexConfigVideoLTRPeriod:
+    {
+      QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE* pParam =
+        (QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE*)configData;
+      if(pParam->nPortIndex == PORT_INDEX_OUT)
+      {
+        if(!venc_set_ltrperiod(pParam->nFrames))
+        {
+          DEBUG_PRINT_ERROR("Setting ltr period failed");
+          return OMX_ErrorUnsupportedSetting;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("QOMX_IndexConfigVideoLTRPeriod "
+        "called on wrong port(%d)", pParam->nPortIndex);
+        return OMX_ErrorBadPortIndex;
+      }
+      break;
+    }
+  case QOMX_IndexConfigVideoLTRUse:
+    {
+      QOMX_VIDEO_CONFIG_LTRUSE_TYPE* pParam =
+        (QOMX_VIDEO_CONFIG_LTRUSE_TYPE*)configData;
+      if(pParam->nPortIndex == PORT_INDEX_OUT)
+      {
+        if(!venc_set_ltruse(pParam->nID, pParam->nFrames))
+        {
+          DEBUG_PRINT_ERROR("Setting ltr use failed");
+          return OMX_ErrorUnsupportedSetting;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("QOMX_IndexConfigVideoLTRUse "
+          "called on wrong port(%d)", pParam->nPortIndex);
+        return OMX_ErrorBadPortIndex;
+      }
+      break;
+    }
   default:
     DEBUG_PRINT_ERROR("\n Unsupported config index = %u", index);
     break;
@@ -1253,6 +1371,13 @@ unsigned venc_dev::venc_start(void)
     recon_buffers_count = MAX_RECON_BUFFERS - 2;
   else
     recon_buffers_count = MAX_RECON_BUFFERS;
+
+  if (ltrmode.ltr_mode == (unsigned long)QOMX_VIDEO_LTRMode_Auto)
+  {
+    recon_buffers_count = MAX_RECON_BUFFERS;
+    DEBUG_PRINT_HIGH("ltr mode enabled, so set recon buffers "
+      "count to %d", recon_buffers_count);
+  }
 
   if (!venc_allocate_recon_buffers())
     return ioctl(m_nDriver_fd, VEN_IOCTL_CMD_START, NULL);
@@ -1855,6 +1980,74 @@ bool venc_dev::venc_set_bitstream_restrict_in_vui(OMX_BOOL enable)
   if(ioctl(m_nDriver_fd, VEN_IOCTL_SET_VUI_BITSTREAM_RESTRICT_FLAG, (void *)&ioctl_msg) < 0)
   {
     DEBUG_PRINT_ERROR("Request for setting bitstream_restrict flag in VUI failed");
+    return false;
+  }
+  return true;
+}
+
+bool venc_dev::venc_set_ltrmode(QOMX_VIDEO_LTRMODETYPE mode)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_ltrmode ltr_mode;
+  ltr_mode.ltr_mode = (unsigned long)mode;
+  DEBUG_PRINT_HIGH("Set ltr mode: %d", mode);
+  ioctl_msg.in = (void*)&ltr_mode;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_LTRMODE, (void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("ERROR: Setting ltrmode failed");
+    return false;
+  }
+  ltrmode.ltr_mode = (unsigned long)mode;
+  return true;
+}
+
+bool venc_dev::venc_set_ltrcount(OMX_U32 count)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_ltrcount ltr_count;
+  ltr_count.ltr_count = (unsigned long)count;
+  DEBUG_PRINT_HIGH("Set ltr count: %d", count);
+  ioctl_msg.in = (void*)&ltr_count;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_LTRCOUNT, (void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("ERROR: Setting ltrcount failed");
+    return false;
+  }
+  ltrcount.ltr_count = (unsigned long)count;
+  return true;
+}
+
+bool venc_dev::venc_set_ltrperiod(OMX_U32 period)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_ltrperiod ltr_period;
+  ltr_period.ltr_period = (unsigned long)period;
+  DEBUG_PRINT_HIGH("Set ltr period: %d", period);
+  ioctl_msg.in = (void*)&ltr_period;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_LTRPERIOD, (void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("ERROR: Setting ltrperiod failed");
+    return false;
+  }
+  ltrperiod.ltr_period = (unsigned long)period;
+  return true;
+}
+
+bool venc_dev::venc_set_ltruse(OMX_U32 id, OMX_U32 frames)
+{
+  venc_ioctl_msg ioctl_msg = {NULL,NULL};
+  venc_ltruse ltr_use;
+  ltr_use.ltr_id = (unsigned long)id;
+  ltr_use.ltr_frames = (unsigned long)frames;
+  DEBUG_PRINT_HIGH("Set ltr use: id = %d, ltr_frames = %d", id, frames);
+  ioctl_msg.in = (void*)&ltr_use;
+  ioctl_msg.out = NULL;
+  if(ioctl (m_nDriver_fd, VEN_IOCTL_SET_LTRUSE, (void*)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("ERROR: Setting ltruse failed");
     return false;
   }
   return true;
