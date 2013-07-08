@@ -1703,7 +1703,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       }
     }
   }
-
+  m_turbo_mode = false;
   if (eRet != OMX_ErrorNone)
   {
     DEBUG_PRINT_ERROR("\n Component Init Failed");
@@ -3782,6 +3782,22 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           }
       }
       break;
+    case OMX_QcomIndexConfigTurboMode:
+      {
+        QOMX_ENABLETYPE *turbo = (QOMX_ENABLETYPE *)paramData;
+        if (turbo->bEnable == OMX_TRUE) {
+          DEBUG_PRINT_HIGH("TURBO mode enabled");
+          m_turbo_mode = true;
+          if (set_turbo_mode(m_turbo_mode)) {
+             DEBUG_PRINT_ERROR("set_turbo_mode failed");
+             m_turbo_mode = false;
+          }
+        } else {
+          DEBUG_PRINT_HIGH("TURBO mode disabled");
+          m_turbo_mode = false;
+        }
+      }
+      break;
     default:
     {
       DEBUG_PRINT_ERROR("Setparameter: unknown param %d\n", paramIndex);
@@ -3942,14 +3958,10 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 
   DEBUG_PRINT_LOW("Set Config Called");
 
-  if (m_state == OMX_StateExecuting)
+  switch(configIndex)
   {
-     DEBUG_PRINT_ERROR("set_config:Ignore in Exe state\n");
-     return ret;
-  }
-
-  if (configIndex == OMX_IndexVendorVideoExtraData)
-  {
+    case OMX_IndexVendorVideoExtraData:
+    {
     OMX_VENDOR_EXTRADATATYPE *config = (OMX_VENDOR_EXTRADATATYPE *) configData;
     DEBUG_PRINT_LOW("Index OMX_IndexVendorVideoExtraData called");
     if (!strcmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc"))
@@ -4066,19 +4078,41 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             DEBUG_PRINT_LOW("set_config - Error: Unknown VC1 profile\n");
         }
     }
-    return ret;
   }
-  else if (configIndex == OMX_IndexConfigVideoNalSize)
+  break;
+  case OMX_IndexConfigVideoNalSize:
   {
 
     pNal = reinterpret_cast < OMX_VIDEO_CONFIG_NALSIZE * >(configData);
     nal_length = pNal->nNaluBytes;
     m_frame_parser.init_nal_length(nal_length);
     DEBUG_PRINT_LOW("OMX_IndexConfigVideoNalSize called with Size %d",nal_length);
-    return ret;
+  }
+  break;
+  case OMX_QcomIndexConfigTurboMode:
+    {
+      QOMX_ENABLETYPE *turbo = (QOMX_ENABLETYPE *)configData;
+      if (turbo->bEnable == OMX_TRUE) {
+        DEBUG_PRINT_HIGH("TURBO mode enabled");
+        m_turbo_mode = true;
+        if (set_turbo_mode(m_turbo_mode)) {
+          DEBUG_PRINT_ERROR("set_turbo_mode failed!!");
+          m_turbo_mode = false;
+        }
+      } else {
+        DEBUG_PRINT_HIGH("TURBO mode disabled");
+        m_turbo_mode = false;
+      }
+    }
+    break;
+  default:
+    {
+      DEBUG_PRINT_ERROR("SetConfig: unknown index %d\n", configIndex);
+      ret = OMX_ErrorUnsupportedIndex;
+    }
   }
 
-  return OMX_ErrorNotImplemented;
+  return ret;
 }
 
 /* ======================================================================
@@ -6239,6 +6273,7 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     m_ftb_q.m_read = m_ftb_q.m_write =0;
     m_cmd_q.m_read = m_cmd_q.m_write =0;
     m_etb_q.m_read = m_etb_q.m_write =0;
+    m_turbo_mode = false;
 #ifdef _ANDROID_
     if (m_debug_timestamp)
     {
@@ -8412,7 +8447,7 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
       {
         drv_ctx.frame_rate.fps_numerator = 1e6;
         drv_ctx.frame_rate.fps_denominator = frm_int;
-        DEBUG_PRINT_LOW("set_frame_rate: frm_int(%u) fps(%f)",
+        DEBUG_PRINT_HIGH("set_frame_rate: frm_int(%u) fps(%f)",
                          frm_int, drv_ctx.frame_rate.fps_numerator /
                          (float)drv_ctx.frame_rate.fps_denominator);
         ioctl_msg.in = &drv_ctx.frame_rate;
@@ -10136,5 +10171,22 @@ int omx_vdec::unsecureDisplay(int mode) {
         displayBinder->unsecuring(mode);
     else
         DEBUG_PRINT_ERROR("unsecureDisplay(%d) display.qservice unavailable", mode);
+    return 0;
+}
+
+int omx_vdec::set_turbo_mode(bool mode)
+{
+    if (mode == (int)true) {
+        struct vdec_ioctl_msg ioctl_msg;
+        DEBUG_PRINT_HIGH("Enable Turbo mode");
+        if (ioctl(drv_ctx.video_driver_fd,VDEC_IOCTL_SET_PERF_CLK,
+            &ioctl_msg) < 0) {
+            DEBUG_PRINT_ERROR("ioctl VDEC_IOCTL_SET_PERF_CLK failed");
+            return 1;
+        }
+    } else {
+        DEBUG_PRINT_HIGH("Disable Turbo mode not suported");
+        return 1;
+    }
     return 0;
 }

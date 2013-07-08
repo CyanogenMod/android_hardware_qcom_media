@@ -380,6 +380,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexParamVideoQPRange = 0x7F000023,
 
     OMX_QcomIndexParamEnableVUIStreamRestrictFlag = 0x7F000024,
+
+    /*"OMX.QCOM.index.config.TurboMode"*/
+    OMX_QcomIndexConfigTurboMode = 0x7F000025,
 };
 
 /**
