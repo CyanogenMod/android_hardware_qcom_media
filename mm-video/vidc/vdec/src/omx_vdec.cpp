@@ -553,6 +553,8 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
 #endif
                     ,m_desc_buffer_ptr(NULL)
                     ,m_extradata(NULL)
+                    ,m_pipe_in(-1)
+                    ,m_pipe_out(-1)
 {
   /* Assumption is that , to begin with , we have all the frames with decoder */
   DEBUG_PRINT_HIGH("In OMX vdec Constructor");
@@ -628,8 +630,10 @@ omx_vdec::~omx_vdec()
 {
   m_pmem_info = NULL;
   DEBUG_PRINT_HIGH("In OMX vdec Destructor");
-  if(m_pipe_in) close(m_pipe_in);
-  if(m_pipe_out) close(m_pipe_out);
+  if(m_pipe_in > 0)
+    close(m_pipe_in);
+  if(m_pipe_out > 0)
+    close(m_pipe_out);
   m_pipe_in = -1;
   m_pipe_out = -1;
   if (msg_thread_created)
@@ -642,8 +646,11 @@ omx_vdec::~omx_vdec()
     DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
     pthread_join(async_thread_id,NULL);
   }
-  DEBUG_PRINT_HIGH("Calling close() on Video Driver");
-  close (drv_ctx.video_driver_fd);
+  if(drv_ctx.video_driver_fd > 0)
+  {
+    DEBUG_PRINT_HIGH("Calling close() on Video Driver");
+    close (drv_ctx.video_driver_fd);
+  }
   drv_ctx.video_driver_fd = -1;
 
   pthread_mutex_destroy(&m_lock);
