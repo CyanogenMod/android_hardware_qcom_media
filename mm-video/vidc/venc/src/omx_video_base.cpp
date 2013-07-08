@@ -1944,6 +1944,13 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
       memcpy(pParam, &m_sIntraperiod, sizeof(m_sIntraperiod));
       break;
     }
+  case OMX_QcomIndexParamVideoPerformanceLevel:
+    {
+      DEBUG_PRINT_LOW("get_config:OMX_QcomIndexParamVideoPerformanceLevel\n");
+      OMX_QCOM_QUERY_PERFORMANCE *pParam = reinterpret_cast<OMX_QCOM_QUERY_PERFORMANCE*>(configData);
+      pParam->performance = m_curr_perf;
+      break;
+    }
   default:
     DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
     return OMX_ErrorUnsupportedIndex;

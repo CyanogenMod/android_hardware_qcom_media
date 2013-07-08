@@ -571,6 +571,19 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
 
 }
 
+bool venc_dev::venc_get_curr_perf_lvl(OMX_PTR curr_perf)
+{
+    struct vdec_ioctl_msg ioctl_msg = {NULL,NULL};
+    ioctl_msg.out = (void*)curr_perf;
+    if (ioctl(m_nDriver_fd, VEN_IOCTL_GET_PERF_LEVEL, &ioctl_msg) < 0)
+    {
+      DEBUG_PRINT_ERROR("ioctl VENC_IOCTL_GET_CURR_PERF_LVL failed");
+      return false;
+    }
+    DEBUG_PRINT_HIGH("get_curr_perf_lvl = %u", *(OMX_U32 *)(curr_perf));
+    return true;
+}
+
 bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 {
   venc_ioctl_msg ioctl_msg = {NULL,NULL};

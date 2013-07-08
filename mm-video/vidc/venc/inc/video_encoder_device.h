@@ -72,6 +72,7 @@ public:
                         unsigned long *,unsigned long);
   bool venc_set_buf_req(unsigned long *,unsigned long *,
                         unsigned long *,unsigned long);
+  bool venc_get_curr_perf_lvl(OMX_PTR);
   bool venc_set_param(void *,OMX_INDEXTYPE);
   bool venc_set_config(void *configData, OMX_INDEXTYPE index);
   bool venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel);

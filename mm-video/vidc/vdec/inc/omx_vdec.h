@@ -777,6 +777,7 @@ private:
     unsigned nal_length;
     bool look_ahead_nal;
     int first_frame;
+    unsigned int current_performance;
     unsigned char *first_buffer;
     int first_frame_size;
     unsigned char m_hwdevice_name[80];
