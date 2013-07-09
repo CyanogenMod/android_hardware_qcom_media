@@ -496,7 +496,7 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                       m_inp_bPopulated(OMX_FALSE),
                       m_out_bPopulated(OMX_FALSE),
                       m_flags(0),
-                      m_out_sync_frm_received(OMX_FALSE),
+                      m_out_sync_frm_received(OMX_TRUE),
                       m_inp_bEnabled(OMX_TRUE),
                       m_out_bEnabled(OMX_TRUE),
                       m_platform_list(NULL),
@@ -6767,11 +6767,14 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     if(buffer->nFlags & OMX_BUFFERFLAG_SYNCFRAME)
     {
       m_out_sync_frm_received = OMX_TRUE;
+      DEBUG_PRINT_HIGH("Sync frame received");
     }
-    else if(ptr_respbuffer->pic_type==PICTURE_TYPE_P)
+    else if ((drv_ctx.decoder_format == VDEC_CODECTYPE_MPEG2) ||
+       (drv_ctx.decoder_format == VDEC_CODECTYPE_VC1))
     {
       DEBUG_PRINT_HIGH("Sync frame not received, marking buffer "
-        "0x%x flags 0x%x as decode only", buffer->pBuffer, buffer->nFlags);
+          "0x%x with flags 0x%x as datacorrupt",
+          buffer->pBuffer, buffer->nFlags);
       buffer->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
     }
   }
