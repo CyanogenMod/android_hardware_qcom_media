@@ -8744,6 +8744,7 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
       }
     }
   }
+  ret = get_buffer_req(&drv_ctx.op_buf);
   return ret;
 }
 
