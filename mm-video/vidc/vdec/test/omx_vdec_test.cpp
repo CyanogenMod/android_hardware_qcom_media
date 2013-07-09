@@ -1906,6 +1906,13 @@ int Play_Decoder()
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexEnableExtnUserData,
                      (OMX_PTR)&extra_data);
 #endif
+#if 0
+    QOMX_ENABLETYPE enable;
+    enable.bEnable = OMX_TRUE;
+    OMX_SetConfig(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexConfigTurboMode,
+                     (OMX_PTR)&enable);
+#endif
+
     /* Query the decoder outport's min buf requirements */
     CONFIG_VERSION_SIZE(portFmt);
 

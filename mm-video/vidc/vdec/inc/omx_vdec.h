@@ -898,8 +898,10 @@ private:
     static bool m_secure_display; //For qservice
     int secureDisplay(int mode);
     int unsecureDisplay(int mode);
+    int set_turbo_mode(bool mode);
     bool msg_thread_created;
     bool async_thread_created;
+    bool m_turbo_mode;
 };
 
 #ifdef _COPPER_
