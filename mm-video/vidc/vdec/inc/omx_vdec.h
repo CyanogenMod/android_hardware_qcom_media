@@ -850,6 +850,8 @@ private:
     bool streaming[MAX_PORT];
 #endif
     unsigned int m_fill_output_msg;
+    bool m_use_uncache_buffers;
+
     class allocate_color_convert_buf {
     public:
         allocate_color_convert_buf();

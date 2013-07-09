@@ -81,6 +81,7 @@ public:
   bool venc_loaded_stop(void);
   bool venc_loaded_start_done(void);
   bool venc_loaded_stop_done(void);
+  bool venc_get_uncache_flag(void);
   OMX_U32 m_nDriver_fd;
   bool m_profile_set;
   bool m_level_set;
@@ -106,6 +107,8 @@ public:
   int m_eProfile;
   int m_eLevel;
   int etb_count;
+  bool m_use_uncache_buffers;
+
 private:
   class omx_venc *venc_encoder;
   struct venc_basecfg             m_sVenc_cfg;

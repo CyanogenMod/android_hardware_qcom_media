@@ -2699,6 +2699,7 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
 
   OMX_ERRORTYPE eRet = OMX_ErrorNone;
   unsigned   i = 0;
+  int flags = 0;
 
   DEBUG_PRINT_HIGH("\n allocate_input_buffer()::");
   if(bytes != m_sInPortDef.nBufferSize || secure_session)
@@ -2763,10 +2764,19 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
     (*bufferHdr)->pAppPrivate       = appData;
     (*bufferHdr)->nInputPortIndex   = PORT_INDEX_IN;
 
+    if (dev_get_uncache_flag())
+    {
+      flags = 0;
+      DEBUG_PRINT_HIGH("uncache buffers requested");
+    }
+    else
+    {
+      flags = ION_FLAG_CACHED;
+    }
 #ifdef USE_ION
     m_pInput_ion[i].ion_device_fd = alloc_map_ion_memory(m_sInPortDef.nBufferSize,
                                     &m_pInput_ion[i].ion_alloc_data,
-                                    &m_pInput_ion[i].fd_ion_data,ION_FLAG_CACHED);
+                                    &m_pInput_ion[i].fd_ion_data, flags);
     if(m_pInput_ion[i].ion_device_fd < 0) {
       DEBUG_PRINT_ERROR("\nERROR:ION device open() Failed");
       return OMX_ErrorInsufficientResources;
@@ -4325,6 +4335,13 @@ int omx_video::alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_d
         if(!secure_session && (flag & ION_FLAG_CACHED))
         {
           alloc_data->flags = ION_FLAG_CACHED;
+        }
+        if (dev_get_uncache_flag() &&
+           (alloc_data->flags & ION_FLAG_CACHED))
+        {
+          alloc_data->flags &= ~ION_FLAG_CACHED;
+          DEBUG_PRINT_HIGH("uncache buffers requested, flags = 0x%x",
+             alloc_data->flags);
         }
 
         if (secure_session)

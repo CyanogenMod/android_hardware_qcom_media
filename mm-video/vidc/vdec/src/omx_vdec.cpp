@@ -547,6 +547,7 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                       m_out_mem_region_smi(OMX_FALSE),
                       m_out_pvt_entry_pmem(OMX_FALSE),
                       secure_mode(false),
+                      m_use_uncache_buffers(false),
                       external_meta_buffer(false),
                       external_meta_buffer_iommu(false)
 #ifdef _ANDROID_
@@ -609,6 +610,19 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
 #endif
   m_fill_output_msg = OMX_COMPONENT_GENERATE_FTB;
   client_buffers.set_vdec_client(this);
+
+#ifdef _ANDROID_
+  /* by default cache buffers enabled, to */
+  /* use uncache buffers, set below command */
+  /* setprop persist.video.mem.usecache 0 */
+  char cache_value[PROPERTY_VALUE_MAX] = {0};
+  property_get("persist.video.mem.usecache", cache_value, "1");
+  if (!atoi(cache_value))
+  {
+    m_use_uncache_buffers = true;
+    DEBUG_PRINT_HIGH("persist.video.mem.usecache value is %d", atoi(cache_value));
+  }
+#endif
 }
 
 
@@ -3042,6 +3056,11 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_SMI_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED);
 #endif
 #endif
+                if (m_use_uncache_buffers) {
+                   nativeBuffersUsage->nUsage |= GRALLOC_USAGE_PRIVATE_UNCACHED;
+                   DEBUG_PRINT_HIGH("modified to UNCACHED buffers (nUsage = 0x%x)",
+                      nativeBuffersUsage->nUsage);
+                }
             } else {
                 DEBUG_PRINT_ERROR("\n get_parameter: OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage failed!");
                 eRet = OMX_ErrorBadParameter;
@@ -7857,6 +7876,13 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
   if (!secure_mode && (flag & ION_FLAG_CACHED))
   {
     alloc_data->flags |= ION_FLAG_CACHED;
+  }
+  if (m_use_uncache_buffers && !arbitrary_bytes &&
+     (alloc_data->flags & ION_FLAG_CACHED))
+  {
+    alloc_data->flags &= ~ION_FLAG_CACHED;
+    DEBUG_PRINT_HIGH("uncache buffers requested, flags = 0x%x",
+       alloc_data->flags);
   }
   alloc_data->len = buffer_size;
   alloc_data->align = clip2(alignment);

@@ -203,6 +203,7 @@ public:
   virtual bool dev_loaded_start_done(void) = 0;
   virtual bool dev_loaded_stop_done(void) = 0;
   virtual bool is_secure_session(void) = 0;
+  virtual bool dev_get_uncache_flag(void) = 0;
 #ifdef _ANDROID_ICS_
   void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif
