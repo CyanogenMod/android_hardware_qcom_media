@@ -6948,6 +6948,22 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     if (buffer->nFilledLen > 0) {
       time_stamp_dts.get_next_timestamp(buffer,
         is_interlaced && is_duplicate_ts_valid);
+        if (m_debug_timestamp)
+        {
+          {
+            OMX_TICKS expected_ts = 0;
+            m_timestamp_list.pop_min_ts(expected_ts);
+            if (is_interlaced && is_duplicate_ts_valid) {
+              m_timestamp_list.pop_min_ts(expected_ts);
+            }
+            DEBUG_PRINT_LOW("\n Current timestamp (%lld),Popped TIMESTAMP (%lld) from list",
+                           buffer->nTimeStamp, expected_ts);
+
+            if (buffer->nTimeStamp != expected_ts) {
+              DEBUG_PRINT_ERROR("\n ERROR in omx_vdec::async_message_process timestamp Check");
+            }
+          }
+        }
     } else {
       m_inp_err_count++;
       time_stamp_dts.remove_time_stamp(
@@ -6955,23 +6971,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                 is_interlaced && is_duplicate_ts_valid);
     }
 
-    if (m_debug_timestamp)
-    {
-      {
-        OMX_TICKS expected_ts = 0;
-        m_timestamp_list.pop_min_ts(expected_ts);
-        if (is_interlaced && is_duplicate_ts_valid) {
-          m_timestamp_list.pop_min_ts(expected_ts);
-        }
-        DEBUG_PRINT_LOW("\n Current timestamp (%lld),Popped TIMESTAMP (%lld) from list",
-                       buffer->nTimeStamp, expected_ts);
 
-        if (buffer->nTimeStamp != expected_ts)
-        {
-          DEBUG_PRINT_ERROR("\n ERROR in omx_vdec::async_message_process timestamp Check");
-        }
-      }
-    }
   }
   if (m_cb.FillBufferDone)
   {
