@@ -1337,6 +1337,20 @@ int omx_vdec::update_resolution(int width, int height, int stride, int scan_line
 
 OMX_ERRORTYPE omx_vdec::is_video_session_supported()
 {
+#ifdef H264_PROFILE_LEVEL_CHECK
+  if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",
+			OMX_MAX_STRINGNAME_SIZE) &&
+      m_profile_lvl.eProfile == OMX_VIDEO_AVCProfileHigh) {
+      if (m_profile_lvl.eLevel > OMX_VIDEO_AVCLevel3) {
+      DEBUG_PRINT_ERROR("Unsupported level for H264 High profile");
+      return OMX_ErrorUnsupportedSetting;
+    }
+    m_decoder_capability.max_width = 864;
+    m_decoder_capability.max_height = 480;
+    DEBUG_PRINT_LOW(" set max_width x max_height to 864x480 for H264 high profile");
+  }
+#endif
+
   if ((drv_ctx.video_resolution.frame_width *
        drv_ctx.video_resolution.frame_height >
        m_decoder_capability.max_width *
@@ -3725,6 +3739,17 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         }
       }
       break;
+     case OMX_IndexParamVideoProfileLevelCurrent:
+       {
+         OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam =
+		(OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
+         if (pParam) {
+           m_profile_lvl.eProfile = pParam->eProfile;
+           m_profile_lvl.eLevel = pParam->eLevel;
+         }
+         break;
+
+       }
     default:
     {
       DEBUG_PRINT_ERROR("Setparameter: unknown param %d\n", paramIndex);

@@ -904,6 +904,7 @@ private:
     bool msg_thread_created;
     bool async_thread_created;
 
+    OMX_VIDEO_PARAM_PROFILELEVELTYPE m_profile_lvl;
     unsigned int m_fill_output_msg;
     bool client_set_fps;
     class allocate_color_convert_buf {

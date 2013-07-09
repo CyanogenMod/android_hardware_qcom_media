@@ -52,6 +52,7 @@ libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -DSMOOTH_STREAMING_DISABLED
+libOmxVdec-def += -DH264_PROFILE_LEVEL_CHECK
 libOmxVdec-def += -D_MSM8974_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
