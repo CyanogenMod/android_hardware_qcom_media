@@ -3191,6 +3191,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       }
       else if(OMX_DirInput == portDefn->eDir)
       {
+        bool port_format_changed = false;
         if((portDefn->format.video.xFramerate >> 16) > 0 &&
            (portDefn->format.video.xFramerate >> 16) <= MAX_SUPPORTED_FPS)
         {
@@ -3225,6 +3226,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
              DEBUG_PRINT_LOW("\n SetParam IP: WxH(%lu x %lu)\n",
                            portDefn->format.video.nFrameWidth,
                            portDefn->format.video.nFrameHeight);
+             port_format_changed = true;
              if (portDefn->format.video.nFrameHeight != 0x0 &&
                  portDefn->format.video.nFrameWidth != 0x0)
              {
@@ -3250,16 +3252,17 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                    eRet = get_buffer_req(&drv_ctx.op_buf);
              }
          }
-         else if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
+         if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
                   || portDefn->nBufferSize != drv_ctx.ip_buf.buffer_size)
          {
+             port_format_changed = true;
              vdec_allocatorproperty *buffer_prop = &drv_ctx.ip_buf;
              drv_ctx.ip_buf.actualcount = portDefn->nBufferCountActual;
              drv_ctx.ip_buf.buffer_size = (portDefn->nBufferSize + buffer_prop->alignment - 1) &
                       (~(buffer_prop->alignment - 1));
              eRet = set_buffer_req(buffer_prop);
          }
-         else
+         if (false == port_format_changed)
          {
              DEBUG_PRINT_ERROR("ERROR: IP Requirements(#%d: %u) Requested(#%lu: %lu)\n",
                drv_ctx.ip_buf.mincount, drv_ctx.ip_buf.buffer_size,
