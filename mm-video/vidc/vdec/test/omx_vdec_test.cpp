@@ -36,6 +36,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+#include <media/msm_media_info.h>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/mman.h>
@@ -855,8 +856,8 @@ void* fbd_thread(void* pArg)
           if (color_fmt == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m)
           {
              printf("\n width: %d height: %d\n", crop_rect.nWidth, crop_rect.nHeight);
-             unsigned int stride = ((crop_rect.nWidth + 127) & (~127));
-             unsigned int scanlines = ((crop_rect.nHeight + 31) & (~31));
+             unsigned int stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, portFmt.format.video.nFrameWidth);
+             unsigned int scanlines = VENUS_Y_SCANLINES(COLOR_FMT_NV12, portFmt.format.video.nFrameHeight);
              char *temp = (char *) pBuffer->pBuffer;
              int i = 0;
 
