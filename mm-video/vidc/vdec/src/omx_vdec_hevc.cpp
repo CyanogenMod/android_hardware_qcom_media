@@ -5830,6 +5830,10 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 	} else{
 		/*TODO: How to handle this case */
 		DEBUG_PRINT_ERROR(" \n Failed to call streamon on OUTPUT \n");
+                DEBUG_PRINT_LOW("If Stream on failed no buffer should be queued");
+                post_event ((unsigned int)buffer,VDEC_S_SUCCESS,
+                           OMX_COMPONENT_GENERATE_EBD);
+                return OMX_ErrorBadParameter;
 	}
 }
   DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%d)",
