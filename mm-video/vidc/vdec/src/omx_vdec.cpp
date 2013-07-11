@@ -552,7 +552,8 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                       secure_mode(false),
                       m_use_uncache_buffers(false),
                       external_meta_buffer(false),
-                      external_meta_buffer_iommu(false)
+                      external_meta_buffer_iommu(false),
+                      current_performance(0)
 #ifdef _ANDROID_
                     ,iDivXDrmDecrypt(NULL)
 #endif
@@ -1367,6 +1368,13 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
       eRet = OMX_ErrorInsufficientResources;
       goto cleanup;
   }
+
+  ioctl_msg = {NULL,NULL};
+  ioctl_msg.out = (void*)&current_performance;
+  (void)(ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_GET_PERF_LEVEL, &ioctl_msg));
+  DEBUG_PRINT_HIGH("component_init: current performance level = %u ",
+                                    current_performance);
+
 #ifdef _ANDROID_
   if(is_secure)
     sendBroadCastEvent(String16("qualcomm.intent.action.SECURE_START_DONE"));
@@ -3977,6 +3985,16 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
     {
       OMX_CONFIG_RECTTYPE *rect = (OMX_CONFIG_RECTTYPE *) configData;
       memcpy(rect, &rectangle, sizeof(OMX_CONFIG_RECTTYPE));
+      break;
+    }
+    case OMX_QcomIndexParamVideoPerformanceLevel:
+    {
+      struct vdec_ioctl_msg ioctl_msg = {NULL,NULL};
+      OMX_QCOM_QUERY_PERFORMANCE *decoder_cur_perf_lvl =
+        (OMX_QCOM_QUERY_PERFORMANCE*)configData;
+      decoder_cur_perf_lvl->performance = current_performance;
+      DEBUG_PRINT_HIGH("get_config: current performance level = %d ",
+                                    decoder_cur_perf_lvl->performance);
       break;
     }
 

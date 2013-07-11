@@ -197,6 +197,7 @@ public:
   virtual bool dev_empty_buf(void *, void *,unsigned,unsigned) = 0;
   virtual bool dev_fill_buf(void *buffer, void *,unsigned,unsigned) = 0;
   virtual bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32) = 0;
+  virtual bool dev_get_curr_perf_lvl(OMX_PTR) = 0;
   virtual bool dev_get_seq_hdr(void *, unsigned, unsigned *) = 0;
   virtual bool dev_loaded_start(void) = 0;
   virtual bool dev_loaded_stop(void) = 0;
@@ -563,6 +564,8 @@ public:
   unsigned int m_flags;
   unsigned int m_etb_count;
   unsigned int m_fbd_count;
+
+  unsigned int m_curr_perf;
 #ifdef _ANDROID_
   // Heap pointer to frame buffers
   sp<MemoryHeapBase>    m_heap_ptr;
