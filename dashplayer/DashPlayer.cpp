@@ -47,7 +47,13 @@
 #include <media/stagefright/MediaErrors.h>
 #include <media/stagefright/MetaData.h>
 #include <TextDescriptions.h>
+
+#ifdef ANDROID_JB_MR2
+#include <gui/IGraphicBufferProducer.h>
+#else
 #include <gui/ISurfaceTexture.h>
+#endif
+
 #include <cutils/properties.h>
 #include "avc_utils.h"
 
@@ -143,6 +149,15 @@ void DashPlayer::setDataSource(int fd, int64_t offset, int64_t length) {
    ALOGE("DashPlayer::setDataSource not Implemented...");
 }
 
+#ifdef ANDROID_JB_MR2
+void DashPlayer::setVideoSurfaceTexture(const sp<IGraphicBufferProducer> &bufferProducer) {
+    sp<AMessage> msg = new AMessage(kWhatSetVideoNativeWindow, id());
+    sp<Surface> surface(bufferProducer != NULL ?
+                new Surface(bufferProducer) : NULL);
+    msg->setObject("native-window", new NativeWindowWrapper(surface));
+    msg->post();
+}
+#else
 void DashPlayer::setVideoSurfaceTexture(const sp<ISurfaceTexture> &surfaceTexture) {
     sp<AMessage> msg = new AMessage(kWhatSetVideoNativeWindow, id());
     sp<SurfaceTextureClient> surfaceTextureClient(surfaceTexture != NULL ?
@@ -150,6 +165,7 @@ void DashPlayer::setVideoSurfaceTexture(const sp<ISurfaceTexture> &surfaceTextur
     msg->setObject("native-window", new NativeWindowWrapper(surfaceTextureClient));
     msg->post();
 }
+#endif
 
 void DashPlayer::setAudioSink(const sp<MediaPlayerBase::AudioSink> &sink) {
     sp<AMessage> msg = new AMessage(kWhatSetAudioSink, id());
