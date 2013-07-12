@@ -1314,7 +1314,8 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                         m_sParamH263.nPFrames = pParam->nPFrames;
                     } else {
                         m_sParamAVC.nPFrames = pParam->nPFrames;
-                        if (m_sParamAVC.eProfile != OMX_VIDEO_AVCProfileBaseline)
+                        if ((m_sParamAVC.eProfile != OMX_VIDEO_AVCProfileBaseline) &&
+                            (m_sParamAVC.eProfile != QOMX_VIDEO_AVCProfileConstrainedBaseline))
                             m_sParamAVC.nBFrames = pParam->nBFrames;
                         else
                             m_sParamAVC.nBFrames = 0;

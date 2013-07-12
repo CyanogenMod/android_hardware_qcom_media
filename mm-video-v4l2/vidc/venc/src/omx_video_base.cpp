@@ -3939,7 +3939,6 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileBaseline;
                 profileLevelType->eLevel   = OMX_VIDEO_AVCLevel51;
-
             } else if (profileLevelType->nProfileIndex == 1) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileMain;
                 profileLevelType->eLevel   = OMX_VIDEO_AVCLevel51;
