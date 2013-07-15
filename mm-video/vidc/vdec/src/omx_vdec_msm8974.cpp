@@ -3699,6 +3699,8 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 		      DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
 		      eRet = OMX_ErrorHardware;
 	      }
+#else
+       eRet = OMX_ErrorUnsupportedSetting;
 #endif
       }
      break;
