@@ -89,8 +89,9 @@ private:
     LINK_c2dFinish mC2DFinish;
     LINK_c2dWaitTimestamp mC2DWaitTimestamp;
     LINK_c2dDestroySurface mC2DDestroySurface;
+    LINK_c2dMapAddr mC2DMapAddr;
+    LINK_c2dUnMapAddr mC2DUnMapAddr;
 
-    int32_t mKgslFd;
     uint32_t mSrcSurface, mDstSurface;
     void * mSrcSurfaceDef;
     void * mDstSurfaceDef;
@@ -128,10 +129,12 @@ C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t d
      mC2DFinish = (LINK_c2dFinish)dlsym(mC2DLibHandle, "c2dFinish");
      mC2DWaitTimestamp = (LINK_c2dWaitTimestamp)dlsym(mC2DLibHandle, "c2dWaitTimestamp");
      mC2DDestroySurface = (LINK_c2dDestroySurface)dlsym(mC2DLibHandle, "c2dDestroySurface");
+     mC2DMapAddr = (LINK_c2dMapAddr)dlsym(mC2DLibHandle, "c2dMapAddr");
+     mC2DUnMapAddr = (LINK_c2dUnMapAddr)dlsym(mC2DLibHandle, "c2dUnMapAddr");
 
      if (!mC2DCreateSurface || !mC2DUpdateSurface || !mC2DReadSurface
         || !mC2DDraw || !mC2DFlush || !mC2DFinish || !mC2DWaitTimestamp
-        || !mC2DDestroySurface) {
+        || !mC2DDestroySurface || !mC2DMapAddr || !mC2DUnMapAddr) {
          ALOGE("%s: dlsym ERROR", __FUNCTION__);
          mError = -1;
          return;
@@ -149,16 +152,6 @@ C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t d
     mDstYSize = calcYSize(dstFormat, dstWidth, dstHeight);
 
     mFlags = flags; // can be used for rotation
-    mKgslFd = open("/dev/kgsl-2d0", O_RDWR | O_SYNC);
-    if (mKgslFd < 0) {
-        ALOGE("Cannot open device kgsl-2d0, trying kgsl-3d0\n");
-        mKgslFd = open("/dev/kgsl-3d0", O_RDWR | O_SYNC);
-        if (mKgslFd < 0) {
-            ALOGE("Failed to open device kgsl-3d0\n");
-            mError = -1;
-            return;
-        }
-    }
 
     mSrcSurfaceDef = getDummySurfaceDef(srcFormat, srcWidth, srcHeight, true);
     mDstSurfaceDef = getDummySurfaceDef(dstFormat, dstWidth, dstHeight, false);
@@ -200,7 +193,6 @@ C2DColorConverter::~C2DColorConverter()
     }
 
     dlclose(mC2DLibHandle);
-    close(mKgslFd);
 }
 
 int C2DColorConverter::convertC2D(int srcFd, void * srcData, int dstFd, void * dstData)
@@ -492,38 +484,31 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
  */
 void * C2DColorConverter::getMappedGPUAddr(int bufFD, void *bufPtr, size_t bufLen)
 {
-    struct kgsl_map_user_mem param;
-    memset(&param, 0, sizeof(param));
-    param.fd = bufFD;
-    param.offset = 0;
-    param.len = bufLen;
-    param.hostptr = (unsigned int)bufPtr;
-    param.memtype = KGSL_USER_MEM_TYPE_ION;
-    param.gpuaddr = 0;
+    C2D_STATUS status;
+    void *gpuaddr = NULL;
 
-    if (!ioctl(mKgslFd, IOCTL_KGSL_MAP_USER_MEM, &param, sizeof(param))) {
-        ALOGV("mapping successful for buffer %p size %d\n",
-               bufPtr, bufLen);
-        return (void *)param.gpuaddr;
+    status = mC2DMapAddr(bufFD, bufPtr, bufLen, 0, KGSL_USER_MEM_TYPE_ION,
+            &gpuaddr);
+    if (status != C2D_STATUS_OK) {
+        ALOGE("c2dMapAddr failed: status %d fd %d ptr %p len %d flags %d\n",
+                status, bufFD, bufPtr, bufLen, KGSL_USER_MEM_TYPE_ION);
+        return NULL;
     }
-    ALOGE("mapping failed w/ errno %s", strerror(errno));
-    return NULL;
+    ALOGV("c2d mapping created: gpuaddr %p fd %d ptr %p len %d\n",
+            gpuaddr, bufFD, bufPtr, bufLen);
+
+    return gpuaddr;
 }
 
 bool C2DColorConverter::unmapGPUAddr(uint32_t gAddr)
 {
-   int rc = 0;
-   struct kgsl_sharedmem_free param;
-   memset(&param, 0, sizeof(param));
-   param.gpuaddr = gAddr;
 
-   rc = ioctl(mKgslFd, IOCTL_KGSL_SHAREDMEM_FREE, (void *)&param,
-     sizeof(param));
-   if (rc < 0) {
-     ALOGE("%s: IOCTL_KGSL_SHAREDMEM_FREE failed rc = %d\n", __func__, rc);
-     return false;
-   }
-   return true;
+    C2D_STATUS status = mC2DUnMapAddr((void*)gAddr);
+
+    if (status != C2D_STATUS_OK)
+        ALOGE("c2dUnMapAddr failed: status %d gpuaddr %08x\n", status, gAddr);
+
+    return (status == C2D_STATUS_OK);
 }
 
 int32_t C2DColorConverter::getBuffReq(int32_t port, C2DBuffReq *req) {

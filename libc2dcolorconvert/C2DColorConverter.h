@@ -65,6 +65,10 @@ typedef C2D_STATUS (*LINK_c2dWaitTimestamp)( c2d_ts_handle timestamp );
 
 typedef C2D_STATUS (*LINK_c2dDestroySurface)( uint32 surface_id );
 
+typedef C2D_STATUS (*LINK_c2dMapAddr)( int mem_fd, void * hostptr, uint32 len, uint32 offset, uint32 flags, void ** gpuaddr);
+
+typedef C2D_STATUS (*LINK_c2dUnMapAddr)(void * gpuaddr);
+
 namespace android {
 
 enum ColorConvertFormat {
