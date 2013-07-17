@@ -1431,7 +1431,11 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamPortDefinition\n");
                 if (portDefn->nPortIndex == (OMX_U32) PORT_INDEX_IN) {
-                    DEBUG_PRINT_LOW("m_sInPortDef: size = %d, min cnt = %d, actual cnt = %d",
+                    dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
+                        &m_sInPortDef.nBufferCountActual,
+                        &m_sInPortDef.nBufferSize,
+                        m_sInPortDef.nPortIndex);
+                    DEBUG_PRINT_LOW("m_sInPortDef: size = %lu, min cnt = %lu, actual cnt = %lu",
                             m_sInPortDef.nBufferSize, m_sInPortDef.nBufferCountMin,
                             m_sInPortDef.nBufferCountActual);
                     memcpy(portDefn, &m_sInPortDef, sizeof(m_sInPortDef));
