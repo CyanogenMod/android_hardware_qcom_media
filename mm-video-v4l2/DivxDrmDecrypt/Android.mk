@@ -5,7 +5,7 @@ include $(CLEAR_VARS)
 #            Deploy the headers that can be exposed
 #===============================================================================
 
-LOCAL_COPY_HEADERS_TO   := mm-video/DivxDrmDecrypt
+LOCAL_COPY_HEADERS_TO   := mm-video-v4l2/DivxDrmDecrypt
 LOCAL_COPY_HEADERS      := inc/DivXDrmDecrypt.h
 
 LOCAL_CFLAGS := \
