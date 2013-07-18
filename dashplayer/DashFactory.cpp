@@ -42,10 +42,6 @@ class DashPlayerFactory : public MediaPlayerFactory::IFactory {
             if (len >= 5 && !strcasecmp(".mpd", &url[len - 4])) {
                 return kOurScore;
             }
-
-            if (strstr(url,"mpd")) {
-                return kOurScore;
-            }
         }
         return 0.0;
     }
