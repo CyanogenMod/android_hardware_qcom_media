@@ -76,6 +76,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define VC1_STRUCT_B_POS            24
 #define VC1_SEQ_LAYER_SIZE          36
 
+#define IS_NOT_ALIGNED( num, to) (num & (to-1))
+#define ALIGN( num, to ) (((num) + (to-1)) & (~(to-1)))
+#define SZ_2K (2048)
+
 typedef struct OMXComponentCapabilityFlagsType
 {
     ////////////////// OMX COMPONENT CAPABILITY RELATED MEMBERS
@@ -3521,6 +3525,28 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
     memcpy (pmem_data_buf, (buffer->pBuffer + buffer->nOffset),
             buffer->nFilledLen);
     DEBUG_PRINT_LOW("memcpy() done in ETBProxy for i/p Heap UseBuf");
+  } else if (m_sInPortDef.format.video.eColorFormat ==
+      OMX_COLOR_FormatYUV420SemiPlanar && !mUseProxyColorFormat) {
+      //For the case where YUV420SP buffers are qeueued to component
+      //by sources other than camera (Apps via MediaCodec), alignment
+      //of chroma-plane to 2K is necessary.
+      //For RGB buffers, color-conversion takes care of alignment
+      OMX_U32 width = m_sInPortDef.format.video.nFrameWidth;
+      OMX_U32 height = m_sInPortDef.format.video.nFrameHeight;
+      OMX_U32 chromaOffset = width * height;
+      if (IS_NOT_ALIGNED(chromaOffset, SZ_2K)) {
+          OMX_U32 chromaSize = (width * height)/2;
+          chromaOffset = ALIGN(chromaOffset,SZ_2K);
+          if (buffer->nAllocLen >= chromaOffset + chromaSize) {
+              OMX_U8* buf = buffer->pBuffer;
+              memmove(buf + chromaOffset, buf + (width*height), chromaSize);
+          } else {
+             DEBUG_PRINT_ERROR("Failed to align Chroma. from %u to %u : \
+                    Insufficient bufferLen=%u v/s Required=%u",
+                    (width*height), chromaOffset, buffer->nAllocLen,
+                    chromaOffset+chromaSize);
+          }
+      }
   }
 #ifdef _COPPER_
   if(dev_empty_buf(buffer, pmem_data_buf,nBufIndex,m_pInput_pmem[nBufIndex].fd) != true)
