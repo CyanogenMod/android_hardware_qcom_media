@@ -3671,7 +3671,11 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             /*Setting sync frame decoding on driver might change buffer
              * requirements so update them here*/
             if (get_buffer_req(&drv_ctx.ip_buf)) {
-              DEBUG_PRINT_ERROR("\n Sync frame setting failed: falied to get buffer requirements");
+              DEBUG_PRINT_ERROR("\n Sync frame setting failed: falied to get buffer i/p requirements");
+              eRet = OMX_ErrorUnsupportedSetting;
+            }
+            if (get_buffer_req(&drv_ctx.op_buf)) {
+              DEBUG_PRINT_ERROR("\n Sync frame setting failed: falied to get buffer o/p requirements");
               eRet = OMX_ErrorUnsupportedSetting;
             }
         }
