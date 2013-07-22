@@ -3765,6 +3765,10 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
               }
           }
 #endif
+          eRet = get_buffer_req(&drv_ctx.op_buf);
+          if (eRet != OMX_ErrorNone) {
+             DEBUG_PRINT_ERROR("get_buffer_req(op_buf) failed!!");
+          }
       }
       break;
 #ifdef MAX_RES_1080P
