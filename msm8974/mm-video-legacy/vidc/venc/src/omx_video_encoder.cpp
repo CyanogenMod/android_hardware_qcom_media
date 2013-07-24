@@ -1007,7 +1007,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           }
           meta_mode_enable = pParam->bStoreMetaData;
           if(meta_mode_enable) {
-            m_sInPortDef.nBufferCountActual = 4;
+            m_sInPortDef.nBufferCountActual = m_sInPortDef.nBufferCountMin;
             if(handle->venc_set_param(&m_sInPortDef,OMX_IndexParamPortDefinition) != true)
             {
               DEBUG_PRINT_ERROR("\nERROR: venc_set_param input failed");
