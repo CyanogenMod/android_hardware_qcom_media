@@ -386,6 +386,7 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
   ion_data.alloc_data.flags = 0x1 << ION_CP_MM_HEAP_ID;
 #endif
   ion_data.alloc_data.align = 4096;
+  ion_data.alloc_data.flags = 0;
 
   rc = ioctl(ion_data.ion_device_fd,ION_IOC_ALLOC,&ion_data.alloc_data);
   if(rc || !ion_data.alloc_data.handle) {

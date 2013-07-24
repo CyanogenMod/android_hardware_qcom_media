@@ -485,7 +485,7 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
 void * C2DColorConverter::getMappedGPUAddr(int bufFD, void *bufPtr, size_t bufLen)
 {
     struct kgsl_map_user_mem param;
-    memset(&param, 0, sizeof(param));
+    memset(&param,0x0,sizeof(param));
     param.fd = bufFD;
     param.len = bufLen;
     param.hostptr = (unsigned int)bufPtr;

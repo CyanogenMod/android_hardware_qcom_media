@@ -32,10 +32,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include "video_encoder_device.h"
 #include "omx_video_encoder.h"
-#include <linux/android_pmem.h>
 #include <media/hardware/HardwareAPI.h>
 #ifdef USE_ION
 #include <linux/msm_ion.h>
+#else
+#include <linux/android_pmem.h>
 #endif
 
 #define MPEG4_SP_START 0
@@ -1000,6 +1001,18 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
        }
        break;
     }
+  case OMX_QcomIndexParamEnableVUIStreamRestrictFlag:
+    {
+       QOMX_VUI_BITSTREAM_RESTRICT *pParam =
+          (QOMX_VUI_BITSTREAM_RESTRICT *)paramData;
+
+       if(venc_set_bitstream_restrict_in_vui(pParam->bEnable) == false)
+       {
+         DEBUG_PRINT_ERROR("Setting bitstream_restrict flag in VUI failed");
+         return false;
+       }
+       break;
+    }
   case OMX_IndexParamVideoSliceFMO:
   default:
 	  DEBUG_PRINT_ERROR("\nERROR: Unsupported parameter in venc_set_param: %u",
@@ -1784,7 +1797,19 @@ bool venc_dev::venc_set_inband_video_header(OMX_BOOL enable)
   DEBUG_PRINT_HIGH("Set inband sps/pps: %d", enable);
   if(ioctl(m_nDriver_fd, VEN_IOCTL_SET_SPS_PPS_FOR_IDR, (void *)&ioctl_msg) < 0)
   {
-    DEBUG_PRINT_ERROR("Request for setting slice delivery mode failed");
+    DEBUG_PRINT_ERROR("Request for inband sps/pps failed");
+    return false;
+  }
+  return true;
+}
+
+bool venc_dev::venc_set_bitstream_restrict_in_vui(OMX_BOOL enable)
+{
+  venc_ioctl_msg ioctl_msg = {NULL, NULL};
+  DEBUG_PRINT_HIGH("Set bistream_restrict in vui: %d", enable);
+  if(ioctl(m_nDriver_fd, VEN_IOCTL_SET_VUI_BITSTREAM_RESTRICT_FLAG, (void *)&ioctl_msg) < 0)
+  {
+    DEBUG_PRINT_ERROR("Request for setting bitstream_restrict flag in VUI failed");
     return false;
   }
   return true;

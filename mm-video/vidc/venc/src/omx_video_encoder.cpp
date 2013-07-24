@@ -394,6 +394,20 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
   m_state                   = OMX_StateLoaded;
   m_sExtraData = 0;
   m_sDebugSliceinfo = 0;
+
+  // For H264 enable some parameters in VUI by default
+  if (codec_type == OMX_VIDEO_CodingAVC)
+  {
+    QOMX_VUI_BITSTREAM_RESTRICT parm;
+    OMX_INIT_STRUCT(&parm, QOMX_VUI_BITSTREAM_RESTRICT);
+    parm.bEnable = OMX_TRUE;
+    if (set_parameter(NULL, (OMX_INDEXTYPE)OMX_QcomIndexParamEnableVUIStreamRestrictFlag,
+                     (OMX_PTR)&parm)) {
+      // Don't treat this as a fatal error
+      DEBUG_PRINT_ERROR("Unable to set EnableVUIStreamRestrictFlag as default");
+    }
+  }
+
 #ifdef _ANDROID_
   char value[PROPERTY_VALUE_MAX] = {0};
   property_get("vidc.venc.debug.sliceinfo", value, "0");
@@ -1115,6 +1129,17 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR))
       {
         DEBUG_PRINT_ERROR("ERROR: Request for setting inband sps/pps failed");
+        return OMX_ErrorUnsupportedSetting;
+      }
+      break;
+    }
+  case OMX_QcomIndexParamEnableVUIStreamRestrictFlag:
+    {
+      if(!handle->venc_set_param(paramData,
+            (OMX_INDEXTYPE)OMX_QcomIndexParamEnableVUIStreamRestrictFlag))
+      {
+        DEBUG_PRINT_ERROR("ERROR: Request for enabling bitstream_restrict "
+                        "flag in VUI failed");
         return OMX_ErrorUnsupportedSetting;
       }
       break;

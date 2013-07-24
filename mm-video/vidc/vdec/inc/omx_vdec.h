@@ -45,6 +45,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <inttypes.h>
 #include <cstddef>
+#include <gralloc_priv.h>
 
 #ifdef QCOM_BSP
 #define NEW_ION_API 1
@@ -58,6 +59,8 @@ static ptrdiff_t x;
 #if !defined(ION_FLAG_CACHED) && defined(CACHED)
 #define ION_FLAG_CACHED CACHED
 #endif
+#else
+#include <linux/android_pmem.h>
 #endif
 #include <binder/MemoryHeapBase.h>
 #include <ui/ANativeObjectBase.h>
@@ -89,7 +92,6 @@ extern "C"{
 #include <unistd.h>
 
 #if defined (_ANDROID_ICS_)
-#include <gralloc_priv.h>
 #include <IQService.h>
 #ifdef DISPLAYCAF
 #include <qdMetaData.h>
@@ -108,7 +110,6 @@ extern "C"{
 #ifdef MAX_RES_1080P
 #include "mp4_utils.h"
 #endif
-#include <linux/android_pmem.h>
 #include "extra_data_handler.h"
 #include "ts_parser.h"
 #include "vidc_color_converter.h"
@@ -386,6 +387,7 @@ public:
                                 OMX_PTR              appData,
                                 void *               eglImage);
     void complete_pending_buffer_done_cbs();
+    void update_resolution(int width, int height);
     struct video_driver_context drv_ctx;
     int  m_pipe_in;
     int  m_pipe_out;
@@ -531,7 +533,7 @@ private:
     OMX_ERRORTYPE free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
     void free_output_buffer_header();
     void free_input_buffer_header();
-
+    OMX_ERRORTYPE update_color_format(OMX_COLOR_FORMATTYPE eColorFormat);
     OMX_ERRORTYPE allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
                                              OMX_BUFFERHEADERTYPE **bufferHdr,
                                              OMX_U32              port,
@@ -631,13 +633,14 @@ private:
     OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
     OMX_U32 count_MB_in_extradata(OMX_OTHER_EXTRADATATYPE *extra);
 
-    bool align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
-                            OMX_U32 alignment);
 #ifdef USE_ION
     int alloc_map_ion_memory(OMX_U32 buffer_size,
               OMX_U32 alignment, struct ion_allocation_data *alloc_data,
               struct ion_fd_data *fd_data,int flag);
     void free_ion_memory(struct vdec_ion *buf_ion_info);
+#else
+    bool align_pmem_buffers(int pmem_fd, OMX_U32 buffer_size,
+                            OMX_U32 alignment);
 #endif
 
 
@@ -683,14 +686,6 @@ private:
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
     OMX_ERRORTYPE use_android_native_buffer(OMX_IN OMX_HANDLETYPE hComp, OMX_PTR data);
 #endif
-#if defined (_ANDROID_ICS_)
-    struct nativebuffer{
-        native_handle_t *nativehandle;
-        int inuse;
-    };
-    nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
-#endif
-
 
     //*************************************************************
     //*******************MEMBER VARIABLES *************************
@@ -853,11 +848,17 @@ private:
     bool external_meta_buffer_iommu;
     OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
     bool codec_config_flag;
+    OMX_CONFIG_RECTTYPE rectangle;
 #ifdef _COPPER_
     int capture_capability;
     int output_capability;
     bool streaming[MAX_PORT];
 #endif
+
+    // added for smooth streaming
+    private_handle_t * native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
+    bool m_use_smoothstreaming;
+
     unsigned int m_fill_output_msg;
     class allocate_color_convert_buf {
     public:
