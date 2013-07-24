@@ -282,7 +282,7 @@ void* venc_dev::async_venc_message_thread (void *input)
                 venc_msg.statuscode=VEN_S_SUCCESS;
                 omxhdr=omx_venc_base->m_out_mem_ptr+v4l2_buf.index;
                 venc_msg.buf.len= v4l2_buf.m.planes->bytesused;
-                venc_msg.buf.offset = 0;
+                venc_msg.buf.offset = v4l2_buf.m.planes->data_offset;
                 venc_msg.buf.flags = 0;
                 venc_msg.buf.ptrbuffer = (OMX_U8 *)omx_venc_base->m_pOutput_pmem[v4l2_buf.index].buffer;
                 venc_msg.buf.clientdata=(void*)omxhdr;
