@@ -3625,6 +3625,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
     memcpy (pmem_data_buf, (buffer->pBuffer + buffer->nOffset),
             buffer->nFilledLen);
     DEBUG_PRINT_LOW("memcpy() done in ETBProxy for i/p Heap UseBuf");
+  } else if (mUseProxyColorFormat) {
+    fd = m_pInput_pmem[nBufIndex].fd;
   }
 #ifdef _MSM8974_
   if(dev_empty_buf(buffer, pmem_data_buf,nBufIndex,fd) != true)
