@@ -51,6 +51,10 @@ else
 DISPLAY := display
 endif
 
+ifneq ($(TARGET_HAS_OLD_QCOM_ION),)
+libmm-venc-def += -DOLD_ION_API
+endif
+
 libmm-venc-inc      := bionic/libc/include
 libmm-venc-inc      += bionic/libstdc++/include
 libmm-venc-inc      += $(LOCAL_PATH)/inc

@@ -61,6 +61,10 @@ else
 DISPLAY := display
 endif
 
+ifneq ($(TARGET_HAS_OLD_QCOM_ION),)
+libOmxVdec-def += -DOLD_ION_API
+endif
+
 libmm-vdec-inc          := bionic/libc/include
 libmm-vdec-inc          += bionic/libstdc++/include
 libmm-vdec-inc          += $(LOCAL_PATH)/inc 

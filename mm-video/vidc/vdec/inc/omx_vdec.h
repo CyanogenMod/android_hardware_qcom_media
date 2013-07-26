@@ -47,7 +47,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstddef>
 #include <gralloc_priv.h>
 
-#ifdef QCOM_BSP
+#ifndef OLD_ION_API
 #define NEW_ION_API 1
 #endif
 
