@@ -176,22 +176,22 @@ typedef enum OMX_AUDIO_AC3_CHANNEL_CONFIG
    OMX_AUDIO_AC3_CHANNEL_CONFIG_1_0,
    OMX_AUDIO_AC3_CHANNEL_CONFIG_2_0,
    OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_1,
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_1, 
    OMX_AUDIO_AC3_CHANNEL_CONFIG_3_1,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2,
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2, 
    OMX_AUDIO_AC3_CHANNEL_CONFIG_3_2,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0_1,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2_1,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_2_1,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0_2,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2_2,
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0_1, 
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2_1, 
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_2_1,   
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_3_0_2, 
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_2_2_2, 
    OMX_AUDIO_AC3_CHANNEL_CONFIG_3_2_2,
-   OMX_AUDIO_AC3_CHANNEL_CONFIG_DEFAULT = 0xFFFF
+   OMX_AUDIO_AC3_CHANNEL_CONFIG_DEFAULT = 0xFFFF 
 } OMX_AUDIO_AC3_CHANNEL_CONFIG;
 
-/**
+/** 
  * AC-3 type
- *
+ * 
  *  STRUCT MEMBERS:
  *  nSize               : Size of the structure in bytes
  *  nVersion            : OMX specification version information
@@ -205,10 +205,10 @@ typedef enum OMX_AUDIO_AC3_CHANNEL_CONFIG
  *  bCompressionOn      : Flag to enable Compression
  *  bLfeOn              : Flag for LFE on/off
  *  bDelaySurroundChannels : Flag to put delay on surround channels
- *
+ * 
  */
 typedef struct QOMX_AUDIO_PARAM_AC3TYPE {
-   OMX_U32 nSize;
+   OMX_U32 nSize;            
    OMX_VERSIONTYPE nVersion;
    OMX_U32 nPortIndex;
    OMX_U16 nChannels;
@@ -272,7 +272,7 @@ typedef enum OMX_AUDIO_AC3_KARAOKE_MODE
 
 typedef struct QOMX_AUDIO_PARAM_AC3PP
 {
-   OMX_U32 nSize;
+   OMX_U32 nSize;            
    OMX_VERSIONTYPE nVersion;
    OMX_U32 nPortIndex;
    OMX_AUDIO_AC3_CHANNEL_ROUTING eChannelRouting[8];
@@ -283,7 +283,7 @@ typedef struct QOMX_AUDIO_PARAM_AC3PP
    OMX_U32 usDynamicScaleBoost;
    OMX_U32 usDynamicScaleCut;
    OMX_AUDIO_AC3_KARAOKE_MODE eKaraokeMode;
-} QOMX_AUDIO_PARAM_AC3PP;
+} QOMX_AUDIO_PARAM_AC3PP;   
 
 
 /**
@@ -406,7 +406,7 @@ typedef struct OMX_DAK_CONFIG_VOLTYPE {
 	OMX_U8 nInternalGain;		/**< Audio volume scale */
 	OMX_U8 nExternalGain;		/**< Audio volume scale applied by external volume control */
 	OMX_S8 nBalance;		/**< L/R panning for output audio */
-	OMX_BOOL bMute;			/**< Audio Mute */
+	OMX_BOOL bMute;			/**< Audio Mute */ 
 } OMX_DAK_CONFIG_VOLTYPE;
 
 /** Dolby Audio Kernel Natural Bass */

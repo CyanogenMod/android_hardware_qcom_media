@@ -108,7 +108,7 @@ typedef struct OMX_TIME_CONFIG_SEEKMODETYPE {
  * OMX_IndexConfigTimePosition: IL client querying component position
  * (GetConfig) or commanding a component to seek to the given location
  * (SetConfig)
- */	
+ */
 typedef struct OMX_TIME_CONFIG_TIMESTAMPTYPE {
     OMX_U32 nSize;               /**< size of the structure in bytes */
     OMX_VERSIONTYPE nVersion;    /**< OMX specification version

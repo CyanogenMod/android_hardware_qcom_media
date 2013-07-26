@@ -33,8 +33,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "h264_utils.h"
 //#include <stdlib.h>
 
-enum codec_type
-{
+enum codec_type {
     CODEC_TYPE_MPEG4 = 0,
     CODEC_TYPE_DIVX = 0,
     CODEC_TYPE_H263 = 1,
@@ -48,58 +47,56 @@ enum codec_type
     CODEC_TYPE_MAX
 };
 
-enum state_start_code_parse
-{
-   A0,
-   A1,
-   A2,
-   A3,
-   A4,
-   A5
+enum state_start_code_parse {
+    A0,
+    A1,
+    A2,
+    A3,
+    A4,
+    A5
 };
 
-enum state_nal_parse
-{
-   NAL_LENGTH_ACC,
-   NAL_PARSING
+enum state_nal_parse {
+    NAL_LENGTH_ACC,
+    NAL_PARSING
 };
 
 class frame_parse
 {
 
-public:
-	H264_Utils *mutils;
-	int init_start_codes (codec_type codec_type_parse);
-	int parse_sc_frame (OMX_BUFFERHEADERTYPE *source,
-                         OMX_BUFFERHEADERTYPE *dest ,
-						             OMX_U32 *partialframe);
-	int init_nal_length (unsigned int nal_length);
-	int parse_h264_nallength (OMX_BUFFERHEADERTYPE *source,
-		                        OMX_BUFFERHEADERTYPE *dest ,
-							              OMX_U32 *partialframe);
-	void flush ();
-	 frame_parse ();
-	~frame_parse ();
+    public:
+        H264_Utils *mutils;
+        int init_start_codes (codec_type codec_type_parse);
+        int parse_sc_frame (OMX_BUFFERHEADERTYPE *source,
+                OMX_BUFFERHEADERTYPE *dest ,
+                OMX_U32 *partialframe);
+        int init_nal_length (unsigned int nal_length);
+        int parse_h264_nallength (OMX_BUFFERHEADERTYPE *source,
+                OMX_BUFFERHEADERTYPE *dest ,
+                OMX_U32 *partialframe);
+        void flush ();
+        frame_parse ();
+        ~frame_parse ();
 
-private:
-   /*Variables for Start code based Parsing*/
-   enum state_start_code_parse parse_state;
-   unsigned char *start_code;
-   unsigned char *mask_code;
-   unsigned char last_byte_h263;
-   unsigned char last_byte;
-   bool header_found;
-   bool skip_frame_boundary;
+    private:
+        /*Variables for Start code based Parsing*/
+        enum state_start_code_parse parse_state;
+        unsigned char *start_code;
+        unsigned char *mask_code;
+        unsigned char last_byte_h263;
+        unsigned char last_byte;
+        bool header_found;
+        bool skip_frame_boundary;
 
-   /*Variables for NAL Length Parsing*/
-   enum state_nal_parse state_nal;
-   unsigned int nal_length;
-   unsigned int accum_length;
-   unsigned int bytes_tobeparsed;
-   /*Functions to support additional start code parsing*/
-   void parse_additional_start_code(OMX_U8 *psource, OMX_U32 *parsed_length);
-   void check_skip_frame_boundary(OMX_U32 *partial_frame);
-   void update_skip_frame();
+        /*Variables for NAL Length Parsing*/
+        enum state_nal_parse state_nal;
+        unsigned int nal_length;
+        unsigned int accum_length;
+        unsigned int bytes_tobeparsed;
+        /*Functions to support additional start code parsing*/
+        void parse_additional_start_code(OMX_U8 *psource, OMX_U32 *parsed_length);
+        void check_skip_frame_boundary(OMX_U32 *partial_frame);
+        void update_skip_frame();
 };
 
 #endif /* FRAMEPARSER_H */

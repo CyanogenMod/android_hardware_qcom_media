@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -34,11 +34,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //Abstract base class of API to decrypt DRM content.
 class DivXDrmDecrypt
 {
-public:
-    static DivXDrmDecrypt* Create();
-    virtual OMX_ERRORTYPE Init() = 0;
-    virtual OMX_ERRORTYPE Decrypt(OMX_BUFFERHEADERTYPE* buffer) = 0;
-    inline virtual ~DivXDrmDecrypt() {}
+    public:
+        static DivXDrmDecrypt* Create();
+        virtual OMX_ERRORTYPE Init() = 0;
+        virtual OMX_ERRORTYPE Decrypt(OMX_BUFFERHEADERTYPE* buffer) = 0;
+        inline virtual ~DivXDrmDecrypt() {}
 };
 
 //.so file should provide a function with the name createDivXDrmDecrypt with

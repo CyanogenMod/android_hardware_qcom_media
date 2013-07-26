@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -39,38 +39,37 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define INPUT_BUFFER 0
 #define OUTPUT_BUFFER 1
 
-struct video_encoder_context
-{
-	unsigned long   input_width;
-  unsigned long   input_height;
-	unsigned long   codectype;
-  unsigned long   fps_num;
-  unsigned long   fps_den;
-  unsigned long   targetbitrate;
-  unsigned long   inputformat;
+struct video_encoder_context {
+    unsigned long   input_width;
+    unsigned long   input_height;
+    unsigned long   codectype;
+    unsigned long   fps_num;
+    unsigned long   fps_den;
+    unsigned long   targetbitrate;
+    unsigned long   inputformat;
 
-	struct venc_allocatorproperty input_buffer;
-  struct venc_allocatorproperty output_buffer;
-	struct venc_bufferpayload     **ptr_inputbuffer;
-	struct venc_bufferpayload     **ptr_outputbuffer;
-	struct video_queue_context    queue_context;
-	int                           video_driver_fd;
+    struct venc_allocatorproperty input_buffer;
+    struct venc_allocatorproperty output_buffer;
+    struct venc_bufferpayload     **ptr_inputbuffer;
+    struct venc_bufferpayload     **ptr_outputbuffer;
+    struct video_queue_context    queue_context;
+    int                           video_driver_fd;
 
-	FILE * inputBufferFile;
-	FILE * outputBufferFile;
+    FILE * inputBufferFile;
+    FILE * outputBufferFile;
 
-  pthread_t videothread_id;
-	pthread_t asyncthread_id;
-	sem_t sem_synchronize;
+    pthread_t videothread_id;
+    pthread_t asyncthread_id;
+    sem_t sem_synchronize;
 };
 
 int init_encoder ( struct video_encoder_context *init_decode );
 int allocate_buffer ( unsigned int buffer_dir,
-					            struct video_encoder_context *decode_context
-					          );
+        struct video_encoder_context *decode_context
+        );
 int free_buffer ( unsigned int buffer_dir,
-				          struct video_encoder_context *decode_context
-				         );
+        struct video_encoder_context *decode_context
+        );
 int start_encoding (struct video_encoder_context *decode_context);
 int stop_encoding  (struct video_encoder_context *decode_context);
 int deinit_encoder (struct video_encoder_context *init_decode);

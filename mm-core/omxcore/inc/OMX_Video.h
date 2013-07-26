@@ -892,7 +892,7 @@ typedef struct OMX_VIDEO_PARAM_AVCTYPE {
     OMX_VIDEO_AVCPROFILETYPE eProfile;
 	OMX_VIDEO_AVCLEVELTYPE eLevel;
     OMX_U32 nAllowedPictureTypes;
-	OMX_BOOL bFrameMBsOnly;        									
+	OMX_BOOL bFrameMBsOnly;
     OMX_BOOL bMBAFF;
     OMX_BOOL bEntropyCodingCABAC;
     OMX_BOOL bWeightedPPrediction;

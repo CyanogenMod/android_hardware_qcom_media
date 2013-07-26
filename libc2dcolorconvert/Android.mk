@@ -7,15 +7,8 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES := \
     $(TOP)/frameworks/av/include/media/stagefright \
-    $(TOP)/frameworks/native/include/media/openmax
-
-ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
-LOCAL_C_INCLUDES += \
-    $(TOP)/hardware/qcom/display/msm8974/libcopybit
-else
-LOCAL_C_INCLUDES += \
-    $(TOP)/hardware/qcom/display/msm8960/libcopybit
-endif
+    $(TOP)/frameworks/native/include/media/openmax \
+    $(TOP)/hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libcopybit
 
 LOCAL_SHARED_LIBRARIES := liblog libdl
 

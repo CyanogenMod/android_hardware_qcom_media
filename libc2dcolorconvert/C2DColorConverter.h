@@ -62,9 +62,13 @@ typedef C2D_STATUS (*LINK_c2dWaitTimestamp)( c2d_ts_handle timestamp );
 
 typedef C2D_STATUS (*LINK_c2dDestroySurface)( uint32 surface_id );
 
+typedef C2D_STATUS (*LINK_c2dMapAddr)( int mem_fd, void * hostptr, uint32 len, uint32 offset, uint32 flags, void ** gpuaddr);
+
+typedef C2D_STATUS (*LINK_c2dUnMapAddr)(void * gpuaddr);
+
 namespace android {
 
-
+/*TODO: THIS NEEDS TO ENABLED FOR JB PLUS*/
 enum ColorConvertFormat {
     RGB565 = 1,
     YCbCr420Tile,
@@ -95,12 +99,12 @@ class C2DColorConverterBase {
 
 public:
     virtual ~C2DColorConverterBase(){};
-    virtual int convertC2D(int srcFd, void * srcData, int dstFd, void * dstData) = 0;
+    virtual int convertC2D(int srcFd, void *srcBase, void * srcData, int dstFd, void *dstBase, void * dstData) = 0;
     virtual int32_t getBuffReq(int32_t port, C2DBuffReq *req) = 0;
     virtual int32_t dumpOutput(char * filename, char mode) = 0;
 };
 
-typedef C2DColorConverterBase* createC2DColorConverter_t(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags);
+typedef C2DColorConverterBase* createC2DColorConverter_t(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags, size_t srcStride);
 typedef void destroyC2DColorConverter_t(C2DColorConverterBase*);
 
 }

@@ -192,7 +192,7 @@ void* async_message_thread (void *input)
 			printf("\n async_message_thread Exited \n");
 			break;
 		} else{
-			/*TODO: How to handle this case */		
+			/*TODO: How to handle this case */
 			continue;
 		}
 
@@ -693,7 +693,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                    pThis->omx_report_error();
                 }
                 else
-		  {		
+		  {
                     pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                       OMX_EventError, p2, NULL, NULL );
                 }
@@ -1369,7 +1369,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_QUERYCAP, &cap);
 		if (ret) {
 		  printf("Failed to query capabilities\n");
-		  /*TODO: How to handle this case */		
+		  /*TODO: How to handle this case */
 		} else {
 		  printf("Capabilities: driver_name = %s, card = %s, bus_info = %s,"
 				" version = %d, capabilities = %x\n", cap.driver, cap.card,
@@ -1432,7 +1432,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		fmt.fmt.pix_mp.pixelformat = output_capability;
 		ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
 		if (ret) {
-			/*TODO: How to handle this case */	
+			/*TODO: How to handle this case */
 			printf("Failed to set format on capture port\n");
 				}
 		printf("\n Set Format was successful \n ");
@@ -1450,7 +1450,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 		m_state = OMX_StateLoaded;
 		eRet=get_buffer_req(&drv_ctx.ip_buf);
 		printf("Input Buffer Size =%d \n ",drv_ctx.ip_buf.buffer_size);
-	
+
 #ifdef DEFAULT_EXTRADATA
 		if (eRet == OMX_ErrorNone && !secure_mode)
 			eRet = enable_extradata(DEFAULT_EXTRADATA);
@@ -1514,7 +1514,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 			m_pipe_in = fds[0];
 			m_pipe_out = fds[1];
 			r = pthread_create(&msg_thread_id,0,message_thread,this);
-			
+
 			if(r < 0)
 			{
 				DEBUG_PRINT_ERROR("\n component_init(): message_thread creation failed");
@@ -2993,7 +2993,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
            {
              DEBUG_PRINT_ERROR("\n Set output format failed");
              eRet = OMX_ErrorUnsupportedSetting;
-			/*TODO: How to handle this case */	
+			/*TODO: How to handle this case */
            }
            else
 	     {
@@ -3469,7 +3469,7 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                //VDEC_IOCTL_GET_NUMBER_INSTANCES,&ioctl_msg));
 
 	decoderinstances->nNumOfInstances = 16;
-	/*TODO: How to handle this case */	
+	/*TODO: How to handle this case */
     break;
     }
   case OMX_QcomIndexConfigVideoFramePackingArrangement:
@@ -4482,7 +4482,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
 
      if (rc) {
        printf("Failed to prepare bufs\n");
-	   /*TODO: How to handle this case */	
+	   /*TODO: How to handle this case */
        return OMX_ErrorInsufficientResources;
      }
 
@@ -4801,7 +4801,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
 	 DEBUG_PRINT_LOW("\n Set the Output Buffer Idx: %d Addr: %x", i, drv_ctx.ptr_outputbuffer[i]);
       rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_PREPARE_BUF, &buf);
       if (rc) {
-		/*TODO: How to handle this case */	
+		/*TODO: How to handle this case */
        return OMX_ErrorInsufficientResources;
      }
 
@@ -5419,7 +5419,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 		if(ret < 0)
 			printf("\n Failed to create async_message_thread \n");
 	} else{
-		/*TODO: How to handle this case */	
+		/*TODO: How to handle this case */
 		printf(" \n Failed to call streamon on OUTPUT \n");
 	}
 }
@@ -5554,7 +5554,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 	plane.data_offset = 0;
 	buf.m.planes = &plane;
 	buf.length = 1;
-	
+
 	rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
 	if (rc) {
 		/*TODO: How to handle this case */
@@ -6432,7 +6432,7 @@ int omx_vdec::async_message_process (void *context, void* message)
 	omxhdr->nOffset = vdec_msg->msgdata.output_frame.offset;
         omxhdr->nTimeStamp = omx->m_out_mem_ptr[v4l2_buf_ptr->index].nTimeStamp;
         omxhdr->nFlags = omx->m_out_mem_ptr[v4l2_buf_ptr->index].nFlags;
-	
+
 	if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_EOS)
 	{
 	  omxhdr->nFlags |= OMX_BUFFERFLAG_EOS;

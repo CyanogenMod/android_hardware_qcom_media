@@ -222,7 +222,7 @@ void* async_venc_message_thread (void *input)
 				break;
 			}
 		} else {
-			/*TODO: How to handle this case */		
+			/*TODO: How to handle this case */
 			continue;
 		}
 
@@ -315,7 +315,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 #ifdef OUTPUT_BUFFER_LOG
   outputBufferFile1 = fopen (outputfilename, "ab");
 #endif
-	int ret;	
+	int ret;
 	struct v4l2_event_subscription sub;
 	sub.type=V4L2_EVENT_ALL;
 	ret = ioctl(m_nDriver_fd, VIDIOC_SUBSCRIBE_EVENT, &sub);
@@ -355,14 +355,14 @@ bool venc_dev::venc_open(OMX_U32 codec)
 			fdesc.index++;
 		}
 		//printf(" \n VIDIOC_ENUM_FMT OUTPUT Successful \n ");
-		
+
 		m_sOutput_buff_property.alignment=m_sInput_buff_property.alignment=4096;
 
 		fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
 		fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
 		fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
-		
+
 		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
 		//printf(" \n VIDIOC_S_FMT OUTPUT Successful \n ");
 		m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
@@ -372,12 +372,12 @@ bool venc_dev::venc_open(OMX_U32 codec)
 		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
 		fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
 		fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_H264;
-		
+
 		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
 		//printf(" \n VIDIOC_S_FMT CAPTURE Successful \n ");
 		m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
 		//printf("m_sOutput_buff_property.datasize = %d\n",m_sOutput_buff_property.datasize);
-//		struct v4l2_requestbuffers bufreq;	
+//		struct v4l2_requestbuffers bufreq;
 
 		bufreq.memory = V4L2_MEMORY_USERPTR;
 		bufreq.count = 2;
@@ -432,14 +432,14 @@ void venc_dev::venc_close()
 	 btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
-		/* STREAMOFF will never fail */	
+		/* STREAMOFF will never fail */
 		printf("\n Failed to call streamoff on OUTPUT Port \n");
 		}
 	 btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-	
+
 	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
-		/* STREAMOFF will never fail */	
+		/* STREAMOFF will never fail */
 		printf("\n Failed to call streamoff on CAPTURE Port \n");
 		}
         struct v4l2_event_subscription sub;
@@ -559,7 +559,7 @@ bufreq.memory = V4L2_MEMORY_USERPTR;
 		bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 		ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
 		m_sInput_buff_property.mincount=m_sInput_buff_property.maxcount=m_sInput_buff_property.actualcount=bufreq.count;
-		
+
 
     *min_buff_count = m_sInput_buff_property.mincount;
     *actual_buff_count = m_sInput_buff_property.actualcount;
@@ -584,7 +584,7 @@ bufreq.memory = V4L2_MEMORY_USERPTR;
 		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
 		fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
 		fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_H264;
-		
+
 		ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
 		//printf(" \n VIDIOC_S_FMT CAPTURE Successful \n ");
 		m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
@@ -592,7 +592,7 @@ bufreq.memory = V4L2_MEMORY_USERPTR;
 		fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
 		fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
 		fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_H264;
-		
+
 		ret = ioctl(m_nDriver_fd, VIDIOC_G_FMT, &fmt);
 		//printf(" \n VIDIOC_S_FMT CAPTURE Successful \n ");
 		m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
@@ -1401,7 +1401,7 @@ unsigned venc_dev::venc_flush( unsigned port)
 	 btype = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
-		/* STREAMOFF should never fail */	
+		/* STREAMOFF should never fail */
 		printf("\n Failed to call streamoff on OUTPUT Port \n");
 		return -1;
 		}
@@ -1415,7 +1415,7 @@ unsigned venc_dev::venc_flush( unsigned port)
 	 btype = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 	 rc = ioctl(m_nDriver_fd, VIDIOC_STREAMOFF, &btype);
 	 if (rc) {
-		/* STREAMOFF should never fail  */	
+		/* STREAMOFF should never fail  */
 		printf("\n Failed to call streamoff on OUTPUT Port \n");
 		return -1;
 		}
@@ -1625,7 +1625,7 @@ DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
 	if (ret) {
 		printf("Failed to call streamon\n");
 	}
-		
+
 	}
 
   if(/*ioctl(m_nDriver_fd,VEN_IOCTL_CMD_ENCODE_FRAME,&ioctl_msg) < */0)

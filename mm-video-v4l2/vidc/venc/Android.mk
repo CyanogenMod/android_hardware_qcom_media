@@ -50,6 +50,18 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
 libmm-venc-def += -DMAX_RES_1080P
 libmm-venc-def += -D_MSM8974_
 endif
+ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
+libmm-venc-def += -DMAX_RES_1080P
+libmm-venc-def += -DMAX_RES_1080P_EBI
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libmm-venc-def += -D_MSM8974_
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),mpq8092)
+libmm-venc-def += -DMAX_RES_1080P
+libmm-venc-def += -DMAX_RES_1080P_EBI
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libmm-venc-def += -D_MSM8974_
+endif
 
 ifeq ($(TARGET_USES_ION),true)
 libmm-venc-def += -DUSE_ION
@@ -68,15 +80,14 @@ libmm-venc-inc      += $(LOCAL_PATH)/inc
 libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-venc-inc      += hardware/qcom/media/mm-core/inc
 libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
-ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
-libmm-venc-inc      += hardware/qcom/display/msm8974/libgralloc
-else
-libmm-venc-inc      += hardware/qcom/display/msm8960/libgralloc
-endif
+libmm-venc-inc      += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
 libmm-venc-inc      += frameworks/native/include/media/hardware
 libmm-venc-inc      += frameworks/native/include/media/openmax
+libmm-venc-inc      += hardware/qcom/media/libc2dcolorconvert
+libmm-venc-inc      += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libcopybit
+libmm-venc-inc      += frameworks/av/include/media/stagefright
+libmm-venc-inc      += frameworks/av/include/media/hardware
 libmm-venc-inc      += $(venc-inc)
-
 
 LOCAL_MODULE                    := libOmxVenc
 LOCAL_MODULE_TAGS               := optional
@@ -84,11 +95,16 @@ LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(libmm-venc-inc)
 
 LOCAL_PRELINK_MODULE      := false
-LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils
+LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
+                             libc2dcolorconvert libdl
 
 LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_video_encoder.cpp
+ifeq ($(call is-board-platform-in-list,msm8974 msm8610 msm8226 apq8084 mpq8092),true)
 LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
+else
+LOCAL_SRC_FILES   += src/video_encoder_device.cpp
+endif
 
 LOCAL_SRC_FILES   += ../common/src/extra_data_handler.cpp
 
@@ -104,11 +120,7 @@ mm-venc-test720p-inc            := $(TARGET_OUT_HEADERS)/mm-core
 mm-venc-test720p-inc            += $(LOCAL_PATH)/inc
 mm-venc-test720p-inc            += $(OMX_VIDEO_PATH)/vidc/common/inc
 mm-venc-test720p-inc            += hardware/qcom/media/mm-core/inc
-ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
-mm-venc-test720p-inc            += hardware/qcom/display/msm8974/libgralloc
-else
-mm-venc-test720p-inc            += hardware/qcom/display/msm8960/libgralloc
-endif
+mm-venc-test720p-inc            += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
 mm-venc-test720p-inc            += $(venc-inc)
 
 LOCAL_MODULE                    := mm-venc-omx-test720p
@@ -132,11 +144,7 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 venc-test-inc                   += $(LOCAL_PATH)/inc
-ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
-venc-test-inc                   += hardware/qcom/display/msm8974/libgralloc
-else
-venc-test-inc                   += hardware/qcom/display/msm8960/libgralloc
-endif
+venc-test-inc                   += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
 venc-test-inc                   += $(venc-inc)
 
 LOCAL_MODULE                    := mm-video-encdrv-test

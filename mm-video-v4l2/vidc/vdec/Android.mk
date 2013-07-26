@@ -39,6 +39,7 @@ libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_MSM8974_
+libOmxVdec-def += -D_HEVC_USE_ADSP_HEAP_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
 libOmxVdec-def += -DMAX_RES_720P
@@ -50,6 +51,8 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -DSMOOTH_STREAMING_DISABLED
+libOmxVdec-def += -DH264_PROFILE_LEVEL_CHECK
 libOmxVdec-def += -D_MSM8974_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
@@ -58,13 +61,23 @@ libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_MSM8974_
 endif
-
+ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
+libOmxVdec-def += -DMAX_RES_1080P
+libOmxVdec-def += -DMAX_RES_1080P_EBI
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -D_MSM8974_
+endif
+ifeq ($(TARGET_BOARD_PLATFORM),mpq8092)
+libOmxVdec-def += -DMAX_RES_1080P
+libOmxVdec-def += -DMAX_RES_1080P_EBI
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -D_MSM8974_
+endif
 libOmxVdec-def += -D_ANDROID_ICS_
 
 ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
 endif
-
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
@@ -80,27 +93,14 @@ libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
-ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
-libmm-vdec-inc          += hardware/qcom/display/msm8974/libgralloc
-else
-libmm-vdec-inc          += hardware/qcom/display/msm8960/libgralloc
-endif
+libmm-vdec-inc          += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
 libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
 libmm-vdec-inc          += $(vdec-inc)
-ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
-libmm-vdec-inc          += hardware/qcom/display/msm8974/libqdutils
-else
-libmm-vdec-inc          += hardware/qcom/display/msm8960/libqdutils
-endif
+libmm-vdec-inc          += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libqdutils
 libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
-ifneq ($(filter msm8974 msm8x74,$(TARGET_BOARD_PLATFORM)),)
-libmm-vdec-inc      += hardware/qcom/display/msm8974/libcopybit
-else
-libmm-vdec-inc      += hardware/qcom/display/msm8960/libcopybit
-endif
+libmm-vdec-inc      += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libcopybit
 libmm-vdec-inc      += frameworks/av/include/media/stagefright
-libmm-vdec-inc      += hardware/qcom/msm8x74/kernel-headers
 
 
 LOCAL_MODULE                    := libOmxVdec
@@ -118,7 +118,14 @@ LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
+ifeq ($(call is-board-platform-in-list,msm8974 msm8610 msm8226 apq8084 mpq8092),true)
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
+else
+LOCAL_SHARED_LIBRARIES  += libhardware
+libmm-vdec-inc          += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libhwcomposer
+LOCAL_SRC_FILES         += src/power_module.cpp
+LOCAL_SRC_FILES         += src/omx_vdec.cpp
+endif
 
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
@@ -133,7 +140,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
-ifneq ($(filter msm8974,$(TARGET_BOARD_PLATFORM)),)
+ifeq ($(call is-board-platform-in-list,msm8974 msm8610 apq8084 mpq8092),true)
 
 LOCAL_MODULE                    := libOmxVdecHevc
 LOCAL_MODULE_TAGS               := optional

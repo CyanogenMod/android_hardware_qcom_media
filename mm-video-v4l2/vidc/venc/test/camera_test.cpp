@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -33,60 +33,60 @@ EXTERN_C_START
 // static android::Camera* pCamera = NULL;
 
 int CameraTest_Initialize(int nFrameRate,
-                          int nFrameWidth,
-                          int nFrameHeight,
-                          CameraPreviewCallback pfnPreviewCallback)
+        int nFrameWidth,
+        int nFrameHeight,
+        CameraPreviewCallback pfnPreviewCallback)
 {
-   int result = 0;
+    int result = 0;
 
-//    pCamera = new android::Camera;
-//    if (!pCamera)
-//       return 1;
+    //    pCamera = new android::Camera;
+    //    if (!pCamera)
+    //       return 1;
 
-//    pCamera->init_camera(nFrameWidth,
-//                         nFrameHeight,
-//                         nFrameRate,
-//                         pfnPreviewCallback);
+    //    pCamera->init_camera(nFrameWidth,
+    //                         nFrameHeight,
+    //                         nFrameRate,
+    //                         pfnPreviewCallback);
 
-   return result;
+    return result;
 }
 
 int CameraTest_Run()
 {
-   int result = 0;
+    int result = 0;
 
-//    if (pCamera)
-//       pCamera->startPreview();
-//    else
-//       return 1;
+    //    if (pCamera)
+    //       pCamera->startPreview();
+    //    else
+    //       return 1;
 
-   return result;
+    return result;
 }
 
 int CameraTest_ReleaseFrame(void* pPhys, void* pVirt)
 {
-   int result = 0;
+    int result = 0;
 
-//    if (pCamera)
-//       pCamera->releaseFrame(pPhys, pVirt);
-//    else
-//       return 1;
+    //    if (pCamera)
+    //       pCamera->releaseFrame(pPhys, pVirt);
+    //    else
+    //       return 1;
 
-   return result;
+    return result;
 }
 
 int CameraTest_Exit()
 {
-   int result = 0;
+    int result = 0;
 
-//    if (pCamera)
-//    {
-//       pCamera->stopPreview();
-//       delete pCamera;
-//    }
-//    pCamera = NULL;
+    //    if (pCamera)
+    //    {
+    //       pCamera->stopPreview();
+    //       delete pCamera;
+    //    }
+    //    pCamera = NULL;
 
-   return result;
+    return result;
 }
 
 

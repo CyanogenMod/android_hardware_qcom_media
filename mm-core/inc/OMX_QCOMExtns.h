@@ -402,10 +402,6 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.QCOM.index.config.video.LTRMark"*/
     QOMX_IndexConfigVideoLTRMark = 0x7F000029,
-
-    OMX_QcomIndexParamSequenceHeaderWithIDR = 0x7F00002A,
-
-    OMX_QcomIndexParamEnableVUIStreamRestrictFlag = 0x7F00002B,
 };
 
 /**
@@ -712,11 +708,27 @@ typedef struct OMX_VENDOR_EXTRADATATYPE  {
     OMX_U8  *pData;     // cdata (codec_data/extradata)
 } OMX_VENDOR_EXTRADATATYPE;
 
+/**
+ * This structure describes the parameters corresponding to the
+ * OMX_VENDOR_VIDEOFRAMERATE extension. This parameter can be set
+ * dynamically during any state except the state invalid. This is
+ * used for frame rate to be set from the application. This
+ * is set on the in port.
+ */
+typedef struct OMX_VENDOR_VIDEOFRAMERATE  {
+   OMX_U32 nSize;           /** Size of the structure in bytes */
+   OMX_VERSIONTYPE nVersion;/** OMX specification version information */
+   OMX_U32 nPortIndex;      /** Portindex which is extended by this structure */
+   OMX_U32 nFps;            /** Frame rate value */
+   OMX_BOOL bEnabled;       /** Flag to enable or disable client's frame rate value */
+} OMX_VENDOR_VIDEOFRAMERATE;
+
 typedef enum OMX_INDEXVENDORTYPE {
     OMX_IndexVendorFileReadInputFilename = 0xFF000001,
     OMX_IndexVendorParser3gpInputFilename = 0xFF000002,
     OMX_IndexVendorVideoExtraData = 0xFF000003,
-    OMX_IndexVendorAudioExtraData = 0xFF000004
+    OMX_IndexVendorAudioExtraData = 0xFF000004,
+    OMX_IndexVendorVideoFrameRate = 0xFF000005,
 } OMX_INDEXVENDORTYPE;
 
 typedef enum OMX_QCOM_VC1RESOLUTIONTYPE
@@ -1061,14 +1073,17 @@ typedef enum {
     QOMX_VIDEO_CONTENT_RL_VIEW = 2,
 } QOMX_VIDEO_CONTENT_INTERPRETATION;
 
-// A pointer to this struct is passed to OMX_SetParameter when the extension
-// index for the 'OMX.google.android.index.setVUIStreamRestrictFlag' extension
-// is given.
-typedef struct QOMX_VUI_BITSTREAM_RESTRICT {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
-    OMX_BOOL bEnable;
-} QOMX_VUI_BITSTREAM_RESTRICT;
+/**
+ * Specifies the extended picture types. These values should be
+ * OR'd along with the types defined in OMX_VIDEO_PICTURETYPE to
+ * signal all pictures types which are allowed.
+ *
+ * ENUMS:
+ *  H.264 Specific Picture Types:   IDR
+ */
+typedef enum QOMX_VIDEO_PICTURETYPE {
+    QOMX_VIDEO_PictureTypeIDR = OMX_VIDEO_PictureTypeVendorStartUnused + 0x1000
+} QOMX_VIDEO_PICTURETYPE;
 
 #ifdef __cplusplus
 }

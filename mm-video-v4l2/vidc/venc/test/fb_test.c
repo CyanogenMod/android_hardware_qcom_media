@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -28,21 +28,21 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "fb_test.h"
 
 int FBTest_Initialize(int nFrameWidth,
-                      int nFrameHeight)
+        int nFrameHeight)
 {
-   return 0;
+    return 0;
 }
 int FBTest_DisplayImage(int nPmemFd, int nOffset)
 {
-   return 0;
+    return 0;
 }
 
 int FBTest_Exit()
 {
-   return 0;
+    return 0;
 }
 
 int FBTest_RunTest()
 {
-   return 0;
+    return 0;
 }

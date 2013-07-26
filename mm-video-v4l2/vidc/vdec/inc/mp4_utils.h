@@ -122,49 +122,48 @@ typedef unsigned char byte;   /* Unsigned 8  bit value type. */
 #define MP4_MAX_DECODE_HEIGHT   MP4_720P_HEIGHT
 
 typedef struct {
-   unsigned char *data;
-   unsigned long int numBytes;
+    unsigned char *data;
+    unsigned long int numBytes;
 } mp4StreamType;
 
 #define MAX_FRAMES_IN_CHUNK                 10
 #define VOP_START_CODE                      0x000001B6
 #define VOL_START_CODE                      0x000001B0
 
-typedef enum VOPTYPE
-{
-  NO_VOP = -1, // bitstream contains no VOP.
-  MPEG4_I_VOP = 0,   // bitstream contains an MPEG4 I-VOP
-  MPEG4_P_VOP = 1,   // bitstream contains an MPEG4 P-VOP
-  MPEG4_B_VOP = 2,   // bitstream contains an MPEG4 B-VOP
-  MPEG4_S_VOP = 3,   // bitstream contains an MPEG4 S-VOP
+typedef enum VOPTYPE {
+    NO_VOP = -1, // bitstream contains no VOP.
+    MPEG4_I_VOP = 0,   // bitstream contains an MPEG4 I-VOP
+    MPEG4_P_VOP = 1,   // bitstream contains an MPEG4 P-VOP
+    MPEG4_B_VOP = 2,   // bitstream contains an MPEG4 B-VOP
+    MPEG4_S_VOP = 3,   // bitstream contains an MPEG4 S-VOP
 } VOP_TYPE;
 
-typedef struct
-{
-  uint32    timestamp_increment;
-  uint32    offset;
-  uint32    size;
-  VOP_TYPE  vopType;
+typedef struct {
+    uint32    timestamp_increment;
+    uint32    offset;
+    uint32    size;
+    VOP_TYPE  vopType;
 } mp4_frame_info_type;
 
-class MP4_Utils {
-private:
-   struct posInfoType {
-      uint8 *bytePtr;
-      uint8 bitPos;
-   };
+class MP4_Utils
+{
+    private:
+        struct posInfoType {
+            uint8 *bytePtr;
+            uint8 bitPos;
+        };
 
-   posInfoType m_posInfo;
-   byte *m_dataBeginPtr;
-   unsigned int vop_time_resolution;
-   bool vop_time_found;
-   uint16 m_SrcWidth, m_SrcHeight;   // Dimensions of the source clip
-public:
-    MP4_Utils();
-   ~MP4_Utils();
-   int16 populateHeightNWidthFromShortHeader(mp4StreamType * psBits);
-   bool parseHeader(mp4StreamType * psBits);
-   static uint32 read_bit_field(posInfoType * posPtr, uint32 size);
-   bool is_notcodec_vop(unsigned char *pbuffer, unsigned int len);
+        posInfoType m_posInfo;
+        byte *m_dataBeginPtr;
+        unsigned int vop_time_resolution;
+        bool vop_time_found;
+        uint16 m_SrcWidth, m_SrcHeight;   // Dimensions of the source clip
+    public:
+        MP4_Utils();
+        ~MP4_Utils();
+        int16 populateHeightNWidthFromShortHeader(mp4StreamType * psBits);
+        bool parseHeader(mp4StreamType * psBits);
+        static uint32 read_bit_field(posInfoType * posPtr, uint32 size);
+        bool is_notcodec_vop(unsigned char *pbuffer, unsigned int len);
 };
 #endif
