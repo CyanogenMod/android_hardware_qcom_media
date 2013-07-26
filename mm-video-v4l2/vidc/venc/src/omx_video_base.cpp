@@ -1297,6 +1297,24 @@ bool omx_video::execute_flush_all(void)
             empty_buffer_done(&m_cmp,(OMX_BUFFERHEADERTYPE *)p2);
         } else if (ident == OMX_COMPONENT_GENERATE_EBD) {
             empty_buffer_done(&m_cmp,(OMX_BUFFERHEADERTYPE *)p1);
+        } else if(ident == OMX_COMPONENT_GENERATE_ETB_OPQ) {
+            m_pCallbacks.EmptyBufferDone(&m_cmp,m_app_data,(OMX_BUFFERHEADERTYPE *)p2);
+        }
+    }
+    if(mUseProxyColorFormat) {
+        if(psource_frame) {
+            m_pCallbacks.EmptyBufferDone(&m_cmp,m_app_data,psource_frame);
+            psource_frame = NULL;
+        }
+        while(m_opq_meta_q.m_size) {
+            unsigned p1,p2,id;
+            m_opq_meta_q.pop_entry(&p1,&p2,&id);
+            m_pCallbacks.EmptyBufferDone(&m_cmp,m_app_data,
+                (OMX_BUFFERHEADERTYPE  *)p1);
+        }
+        if(pdest_frame){
+            m_opq_pmem_q.insert_entry((unsigned int)pdest_frame,0,0);
+            pdest_frame = NULL;
         }
     }
 
@@ -3740,7 +3758,7 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
     pending_input_buffers--;
 
     if (mUseProxyColorFormat && (buffer_index < m_sInPortDef.nBufferCountActual)) {
-        if (!pdest_frame) {
+        if (!pdest_frame  && !input_flush_progress) {
             pdest_frame = buffer;
             DEBUG_PRINT_LOW("\n empty_buffer_done pdest_frame address is %p",pdest_frame);
             return push_input_buffer(hComp);
