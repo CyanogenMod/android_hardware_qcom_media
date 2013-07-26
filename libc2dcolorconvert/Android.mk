@@ -14,7 +14,8 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
     $(TOP)/frameworks/av/include/media/stagefright \
     $(TOP)/frameworks/native/include/media/openmax \
-    $(TOP)/hardware/qcom/$(DISPLAY)/libcopybit
+    $(TOP)/hardware/qcom/$(DISPLAY)/libcopybit \
+    $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 LOCAL_SHARED_LIBRARIES := liblog libdl
 
