@@ -244,6 +244,9 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     } else if (codec_type == OMX_VIDEO_CodingAVC) {
         m_sParamProfileLevel.eProfile = (OMX_U32) OMX_VIDEO_AVCProfileBaseline;
         m_sParamProfileLevel.eLevel = (OMX_U32) OMX_VIDEO_AVCLevel1;
+    } else if (codec_type == OMX_VIDEO_CodingVPX) {
+        m_sParamProfileLevel.eProfile = (OMX_U32) OMX_VIDEO_VP8ProfileMain;
+        m_sParamProfileLevel.eLevel = (OMX_U32) OMX_VIDEO_VP8Level_Version0;
     }
 
     // Initialize the video parameters for input port
@@ -288,9 +291,12 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingMPEG4;
     } else if (codec_type == OMX_VIDEO_CodingH263) {
         m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingH263;
-    } else {
+    } else if (codec_type == OMX_VIDEO_CodingAVC) {
         m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingAVC;
+    } else if (codec_type == OMX_VIDEO_CodingVPX) {
+        m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingVPX;
     }
+
     if (dev_get_buf_req(&m_sOutPortDef.nBufferCountMin,
                 &m_sOutPortDef.nBufferCountActual,
                 &m_sOutPortDef.nBufferSize,
@@ -316,9 +322,12 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingMPEG4;
     } else if (codec_type == OMX_VIDEO_CodingH263) {
         m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingH263;
-    } else {
+    } else if (codec_type == OMX_VIDEO_CodingAVC) {
         m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingAVC;
+    } else if (codec_type == OMX_VIDEO_CodingVPX) {
+        m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingVPX;
     }
+
 
     // mandatory Indices for kronos test suite
     OMX_INIT_STRUCT(&m_sPriorityMgmt, OMX_PRIORITYMGMTTYPE);
@@ -385,6 +394,14 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sParamAVC.bDirectSpatialTemporal = OMX_FALSE;
     m_sParamAVC.nCabacInitIdc = 0;
     m_sParamAVC.eLoopFilterMode = OMX_VIDEO_AVCLoopFilterEnable;
+
+    // VP8 specific init
+    OMX_INIT_STRUCT(&m_sParamVP8, OMX_VIDEO_PARAM_VP8TYPE);
+    m_sParamVP8.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sParamVP8.eProfile = OMX_VIDEO_VP8ProfileMain;
+    m_sParamVP8.eLevel = OMX_VIDEO_VP8Level_Version0;
+    m_sParamVP8.nDCTPartitions = 0;
+    m_sParamVP8.bErrorResilientMode = OMX_FALSE;
 
     OMX_INIT_STRUCT(&m_sParamLTRMode, QOMX_VIDEO_PARAM_LTRMODE_TYPE);
     m_sParamLTRMode.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
@@ -725,6 +742,22 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 m_sIntraperiod.nBFrames = m_sParamAVC.nBFrames;
                 break;
             }
+        case (OMX_INDEXTYPE)OMX_IndexParamVideoVp8:
+            {
+                OMX_VIDEO_PARAM_VP8TYPE* pParam = (OMX_VIDEO_PARAM_VP8TYPE*)paramData;
+                OMX_VIDEO_PARAM_VP8TYPE vp8_param;
+                DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoVp8");
+                if (pParam->nDCTPartitions != m_sParamVP8.nDCTPartitions ||
+                    pParam->bErrorResilientMode != m_sParamVP8.bErrorResilientMode) {
+                    DEBUG_PRINT_ERROR("VP8 doesn't support nDCTPartitions or bErrorResilientMode");
+                }
+                memcpy(&vp8_param, pParam, sizeof( struct OMX_VIDEO_PARAM_VP8TYPE));
+                if (handle->venc_set_param(&vp8_param, (OMX_INDEXTYPE)OMX_IndexParamVideoVp8) != true) {
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                memcpy(&m_sParamVP8,pParam, sizeof(struct OMX_VIDEO_PARAM_VP8TYPE));
+                break;
+            }
         case OMX_IndexParamVideoProfileLevelCurrent:
             {
                 OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam = (OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
@@ -755,6 +788,13 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     m_sParamAVC.eLevel = (OMX_VIDEO_AVCLEVELTYPE)m_sParamProfileLevel.eLevel;
                     DEBUG_PRINT_LOW("\n AVC profile = %d, level = %d", m_sParamAVC.eProfile,
                             m_sParamAVC.eLevel);
+                }
+                else if (!strncmp((char*)m_nkind, "OMX.qcom.video.encoder.vp8",\
+                            OMX_MAX_STRINGNAME_SIZE)) {
+                    m_sParamVP8.eProfile = (OMX_VIDEO_VP8PROFILETYPE)m_sParamProfileLevel.eProfile;
+                    m_sParamVP8.eLevel = (OMX_VIDEO_VP8LEVELTYPE)m_sParamProfileLevel.eLevel;
+                    DEBUG_PRINT_LOW("\n VP8 profile = %d, level = %d", m_sParamVP8.eProfile,
+                            m_sParamVP8.eLevel);
                 }
                 break;
             }
@@ -1159,6 +1199,13 @@ bool omx_venc::update_profile_level()
         m_sParamAVC.eLevel = (OMX_VIDEO_AVCLEVELTYPE)eLevel;
         DEBUG_PRINT_LOW("\n AVC profile = %d, level = %d", m_sParamAVC.eProfile,
                 m_sParamAVC.eLevel);
+    }
+    else if (!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.vp8",\
+                OMX_MAX_STRINGNAME_SIZE)) {
+        m_sParamVP8.eProfile = (OMX_VIDEO_VP8PROFILETYPE)eProfile;
+        m_sParamVP8.eLevel = (OMX_VIDEO_VP8LEVELTYPE)eLevel;
+        DEBUG_PRINT_LOW("\n VP8 profile = %d, level = %d", m_sParamVP8.eProfile,
+                m_sParamVP8.eLevel);
     }
     return true;
 }

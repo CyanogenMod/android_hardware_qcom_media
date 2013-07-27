@@ -1532,6 +1532,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_sParamAVC, sizeof(m_sParamAVC));
                 break;
             }
+        case (OMX_INDEXTYPE)OMX_IndexParamVideoVp8:
+            {
+                OMX_VIDEO_PARAM_VP8TYPE* pParam = (OMX_VIDEO_PARAM_VP8TYPE*)paramData;
+                DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoVp8\n");
+                memcpy(pParam, &m_sParamVP8, sizeof(m_sParamVP8));
+                break;
+            }
         case OMX_IndexParamVideoProfileLevelQuerySupported:
             {
                 OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam = (OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
@@ -3988,6 +3995,18 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
                 profileLevelType->eLevel   = OMX_VIDEO_MPEG4Level5;
             } else {
                 DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu\n", profileLevelType->nProfileIndex);
+                eRet = OMX_ErrorNoMore;
+            }
+        } else if (m_sOutPortDef.format.video.eCompressionFormat == OMX_VIDEO_CodingVPX) {
+            if (profileLevelType->nProfileIndex == 0) {
+                profileLevelType->eProfile = OMX_VIDEO_VP8ProfileMain;
+                profileLevelType->eLevel   = OMX_VIDEO_VP8Level_Version0;
+            } else if (profileLevelType->nProfileIndex == 1) {
+                profileLevelType->eProfile = OMX_VIDEO_VP8ProfileMain;
+                profileLevelType->eLevel   = OMX_VIDEO_VP8Level_Version1;
+            } else {
+                DEBUG_PRINT_LOW("VP8: get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %d\n",
+                profileLevelType->nProfileIndex);
                 eRet = OMX_ErrorNoMore;
             }
         } else {
