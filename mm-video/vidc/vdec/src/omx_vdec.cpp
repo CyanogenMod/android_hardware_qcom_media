@@ -9024,7 +9024,7 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 #if defined(_ANDROID_ICS_) && defined(DISPLAYCAF)
   OMX_U32 enable = 0;
   private_handle_t *handle = NULL;
-  handle = (private_handle_t *)native_buffer[buf_index].nativehandle;
+  handle = (private_handle_t*) native_buffer[buf_index].nativehandle;
   if(!handle)
     DEBUG_PRINT_LOW("%s: Native Buffer handle is NULL",__func__);
 #endif
