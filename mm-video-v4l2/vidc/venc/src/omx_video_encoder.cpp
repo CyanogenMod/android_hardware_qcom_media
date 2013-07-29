@@ -414,6 +414,10 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sParamLTRMode.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sParamLTRMode.eLTRMode = QOMX_VIDEO_LTRMode_Disable;
 
+    OMX_INIT_STRUCT(&m_sConfigDeinterlace, OMX_VIDEO_CONFIG_DEINTERLACE);
+    m_sConfigDeinterlace.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sConfigDeinterlace.nEnable = OMX_FALSE;
+
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
 
@@ -1479,6 +1483,17 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                     return OMX_ErrorUnsupportedSetting;
                 }
                 memcpy(&m_sConfigAVCIDRPeriod, pParam, sizeof(m_sConfigAVCIDRPeriod));
+                break;
+            }
+        case OMX_IndexConfigCommonDeinterlace:
+            {
+                OMX_VIDEO_CONFIG_DEINTERLACE *pParam = (OMX_VIDEO_CONFIG_DEINTERLACE*) configData;
+                DEBUG_PRINT_LOW("set_config: OMX_IndexConfigCommonDeinterlace");
+                if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_IndexConfigCommonDeinterlace)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_IndexConfigCommonDeinterlace failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                memcpy(&m_sConfigDeinterlace, pParam, sizeof(m_sConfigDeinterlace));
                 break;
             }
         default:
