@@ -537,6 +537,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 	first_frame_size (0),
 	m_device_file_ptr(NULL),
 	m_vc1_profile((vc1_profile_type)0),
+	m_profile(0),
 	h264_last_au_ts(LLONG_MAX),
 	h264_last_au_flags(0),
 	prev_ts(LLONG_MAX),
@@ -548,6 +549,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 	m_display_id(NULL),
 	h264_parser(NULL),
 	client_extradata(0),
+	m_reject_avc_1080p_mp (0),
 #ifdef _ANDROID_
 	m_enable_android_native_buffers(OMX_FALSE),
 	m_use_android_native_buffers(OMX_FALSE),
@@ -584,6 +586,11 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
   property_get("vidc.dec.debug.concealedmb", property_value, "0");
   m_debug_concealedmb = atoi(property_value);
   DEBUG_PRINT_HIGH("vidc.dec.debug.concealedmb value is %d",m_debug_concealedmb);
+
+  property_value[0] = '\0';
+  property_get("vidc.dec.profile.check", property_value, "0");
+  m_reject_avc_1080p_mp = atoi(property_value);
+  DEBUG_PRINT_HIGH("vidc.dec.profile.check value is %d",m_reject_avc_1080p_mp);
 
 #endif
   memset(&m_cmp,0,sizeof(m_cmp));
@@ -1337,19 +1344,13 @@ int omx_vdec::update_resolution(int width, int height, int stride, int scan_line
 
 OMX_ERRORTYPE omx_vdec::is_video_session_supported()
 {
-#ifdef H264_PROFILE_LEVEL_CHECK
   if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",
-			OMX_MAX_STRINGNAME_SIZE) &&
-      m_profile_lvl.eProfile == OMX_VIDEO_AVCProfileHigh) {
-      if (m_profile_lvl.eLevel > OMX_VIDEO_AVCLevel3) {
-      DEBUG_PRINT_ERROR("Unsupported level for H264 High profile");
-      return OMX_ErrorUnsupportedSetting;
-    }
-    m_decoder_capability.max_width = 864;
-    m_decoder_capability.max_height = 480;
-    DEBUG_PRINT_LOW(" set max_width x max_height to 864x480 for H264 high profile");
+              OMX_MAX_STRINGNAME_SIZE) &&
+     (m_profile == HIGH_PROFILE || m_profile == MAIN_PROFILE)) {
+    m_decoder_capability.max_width = 1280;
+    m_decoder_capability.max_height = 720;
+    DEBUG_PRINT_HIGH("Set max_width=1280 & max_height=720 for H264 HP/MP");
   }
-#endif
 
   if ((drv_ctx.video_resolution.frame_width *
        drv_ctx.video_resolution.frame_height >
@@ -5887,6 +5888,26 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
   if ((temp_buffer -  drv_ctx.ptr_inputbuffer) > drv_ctx.ip_buf.actualcount)
   {
     return OMX_ErrorBadParameter;
+  }
+  /* If its first frame, H264 codec and reject is true, then parse the nal
+     and get the profile. Based on this, reject the clip playback */
+  if(first_frame == 0 && codec_type_parse == CODEC_TYPE_H264 &&
+     m_reject_avc_1080p_mp)
+  {
+    first_frame = 1;
+    DEBUG_PRINT_ERROR("\nParse nal to get the profile");
+    h264_parser->parse_nal((OMX_U8*)buffer->pBuffer, buffer->nFilledLen,
+                                 NALU_TYPE_SPS);
+    m_profile = h264_parser->get_profile();
+    ret = is_video_session_supported();
+    if (ret)
+    {
+      post_event ((unsigned int)buffer,VDEC_S_SUCCESS,OMX_COMPONENT_GENERATE_EBD);
+      post_event(OMX_EventError, OMX_ErrorInvalidState,OMX_COMPONENT_GENERATE_EVENT);
+      /* Move the state to Invalid to avoid queueing of pending ETB to the driver */
+      m_state = OMX_StateInvalid;
+      return OMX_ErrorNone;
+    }
   }
 
   DEBUG_PRINT_LOW("\n ETBProxy: bufhdr = %p, bufhdr->pBuffer = %p", buffer, buffer->pBuffer);
