@@ -562,9 +562,17 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
             } else if (what == DashCodec::kWhatError) {
                 ALOGE("Received error from %s decoder, aborting playback.",
                        mTrackName);
-                if((mRenderer != NULL) && (track == kAudio || track == kVideo)) {
+                if(mRenderer != NULL)
+                {
+                  if((track == kAudio && !IsFlushingState(mFlushingAudio)) ||
+                     (track == kVideo && !IsFlushingState(mFlushingVideo)))
+                  {
                     ALOGV("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ DashCodec::kWhatError:: %s",track == kAudio ? "audio" : "video");
                     mRenderer->queueEOS(track, UNKNOWN_ERROR);
+                }
+                  else{
+                    ALOGE("EOS not queued for %s track", track);
+                  }
                 }
             } else if (what == DashCodec::kWhatDrainThisBuffer) {
                 if(track == kAudio || track == kVideo) {
