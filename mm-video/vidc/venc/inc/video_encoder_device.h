@@ -83,6 +83,7 @@ public:
   bool venc_loaded_start_done(void);
   bool venc_loaded_stop_done(void);
   bool venc_get_uncache_flag(void);
+  bool venc_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *);
   OMX_U32 m_nDriver_fd;
   bool m_profile_set;
   bool m_level_set;
@@ -131,6 +132,9 @@ private:
   struct venc_headerextension     hec;
   struct venc_voptimingcfg        voptimecfg;
   struct venc_seqheader           seqhdr;
+  struct venc_ltrmode             ltrmode;
+  struct venc_ltrcount            ltrcount;
+  struct venc_ltrperiod           ltrperiod;
 
   bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
   bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -153,6 +157,11 @@ private:
   bool venc_set_slice_delivery_mode(OMX_BOOL enable);
   bool venc_set_inband_video_header(OMX_BOOL enable);
   bool venc_set_bitstream_restrict_in_vui(OMX_BOOL enable);
+  bool venc_set_ltrmode(QOMX_VIDEO_LTRMODETYPE mode);
+  bool venc_set_ltrcount(OMX_U32 count);
+  bool venc_set_ltrperiod(OMX_U32 period);
+  bool venc_set_ltruse(OMX_U32 id, OMX_U32 frames);
+
 #ifdef MAX_RES_1080P
   OMX_U32 pmem_free();
   OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);

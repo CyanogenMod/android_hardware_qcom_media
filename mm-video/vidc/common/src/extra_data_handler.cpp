@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -267,7 +267,8 @@ OMX_S32 extra_data_handler::parse_sliceinfo(
 }
 
 OMX_U32 extra_data_handler::parse_extra_data(
-    OMX_BUFFERHEADERTYPE *buf_hdr, OMX_U32 extradata_offset)
+    OMX_BUFFERHEADERTYPE *buf_hdr, OMX_U32 extradata_offset,
+    OMX_U32 extradata_ltrid)
 {
   OMX_OTHER_EXTRADATATYPE *extra_data = (OMX_OTHER_EXTRADATATYPE *)
     ((unsigned)(buf_hdr->pBuffer + buf_hdr->nOffset +
@@ -293,7 +294,7 @@ OMX_U32 extra_data_handler::parse_extra_data(
       extra_data = NULL;
     }
     while(extra_data && (OMX_U8*)extra_data < (buf_hdr->pBuffer +
-      buf_hdr->nAllocLen) && extra_data->eType != VDEC_EXTRADATA_NONE) {
+      buf_hdr->nAllocLen)) {
       DEBUG_PRINT_LOW("Extra data type(%x) Extra data size(%u)",
         extra_data->eType, extra_data->nDataSize);
       if (extra_data->eType == VDEC_EXTRADATA_SEI) {
@@ -307,6 +308,37 @@ OMX_U32 extra_data_handler::parse_extra_data(
          DEBUG_PRINT_LOW("Extradata SliceInfo of size %d found, "
             "parsing it", extra_data->nDataSize);
          parse_sliceinfo(buf_hdr, extra_data);
+      } else if (extradata_ltrid) {
+         DEBUG_PRINT_LOW("Add extradata LTRInfo");
+         OMX_OTHER_EXTRADATATYPE *ltrinfo = extra_data;
+         ltrinfo->nSize = EXTRADATA_HDR_SIZE + EXTRADATA_PAYLOAD_LTRINFO_SIZE;
+         ltrinfo->nVersion.nVersion = OMX_SPEC_VERSION;
+         ltrinfo->nPortIndex = OUT_PORT_INDEX;
+         ltrinfo->eType =  (OMX_EXTRADATATYPE)OMX_ExtraDataVideoLTRInfo;
+         ltrinfo->nDataSize = EXTRADATA_PAYLOAD_LTRINFO_SIZE;
+         OMX_U8 *dst = (OMX_U8 *)ltrinfo + EXTRADATA_HDR_SIZE;
+         OMX_U8 *src = (OMX_U8 *)&extradata_ltrid;
+         memcpy(dst, src, EXTRADATA_PAYLOAD_LTRINFO_SIZE);
+
+         DEBUG_PRINT_LOW("Add extradata none");
+         OMX_OTHER_EXTRADATATYPE *extradata_none = NULL;
+         extradata_none = (OMX_OTHER_EXTRADATATYPE*)((char *)ltrinfo + ltrinfo->nSize);
+         extradata_none->nSize = EXTRADATA_HDR_SIZE + EXTRADATA_PAYLOAD_NONE_SIZE;
+         extradata_none->nVersion.nVersion = OMX_SPEC_VERSION;
+         extradata_none->nPortIndex = OUT_PORT_INDEX;
+         extradata_none->eType =  OMX_ExtraDataNone;
+         extradata_none->nDataSize = EXTRADATA_PAYLOAD_NONE_SIZE;
+         dst = (OMX_U8 *)extradata_none + EXTRADATA_HDR_SIZE;
+         memset(dst, 0, EXTRADATA_PAYLOAD_NONE_SIZE);
+
+         // required to skip in next loop
+         extradata_ltrid = 0;
+      } else if ((extra_data->eType == VDEC_EXTRADATA_NONE) ||
+         (extra_data->eType == OMX_ExtraDataNone)) {
+         DEBUG_PRINT_LOW("extradata none found");
+         if (extra_data->eType == VDEC_EXTRADATA_NONE)
+            extra_data->eType = OMX_ExtraDataNone;
+         break;
       } else {
          DEBUG_PRINT_ERROR("Unknown extradata found");
          buf_hdr->nFlags &= ~OMX_BUFFERFLAG_EXTRADATA;

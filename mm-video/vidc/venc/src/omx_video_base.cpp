@@ -687,7 +687,16 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
         }
 
         break;
-
+      case OMX_COMPONENT_GENERATE_LTRUSE_FAILED:
+        DEBUG_PRINT_ERROR("ERROR: OMX_COMPONENT_GENERATE_LTRUSE_FAILED!");
+        if(pThis->m_pCallbacks.EventHandler)
+        {
+          DEBUG_PRINT_ERROR("Sending QOMX_ErrorLTRUseFailed, p2 = 0x%x", p2);
+          pThis->m_pCallbacks.EventHandler(&pThis->m_cmp, pThis->m_app_data,
+                                           OMX_EventError, QOMX_ErrorLTRUseFailed,
+                                           NULL, NULL);
+        }
+        break;
       case OMX_COMPONENT_GENERATE_HARDWARE_ERROR:
         DEBUG_PRINT_ERROR("\nERROR: OMX_COMPONENT_GENERATE_HARDWARE_ERROR!\n");
         pThis->omx_report_error ();
@@ -1848,6 +1857,21 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           eRet =OMX_ErrorUnsupportedIndex;
         }
       }
+      else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoLTRInfo)
+      {
+        if (pParam->nPortIndex == PORT_INDEX_OUT)
+        {
+          pParam->bEnabled =
+            (OMX_BOOL)((m_sExtraData & VEN_EXTRADATA_LTRINFO) ? 1 : 0);
+          DEBUG_PRINT_HIGH("LTR Info extradata %d", pParam->bEnabled);
+        }
+        else
+        {
+          DEBUG_PRINT_ERROR("get_parameter: LTR information is "
+            "valid for output port only");
+          eRet = OMX_ErrorUnsupportedIndex;
+        }
+      }
       else
       {
         DEBUG_PRINT_ERROR("get_parameter: unsupported index (%x), "
@@ -1856,6 +1880,32 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       }
       break;
     }
+    case QOMX_IndexParamVideoLTRCountRangeSupported:
+    {
+      DEBUG_PRINT_HIGH("get_parameter: QOMX_IndexParamVideoLTRCountRangeSupported");
+      QOMX_EXTNINDEX_RANGETYPE *pParam = (QOMX_EXTNINDEX_RANGETYPE *)paramData;
+      if (pParam->nPortIndex == PORT_INDEX_OUT)
+      {
+        OMX_U32 min = 0, max = 0, step_size = 0;
+        if (dev_get_capability_ltrcount(&min, &max, &step_size))
+        {
+          pParam->nMin = min;
+          pParam->nMax = max;
+          pParam->nStepSize = step_size;
+        }
+        else
+        {
+          DEBUG_PRINT_ERROR("get_parameter: get_capability_ltrcount failed");
+          eRet = OMX_ErrorUndefined;
+        }
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("LTR count range is valid for output port only");
+        eRet = OMX_ErrorUnsupportedIndex;
+      }
+    }
+    break;
 #endif
   case QOMX_IndexParamVideoSyntaxHdr:
     {
@@ -4098,7 +4148,8 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
 
   if (!secure_session && (buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA))
   {
-    extra_data_handle.parse_extra_data(buffer, extradata_offset[idx]);
+    extra_data_handle.parse_extra_data(buffer, extradata_offset[idx],
+        extradata_ltrid[idx]);
   }
 
   /* For use buffer we need to copy the data */
