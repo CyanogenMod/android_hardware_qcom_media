@@ -16,7 +16,7 @@ libmm-venc-def += -DT_ARM
 libmm-venc-def += -Dinline=__inline
 libmm-venc-def += -D_ANDROID_
 libmm-venc-def += -UENABLE_DEBUG_LOW
-libmm-venc-def += -DENABLE_DEBUG_HIGH
+libmm-venc-def += -UENABLE_DEBUG_HIGH
 libmm-venc-def += -DENABLE_DEBUG_ERROR
 libmm-venc-def += -UINPUT_BUFFER_LOG
 libmm-venc-def += -UOUTPUT_BUFFER_LOG

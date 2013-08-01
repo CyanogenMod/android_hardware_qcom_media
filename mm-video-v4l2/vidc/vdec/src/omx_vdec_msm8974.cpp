@@ -273,7 +273,7 @@ void* message_thread(void *input)
     }
     if ((n < 0) && (errno != EINTR))
     {
-      DEBUG_PRINT_ERROR("\nERROR: read from pipe failed, ret %d errno %d", n, errno);
+      DEBUG_PRINT_LOW("\nERROR: read from pipe failed, ret %d errno %d", n, errno);
       break;
     }
   }
@@ -983,7 +983,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
           DEBUG_PRINT_HIGH("\n Driver flush i/p Port complete");
           if (!pThis->input_flush_progress)
           {
-            DEBUG_PRINT_ERROR("\n WARNING: Unexpected flush from driver");
+            DEBUG_PRINT_HIGH("\n WARNING: Unexpected flush from driver");
           }
           else
           {
@@ -1036,7 +1036,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
           DEBUG_PRINT_HIGH("\n Driver flush o/p Port complete");
           if (!pThis->output_flush_progress)
           {
-            DEBUG_PRINT_ERROR("\n WARNING: Unexpected flush from driver");
+            DEBUG_PRINT_HIGH("\n WARNING: Unexpected flush from driver");
           }
           else
           {
@@ -2491,7 +2491,7 @@ bool omx_vdec::execute_omx_flush(OMX_U32 flushType)
   memset((void *)&v4l2_buf,0,sizeof(v4l2_buf));
   dec.cmd = V4L2_DEC_QCOM_CMD_FLUSH;
 
-  DEBUG_PRINT_ERROR("in %s: reconfig? %d", __func__, in_reconfig);
+  DEBUG_PRINT_HIGH("in %s: reconfig? %d", __func__, in_reconfig);
 
   if (in_reconfig && flushType == OMX_CORE_OUTPUT_PORT_INDEX)
   {
@@ -2767,7 +2767,7 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
       }
       else
       {
-        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu\n", profileLevelType->nProfileIndex);
+        DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu\n", profileLevelType->nProfileIndex);
         eRet = OMX_ErrorNoMore;
       }
     }
@@ -2785,7 +2785,7 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
       }
       else
       {
-        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu\n", profileLevelType->nProfileIndex);
+        DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu\n", profileLevelType->nProfileIndex);
         eRet = OMX_ErrorNoMore;
       }
     }
@@ -2807,7 +2807,7 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
       }
       else
       {
-        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu\n", profileLevelType->nProfileIndex);
+        DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu\n", profileLevelType->nProfileIndex);
         eRet = OMX_ErrorNoMore;
       }
     }
@@ -2918,7 +2918,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                   " NoMore Color formats\n");
            eRet =  OMX_ErrorNoMore;
         }
-	ALOGE("returning %d\n", portFmt->eColorFormat);
+	DEBUG_PRINT_LOW("returning %d\n", portFmt->eColorFormat);
       }
       else
       {
@@ -8414,7 +8414,7 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
   portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
   portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
   portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
-  DEBUG_PRINT_ERROR("update_portdef Width = %lu Height = %lu Stride = %ld"
+  DEBUG_PRINT_HIGH("update_portdef Width = %lu Height = %lu Stride = %ld"
     " SliceHeight = %lu \n", portDefn->format.video.nFrameWidth,
     portDefn->format.video.nFrameHeight,
     portDefn->format.video.nStride,
@@ -8841,7 +8841,7 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
      DEBUG_PRINT_ERROR("ERROR: enable extradata allowed in Loaded state only");
      return OMX_ErrorIncorrectStateOperation;
   }
-  DEBUG_PRINT_ERROR("NOTE: enable_extradata: actual[%lu] requested[%lu] enable[%d], is_internal: %d\n",
+  DEBUG_PRINT_HIGH("NOTE: enable_extradata: actual[%lu] requested[%lu] enable[%d], is_internal: %d\n",
     client_extradata, requested_extradata, enable, is_internal);
 
   if (!is_internal) {
@@ -9366,7 +9366,7 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
     return false;
   }
   if (!enabled){
-    DEBUG_PRINT_ERROR("\n No color conversion required");
+    DEBUG_PRINT_HIGH("\n No color conversion required");
     return status;
   }
   pthread_mutex_lock(&omx->c_lock);
