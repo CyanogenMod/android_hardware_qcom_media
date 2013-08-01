@@ -174,6 +174,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     for (i = 0; i < MAX_PORT; i++)
         streaming[i] = false;
 
+    stopped = 1;
     paused = false;
     async_thread_created = false;
     color_format = 0;
@@ -675,7 +676,6 @@ bool venc_dev::venc_open(OMX_U32 codec)
     m_sOutput_buff_property.mincount = m_sOutput_buff_property.actualcount = bufreq.count;
 
 
-    stopped = 0;
     metadatamode = 0;
 
     control.id = V4L2_CID_MPEG_VIDEO_HEADER_MODE;
@@ -1540,6 +1540,7 @@ unsigned venc_dev::venc_start(void)
         return 1;
 
     streaming[CAPTURE_PORT] = true;
+    stopped = 0;
     return 0;
 }
 
