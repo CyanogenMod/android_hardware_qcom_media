@@ -856,6 +856,7 @@ private:
     bool m_use_android_native_buffers;
     bool m_debug_extradata;
     bool m_debug_concealedmb;
+    bool m_reject_avc_1080p_mp;
 #endif
 #ifdef MAX_RES_1080P
     MP4_Utils mp4_headerparser;
@@ -905,6 +906,8 @@ private:
     bool async_thread_created;
 
     OMX_VIDEO_PARAM_PROFILELEVELTYPE m_profile_lvl;
+    OMX_U32 m_profile;
+
     unsigned int m_fill_output_msg;
     bool client_set_fps;
     class allocate_color_convert_buf {

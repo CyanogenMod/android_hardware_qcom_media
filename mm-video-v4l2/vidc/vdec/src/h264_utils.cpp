@@ -68,10 +68,6 @@ and other items needed by this module.
 
 ========================================================================== */
 
-#define SIZE_NAL_FIELD_MAX  4
-#define BASELINE_PROFILE 66
-#define MAIN_PROFILE     77
-#define HIGH_PROFILE     100
 
 #define MAX_SUPPORTED_LEVEL 32
 
@@ -1055,6 +1051,7 @@ void h264_stream_parser::parse_sps()
   OMX_U32 value = 0, scaling_matrix_limit;
   ALOGV("@@parse_sps: IN");
   value = extract_bits(8); //profile_idc
+  profile = value;
   extract_bits(8); //constraint flags and reserved bits
   extract_bits(8); //level_idc
   uev(); //sps id
@@ -1247,6 +1244,11 @@ OMX_U32 h264_stream_parser::get_nal_unit_type(OMX_U32 *nal_unit_type)
   }
   ALOGV("-->get_nal_unit_type: OUT");
   return consumed_bytes;
+}
+
+OMX_U32 h264_stream_parser::get_profile()
+{
+    return profile;
 }
 
 OMX_S64 h264_stream_parser::calculate_buf_period_ts(OMX_S64 timestamp)

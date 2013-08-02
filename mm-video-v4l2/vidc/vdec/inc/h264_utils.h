@@ -54,6 +54,11 @@ This module contains H264 video decoder utilities and helper routines.
 #define OMX_CORE_720P_HEIGHT 720
 #define OMX_CORE_720P_WIDTH 1280
 
+#define SIZE_NAL_FIELD_MAX  4
+#define BASELINE_PROFILE 66
+#define MAIN_PROFILE     77
+#define HIGH_PROFILE     100
+
 #define PANSCAN_HDLR
 
 /* =======================================================================
@@ -426,9 +431,11 @@ class h264_stream_parser
     void get_frame_pack_data(OMX_QCOM_FRAME_PACK_ARRANGEMENT *frame_pack);
     bool is_mbaff();
     void get_frame_rate(OMX_U32 *frame_rate);
+    OMX_U32 get_profile();
 #ifdef PANSCAN_HDLR
     void update_panscan_data(OMX_S64 timestamp);
 #endif
+
   private:
     void init_bitstream(OMX_U8* data, OMX_U32 size);
     OMX_U32 extract_bits(OMX_U32 n);
@@ -457,6 +464,7 @@ class h264_stream_parser
 
     OMX_U32 curr_32_bit;
     OMX_U32 bits_read;
+    OMX_U32 profile;
     OMX_U32 zero_cntr;
     OMX_U32 emulation_code_skip_cntr;
     OMX_U8* bitstream;
