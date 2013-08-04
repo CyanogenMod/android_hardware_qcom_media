@@ -3352,6 +3352,42 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                      break;
 
                                  }
+        case OMX_QcomIndexParamVideoMetaBufferMode:
+        {
+            StoreMetaDataInBuffersParams *metabuffer =
+                (StoreMetaDataInBuffersParams *)paramData;
+            if (!metabuffer) {
+                DEBUG_PRINT_ERROR("Invalid param: %p", metabuffer);
+                eRet = OMX_ErrorBadParameter;
+                break;
+            }
+            if (metabuffer->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
+                    //set property dynamic buffer mode to driver.
+                    struct v4l2_control control;
+                    struct v4l2_format fmt;
+                    control.id = V4L2_CID_MPEG_VIDC_VIDEO_ALLOC_MODE_OUTPUT;
+                    if (metabuffer->bStoreMetaData == true) {
+                        control.value = V4L2_MPEG_VIDC_VIDEO_DYNAMIC;
+                    } else {
+                        control.value = V4L2_MPEG_VIDC_VIDEO_STATIC;
+                    }
+                    int rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
+                    if (!rc) {
+                        DEBUG_PRINT_HIGH(" %s buffer mode\n",
+                           (metabuffer->bStoreMetaData == true)? "Enabled dynamic" : "Disabled dynamic");
+                    } else {
+                        DEBUG_PRINT_ERROR("Failed to %s buffer mode\n",
+                           (metabuffer->bStoreMetaData == true)? "enable dynamic" : "disable dynamic");
+                        eRet = OMX_ErrorUnsupportedSetting;
+                    }
+                } else {
+                    DEBUG_PRINT_ERROR(
+                       "OMX_QcomIndexParamVideoMetaBufferMode not supported for port: %d\n",
+                       metabuffer->nPortIndex);
+                    eRet = OMX_ErrorUnsupportedSetting;
+                }
+                break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("Setparameter: unknown param %d\n", paramIndex);
                  eRet = OMX_ErrorUnsupportedIndex;
@@ -3704,6 +3740,9 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage;
     }
 #endif
+    else if (!strncmp(paramName, "OMX.google.android.index.storeMetaDataInBuffers", sizeof("OMX.google.android.index.storeMetaDataInBuffers") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
+    }
     else {
         DEBUG_PRINT_ERROR("Extension: %s not implemented\n", paramName);
         return OMX_ErrorNotImplemented;
