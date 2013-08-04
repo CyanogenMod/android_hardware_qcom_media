@@ -981,11 +981,11 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 break;
             }
 #ifdef _ANDROID_ICS_
-        case OMX_QcomIndexParamVideoEncodeMetaBufferMode:
+        case OMX_QcomIndexParamVideoMetaBufferMode:
             {
                 StoreMetaDataInBuffersParams *pParam =
                     (StoreMetaDataInBuffersParams*)paramData;
-                DEBUG_PRINT_HIGH("set_parameter:OMX_QcomIndexParamVideoEncodeMetaBufferMode: "
+                DEBUG_PRINT_HIGH("set_parameter:OMX_QcomIndexParamVideoMetaBufferMode: "
                         "port_index = %lu, meta_mode = %d", pParam->nPortIndex, pParam->bStoreMetaData);
                 if (pParam->nPortIndex == PORT_INDEX_IN) {
                     if (pParam->bStoreMetaData != meta_mode_enable) {

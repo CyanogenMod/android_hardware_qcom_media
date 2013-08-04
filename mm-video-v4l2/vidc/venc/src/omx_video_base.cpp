@@ -1905,7 +1905,7 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
 #ifdef _ANDROID_ICS_
     if (!strncmp(paramName, "OMX.google.android.index.storeMetaDataInBuffers",
             sizeof("OMX.google.android.index.storeMetaDataInBuffers") - 1)) {
-        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoEncodeMetaBufferMode;
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
         return OMX_ErrorNone;
     }
 #endif
