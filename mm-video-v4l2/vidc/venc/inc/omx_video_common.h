@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -55,24 +55,21 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OMX_CORE_WVGA_HEIGHT         480
 #define OMX_CORE_WVGA_WIDTH          800
 
-enum PortIndexType
-{
-  PORT_INDEX_IN = 0,
-  PORT_INDEX_OUT = 1,
-  PORT_INDEX_BOTH = -1,
-  PORT_INDEX_NONE = -2
+enum PortIndexType {
+    PORT_INDEX_IN = 0,
+    PORT_INDEX_OUT = 1,
+    PORT_INDEX_BOTH = -1,
+    PORT_INDEX_NONE = -2
 };
 
-struct pmem
-{
-  void *buffer;
-  int fd;
-  unsigned offset;
-  unsigned size;
+struct pmem {
+    void *buffer;
+    int fd;
+    unsigned offset;
+    unsigned size;
 };
 #ifdef USE_ION
-struct venc_ion
-{
+struct venc_ion {
     int ion_device_fd;
     struct ion_fd_data fd_ion_data;
     struct ion_allocation_data ion_alloc_data;

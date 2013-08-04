@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -36,16 +36,16 @@ EXTERN_C_START
 #endif
 
 typedef void (*CameraPreviewCallback)(int nFD,
-                                      int nOffset,
-                                      void* pPhys,
-                                      void* pVirt,
-                                      long long nTimeStamp);
+        int nOffset,
+        void* pPhys,
+        void* pVirt,
+        long long nTimeStamp);
 
 
 int CameraTest_Initialize(int nFrameRate,
-                          int nFrameWidth,
-                          int nFrameHeight,
-                          CameraPreviewCallback pfnPreviewCallback);
+        int nFrameWidth,
+        int nFrameHeight,
+        CameraPreviewCallback pfnPreviewCallback);
 int CameraTest_Run();
 int CameraTest_ReleaseFrame(void* pPhys, void* pVirt);
 int CameraTest_Exit();

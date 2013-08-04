@@ -38,52 +38,52 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 extern "C" {
-  OMX_API void * get_omx_component_factory_fn(void);
+    OMX_API void * get_omx_component_factory_fn(void);
 }
 
 class omx_venc: public omx_video
 {
-public:
-  omx_venc(); //constructor
-  ~omx_venc(); //des
-  static int async_message_process (void *context, void* message);
-  OMX_ERRORTYPE component_init(OMX_STRING role);
-  OMX_ERRORTYPE set_parameter(OMX_HANDLETYPE hComp,
-                              OMX_INDEXTYPE  paramIndex,
-                              OMX_PTR        paramData);
-  OMX_ERRORTYPE set_config(OMX_HANDLETYPE hComp,
-                           OMX_INDEXTYPE  configIndex,
-                           OMX_PTR        configData);
-  OMX_ERRORTYPE component_deinit(OMX_HANDLETYPE hComp);
-  //OMX strucutres
-  OMX_U32 m_nVenc_format;
-  class venc_dev *handle;
+    public:
+        omx_venc(); //constructor
+        ~omx_venc(); //des
+        static int async_message_process (void *context, void* message);
+        OMX_ERRORTYPE component_init(OMX_STRING role);
+        OMX_ERRORTYPE set_parameter(OMX_HANDLETYPE hComp,
+                OMX_INDEXTYPE  paramIndex,
+                OMX_PTR        paramData);
+        OMX_ERRORTYPE set_config(OMX_HANDLETYPE hComp,
+                OMX_INDEXTYPE  configIndex,
+                OMX_PTR        configData);
+        OMX_ERRORTYPE component_deinit(OMX_HANDLETYPE hComp);
+        //OMX strucutres
+        OMX_U32 m_nVenc_format;
+        class venc_dev *handle;
 #ifdef _MSM8974_
-  int dev_handle_extradata(void *, int);
-  int dev_set_format(int);
+        int dev_handle_extradata(void *, int);
+        int dev_set_format(int);
 #endif
-private:
-  OMX_U32 dev_stop(void);
-  OMX_U32 dev_pause(void);
-  OMX_U32 dev_start(void);
-  OMX_U32 dev_flush(unsigned);
-  OMX_U32 dev_resume(void);
-  OMX_U32 dev_start_done(void);
-  OMX_U32 dev_set_message_thread_id(pthread_t);
-  bool dev_use_buf( void *,unsigned,unsigned);
-  bool dev_free_buf( void *,unsigned);
-  bool dev_empty_buf(void *, void *,unsigned,unsigned);
-  bool dev_fill_buf(void *, void *,unsigned,unsigned);
-  bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
-  bool dev_set_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
-  bool update_profile_level();
-  bool dev_get_seq_hdr(void *, unsigned, unsigned *);
-  bool dev_loaded_start(void);
-  bool dev_loaded_stop(void);
-  bool dev_loaded_start_done(void);
-  bool dev_loaded_stop_done(void);
-  bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *);
-  bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height);
+    private:
+        OMX_U32 dev_stop(void);
+        OMX_U32 dev_pause(void);
+        OMX_U32 dev_start(void);
+        OMX_U32 dev_flush(unsigned);
+        OMX_U32 dev_resume(void);
+        OMX_U32 dev_start_done(void);
+        OMX_U32 dev_set_message_thread_id(pthread_t);
+        bool dev_use_buf( void *,unsigned,unsigned);
+        bool dev_free_buf( void *,unsigned);
+        bool dev_empty_buf(void *, void *,unsigned,unsigned);
+        bool dev_fill_buf(void *, void *,unsigned,unsigned);
+        bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
+        bool dev_set_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
+        bool update_profile_level();
+        bool dev_get_seq_hdr(void *, unsigned, unsigned *);
+        bool dev_loaded_start(void);
+        bool dev_loaded_stop(void);
+        bool dev_loaded_start_done(void);
+        bool dev_loaded_stop_done(void);
+        bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *);
+        bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height);
 };
 
 #endif //__OMX_VENC__H

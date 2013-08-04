@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -34,8 +34,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 
 /* Message Queue structure */
-struct video_msgq
-{
+struct video_msgq {
     /* Command to be executed */
     unsigned int cmd;
 
@@ -47,19 +46,18 @@ struct video_msgq
 
 
 /* Thread & Message Queue information */
-struct video_queue_context
-{
+struct video_queue_context {
     /* Message Queue related members */
     pthread_mutex_t  mutex;
     sem_t sem_message;
-	int commandq_size;
-	int dataq_size;
+    int commandq_size;
+    int dataq_size;
     struct video_msgq *ptr_dataq;
-	struct video_msgq *ptr_cmdq;
+    struct video_msgq *ptr_cmdq;
     int write_dataq ;
     int read_dataq;
-	int write_comq ;
-	int read_comq ;
+    int write_comq ;
+    int read_comq ;
 
 };
 
@@ -70,11 +68,11 @@ struct video_msgq * queue_get_cmd ( void* queuecontext );
 
 
 int queue_post_cmdq ( void *queuecontext,
-                       struct video_msgq *post_msg
-                     );
+        struct video_msgq *post_msg
+        );
 
 int queue_post_dataq ( void *queuecontext,
-                        struct video_msgq *post_msg
-                      );
+        struct video_msgq *post_msg
+        );
 
 #endif /* QUEUE_H */

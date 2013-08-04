@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -30,27 +30,23 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 int check_if_queue_empty ( unsigned int queuetocheck, void* queuecontext )
 {
     struct video_queue_context *ptr_q = NULL;
+
     /*
      * queuetocheck - 0 command queue
      * queuetocheck - 1 data queue
      */
-    if ( queuecontext == NULL || (queuetocheck > 1 ) )
-    {
+    if ( queuecontext == NULL || (queuetocheck > 1 ) ) {
         return 1;
     }
+
     ptr_q = (struct video_queue_context *)queuecontext;
 
-    if (queuetocheck == 0)
-    {
-      if (ptr_q->read_comq == ptr_q->write_comq)
-      {
-          return 1;
-      }
-    }
-    else if (queuetocheck == 1)
-    {
-        if (ptr_q->write_dataq == ptr_q->read_dataq)
-        {
+    if (queuetocheck == 0) {
+        if (ptr_q->read_comq == ptr_q->write_comq) {
+            return 1;
+        }
+    } else if (queuetocheck == 1) {
+        if (ptr_q->write_dataq == ptr_q->read_dataq) {
             return 1;
         }
     }
@@ -60,13 +56,11 @@ int check_if_queue_empty ( unsigned int queuetocheck, void* queuecontext )
 
 
 
-struct video_msgq * queue_get_cmd (void* queuecontext )
-{
+struct video_msgq * queue_get_cmd (void* queuecontext ) {
     struct video_queue_context *ptr_q = NULL;
     struct video_msgq *pitem = NULL;
 
-    if( NULL == queuecontext )
-    {
+    if ( NULL == queuecontext ) {
         printf("\n queue_get_cmd: Invalid Input parameter\n");
         return NULL;
     }
@@ -79,17 +73,14 @@ struct video_msgq * queue_get_cmd (void* queuecontext )
     /* Lock the mutex to protect the critical section */
     pthread_mutex_lock(&ptr_q->mutex);
 
-    if (ptr_q->read_comq != ptr_q->write_comq)
-    {
+    if (ptr_q->read_comq != ptr_q->write_comq) {
         pitem = &ptr_q->ptr_cmdq [ptr_q->read_comq];
         ptr_q->read_comq = (ptr_q->read_comq + 1) % \
-                            ptr_q->commandq_size;
-    }
-    else if (ptr_q->write_dataq != ptr_q->read_dataq)
-    {
+                   ptr_q->commandq_size;
+    } else if (ptr_q->write_dataq != ptr_q->read_dataq) {
         pitem = &ptr_q->ptr_dataq [ptr_q->read_dataq];
         ptr_q->read_dataq = (ptr_q->read_dataq + 1) % \
-                            ptr_q->dataq_size;
+                    ptr_q->dataq_size;
     }
 
     /* Unlock the mutex to release the critical section */
@@ -100,32 +91,29 @@ struct video_msgq * queue_get_cmd (void* queuecontext )
 
 
 int queue_post_cmdq ( void* queuecontext,
-                     struct video_msgq *pitem
-                     )
+        struct video_msgq *pitem
+        )
 {
     struct video_queue_context *ptr_q = NULL;
 
-    if (pitem == NULL || queuecontext == NULL)
-    {
+    if (pitem == NULL || queuecontext == NULL) {
         return -1;
     }
+
     ptr_q = (struct video_queue_context *)queuecontext;
 
     /* Lock the mutex to protect the critical section */
     pthread_mutex_lock(&ptr_q->mutex);
 
-    if ((ptr_q->write_comq + 1) % ptr_q->commandq_size == ptr_q->read_comq)
-    {
+    if ((ptr_q->write_comq + 1) % ptr_q->commandq_size == ptr_q->read_comq) {
         printf("\n QUEUE is FULL");
         /* Unlock the mutex to release the critical section */
         pthread_mutex_unlock(&ptr_q->mutex);
         return 0;
-    }
-    else
-    {
+    } else {
         /* Store the command in the Message Queue & increment write offset */
         memcpy ( &ptr_q->ptr_cmdq [ptr_q->write_comq],pitem, \
-                 sizeof (struct video_msgq));
+                sizeof (struct video_msgq));
         ptr_q->write_comq = (ptr_q->write_comq + 1) % ptr_q->commandq_size;
     }
 
@@ -139,32 +127,29 @@ int queue_post_cmdq ( void* queuecontext,
 
 
 int queue_post_dataq ( void *queuecontext,
-                       struct video_msgq *pitem
-                      )
+        struct video_msgq *pitem
+        )
 {
     struct video_queue_context *ptr_q = NULL;
 
-    if (pitem == NULL || queuecontext == NULL)
-    {
+    if (pitem == NULL || queuecontext == NULL) {
         return -1;
     }
+
     ptr_q = (struct video_queue_context *)queuecontext;
 
     /* Lock the mutex to protect the critical section */
     pthread_mutex_lock(&ptr_q->mutex);
 
-    if ((ptr_q->write_dataq + 1) % ptr_q->dataq_size == ptr_q->read_dataq)
-    {
+    if ((ptr_q->write_dataq + 1) % ptr_q->dataq_size == ptr_q->read_dataq) {
         printf("\n QUEUE is FULL");
         /* Unlock the mutex to release the critical section */
         pthread_mutex_unlock(&ptr_q->mutex);
         return 0;
-    }
-    else
-    {
+    } else {
         /* Store the command in the Message Queue & increment write offset */
         memcpy ( &ptr_q->ptr_dataq [ptr_q->write_dataq],pitem, \
-                 sizeof (struct video_msgq));
+                sizeof (struct video_msgq));
         ptr_q->write_dataq = (ptr_q->write_dataq + 1) % ptr_q->dataq_size;
     }
 

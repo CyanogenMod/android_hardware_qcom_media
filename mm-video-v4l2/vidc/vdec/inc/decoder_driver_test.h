@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011,2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -37,8 +37,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <semaphore.h>
 #include <stdio.h>
 
-struct video_decoder_context
-{
+struct video_decoder_context {
     enum vdec_codec               decoder_format;
     enum vdec_output_fromat       output_format;
     struct vdec_picsize           video_resoultion;
@@ -60,11 +59,11 @@ struct video_decoder_context
 
 int init_decoder ( struct video_decoder_context *init_decode );
 int allocate_buffer ( enum vdec_buffer,
-                      struct video_decoder_context *decode_context
-                     );
+        struct video_decoder_context *decode_context
+        );
 int free_buffer ( enum vdec_buffer,
-                  struct video_decoder_context *decode_context
-                 );
+        struct video_decoder_context *decode_context
+        );
 int start_decoding (struct video_decoder_context *decode_context);
 int stop_decoding  (struct video_decoder_context *decode_context);
 int deinit_decoder (struct video_decoder_context *init_decode);

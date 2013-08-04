@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -33,12 +33,12 @@ extern "C" {
 #endif
 
 
-int FBTest_Initialize(int nFrameWidth,
-                      int nFrameHeight);
-int FBTest_DisplayImage(int nPmemFd, int nOffset);
-int FBTest_Exit();
+    int FBTest_Initialize(int nFrameWidth,
+            int nFrameHeight);
+    int FBTest_DisplayImage(int nPmemFd, int nOffset);
+    int FBTest_Exit();
 
-int FBTest_RunTest();
+    int FBTest_RunTest();
 
 #ifdef __cplusplus
 }
