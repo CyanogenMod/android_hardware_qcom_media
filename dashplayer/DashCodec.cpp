@@ -400,6 +400,7 @@ DashCodec::DashCodec()
 }
 
 DashCodec::~DashCodec() {
+  clearCachedFormats();
 }
 
 void DashCodec::setNotificationMessage(const sp<AMessage> &msg) {
@@ -2175,7 +2176,7 @@ void DashCodec::sendFormatChange() {
     if (mFormats.size() > 0) {
         useCachedConfig = true;
         def = mFormats[0];
-        mFormats.pop();
+        mFormats.removeAt(0);
     } else {
         def = new OMX_PARAM_PORTDEFINITIONTYPE();
         InitOMXParams(def);
@@ -2203,7 +2204,7 @@ void DashCodec::sendFormatChange() {
             bool hasValidCrop = true;
             if (useCachedConfig) {
                 rect = mOutputCrops[0];
-                mOutputCrops.pop();
+                mOutputCrops.removeAt(0);
                 if (rect == NULL) {
                     rect = new OMX_CONFIG_RECTTYPE();
                     hasValidCrop = false;
