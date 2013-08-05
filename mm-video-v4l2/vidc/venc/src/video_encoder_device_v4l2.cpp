@@ -1746,9 +1746,16 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                 return false;
 
             plane.m.userptr = index;
-            plane.data_offset = meta_buf->meta_handle->data[1];
-            plane.length = meta_buf->meta_handle->data[2];
-            plane.bytesused = meta_buf->meta_handle->data[2];
+            // Contents of a meta-buffer queued with 0-length can be potentially junk
+            if (!bufhdr->nFilledLen) {
+                plane.data_offset = 0;
+                plane.length = bufhdr->nAllocLen;
+                plane.bytesused = 0;
+            } else {
+                plane.data_offset = meta_buf->meta_handle->data[1];
+                plane.length = meta_buf->meta_handle->data[2];
+                plane.bytesused = meta_buf->meta_handle->data[2];
+            }
         } else { // meta Buffer + Gralloc buffers || pmem buffers
             plane.m.userptr = (unsigned long) bufhdr->pBuffer;
             plane.data_offset = bufhdr->nOffset;
