@@ -718,6 +718,11 @@ int release_buffers(omx_vdec* obj, enum vdec_buffer buffer_type)
         bufreq.count = 0;
         bufreq.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
         rc = ioctl(obj->drv_ctx.video_driver_fd,VIDIOC_REQBUFS, &bufreq);
+    } else if(buffer_type == VDEC_BUFFER_TYPE_INPUT) {
+        bufreq.memory = V4L2_MEMORY_USERPTR;
+        bufreq.count = 0;
+        bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+        rc = ioctl(obj->drv_ctx.video_driver_fd,VIDIOC_REQBUFS, &bufreq);
     }
     return rc;
 }
@@ -4974,6 +4979,8 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
                     free_input_buffer(buffer);
             }
             m_inp_bPopulated = OMX_FALSE;
+            if(release_input_done())
+                release_buffers(this, VDEC_BUFFER_TYPE_INPUT);
             /*Free the Buffer Header*/
             if (release_input_done()) {
                 DEBUG_PRINT_HIGH("\n ALL input buffers are freed/released");
@@ -5002,6 +5009,9 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             m_out_bPopulated = OMX_FALSE;
             client_buffers.free_output_buffer (buffer);
 
+            if(release_output_done()) {
+                release_buffers(this, VDEC_BUFFER_TYPE_OUTPUT);
+            }
             if (release_output_done()) {
                 free_output_buffer_header();
             }
