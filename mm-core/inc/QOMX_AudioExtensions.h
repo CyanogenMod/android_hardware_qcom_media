@@ -74,6 +74,7 @@ extern "C"
 #define OMX_QCOM_INDEX_PARAM_DAK_FADE        "OMX.Qualcomm.index.audio.dak_fade"
 #define OMX_QCOM_INDEX_PARAM_DAK_SEQ         "OMX.Qualcomm.index.audio.dak_seq"
 #define OMX_QCOM_INDEX_CONFIG_DUALMONO       "OMX.Qualcomm.index.audio.dualmono"
+#define OMX_QCOM_INDEX_CONFIG_AAC_SEL_MIX_COEF "OMX.Qualcomm.index.audio.aac_sel_mix_coef"
 
 typedef enum QOMX_AUDIO_AMRBANDMODETYPE {
     QOMX_AUDIO_AMRBandModeWB9              = 0x7F000001,/**< AMRWB Mode 9 = SID*/
