@@ -6881,7 +6881,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
                     DEBUG_PRINT_LOW("\n Error:2: Destination buffer overflow for H264");
                     return OMX_ErrorBadParameter;
                 }
-            } else {
+            } else if(h264_scratch.nFilledLen) {
                 look_ahead_nal = true;
                 DEBUG_PRINT_LOW("\n Frame Found start Decoding Size =%lu TimeStamp = %llx",
                         pdest_frame->nFilledLen,pdest_frame->nTimeStamp);
@@ -6941,16 +6941,43 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
                 DEBUG_PRINT_LOW("\n EOS Reached Pass Last Buffer");
                 if ( (pdest_frame->nAllocLen - pdest_frame->nFilledLen) >=
                         h264_scratch.nFilledLen) {
-                    memcpy ((pdest_frame->pBuffer + pdest_frame->nFilledLen),
-                            h264_scratch.pBuffer,h264_scratch.nFilledLen);
-                    pdest_frame->nFilledLen += h264_scratch.nFilledLen;
-                    h264_scratch.nFilledLen = 0;
+                    if(pdest_frame->nFilledLen == 0) {
+                        /* No residual frame from before, send whatever
+                         * we have left */
+                        memcpy((pdest_frame->pBuffer + pdest_frame->nFilledLen),
+                                h264_scratch.pBuffer, h264_scratch.nFilledLen);
+                        pdest_frame->nFilledLen += h264_scratch.nFilledLen;
+                        h264_scratch.nFilledLen = 0;
+                        pdest_frame->nTimeStamp = h264_scratch.nTimeStamp;
+                    } else {
+                        m_frame_parser.mutils->isNewFrame(&h264_scratch, 0, isNewFrame);
+                        if(!isNewFrame) {
+                            /* Have a residual frame, but we know that the
+                             * AU in this frame is belonging to whatever
+                             * frame we had left over.  So append it */
+                             memcpy ((pdest_frame->pBuffer + pdest_frame->nFilledLen),
+                                     h264_scratch.pBuffer,h264_scratch.nFilledLen);
+                             pdest_frame->nFilledLen += h264_scratch.nFilledLen;
+                             h264_scratch.nFilledLen = 0;
+                             pdest_frame->nTimeStamp = h264_last_au_ts;
+                        } else {
+                            /* Completely new frame, let's just push what
+                             * we have now.  The resulting EBD would trigger
+                             * another push */
+                            generate_ebd = OMX_FALSE;
+                            pdest_frame->nTimeStamp = h264_last_au_ts;
+                            h264_last_au_ts = h264_scratch.nTimeStamp;
+                        }
+                    }
                 } else {
                     DEBUG_PRINT_ERROR("\nERROR:4: Destination buffer overflow for H264");
                     return OMX_ErrorBadParameter;
                 }
-                pdest_frame->nTimeStamp = h264_scratch.nTimeStamp;
-                pdest_frame->nFlags = h264_scratch.nFlags | psource_frame->nFlags;
+
+                /* Iff we coalesced two buffers, inherit the flags of both bufs */
+                if(generate_ebd == OMX_TRUE) {
+                     pdest_frame->nFlags = h264_scratch.nFlags | psource_frame->nFlags;
+                }
 
                 DEBUG_PRINT_LOW("\n pdest_frame->nFilledLen =%lu TimeStamp = %llx",
                         pdest_frame->nFilledLen,pdest_frame->nTimeStamp);
