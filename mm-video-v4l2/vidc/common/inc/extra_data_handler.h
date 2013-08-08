@@ -37,42 +37,13 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include<linux/msm_vidc_dec.h>
 #include<linux/msm_vidc_enc.h>
 
-
 #ifdef _ANDROID_
 extern "C" {
 #include<utils/Log.h>
 }
-#ifdef ENABLE_DEBUG_LOW
-#undef DEBUG_PRINT_LOW
-#define DEBUG_PRINT_LOW ALOGE
-#else
-#undef DEBUG_PRINT_LOW
-#define DEBUG_PRINT_LOW
-#endif
-#ifdef ENABLE_DEBUG_HIGH
-#undef DEBUG_PRINT_HIGH
-#define DEBUG_PRINT_HIGH ALOGE
-#else
-#undef DEBUG_PRINT_HIGH
-#define DEBUG_PRINT_HIGH
-#endif
-#ifdef ENABLE_DEBUG_ERROR
-#undef DEBUG_PRINT_ERROR
-#define DEBUG_PRINT_ERROR ALOGE
-#else
-#undef DEBUG_PRINT_ERROR
-#define DEBUG_PRINT_ERROR
-#endif
-
-#else //_ANDROID_
-#undef DEBUG_PRINT_LOW
-#undef DEBUG_PRINT_HIGH
-#undef DEBUG_PRINT_ERROR
-#define DEBUG_PRINT_LOW printf
-#define DEBUG_PRINT_HIGH printf
-#define DEBUG_PRINT_ERROR printf
 #endif // _ANDROID_
 
+#include "vidc_debug.h"
 #define SEI_PAYLOAD_FRAME_PACKING_ARRANGEMENT 0x2D
 #define H264_START_CODE 0x01
 #define NAL_TYPE_SEI 0x06
