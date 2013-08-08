@@ -48,6 +48,9 @@ Copyright (c) 2012 The Linux Foundation. All rights reserved.
 #define ALIGN128 128
 #define ALIGN32 32
 #define ALIGN16 16
+#define PADDING_720P 32
+#define WIDTH_720P 1280
+#define HEIGHT_720P 720
 
 //-----------------------------------------------------
 namespace android {
@@ -75,6 +78,7 @@ private:
     virtual bool unmapGPUAddr(uint32_t gAddr);
     virtual size_t calcLumaAlign(ColorConvertFormat format);
     virtual size_t calcSizeAlign(ColorConvertFormat format);
+    virtual bool isTarget8930(void);
 
     void *mC2DLibHandle;
     LINK_c2dCreateSurface mC2DCreateSurface;
@@ -398,7 +402,11 @@ size_t C2DColorConverter::calcStride(ColorConvertFormat format, size_t width)
         case RGB565:
             return ALIGN(width, ALIGN32) * 2; // RGB565 has width as twice
         case RGBA8888:
-            return ALIGN(width, ALIGN32) * 4;
+            if (isTarget8930() && mSrcWidth == WIDTH_720P && mSrcHeight == HEIGHT_720P) {
+             return ALIGN((width + PADDING_720P), ALIGN32) * 4;
+            } else {
+             return ALIGN(width, ALIGN32) * 4;
+            }
         case YCbCr420Tile:
             return ALIGN(width, ALIGN128);
         case YCbCr420SP:
@@ -667,6 +675,30 @@ int32_t C2DColorConverter::dumpOutput(char * filename, char mode) {
     }
     close(fd);
     return ret < 0 ? ret : 0;
+}
+bool C2DColorConverter::isTarget8930(void) {
+    int fd;
+    if ((fd = open("/sys/devices/system/soc/soc0/id", O_RDONLY)) != -1) {
+        char raw_buf[5];
+        int soc;
+        if (read(fd, raw_buf,4) == -1) {
+             close(fd);
+             return false;
+        } else {
+            raw_buf[4] = 0;
+            soc = atoi(raw_buf);
+            close(fd);
+            if (/* MSM_CPU_8930 */
+                soc == 116 || soc == 117 || soc == 118 || soc == 119 || soc == 179 ||
+                /* MSM_CPU_8930AA */
+                soc == 142 || soc == 143 || soc == 144 || soc == 160 || soc == 180 ||
+                /* MSM_CPU_8930AB */
+                soc == 154 || soc == 155 || soc == 156 || soc == 157 || soc == 181) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 extern "C" C2DColorConverterBase* createC2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags)
