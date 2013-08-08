@@ -6804,6 +6804,16 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
             return OMX_ErrorBadParameter;
         }
     }
+
+    /* If an empty input is queued with EOS, do not coalesce with the destination-frame yet, as this may result
+       in EOS flag getting associated with the destination
+    */
+    if (!psource_frame->nFilledLen && (psource_frame->nFlags & OMX_BUFFERFLAG_EOS) &&
+            pdest_frame->nFilledLen) {
+        DEBUG_PRINT_HIGH("delay ETB for 'empty buffer with EOS'");
+        generate_ebd = OMX_FALSE;
+    }
+
     if (nal_length == 0) {
         DEBUG_PRINT_LOW("\n Zero NAL, hence parse using start code");
         if (m_frame_parser.parse_sc_frame(psource_frame,
