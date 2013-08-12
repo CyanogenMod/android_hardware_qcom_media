@@ -2891,6 +2891,18 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
                 break;
             }
 
+            if (flags & OMX_BUFFERFLAG_EOS) {
+                ALOGE("[%s] saw output EOS", mCodec->mComponentName.c_str());
+
+                sp<AMessage> notify = mCodec->mNotify->dup();
+                notify->setInt32("what", DashCodec::kWhatEOS);
+                notify->setInt32("err", mCodec->mInputEOSResult);
+                notify->post();
+
+                mCodec->mPortEOS[kPortIndexOutput] = true;
+                break;
+            }
+
             if (!mCodec->mIsEncoder && !mCodec->mSentFormat && !mCodec->mSmoothStreaming) {
                 mCodec->sendFormatChange();
             }
@@ -2931,16 +2943,6 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
 
             info->mStatus = BufferInfo::OWNED_BY_DOWNSTREAM;
 
-            if (flags & OMX_BUFFERFLAG_EOS) {
-                ALOGV("[%s] saw output EOS", mCodec->mComponentName.c_str());
-
-                sp<AMessage> notify = mCodec->mNotify->dup();
-                notify->setInt32("what", DashCodec::kWhatEOS);
-                notify->setInt32("err", mCodec->mInputEOSResult);
-                notify->post();
-
-                mCodec->mPortEOS[kPortIndexOutput] = true;
-            }
             break;
         }
 
