@@ -1709,4 +1709,13 @@ void DashPlayer::prepareSource()
     }
 }
 
+status_t DashPlayer::dump(int fd, const Vector<String16> &args)
+{
+    if(mStats != NULL) {
+      mStats->setFileDescAndOutputStream(fd);
+    }
+
+    return OK;
+}
+
 }  // namespace android
