@@ -272,6 +272,14 @@ struct video_decoder_capability {
     unsigned int min_height;
     unsigned int max_height;
 };
+
+struct dynamic_buf_list {
+    OMX_U32 fd;
+    OMX_U32 dup_fd;
+    OMX_U32 offset;
+    OMX_U32 ref_count;
+};
+
 // OMX video decoder class
 class omx_vdec: public qc_omx_component
 {
@@ -409,6 +417,8 @@ class omx_vdec: public qc_omx_component
         pthread_t msg_thread_id;
         pthread_t async_thread_id;
         bool is_component_secure();
+        void buf_ref_add(OMX_U32 fd, OMX_U32 offset);
+        void buf_ref_remove(OMX_U32 fd, OMX_U32 offset);
 
     private:
         // Bit Positions
@@ -889,6 +899,10 @@ class omx_vdec: public qc_omx_component
 
         OMX_VIDEO_PARAM_PROFILELEVELTYPE m_profile_lvl;
         OMX_U32 m_profile;
+
+        //variables to handle dynamic buffer mode
+        bool dynamic_buf_mode;
+        struct dynamic_buf_list *out_dynamic_list;
 
         //added for smoothstreaming
         bool mInSmoothstreamingMode;
