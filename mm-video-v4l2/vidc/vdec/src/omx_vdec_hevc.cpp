@@ -49,6 +49,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include <limits.h>
 #include <media/msm_media_info.h>
+#include <qdMetaData.h>
 
 #ifndef _ANDROID_
 #include <sys/ioctl.h>
@@ -62,11 +63,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #if  defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
 #include <gralloc_priv.h>
-#endif
-
-#if defined (_ANDROID_ICS_)
-#include <genlock.h>
-#include <qdMetaData.h>
 #endif
 
 #ifdef _ANDROID_
@@ -5312,25 +5308,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
         return OMX_ErrorBadParameter;
     }
 
-    /* memcpy (&fillbuffer.buffer,ptr_outputbuffer,
-       sizeof(struct vdec_bufferpayload));
-       fillbuffer.client_data = bufferAdd;*/
-
-#ifdef _ANDROID_ICS_
-    if (m_enable_android_native_buffers) {
-        // Acquire a write lock on this buffer.
-        if (GENLOCK_NO_ERROR != genlock_lock_buffer(native_buffer[buffer - m_out_mem_ptr].nativehandle,
-                    GENLOCK_WRITE_LOCK, GENLOCK_MAX_TIMEOUT)) {
-            DEBUG_PRINT_ERROR("Failed to acquire genlock");
-            buffer->nFilledLen = 0;
-            m_cb.FillBufferDone (hComp,m_app_data,buffer);
-            pending_output_buffers--;
-            return OMX_ErrorInsufficientResources;
-        } else {
-            native_buffer[buffer - m_out_mem_ptr].inuse = true;
-        }
-    }
-#endif
     int rc = 0;
     struct v4l2_buffer buf;
     struct v4l2_plane plane[VIDEO_MAX_PLANES];
@@ -5370,22 +5347,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
         /*TODO: How to handle this case */
         DEBUG_PRINT_ERROR("Failed to qbuf to driver");
     }
-    //#ifdef _ANDROID_ICS_
-    //  if (m_enable_android_native_buffers)
-    //  {
-    // Unlock the buffer
-    //     if (GENLOCK_NO_ERROR != genlock_unlock_buffer(native_buffer[buffer - m_out_mem_ptr].nativehandle)) {
-    //        DEBUG_PRINT_ERROR("Releasing genlock failed");
-    //        return OMX_ErrorInsufficientResources;
-    ///    } else {
-    //       native_buffer[buffer - m_out_mem_ptr].inuse = false;
-    //  }
-    // }
-    //#endif
-    //m_cb.FillBufferDone (hComp,m_app_data,buffer);
-    // pending_output_buffers--;
-    // return OMX_ErrorBadParameter;
-    //}
 return OMX_ErrorNone;
 }
 
@@ -5452,16 +5413,6 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
         DEBUG_PRINT_LOW("Freeing the Output Memory\n");
         for (i = 0; i < drv_ctx.op_buf.actualcount; i++ ) {
             free_output_buffer (&m_out_mem_ptr[i]);
-#ifdef _ANDROID_ICS_
-            if (m_enable_android_native_buffers) {
-                if (native_buffer[i].inuse) {
-                    if (GENLOCK_NO_ERROR != genlock_unlock_buffer(native_buffer[i].nativehandle)) {
-                        DEBUG_PRINT_ERROR("Unlocking genlock failed");
-                    }
-                    native_buffer[i].inuse = false;
-                }
-            }
-#endif
         }
 #ifdef _ANDROID_ICS_
         memset(&native_buffer, 0, (sizeof(nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
@@ -6046,18 +5997,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             ((OMX_QCOM_PLATFORM_PRIVATE_LIST *)
              buffer->pPlatformPrivate)->entryList->entry;
         DEBUG_PRINT_LOW("\n Before FBD callback Accessed Pmeminfo %d",pPMEMInfo->pmem_fd);
-#ifdef _ANDROID_ICS_
-        if (m_enable_android_native_buffers) {
-            if (native_buffer[buffer - m_out_mem_ptr].inuse) {
-                if (GENLOCK_NO_ERROR != genlock_unlock_buffer(native_buffer[buffer - m_out_mem_ptr].nativehandle)) {
-                    DEBUG_PRINT_ERROR("Unlocking genlock failed");
-                    return OMX_ErrorInsufficientResources;
-                } else {
-                    native_buffer[buffer - m_out_mem_ptr].inuse = false;
-                }
-            }
-        }
-#endif
         OMX_BUFFERHEADERTYPE *il_buffer;
         il_buffer = client_buffers.get_il_buf_hdr(buffer);
         if (il_buffer)
