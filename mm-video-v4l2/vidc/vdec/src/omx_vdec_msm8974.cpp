@@ -1140,22 +1140,6 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                             DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
                                         }
 
-                                        if (pThis->drv_ctx.interlace != VDEC_InterlaceFrameProgressive) {
-                                            OMX_INTERLACETYPE format = (OMX_INTERLACETYPE)-1;
-                                            OMX_EVENTTYPE event = (OMX_EVENTTYPE)OMX_EventIndexsettingChanged;
-                                            if (pThis->drv_ctx.interlace == VDEC_InterlaceInterleaveFrameTopFieldFirst)
-                                                format = OMX_InterlaceInterleaveFrameTopFieldFirst;
-                                            else if (pThis->drv_ctx.interlace == VDEC_InterlaceInterleaveFrameBottomFieldFirst)
-                                                format = OMX_InterlaceInterleaveFrameBottomFieldFirst;
-                                            else //unsupported interlace format; raise a error
-                                                event = OMX_EventError;
-                                            if (pThis->m_cb.EventHandler) {
-                                                pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
-                                                        event, format, 0, NULL );
-                                            } else {
-                                                DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
-                                            }
-                                        }
                                         break;
 
                 case OMX_COMPONENT_GENERATE_EOS_DONE:
@@ -1180,15 +1164,6 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         pThis->omx_report_unsupported_setting();
                                         break;
 
-                case OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG: {
-                                            DEBUG_PRINT_HIGH("\n Rxd OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG");
-                                            if (pThis->m_cb.EventHandler) {
-                                                pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
-                                                        (OMX_EVENTTYPE)OMX_EventIndexsettingChanged, OMX_CORE_OUTPUT_PORT_INDEX, 0, NULL );
-                                            } else {
-                                                DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
-                                            }
-                                        }
                 default:
                                         break;
             }
