@@ -4268,6 +4268,7 @@ OMX_ERRORTYPE omx_vdec::allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
     }
 
     if (m_inp_heap_ptr == NULL) {
+        m_frame_parser.reset();
         m_inp_heap_ptr = (OMX_BUFFERHEADERTYPE*) \
                  calloc( (sizeof(OMX_BUFFERHEADERTYPE)),
                          drv_ctx.ip_buf.actualcount);
