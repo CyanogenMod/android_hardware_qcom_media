@@ -2788,7 +2788,8 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
     struct v4l2_format fmt;
     DEBUG_PRINT_LOW("\n venc_set_color_format: color_format = %u ", color_format);
 
-    if (color_format == OMX_COLOR_FormatYUV420SemiPlanar) {
+    if (color_format == OMX_COLOR_FormatYUV420SemiPlanar ||
+            color_format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
     } else if (color_format == QOMX_COLOR_FormatYVU420SemiPlanar) {
         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV21;
