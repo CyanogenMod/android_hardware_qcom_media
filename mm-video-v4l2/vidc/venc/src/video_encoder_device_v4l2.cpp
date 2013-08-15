@@ -1838,25 +1838,43 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
             streaming[OUTPUT_PORT] = true;
         }
     }
-
 #ifdef INPUT_BUFFER_LOG
-    int i;
+    int i,msize;
     int stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, m_sVenc_cfg.input_width);
     int scanlines = VENUS_Y_SCANLINES(COLOR_FMT_NV12, m_sVenc_cfg.input_height);
+    unsigned char *pvirt,*ptemp;
+
     char *temp = (char *)bufhdr->pBuffer;
 
-    for (i = 0; i < m_sVenc_cfg.input_height; i++) {
-        fwrite(temp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
-        temp += stride;
+    msize = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
+    if (metadatamode == 1) {
+        pvirt= (unsigned char *)mmap(NULL, msize, PROT_READ|PROT_WRITE,MAP_SHARED, fd, plane.data_offset);
+        if(pvirt) {
+            ptemp = pvirt;
+            for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+                fwrite(ptemp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
+                ptemp += stride;
+            }
+            ptemp = pvirt + (stride * scanlines);
+            for(i = 0; i < m_sVenc_cfg.input_height/2; i++) {
+                fwrite(ptemp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
+                ptemp += stride;
+            }
+            munmap(pvirt, msize);
+        }
+    } else {
+        for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+            fwrite(temp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
+            temp += stride;
+        }
+
+        temp = (char *)bufhdr->pBuffer + (stride * scanlines);
+
+        for(i = 0; i < m_sVenc_cfg.input_height/2; i++) {
+	    fwrite(temp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
+	    temp += stride;
+        }
     }
-
-    temp = (char *)bufhdr->pBuffer + (stride * scanlines);
-
-    for (i = 0; i < m_sVenc_cfg.input_height/2; i++) {
-        fwrite(temp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
-        temp += stride;
-    }
-
 #endif
     return true;
 }
