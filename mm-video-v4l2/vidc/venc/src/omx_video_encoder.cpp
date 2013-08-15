@@ -255,7 +255,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sInPortDef.format.video.nSliceHeight = OMX_CORE_QCIF_HEIGHT;
     m_sInPortDef.format.video.nBitrate = 64000;
     m_sInPortDef.format.video.xFramerate = 15 << 16;
-    m_sInPortDef.format.video.eColorFormat =  OMX_COLOR_FormatYUV420SemiPlanar;
+    m_sInPortDef.format.video.eColorFormat = (OMX_COLOR_FORMATTYPE)
+        QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
     m_sInPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingUnused;
 
     if (dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
@@ -296,7 +297,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     OMX_INIT_STRUCT(&m_sInPortFormat, OMX_VIDEO_PARAM_PORTFORMATTYPE);
     m_sInPortFormat.nPortIndex = (OMX_U32) PORT_INDEX_IN;
     m_sInPortFormat.nIndex = 0;
-    m_sInPortFormat.eColorFormat =  OMX_COLOR_FormatYUV420SemiPlanar;
+    m_sInPortFormat.eColorFormat = (OMX_COLOR_FORMATTYPE)
+        QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
     m_sInPortFormat.eCompressionFormat = OMX_VIDEO_CodingUnused;
 
 
@@ -498,9 +500,10 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     memcpy(&m_sInPortDef, portDefn,sizeof(OMX_PARAM_PORTDEFINITIONTYPE));
 
 #ifdef _ANDROID_ICS_
-                    if (portDefn->format.video.eColorFormat == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque) {
-                        m_sInPortDef.format.video.eColorFormat =
-                            OMX_COLOR_FormatYUV420SemiPlanar;
+                    if (portDefn->format.video.eColorFormat ==
+                            (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque) {
+                        m_sInPortDef.format.video.eColorFormat = (OMX_COLOR_FORMATTYPE)
+                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
                         if (!mUseProxyColorFormat) {
                             if (!c2d_conv.init()) {
                                 DEBUG_PRINT_ERROR("\n C2D init failed");
@@ -581,7 +584,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #ifdef _ANDROID_ICS_
                     if (portFmt->eColorFormat ==
                             (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque) {
-                        m_sInPortFormat.eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+                        m_sInPortFormat.eColorFormat = (OMX_COLOR_FORMATTYPE)
+                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
                         if (!mUseProxyColorFormat) {
                             if (!c2d_conv.init()) {
                                 DEBUG_PRINT_ERROR("\n C2D init failed");
