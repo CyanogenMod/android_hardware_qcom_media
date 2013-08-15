@@ -57,6 +57,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef _ANDROID_
 #include <cutils/properties.h>
+#include <gralloc_priv.h>
 #undef USE_EGL_IMAGE_GPU
 #endif
 
@@ -505,6 +506,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_device_file_ptr(NULL),
     m_vc1_profile((vc1_profile_type)0),
     m_profile(0),
+    mInSmoothstreamingMode(false),
     h264_last_au_ts(LLONG_MAX),
     h264_last_au_flags(0),
     prev_ts(LLONG_MAX),
@@ -1280,6 +1282,17 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     bool codec_ambiguous = false;
     OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_dec";
 
+    if (!strncmp(role, "OMX.qcom.video.decoder.avc.smoothstreaming",OMX_MAX_STRINGNAME_SIZE)) {
+        ALOGI("smooth streaming role");
+        mInSmoothstreamingMode = true;
+        role = "OMX.qcom.video.decoder.avc";
+    }
+    if (!strncmp(role, "OMX.qcom.video.decoder.avc.smoothstreaming.secure",OMX_MAX_STRINGNAME_SIZE)) {
+        ALOGI("secure smooth streaming role");
+        mInSmoothstreamingMode = true;
+        role = "OMX.qcom.video.decoder.avc.secure";
+    }
+
 #ifdef _ANDROID_
     char platform_name[PROPERTY_VALUE_MAX];
     property_get("ro.board.platform", platform_name, "0");
@@ -1636,6 +1649,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         if (eRet == OMX_ErrorNone && !secure_mode)
             enable_extradata(DEFAULT_EXTRADATA, true, true);
 #endif
+        if (mInSmoothstreamingMode) {
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
+            control.value = 1;
+            DEBUG_PRINT_ERROR("Enabling smooth streaming!\n");
+            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control) < 0) {
+                DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming");
+            }
+        }
         eRet=get_buffer_req(&drv_ctx.ip_buf);
         DEBUG_PRINT_HIGH("Input Buffer Size =%d \n ",drv_ctx.ip_buf.buffer_size);
         get_buffer_req(&drv_ctx.op_buf);
@@ -6252,6 +6273,16 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     } else {
         return OMX_ErrorBadParameter;
     }
+
+    if (mInSmoothstreamingMode) {
+        OMX_U32 buf_index = buffer - m_out_mem_ptr;
+        BufferDim_t dim;
+        dim.sliceWidth = drv_ctx.video_resolution.frame_width;
+        dim.sliceHeight = drv_ctx.video_resolution.frame_height;
+        DEBUG_PRINT_ERROR("set metadata: update buf-geometry with stride %d slice %d",
+                dim.sliceWidth, dim.sliceHeight);
+        setMetaData(native_buffer[buf_index].privatehandle, UPDATE_BUFFER_GEOMETRY, (void*)&dim);
+  }
 
     return OMX_ErrorNone;
 }

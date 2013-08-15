@@ -890,6 +890,9 @@ class omx_vdec: public qc_omx_component
         OMX_VIDEO_PARAM_PROFILELEVELTYPE m_profile_lvl;
         OMX_U32 m_profile;
 
+        //added for smoothstreaming
+        bool mInSmoothstreamingMode;
+
         unsigned int m_fill_output_msg;
         bool client_set_fps;
         class allocate_color_convert_buf
