@@ -40,6 +40,11 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <media/msm_media_info.h>
 #include <cutils/properties.h>
 
+#ifdef _ANDROID_
+#include <media/hardware/HardwareAPI.h>
+#include <gralloc_priv.h>
+#endif
+
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 
 #define MPEG4_SP_START 0
@@ -1776,30 +1781,52 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
         plane.length = bufhdr->nAllocLen;
         plane.bytesused = bufhdr->nFilledLen;
     } else {
-        DEBUG_PRINT_LOW("\n Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
-
-        if (metadatamode && !color_format) { // meta Buffer + Camera buffers
+        // --------------------------------------------------------------------------------------
+        // [Usage]             [metadatamode] [Type]        [color_format] [Where is buffer info]
+        // ---------------------------------------------------------------------------------------
+        // Camera-2              1            CameraSource   0              meta-handle
+        // Camera-3              1            GrallocSource  0              gralloc-private-handle
+        // surface encode (RBG)  1            GrallocSource  1              bufhdr (color-converted)
+        // CPU (Eg: MediaCodec)  0            --             0              bufhdr
+        // ---------------------------------------------------------------------------------------
+        if (metadatamode) {
             meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
 
             if (!meta_buf)
                 return false;
 
-            plane.m.userptr = index;
-            // Contents of a meta-buffer queued with 0-length can be potentially junk
-            if (!bufhdr->nFilledLen) {
-                plane.data_offset = 0;
-                plane.length = bufhdr->nAllocLen;
-                plane.bytesused = 0;
+            if (!color_format) {
+                plane.m.userptr = index;
+                if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
+                    plane.data_offset = meta_buf->meta_handle->data[1];
+                    plane.length = meta_buf->meta_handle->data[2];
+                    plane.bytesused = meta_buf->meta_handle->data[2];
+                    DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d",
+                            fd, plane.bytesused, plane.length);
+                } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
+                    private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
+                    fd = handle->fd;
+                    plane.data_offset = 0;
+                    plane.length = handle->size;
+                    plane.bytesused = handle->size;
+                    DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d filled %d of %d",
+                            fd, plane.bytesused, plane.length);
+                }
             } else {
-                plane.data_offset = meta_buf->meta_handle->data[1];
-                plane.length = meta_buf->meta_handle->data[2];
-                plane.bytesused = meta_buf->meta_handle->data[2];
+                plane.m.userptr = (unsigned long) bufhdr->pBuffer;
+                plane.data_offset = bufhdr->nOffset;
+                plane.length = bufhdr->nAllocLen;
+                plane.bytesused = bufhdr->nFilledLen;
+                DEBUG_PRINT_LOW("venc_empty_buf: Opaque non-camera buf: fd = %d filled %d of %d",
+                        fd, plane.bytesused, plane.length);
             }
-        } else { // meta Buffer + Gralloc buffers || pmem buffers
+        } else {
             plane.m.userptr = (unsigned long) bufhdr->pBuffer;
             plane.data_offset = bufhdr->nOffset;
             plane.length = bufhdr->nAllocLen;
             plane.bytesused = bufhdr->nFilledLen;
+            DEBUG_PRINT_LOW("venc_empty_buf: non-camera buf: fd = %d filled %d of %d",
+                    fd, plane.bytesused, plane.length);
         }
     }
 
