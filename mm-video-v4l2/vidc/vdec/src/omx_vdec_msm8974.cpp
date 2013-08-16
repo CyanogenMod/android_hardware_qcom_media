@@ -6436,12 +6436,36 @@ int omx_vdec::async_message_process (void *context, void* message)
                         DEBUG_PRINT_HIGH("\n Crop information changed. W: %d --> %d, H: %d -> %d\n",
                                 omx->rectangle.nWidth, vdec_msg->msgdata.output_frame.framesize.right,
                                 omx->rectangle.nHeight, vdec_msg->msgdata.output_frame.framesize.bottom);
+                        if (vdec_msg->msgdata.output_frame.framesize.left + vdec_msg->msgdata.output_frame.framesize.right >=
+                            omx->drv_ctx.video_resolution.frame_width) {
+                            vdec_msg->msgdata.output_frame.framesize.left = 0;
+                            if (vdec_msg->msgdata.output_frame.framesize.right > omx->drv_ctx.video_resolution.frame_width) {
+                                vdec_msg->msgdata.output_frame.framesize.right =  omx->drv_ctx.video_resolution.frame_width;
+                            }
+                        }
+                        if (vdec_msg->msgdata.output_frame.framesize.top + vdec_msg->msgdata.output_frame.framesize.bottom >=
+                            omx->drv_ctx.video_resolution.frame_height) {
+                            vdec_msg->msgdata.output_frame.framesize.top = 0;
+                            if (vdec_msg->msgdata.output_frame.framesize.bottom > omx->drv_ctx.video_resolution.frame_height) {
+                                vdec_msg->msgdata.output_frame.framesize.bottom =  omx->drv_ctx.video_resolution.frame_height;
+                            }
+                        }
+                        DEBUG_PRINT_LOW("omx_vdec: Adjusted Dim L: %d, T: %d, R: %d, B: %d, W: %d, H: %d\n",
+                                        vdec_msg->msgdata.output_frame.framesize.left,
+                                        vdec_msg->msgdata.output_frame.framesize.top,
+                                        vdec_msg->msgdata.output_frame.framesize.right,
+                                        vdec_msg->msgdata.output_frame.framesize.bottom,
+                                        omx->drv_ctx.video_resolution.frame_width,
+                                        omx->drv_ctx.video_resolution.frame_height);
                         omx->rectangle.nLeft = vdec_msg->msgdata.output_frame.framesize.left;
                         omx->rectangle.nTop = vdec_msg->msgdata.output_frame.framesize.top;
                         omx->rectangle.nWidth = vdec_msg->msgdata.output_frame.framesize.right;
                         omx->rectangle.nHeight = vdec_msg->msgdata.output_frame.framesize.bottom;
                         format_notably_changed = 1;
                     }
+                    DEBUG_PRINT_HIGH("Left: %d, Right: %d, top: %d, Bottom: %d\n",
+                                      vdec_msg->msgdata.output_frame.framesize.left,vdec_msg->msgdata.output_frame.framesize.right,
+                                      vdec_msg->msgdata.output_frame.framesize.top, vdec_msg->msgdata.output_frame.framesize.bottom);
                     if (format_notably_changed) {
                         if (omx->is_video_session_supported()) {
                             omx->post_event (NULL, vdec_msg->status_code,
