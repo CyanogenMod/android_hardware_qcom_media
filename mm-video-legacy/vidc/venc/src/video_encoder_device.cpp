@@ -2447,8 +2447,8 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
   venc_ioctl_msg ioctl_msg = {NULL, NULL};
   DEBUG_PRINT_LOW("\n venc_set_color_format: color_format = %u ", color_format);
 
-  if(color_format == OMX_COLOR_FormatYUV420SemiPlanar)
-  {
+  if(color_format == OMX_COLOR_FormatYUV420SemiPlanar ||
+      color_format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
 #ifdef MAX_RES_1080P
   m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV12_16M2KA;
 #else
