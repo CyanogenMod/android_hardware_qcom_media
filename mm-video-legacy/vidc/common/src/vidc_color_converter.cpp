@@ -72,16 +72,16 @@ bool omx_c2d_conv::init() {
   return status;
 }
 
-bool omx_c2d_conv::convert(int src_fd, void *src_viraddr,
-     int dest_fd,void *dest_viraddr)
+bool omx_c2d_conv::convert(int src_fd, void *src_base, void *src_viraddr,
+     int dest_fd, void *dest_base, void *dest_viraddr)
 {
   int result;
   if(!src_viraddr || !dest_viraddr || !c2dcc){
     DEBUG_PRINT_ERROR("\n Invalid arguments omx_c2d_conv::convert");
     return false;
   }
-  result =  c2dcc->convertC2D(src_fd,src_viraddr,
-                              dest_fd,dest_viraddr);
+  result =  c2dcc->convertC2D(src_fd, src_base, src_viraddr,
+                              dest_fd, dest_base, dest_viraddr);
   DEBUG_PRINT_LOW("\n Color convert status %d",result);
   return ((result < 0)?false:true);
 }
@@ -90,9 +90,10 @@ bool omx_c2d_conv::open(unsigned int height,unsigned int width,
      ColorConvertFormat src, ColorConvertFormat dest)
 {
   bool status = false;
+  size_t srcStride = 0;
   if(!c2dcc) {
      c2dcc = mConvertOpen(width, height, width, height,
-             src,dest,0);
+             src, dest, 0, srcStride);
      if(c2dcc) {
        src_format = src;
        status = true;

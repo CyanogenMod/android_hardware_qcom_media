@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 #include <system/window.h>
-#include <MetadataBufferType.h>
+#include <media/hardware/MetadataBufferType.h>
 
 namespace android {
     typedef struct encoder_media_buffer_type {

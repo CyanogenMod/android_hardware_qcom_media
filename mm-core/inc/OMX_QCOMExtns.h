@@ -402,6 +402,10 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.QCOM.index.config.video.LTRMark"*/
     QOMX_IndexConfigVideoLTRMark = 0x7F000029,
+
+    OMX_QcomIndexParamSequenceHeaderWithIDR = 0x7F00002A,
+
+    OMX_QcomIndexParamEnableVUIStreamRestrictFlag = 0x7F00002B,
 };
 
 /**
@@ -1072,6 +1076,15 @@ typedef enum {
     QOMX_VIDEO_CONTENT_LR_VIEW = 1,
     QOMX_VIDEO_CONTENT_RL_VIEW = 2,
 } QOMX_VIDEO_CONTENT_INTERPRETATION;
+
+// A pointer to this struct is passed to OMX_SetParameter when the extension
+// index for the 'OMX.google.android.index.setVUIStreamRestrictFlag' extension
+// is given.
+typedef struct QOMX_VUI_BITSTREAM_RESTRICT {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_BOOL bEnable;
+} QOMX_VUI_BITSTREAM_RESTRICT;
 
 /**
  * Specifies the extended picture types. These values should be
