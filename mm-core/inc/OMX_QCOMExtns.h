@@ -274,6 +274,7 @@ enum OMX_QCOM_COLOR_FORMATTYPE
     QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka,
     QOMX_COLOR_FormatYUV420PackedSemiPlanar32m4ka_nv21,
     QOMX_COLOR_FormatYUV420PackedSemiPlanar16m2ka_nv21,
+    QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
     QOMX_COLOR_FormatAndroidOpaque = (OMX_COLOR_FORMATTYPE) OMX_COLOR_FormatVendorStartUnused  + 0x789,
 };
 
