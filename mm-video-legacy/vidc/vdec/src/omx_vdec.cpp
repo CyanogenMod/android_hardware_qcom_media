@@ -9059,8 +9059,8 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr
     bool status;
     if (!omx->in_reconfig && !omx->output_flush_progress) {
       status = c2d.convert(omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
-                  (void*)omx->m_out_mem_ptr->pBuffer,  bufadd->pBuffer, pmem_fd[index],
-                  (void*)pmem_baseaddress[index], pmem_baseaddress[index]);
+                  bufadd->pBuffer, bufadd->pBuffer, pmem_fd[index],
+                  pmem_baseaddress[index], pmem_baseaddress[index]);
       m_out_mem_ptr_client[index].nFilledLen = buffer_size_req;
       if (!status){
         DEBUG_PRINT_ERROR("\n Failed color conversion %d", status);
