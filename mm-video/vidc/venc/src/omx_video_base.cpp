@@ -4197,7 +4197,7 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
   pending_input_buffers--;
 
   if(mUseProxyColorFormat && (buffer_index < m_sInPortDef.nBufferCountActual)) {
-    if(!pdest_frame) {
+    if(!pdest_frame && !input_flush_progress) {
       pdest_frame = buffer;
       DEBUG_PRINT_LOW("\n empty_buffer_done pdest_frame address is %p",pdest_frame);
       return push_input_buffer(hComp);
