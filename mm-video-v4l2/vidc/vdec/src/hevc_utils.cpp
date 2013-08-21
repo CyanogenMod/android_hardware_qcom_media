@@ -47,6 +47,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ========================================================================== */
 #include "hevc_utils.h"
+#include "vidc_debug.h"
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -54,9 +55,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef _ANDROID_
 #include <cutils/properties.h>
 #endif
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_ERROR ALOGE
 
 
 /* =======================================================================
@@ -202,7 +200,7 @@ bool HEVC_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
 
         m_forceToStichNextNAL = true;
     } else if (nalu_type <= NAL_UNIT_RESERVED_23) {
-        DEBUG_PRINT_LOW("\n AU Boundary with NAL type %d ",nal_unit.nalu_type);
+        DEBUG_PRINT_LOW("\n AU Boundary with NAL type %d ", nalu_type);
 
         if (!m_forceToStichNextNAL) {
             bFirstSliceInPic = ((buffer[pos+2] & 0x80)>>7);

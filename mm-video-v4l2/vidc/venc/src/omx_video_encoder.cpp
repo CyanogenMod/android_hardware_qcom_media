@@ -50,6 +50,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 (_s_)->nVersion.nVersion = OMX_SPEC_VERSION
 
 extern int m_pipe;
+int debug_level = PRIO_ERROR;
 
 // factory function executed by the core to create instances
 void *get_omx_component_factory_fn(void)
@@ -69,6 +70,10 @@ omx_venc::omx_venc()
     mUseProxyColorFormat = false;
     get_syntaxhdr_enable = false;
 #endif
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("vidc.debug.level", property_value, "0");
+    debug_level = atoi(property_value);
+    property_value[0] = '\0';
 }
 
 omx_venc::~omx_venc()

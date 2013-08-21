@@ -26,8 +26,10 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #include "ts_parser.h"
+#include "vidc_debug.h"
 
-#define DEBUG ALOGE
+#define DEBUG DEBUG_PRINT_ERROR
+
 void omx_time_stamp_reorder::set_timestamp_reorder_mode(bool mode)
 {
     reorder_ts = mode;

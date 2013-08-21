@@ -29,13 +29,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <utils/Log.h>
 #include <gralloc_priv.h>
 #include "vidc_color_converter.h"
-#undef DEBUG_PRINT_LOW
-#undef DEBUG_PRINT_HIGH
-#undef DEBUG_PRINT_ERROR
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_HIGH ALOGE
-#define DEBUG_PRINT_ERROR ALOGE
+#include "vidc_debug.h"
 
 omx_c2d_conv::omx_c2d_conv()
 {

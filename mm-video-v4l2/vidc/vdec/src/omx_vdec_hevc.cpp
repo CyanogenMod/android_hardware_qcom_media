@@ -129,6 +129,9 @@ extern "C" {
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
+
+int debug_level = PRIO_ERROR;
+
 void* async_message_thread (void *input)
 {
     OMX_BUFFERHEADERTYPE *buffer;
@@ -546,6 +549,10 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     DEBUG_PRINT_HIGH("In OMX vdec Constructor");
 #ifdef _ANDROID_
     char property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("vidc.debug.level", property_value, "0");
+    debug_level = atoi(property_value);
+    property_value[0] = '\0';
+
     property_get("vidc.dec.debug.perf", property_value, "0");
     perf_flag = atoi(property_value);
     if (perf_flag) {
