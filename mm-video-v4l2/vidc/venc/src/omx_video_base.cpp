@@ -236,7 +236,8 @@ omx_video::omx_video():
     m_input_msg_id(OMX_COMPONENT_GENERATE_ETB),
     psource_frame(NULL),
     pdest_frame(NULL),
-    c2d_opened(false)
+    c2d_opened(false),
+    mUsesColorConversion(false)
 {
     DEBUG_PRINT_HIGH("\n omx_video(): Inside Constructor()");
     memset(&m_cmp,0,sizeof(m_cmp));
@@ -3122,9 +3123,9 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
 {
     OMX_U8 *pmem_data_buf = NULL;
     int push_cnt = 0;
-    unsigned nBufIndex = 0, nBufIndex_meta = 0;
+    unsigned nBufIndex = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
-    encoder_media_buffer_type *media_buffer;
+    encoder_media_buffer_type *media_buffer = NULL;
 
 #ifdef _MSM8974_
     int fd = 0;
@@ -3134,35 +3135,22 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
         DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Invalid buffer[%p]\n", buffer);
         return OMX_ErrorBadParameter;
     }
-    nBufIndex = buffer - ((OMX_BUFFERHEADERTYPE *)m_inp_mem_ptr);
-    nBufIndex_meta = buffer - meta_buffer_hdr;
-    media_buffer = (encoder_media_buffer_type *)meta_buffer_hdr[nBufIndex].pBuffer;
-    if (nBufIndex >= m_sInPortDef.nBufferCountActual &&
-            nBufIndex_meta >= m_sInPortDef.nBufferCountActual) {
-        DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Invalid bufindex = %u\n", nBufIndex);
-        return OMX_ErrorBadParameter;
-    }
-    pending_input_buffers++;
-    if (input_flush_progress == true) {
-        post_event ((unsigned int)buffer,0,
-                OMX_COMPONENT_GENERATE_EBD);
-        DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Input flush in progress");
-        return OMX_ErrorNone;
-    }
-#ifdef _MSM8974_
-    if (!meta_mode_enable ||
-            (media_buffer && media_buffer->buffer_type == kMetadataBufferTypeGrallocSource)) {
-        fd = m_pInput_pmem[nBufIndex].fd;
-    }
-#endif
-#ifdef _ANDROID_ICS_
-    if (meta_mode_enable && !mUseProxyColorFormat) {
+
+    // Buffer sanity checks
+    if (meta_mode_enable && !mUsesColorConversion) {
+        //For color-conversion case, we have an internal buffer and not a meta buffer
         bool met_error = false;
+        nBufIndex = buffer - meta_buffer_hdr;
+        if (nBufIndex >= m_sInPortDef.nBufferCountActual) {
+            DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Invalid meta-bufIndex = %u\n", nBufIndex);
+            return OMX_ErrorBadParameter;
+        }
+        media_buffer = (encoder_media_buffer_type *)meta_buffer_hdr[nBufIndex].pBuffer;
         if (media_buffer) {
             if (media_buffer->buffer_type != kMetadataBufferTypeCameraSource &&
-                    media_buffer->buffer_type != kMetadataBufferTypeGrallocSource)
+                    media_buffer->buffer_type != kMetadataBufferTypeGrallocSource) {
                 met_error = true;
-            else {
+            } else {
                 if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
                     if (media_buffer->meta_handle == NULL)
                         met_error = true;
@@ -3178,6 +3166,29 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
             post_event ((unsigned int)buffer,0,OMX_COMPONENT_GENERATE_EBD);
             return OMX_ErrorBadParameter;
         }
+    } else {
+        nBufIndex = buffer - ((OMX_BUFFERHEADERTYPE *)m_inp_mem_ptr);
+        if (nBufIndex >= m_sInPortDef.nBufferCountActual) {
+            DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Invalid bufIndex = %u\n", nBufIndex);
+            return OMX_ErrorBadParameter;
+        }
+    }
+
+    pending_input_buffers++;
+    if (input_flush_progress == true) {
+        post_event ((unsigned int)buffer,0,
+                OMX_COMPONENT_GENERATE_EBD);
+        DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Input flush in progress");
+        return OMX_ErrorNone;
+    }
+#ifdef _MSM8974_
+    if (!meta_mode_enable) {
+        fd = m_pInput_pmem[nBufIndex].fd;
+    }
+#endif
+#ifdef _ANDROID_ICS_
+    if (meta_mode_enable && !mUseProxyColorFormat) {
+        // Camera or Gralloc-source meta-buffers queued with pre-announced color-format
         struct pmem Input_pmem_info;
         if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
             Input_pmem_info.buffer = media_buffer;
@@ -3187,8 +3198,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
 #endif
             Input_pmem_info.offset = media_buffer->meta_handle->data[1];
             Input_pmem_info.size = media_buffer->meta_handle->data[2];
-            DEBUG_PRINT_LOW("ETB fd = %d, offset = %d, size = %d",Input_pmem_info.fd,
-                    Input_pmem_info.offset,
+            DEBUG_PRINT_LOW("ETB (meta-Camera) fd = %d, offset = %d, size = %d",
+                    Input_pmem_info.fd, Input_pmem_info.offset,
                     Input_pmem_info.size);
         } else {
             private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
@@ -3199,9 +3210,25 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
 #endif
             Input_pmem_info.offset = 0;
             Input_pmem_info.size = handle->size;
+            DEBUG_PRINT_LOW("ETB (meta-gralloc) fd = %d, offset = %d, size = %d",
+                    Input_pmem_info.fd, Input_pmem_info.offset,
+                    Input_pmem_info.size);
         }
         if (dev_use_buf(&Input_pmem_info,PORT_INDEX_IN,0) != true) {
             DEBUG_PRINT_ERROR("\nERROR: in dev_use_buf");
+            post_event ((unsigned int)buffer,0,OMX_COMPONENT_GENERATE_EBD);
+            return OMX_ErrorBadParameter;
+        }
+    } else if (meta_mode_enable && !mUsesColorConversion) {
+        // Graphic-source meta-buffers queued with opaque color-format
+        if (media_buffer->buffer_type == kMetadataBufferTypeGrallocSource) {
+            private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
+            fd = handle->fd;
+            DEBUG_PRINT_LOW("ETB (opaque-gralloc) fd = %d, size = %d",
+                    fd, handle->size);
+        } else {
+            DEBUG_PRINT_ERROR("ERROR: Invalid bufferType for buffer with Opaque"
+                    " color format");
             post_event ((unsigned int)buffer,0,OMX_COMPONENT_GENERATE_EBD);
             return OMX_ErrorBadParameter;
         }
@@ -3216,7 +3243,10 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
                 buffer->nFilledLen);
         DEBUG_PRINT_LOW("memcpy() done in ETBProxy for i/p Heap UseBuf");
     } else if (mUseProxyColorFormat) {
+        // Gralloc-source buffers with color-conversion
         fd = m_pInput_pmem[nBufIndex].fd;
+        DEBUG_PRINT_LOW("ETB (color-converted) fd = %d, size = %d",
+                fd, buffer->nFilledLen);
     } else if (m_sInPortDef.format.video.eColorFormat ==
                     OMX_COLOR_FormatYUV420SemiPlanar) {
             //For the case where YUV420SP buffers are qeueued to component
@@ -3225,6 +3255,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
             if (!dev_color_align(buffer, m_sInPortDef.format.video.nFrameWidth,
                                     m_sInPortDef.format.video.nFrameHeight)) {
                     DEBUG_PRINT_ERROR("Failed to adjust buffer color");
+                    post_event((unsigned int)buffer, 0, OMX_COMPONENT_GENERATE_EBD);
                     return OMX_ErrorUndefined;
             }
     }
@@ -3765,12 +3796,21 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
             pdest_frame = buffer;
             DEBUG_PRINT_LOW("\n empty_buffer_done pdest_frame address is %p",pdest_frame);
             return push_input_buffer(hComp);
-
-        } else {
+        }
+        if (mUsesColorConversion) {
+            // return color-conversion buffer back to the pool
             DEBUG_PRINT_LOW("\n empty_buffer_done insert address is %p",buffer);
             if (!m_opq_pmem_q.insert_entry((unsigned int)buffer, 0, 0)) {
                 DEBUG_PRINT_ERROR("\n empty_buffer_done: pmem queue is full");
                 return OMX_ErrorBadParameter;
+            }
+        } else {
+            // We are not dealing with color-conversion, Buffer being returned
+            // here is client's buffer, return it back to client
+            OMX_BUFFERHEADERTYPE* il_buffer = &meta_buffer_hdr[buffer_index];
+            if (m_pCallbacks.EmptyBufferDone && il_buffer) {
+                m_pCallbacks.EmptyBufferDone(hComp, m_app_data, il_buffer);
+                DEBUG_PRINT_LOW("empty_buffer_done: Returning client buf %p",il_buffer);
             }
         }
     } else if (m_pCallbacks.EmptyBufferDone) {
@@ -4238,6 +4278,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         }
         if (!c2d_opened) {
             if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888) {
+                mUsesColorConversion = true;
                 DEBUG_PRINT_ERROR("\n open Color conv for RGBA888 W: %d, H: %d\n",
                         m_sInPortDef.format.video.nFrameWidth,
                         m_sInPortDef.format.video.nFrameHeight);

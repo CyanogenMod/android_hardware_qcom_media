@@ -153,6 +153,8 @@ class omx_video: public qc_omx_component
         encoder_media_buffer_type meta_buffers[MAX_NUM_INPUT_BUFFERS];
         OMX_BUFFERHEADERTYPE *opaque_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
         bool mUseProxyColorFormat;
+        //RGB or non-native input, and we have pre-allocated conversion buffers
+        bool mUsesColorConversion;
         bool get_syntaxhdr_enable;
         OMX_BUFFERHEADERTYPE  *psource_frame;
         OMX_BUFFERHEADERTYPE  *pdest_frame;
