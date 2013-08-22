@@ -360,6 +360,10 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                            mScanSourcesPending = true;
                     }
                }
+               if (mTimeDiscontinuityPending && mRenderer != NULL){
+                   mRenderer->signalTimeDiscontinuity();
+                   mTimeDiscontinuityPending = false;
+               }
             }
             break;
         }
@@ -785,10 +789,11 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
             if (mDriver != NULL) {
                 sp<DashPlayerDriver> driver = mDriver.promote();
                 if (driver != NULL) {
-                    driver->notifySeekComplete();
                     if( newSeekTime >= 0 ) {
+                        mRenderer->notifySeekPosition(newSeekTime);
                         driver->notifyPosition( newSeekTime );
                         mSource->notifyRenderingPosition(newSeekTime);
+                        driver->notifySeekComplete();
                      }
                 }
             }
