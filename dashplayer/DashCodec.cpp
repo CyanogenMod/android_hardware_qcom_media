@@ -2149,6 +2149,20 @@ void DashCodec::queueNextFormat() {
 }
 
 void DashCodec::clearCachedFormats() {
+    for (size_t i = 0 ; i < mOutputCrops.size(); i++)
+    {
+      if (mOutputCrops[i])
+      {
+        delete mOutputCrops[i];
+      }
+    }
+    for (size_t i = 0 ; i < mFormats.size(); i++)
+    {
+      if (mFormats[i])
+      {
+        delete mFormats[i];
+      }
+    }
     mOutputCrops.clear();
     mFormats.clear();
 }
