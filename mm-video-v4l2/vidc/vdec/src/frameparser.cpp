@@ -420,61 +420,52 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
 
     /*Exit State Machine*/
     psource = source->pBuffer + source->nOffset;
-
+    int bytes_to_skip = 0;
     switch (parse_state) {
         case A5:
             *partialframe = 0;
             check_skip_frame_boundary(partialframe);
-
-            if (parsed_length > 3) {
-                memcpy (pdest,psource,(parsed_length-3));
-                dest->nFilledLen += (parsed_length-3);
-            }
-
+            bytes_to_skip = 3;
             break;
         case A4:
             *partialframe = 0;
             check_skip_frame_boundary(partialframe);
-
-            if (parsed_length > 4) {
-                memcpy (pdest,psource,(parsed_length-4));
-                dest->nFilledLen += (parsed_length-4);
-            }
-
+            bytes_to_skip = 4;
             break;
         case A3:
-
-            if (parsed_length > 3) {
-                memcpy (pdest,psource,(parsed_length-3));
-                dest->nFilledLen += (parsed_length-3);
+            if (source->nFlags & OMX_BUFFERFLAG_EOS) {
+                bytes_to_skip = 0;
+            } else {
+                bytes_to_skip = 3;
             }
-
             break;
         case A2:
-
-            if (parsed_length > 2) {
-                memcpy (pdest,psource,(parsed_length-2));
-                dest->nFilledLen += (parsed_length-2);
+            if (source->nFlags & OMX_BUFFERFLAG_EOS) {
+                bytes_to_skip = 0;
+            } else {
+                bytes_to_skip = 2;
             }
-
             break;
         case A1:
-
-            if (parsed_length > 1) {
-                memcpy (pdest,psource,(parsed_length-1));
-                dest->nFilledLen += (parsed_length-1);
+            if (source->nFlags & OMX_BUFFERFLAG_EOS) {
+                bytes_to_skip = 0;
+            } else {
+                bytes_to_skip = 1;
             }
-
             break;
         case A0:
-            memcpy (pdest,psource,(parsed_length));
-            dest->nFilledLen += (parsed_length);
+            bytes_to_skip = 0;
             break;
     }
 
     if (source->nFilledLen < parsed_length) {
         printf ("\n FATAL Error");
         return -1;
+    }
+
+    if (parsed_length > bytes_to_skip) {
+        memcpy (pdest, psource, (parsed_length-bytes_to_skip));
+        dest->nFilledLen += (parsed_length-bytes_to_skip);
     }
 
     source->nFilledLen -= parsed_length;
