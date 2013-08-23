@@ -52,6 +52,7 @@ enum {
     kKeyFileFormat           = 'ffmt',  // cstring
 
     kkeyAacFormatAdif        = 'adif',  // bool (int32_t)
+    kKeyInterlace            = 'intL',  // bool (int32_t)
     kkeyAacFormatLtp         = 'ltp',
 
 
