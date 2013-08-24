@@ -88,25 +88,6 @@ frame_parse::~frame_parse ()
         delete mutils;
 
     mutils = NULL;
-    parse_state = A0;
-    start_code = NULL;
-    mask_code = NULL;
-    last_byte_h263 = 0;
-    last_byte = 0;
-    header_found = false;
-    skip_frame_boundary = false;
-    state_nal = NAL_LENGTH_ACC;
-    nal_length = 0;
-    accum_length = 0;
-    bytes_tobeparsed = 0;
-}
-
-void frame_parse::reset()
-{
-    if (mutils)
-        delete mutils;
-
-    mutils = NULL;
 }
 
 int frame_parse::init_start_codes (codec_type codec_type_parse)

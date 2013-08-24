@@ -77,7 +77,6 @@ class frame_parse
         void flush ();
         frame_parse ();
         ~frame_parse ();
-        void reset ();
 
     private:
         /*Variables for Start code based Parsing*/
