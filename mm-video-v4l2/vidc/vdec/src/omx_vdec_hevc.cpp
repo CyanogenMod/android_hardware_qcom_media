@@ -91,6 +91,12 @@ FILE *outputExtradataFile;
 char ouputextradatafilename [] = "/data/extradata";
 #endif
 
+#ifdef VENUS_HEVC
+#define DEVICE_NAME "/dev/video/venus_dec"
+#else
+#define DEVICE_NAME "/dev/video/q6_dec"
+#endif
+
 #define DEFAULT_FPS 30
 #define MAX_INPUT_ERROR DEFAULT_FPS
 #define MAX_SUPPORTED_FPS 120
@@ -1237,7 +1243,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     int fds[2];
     int r,ret=0;
     bool codec_ambiguous = false;
-    OMX_STRING device_name = (OMX_STRING)"/dev/video/q6_dec";
+    OMX_STRING device_name = (OMX_STRING)DEVICE_NAME;
+    DEBUG_PRINT_LOW("Opening device %s", device_name);
     drv_ctx.video_driver_fd = open(device_name, O_RDWR);
 
     DEBUG_PRINT_HIGH("\n omx_vdec::component_init(): Open device %s returned fd %d, errno %d",
