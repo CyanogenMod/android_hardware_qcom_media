@@ -130,14 +130,8 @@ static const unsigned int h263_profile_level_table[][5]= {
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
 
-#ifdef INPUT_BUFFER_LOG
-FILE *inputBufferFile1;
-char inputfilename [] = "/data/input.yuv";
-#endif
-#ifdef OUTPUT_BUFFER_LOG
-FILE *outputBufferFile1;
-char outputfilename [] = "/data/output-bitstream.\0\0\0\0";
-#endif
+#define BUFFER_LOG_LOC "/data/misc/media"
+
 //constructor
 venc_dev::venc_dev(class omx_venc *venc_class)
 {
@@ -146,6 +140,19 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     m_eProfile = 0;
     pthread_mutex_init(&loaded_start_stop_mlock, NULL);
     pthread_cond_init (&loaded_start_stop_cond, NULL);
+    memset(&m_debug,0,sizeof(m_debug));
+
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+    property_value[0] = '\0';
+    property_get("vidc.enc.log.in", property_value, "0");
+    m_debug.in_buffer_log = atoi(property_value);
+
+    property_value[0] = '\0';
+    property_get("vidc.enc.log.out", property_value, "0");
+    m_debug.out_buffer_log = atoi(property_value);
+    snprintf(m_debug.log_loc, PROPERTY_VAL_MAX,
+             "%s", BUFFER_LOG_LOC);
+
     DEBUG_PRINT_LOW("venc_dev constructor");
 }
 
@@ -184,9 +191,115 @@ void* async_venc_message_thread (void *input)
             break;
         }
     }
-
     DEBUG_PRINT_HIGH("omx_venc: Async Thread exit");
     return NULL;
+}
+
+
+int venc_dev::venc_output_log_buffers(const char *buffer_addr, int buffer_len)
+{
+    if (m_debug.out_buffer_log && !m_debug.outfile) {
+        int size = 0;
+        if(m_sVenc_cfg.codectype == VEN_CODEC_MPEG4) {
+           size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%d_%d_%p.m4v",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == VEN_CODEC_H264) {
+           size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%d_%d_%p.264",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == VENC_CODEC_H263) {
+           size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%d_%d_%p.263",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == VENC_CODEC_VP8) {
+           size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%d_%d_%p.ivf",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        }
+        if ((size > PROPERTY_VALUE_MAX) || (size < 0)) {
+            DEBUG_PRINT_ERROR("Failed to open output file: %s for logging as size:%d",
+                               m_debug.outfile_name, size);
+            return -1;
+        }
+        m_debug.outfile = fopen(m_debug.outfile_name, "ab");
+        if (!m_debug.outfile) {
+            DEBUG_PRINT_ERROR("Failed to open output file: %s for logging errno:%d",
+                              m_debug.outfile_name, errno);
+            m_debug.outfile_name[0] = '\0';
+            return -1;
+        }
+    }
+    if (m_debug.outfile && buffer_len) {
+        DEBUG_PRINT_LOW("%s buffer_len:%d", __func__, buffer_len);
+        fwrite(buffer_addr, buffer_len, 1, m_debug.outfile);
+    }
+    return 0;
+}
+
+bool venc_dev::venc_get_output_log_flag()
+{
+    return (m_debug.out_buffer_log == 1);
+}
+
+int venc_dev::venc_input_log_buffers(OMX_BUFFERHEADERTYPE *pbuffer, void *pmem_data_buf, int framelen) {
+    if (!m_debug.infile) {
+        int size = snprintf(m_debug.infile_name, PROPERTY_VALUE_MAX, "%s/input_enc_%d_%d_%p.yuv",
+                           m_debug.log_loc, m_sVenc_cfg.input_width,
+                           m_sVenc_cfg.input_height, this);
+        if ((size > PROPERTY_VALUE_MAX) || (size < 0)) {
+            DEBUG_PRINT_ERROR("Failed to open input file: %s for logging size:%d",
+                               m_debug.infile_name, size);
+            return -1;
+        }
+        m_debug.infile = fopen (m_debug.infile_name, "ab");
+        if (!m_debug.infile) {
+            DEBUG_PRINT_HIGH("Failed to open input file: %s for logging", m_debug.infile);
+            m_debug.infile_name[0] = '\0';
+            return -1;
+        }
+    }
+    if (m_debug.infile && pbuffer && pbuffer->nFilledLen) {
+#ifdef MAX_RES_1080P
+       int y_size = 0;
+       int c_offset = 0;
+       unsigned char *buf_addr = NULL;
+
+       y_size = m_sVenc_cfg.input_width * m_sVenc_cfg.input_height;
+       //chroma offset is y_size aligned to the 2k boundary
+       c_offset= (y_size + 2047) & (~(2047));
+
+       if (pmem_data_buf) {
+           DEBUG_PRINT_LOW("Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
+           buf_addr = (OMX_U8 *)pmem_data_buf;
+       } else {
+           DEBUG_PRINT_LOW("Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
+           buf_addr = (unsigned char *)mmap(NULL,
+                      ((encoder_media_buffer_type *)pbuffer->pBuffer)->meta_handle->data[2],
+                      PROT_READ|PROT_WRITE, MAP_SHARED,
+                      ((encoder_media_buffer_type *)pbuffer->pBuffer)->meta_handle->data[0], 0);
+       }
+
+       if (m_debug.infile) {
+           fwrite((const char *)buf_addr, y_size, 1, m_debug.infile);
+           fwrite((const char *)(buf_addr + c_offset), (y_size>>1), 1, m_debug.infile);
+       }
+
+       if (!pmem_data_buf) {
+           munmap (buf_addr, ((encoder_media_buffer_type *)pbuffer->pBuffer)->meta_handle->data[2]);
+       }
+#else
+       if (m_debug.infile) {
+           OMX_U8* ptrbuffer = NULL;
+           if (pmem_data_buf) {
+               DEBUG_PRINT_LOW("Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
+               ptrbuffer = (OMX_U8 *)pmem_data_buf;
+           } else {
+               DEBUG_PRINT_LOW("Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
+               ptrbuffer = (OMX_U8 *)bufhdr->pBuffer;
+           }
+           fwrite((const char *)ptrbuffer, framelen, 1, m_debug.infile);
+       }
+
+#endif
+    }
+    return 0;
 }
 
 bool venc_dev::venc_open(OMX_U32 codec)
@@ -247,25 +360,16 @@ bool venc_dev::venc_open(OMX_U32 codec)
         m_sVenc_cfg.codectype = VEN_CODEC_MPEG4;
         codec_profile.profile = VEN_PROFILE_MPEG4_SP;
         profile_level.level = VEN_LEVEL_MPEG4_2;
-#ifdef OUTPUT_BUFFER_LOG
-        strcat(outputfilename, "m4v");
-#endif
     } else if (codec == OMX_VIDEO_CodingH263) {
         m_sVenc_cfg.codectype = VEN_CODEC_H263;
         codec_profile.profile = VEN_PROFILE_H263_BASELINE;
         profile_level.level = VEN_LEVEL_H263_20;
-#ifdef OUTPUT_BUFFER_LOG
-        strcat(outputfilename, "263");
-#endif
     }
 
     if (codec == OMX_VIDEO_CodingAVC) {
         m_sVenc_cfg.codectype = VEN_CODEC_H264;
         codec_profile.profile = VEN_PROFILE_H264_BASELINE;
         profile_level.level = VEN_LEVEL_H264_1p1;
-#ifdef OUTPUT_BUFFER_LOG
-        strcat(outputfilename, "264");
-#endif
     }
 
     ioctl_msg.in = (void*)&m_sVenc_cfg;
@@ -276,12 +380,6 @@ bool venc_dev::venc_open(OMX_U32 codec)
         return false;
     }
 
-#ifdef INPUT_BUFFER_LOG
-    inputBufferFile1 = fopen (inputfilename, "ab");
-#endif
-#ifdef OUTPUT_BUFFER_LOG
-    outputBufferFile1 = fopen (outputfilename, "ab");
-#endif
     // Get the I/P and O/P buffer requirements
     ioctl_msg.in = NULL;
     ioctl_msg.out = (void*)&m_sInput_buff_property;
@@ -328,12 +426,15 @@ void venc_dev::venc_close()
         m_nDriver_fd = -1;
     }
 
-#ifdef INPUT_BUFFER_LOG
-    fclose (inputBufferFile1);
-#endif
-#ifdef OUTPUT_BUFFER_LOG
-    fclose (outputBufferFile1);
-#endif
+    if (m_debug.infile) {
+        fclose(m_debug.infile);
+        m_debug.infile = NULL;
+    }
+    if (m_debug.outfile) {
+        fclose(m_debug.outfile);
+        m_debug.outfile = NULL;
+    }
+
 }
 
 bool venc_dev::venc_set_buf_req(unsigned long *min_buff_count,
@@ -1763,43 +1864,10 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned,unsigne
         return false;
     }
 
-#ifdef INPUT_BUFFER_LOG
-#ifdef MAX_RES_1080P
-
-    int y_size = 0;
-    int c_offset = 0;
-    unsigned char *buf_addr = NULL;
-
-    y_size = m_sVenc_cfg.input_width * m_sVenc_cfg.input_height;
-    //chroma offset is y_size aligned to the 2k boundary
-    c_offset= (y_size + 2047) & (~(2047));
-
-    if (pmem_data_buf) {
-        DEBUG_PRINT_LOW("Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
-        buf_addr = (OMX_U8 *)pmem_data_buf;
-    } else {
-        DEBUG_PRINT_LOW("Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
-        buf_addr = (unsigned char *)mmap(NULL,
-                ((encoder_media_buffer_type *)bufhdr->pBuffer)->meta_handle->data[2],
-                PROT_READ|PROT_WRITE, MAP_SHARED,
-                ((encoder_media_buffer_type *)bufhdr->pBuffer)->meta_handle->data[0], 0);
+    if (m_debug.in_buffer_log) {
+        venc_input_log_buffers(bufhdr, pmem_data_bufr, frameinfo.len);
     }
 
-    if (inputBufferFile1) {
-        fwrite((const char *)buf_addr, y_size, 1,inputBufferFile1);
-        fwrite((const char *)(buf_addr + c_offset), (y_size>>1), 1,inputBufferFile1);
-    }
-
-    munmap (buf_addr, ((encoder_media_buffer_type *)bufhdr->pBuffer)->meta_handle->data[2]);
-#else
-
-    if (inputBufferFile1) {
-        fwrite((const char *)frameinfo.ptrbuffer, frameinfo.len, 1,inputBufferFile1);
-    }
-
-#endif
-
-#endif
     return true;
 }
 bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned,unsigned)

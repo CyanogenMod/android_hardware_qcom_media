@@ -230,6 +230,8 @@ class omx_video: public qc_omx_component
 #endif
         virtual bool dev_color_align(OMX_BUFFERHEADERTYPE *buffer, OMX_U32 width,
                         OMX_U32 height) = 0;
+        virtual bool dev_get_output_log_flag() = 0;
+        virtual int dev_output_log_buffers(const char *buffer_addr, int buffer_len) = 0;
         OMX_ERRORTYPE component_role_enum(
                 OMX_HANDLETYPE hComp,
                 OMX_U8 *role,
