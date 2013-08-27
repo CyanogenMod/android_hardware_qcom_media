@@ -78,12 +78,16 @@ class venc_dev
         bool venc_loaded_stop(void);
         bool venc_loaded_start_done(void);
         bool venc_loaded_stop_done(void);
+        bool venc_get_output_log_flag();
+        int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
+        int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, void* pmem_data_buf, int framelen);
         bool venc_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *);
         OMX_U32 m_nDriver_fd;
         bool m_profile_set;
         bool m_level_set;
         pthread_mutex_t loaded_start_stop_mlock;
         pthread_cond_t loaded_start_stop_cond;
+        struct venc_debug_cap m_debug;
 
         struct recon_buffer {
             unsigned char* virtual_address;

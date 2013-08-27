@@ -240,7 +240,11 @@ class venc_dev
         bool venc_is_video_session_supported(unsigned long width, unsigned long height);
         bool venc_color_align(OMX_BUFFERHEADERTYPE *buffer, OMX_U32 width,
                         OMX_U32 height);
+        bool venc_get_output_log_flag();
+        int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
+        int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, int fd, int plane_offset);
 
+        struct venc_debug_cap m_debug;
         OMX_U32 m_nDriver_fd;
         bool m_profile_set;
         bool m_level_set;

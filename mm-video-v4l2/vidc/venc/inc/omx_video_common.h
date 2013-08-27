@@ -38,6 +38,12 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <linux/msm_ion.h>
 #endif
 
+#ifdef _ANDROID_
+#include <cutils/properties.h>
+#else
+#define PROPERTY_VALUE_MAX 92
+#endif
+
 #define OMX_VIDEO_DEC_NUM_INPUT_BUFFERS   2
 #define OMX_VIDEO_DEC_NUM_OUTPUT_BUFFERS  2
 
@@ -75,6 +81,17 @@ struct venc_ion {
     struct ion_allocation_data ion_alloc_data;
 };
 #endif
+
+struct venc_debug_cap {
+    bool in_buffer_log;
+    bool out_buffer_log;
+    char infile_name[PROPERTY_VALUE_MAX];
+    char outfile_name[PROPERTY_VALUE_MAX];
+    char log_loc[PROPERTY_VALUE_MAX];
+    FILE *infile;
+    FILE *outfile;
+};
+
 #endif // __OMX_VIDEO_COMMON_H__
 
 
