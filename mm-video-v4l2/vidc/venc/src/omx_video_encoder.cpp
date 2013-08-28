@@ -256,7 +256,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sInPortDef.bPopulated = OMX_FALSE;
     m_sInPortDef.eDomain = OMX_PortDomainVideo;
     m_sInPortDef.eDir = OMX_DirInput;
-    m_sInPortDef.format.video.cMIMEType = "YUV420";
+    m_sInPortDef.format.video.cMIMEType = (char *)"YUV420";
     m_sInPortDef.format.video.nFrameWidth = OMX_CORE_QCIF_WIDTH;
     m_sInPortDef.format.video.nFrameHeight = OMX_CORE_QCIF_HEIGHT;
     m_sInPortDef.format.video.nStride = OMX_CORE_QCIF_WIDTH;
@@ -488,7 +488,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         return OMX_ErrorIncorrectStateOperation;
     }
 
-    switch (paramIndex) {
+    switch ((int)paramIndex) {
         case OMX_IndexParamPortDefinition:
             {
                 OMX_PARAM_PORTDEFINITIONTYPE *portDefn;
@@ -504,11 +504,11 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         omx_report_unsupported_setting();
                         return OMX_ErrorUnsupportedSetting;
                     }
-                    DEBUG_PRINT_LOW("\n i/p actual cnt requested = %d\n", portDefn->nBufferCountActual);
-                    DEBUG_PRINT_LOW("\n i/p min cnt requested = %d\n", portDefn->nBufferCountMin);
-                    DEBUG_PRINT_LOW("\n i/p buffersize requested = %d\n", portDefn->nBufferSize);
+                    DEBUG_PRINT_LOW("\n i/p actual cnt requested = %lu\n", portDefn->nBufferCountActual);
+                    DEBUG_PRINT_LOW("\n i/p min cnt requested = %lu\n", portDefn->nBufferCountMin);
+                    DEBUG_PRINT_LOW("\n i/p buffersize requested = %lu\n", portDefn->nBufferSize);
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
-                        DEBUG_PRINT_ERROR("\nERROR: (In_PORT) Min buffers (%d) > actual count (%d)\n",
+                        DEBUG_PRINT_ERROR("\nERROR: (In_PORT) Min buffers (%lu) > actual count (%lu)\n",
                                 portDefn->nBufferCountMin, portDefn->nBufferCountActual);
                         return OMX_ErrorUnsupportedSetting;
                     }
@@ -517,8 +517,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         return OMX_ErrorUnsupportedSetting;
                     }
 
-                    DEBUG_PRINT_LOW("\n i/p previous actual cnt = %d\n", m_sInPortDef.nBufferCountActual);
-                    DEBUG_PRINT_LOW("\n i/p previous min cnt = %d\n", m_sInPortDef.nBufferCountMin);
+                    DEBUG_PRINT_LOW("\n i/p previous actual cnt = %lu\n", m_sInPortDef.nBufferCountActual);
+                    DEBUG_PRINT_LOW("\n i/p previous min cnt = %lu\n", m_sInPortDef.nBufferCountMin);
                     memcpy(&m_sInPortDef, portDefn,sizeof(OMX_PARAM_PORTDEFINITIONTYPE));
 
 #ifdef _ANDROID_ICS_
@@ -551,11 +551,11 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             m_sOutPortDef.nPortIndex);
                     m_sInPortDef.nBufferCountActual = portDefn->nBufferCountActual;
                 } else if (PORT_INDEX_OUT == portDefn->nPortIndex) {
-                    DEBUG_PRINT_LOW("\n o/p actual cnt requested = %d\n", portDefn->nBufferCountActual);
-                    DEBUG_PRINT_LOW("\n o/p min cnt requested = %d\n", portDefn->nBufferCountMin);
-                    DEBUG_PRINT_LOW("\n o/p buffersize requested = %d\n", portDefn->nBufferSize);
+                    DEBUG_PRINT_LOW("\n o/p actual cnt requested = %lu\n", portDefn->nBufferCountActual);
+                    DEBUG_PRINT_LOW("\n o/p min cnt requested = %lu\n", portDefn->nBufferCountMin);
+                    DEBUG_PRINT_LOW("\n o/p buffersize requested = %lu\n", portDefn->nBufferSize);
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
-                        DEBUG_PRINT_ERROR("\nERROR: (Out_PORT) Min buffers (%d) > actual count (%d)\n",
+                        DEBUG_PRINT_ERROR("\nERROR: (Out_PORT) Min buffers (%lu) > actual count (%lu)\n",
                                 portDefn->nBufferCountMin, portDefn->nBufferCountActual);
                         return OMX_ErrorUnsupportedSetting;
                     }
@@ -573,8 +573,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     memcpy(&m_sOutPortDef,portDefn,sizeof(struct OMX_PARAM_PORTDEFINITIONTYPE));
                     update_profile_level(); //framerate , bitrate
 
-                    DEBUG_PRINT_LOW("\n o/p previous actual cnt = %d\n", m_sOutPortDef.nBufferCountActual);
-                    DEBUG_PRINT_LOW("\n o/p previous min cnt = %d\n", m_sOutPortDef.nBufferCountMin);
+                    DEBUG_PRINT_LOW("\n o/p previous actual cnt = %lu\n", m_sOutPortDef.nBufferCountActual);
+                    DEBUG_PRINT_LOW("\n o/p previous min cnt = %lu\n", m_sOutPortDef.nBufferCountMin);
                     m_sOutPortDef.nBufferCountActual = portDefn->nBufferCountActual;
                 } else {
                     DEBUG_PRINT_ERROR("ERROR: Set_parameter: Bad Port idx %d",
@@ -649,7 +649,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 m_sConfigBitrate.nEncodeBitrate = pParam->nTargetBitrate;
                 m_sInPortDef.format.video.nBitrate = pParam->nTargetBitrate;
                 m_sOutPortDef.format.video.nBitrate = pParam->nTargetBitrate;
-                DEBUG_PRINT_LOW("\nbitrate = %u", m_sOutPortDef.format.video.nBitrate);
+                DEBUG_PRINT_LOW("\nbitrate = %lu", m_sOutPortDef.format.video.nBitrate);
                 break;
             }
         case OMX_IndexParamVideoMpeg4:
@@ -860,10 +860,10 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     return OMX_ErrorIncorrectStateOperation;
                 }
                 OMX_PRIORITYMGMTTYPE *priorityMgmtype = (OMX_PRIORITYMGMTTYPE*) paramData;
-                DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPriorityMgmt %d\n",
+                DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPriorityMgmt %lu\n",
                         priorityMgmtype->nGroupID);
 
-                DEBUG_PRINT_LOW("set_parameter: priorityMgmtype %d\n",
+                DEBUG_PRINT_LOW("set_parameter: priorityMgmtype %lu\n",
                         priorityMgmtype->nGroupPriority);
 
                 m_sPriorityMgmt.nGroupID = priorityMgmtype->nGroupID;
@@ -1237,7 +1237,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     }
 
     // params will be validated prior to venc_init
-    switch (configIndex) {
+    switch ((int)configIndex) {
         case OMX_IndexConfigVideoBitrate:
             {
                 OMX_VIDEO_CONFIG_BITRATETYPE* pParam =
@@ -1686,32 +1686,32 @@ int omx_venc::async_message_process (void *context, void* message)
         omx->omx_report_error();
     }
 
-    DEBUG_PRINT_LOW("\n omx_venc::async_message_process- msgcode = %d\n",
+    DEBUG_PRINT_LOW("\n omx_venc::async_message_process- msgcode = %lu\n",
             m_sVenc_msg->msgcode);
     switch (m_sVenc_msg->msgcode) {
         case VEN_MSG_START:
-            omx->post_event (NULL,m_sVenc_msg->statuscode,\
+            omx->post_event (0,m_sVenc_msg->statuscode,\
                     OMX_COMPONENT_GENERATE_START_DONE);
             break;
         case VEN_MSG_STOP:
-            omx->post_event (NULL,m_sVenc_msg->statuscode,\
+            omx->post_event (0,m_sVenc_msg->statuscode,\
                     OMX_COMPONENT_GENERATE_STOP_DONE);
             break;
         case VEN_MSG_RESUME:
-            omx->post_event (NULL,m_sVenc_msg->statuscode,\
+            omx->post_event (0,m_sVenc_msg->statuscode,\
                     OMX_COMPONENT_GENERATE_RESUME_DONE);
             break;
         case VEN_MSG_PAUSE:
-            omx->post_event (NULL,m_sVenc_msg->statuscode,\
+            omx->post_event (0,m_sVenc_msg->statuscode,\
                     OMX_COMPONENT_GENERATE_PAUSE_DONE);
             break;
         case VEN_MSG_FLUSH_INPUT_DONE:
 
-            omx->post_event (NULL,m_sVenc_msg->statuscode,\
+            omx->post_event (0,m_sVenc_msg->statuscode,\
                     OMX_COMPONENT_GENERATE_EVENT_INPUT_FLUSH);
             break;
         case VEN_MSG_FLUSH_OUPUT_DONE:
-            omx->post_event (NULL,m_sVenc_msg->statuscode,\
+            omx->post_event (0,m_sVenc_msg->statuscode,\
                     OMX_COMPONENT_GENERATE_EVENT_OUTPUT_FLUSH);
             break;
         case VEN_MSG_INPUT_BUFFER_DONE:
@@ -1740,7 +1740,7 @@ int omx_venc::async_message_process (void *context, void* message)
                     omxhdr->nFilledLen = m_sVenc_msg->buf.len;
                     omxhdr->nOffset = m_sVenc_msg->buf.offset;
                     omxhdr->nTimeStamp = m_sVenc_msg->buf.timestamp;
-                    DEBUG_PRINT_LOW("\n o/p TS = %u", (OMX_U32)m_sVenc_msg->buf.timestamp);
+                    DEBUG_PRINT_LOW("\n o/p TS = %lu", (OMX_U32)m_sVenc_msg->buf.timestamp);
                     omxhdr->nFlags = m_sVenc_msg->buf.flags;
 
                     /*Use buffer case*/

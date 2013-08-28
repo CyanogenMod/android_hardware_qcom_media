@@ -847,11 +847,11 @@ class omx_vdec: public qc_omx_component
         OMX_U32 proc_frms, latency;
         perf_metrics fps_metrics;
         perf_metrics dec_time;
+        bool m_reject_avc_1080p_mp;
         bool m_enable_android_native_buffers;
         bool m_use_android_native_buffers;
         bool m_debug_extradata;
         bool m_debug_concealedmb;
-        bool m_reject_avc_1080p_mp;
 #endif
 #ifdef MAX_RES_1080P
         MP4_Utils mp4_headerparser;
