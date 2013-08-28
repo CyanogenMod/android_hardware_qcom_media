@@ -407,6 +407,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexParamSequenceHeaderWithIDR = 0x7F00002A,
 
     OMX_QcomIndexParamH264AUDelimiter = 0x7F00002B,
+
+    OMX_QcomIndexParamVideoDownScalar = 0x7F00002C,
 };
 
 /**
@@ -1070,6 +1072,14 @@ typedef struct QOMX_INDEXTIMESTAMPREORDER {
     OMX_U32 nPortIndex;
     OMX_BOOL bEnable;
 } QOMX_INDEXTIMESTAMPREORDER;
+
+typedef struct QOMX_INDEXDOWNSCALAR {
+        OMX_U32 nSize;
+        OMX_VERSIONTYPE nVersion;
+        OMX_U32 nPortIndex;
+        OMX_BOOL bEnable;
+} QOMX_INDEXDOWNSCALAR;
+
 
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SYNCFRAMEDECODINGMODE "OMX.QCOM.index.param.video.SyncFrameDecodingMode"
 #define OMX_QCOM_INDEX_PARAM_INDEXEXTRADATA "OMX.QCOM.index.param.IndexExtraData"
