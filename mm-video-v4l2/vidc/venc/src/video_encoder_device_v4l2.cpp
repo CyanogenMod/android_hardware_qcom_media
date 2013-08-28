@@ -39,6 +39,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #include <media/msm_media_info.h>
 #include <cutils/properties.h>
+#include <media/hardware/HardwareAPI.h>
 
 #ifdef _ANDROID_
 #include <media/hardware/HardwareAPI.h>
@@ -1335,6 +1336,32 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                 extradata = true;
                 break;
             }
+        case OMX_QcomIndexParamSequenceHeaderWithIDR:
+            {
+                PrependSPSPPSToIDRFramesParams * pParam =
+                    (PrependSPSPPSToIDRFramesParams *)paramData;
+
+                DEBUG_PRINT_LOW("set inband sps/pps: %d\n", pParam->bEnable);
+                if(venc_set_inband_video_header(pParam->bEnable) == false) {
+                    DEBUG_PRINT_ERROR("ERROR: set inband sps/pps failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+
+                break;
+            }
+        case OMX_QcomIndexParamH264AUDelimiter:
+            {
+                OMX_QCOM_VIDEO_CONFIG_H264_AUD * pParam =
+                    (OMX_QCOM_VIDEO_CONFIG_H264_AUD *)paramData;
+
+                DEBUG_PRINT_LOW("set AU delimiters: %d\n", pParam->bEnable);
+                if(venc_set_au_delimiter(pParam->bEnable) == false) {
+                    DEBUG_PRINT_ERROR("ERROR: set H264 AU delimiter failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("\nERROR: Unsupported parameter in venc_set_param: %u",
@@ -2047,6 +2074,44 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,un
     }
 
     ftb++;
+    return true;
+}
+
+bool venc_dev::venc_set_inband_video_header(OMX_BOOL enable)
+{
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDEO_HEADER_MODE;
+    if(enable) {
+        control.value = V4L2_MPEG_VIDEO_HEADER_MODE_JOINED_WITH_I_FRAME;
+    } else {
+        control.value = V4L2_MPEG_VIDEO_HEADER_MODE_SEPARATE;
+    }
+
+    DEBUG_PRINT_HIGH("Set inband sps/pps: %d", enable);
+    if(ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control) < 0) {
+        DEBUG_PRINT_ERROR("Request for inband sps/pps failed");
+        return false;
+    }
+    return true;
+}
+
+bool venc_dev::venc_set_au_delimiter(OMX_BOOL enable)
+{
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_AU_DELIMITER;
+    if(enable) {
+        control.value = V4L2_MPEG_VIDC_VIDEO_H264_AU_DELIMITER_ENABLED;
+    } else {
+        control.value = V4L2_MPEG_VIDC_VIDEO_H264_AU_DELIMITER_DISABLED;
+    }
+
+    DEBUG_PRINT_HIGH("Set au delimiter: %d", enable);
+    if(ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control) < 0) {
+        DEBUG_PRINT_ERROR("Request to set AU delimiter failed");
+        return false;
+    }
     return true;
 }
 

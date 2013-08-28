@@ -1165,6 +1165,28 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 break;
             }
+        case OMX_QcomIndexParamSequenceHeaderWithIDR:
+            {
+                if(!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR)) {
+                    DEBUG_PRINT_ERROR("%s: %s",
+                            "OMX_QComIndexParamSequenceHeaderWithIDR:",
+                            "request for inband sps/pps failed.");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamH264AUDelimiter:
+            {
+                if(!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE)OMX_QcomIndexParamH264AUDelimiter)) {
+                    DEBUG_PRINT_ERROR("%s: %s",
+                            "OMX_QComIndexParamh264AUDelimiter:",
+                            "request for AU Delimiters failed.");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
