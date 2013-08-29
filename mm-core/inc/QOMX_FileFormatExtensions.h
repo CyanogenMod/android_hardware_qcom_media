@@ -31,7 +31,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /*============================================================================
 *//** @file QOMX_FileFormatExtensions.h
-  This header contains constants and type definitions that specify the 
+  This header contains constants and type definitions that specify the
   extensions added to the OpenMAX Vendor specific APIs.
 *//*========================================================================*/
 
@@ -60,7 +60,7 @@ when       who     what, where, why
 #define QOMX_INDEX_CONFIG_ENCRYPT_TYPE      "QOMX.Qualcomm.index.config.EncryptType"
 
 /**-----------------------------------------------------------------------------
-            OMX.QCOM.index.param.container.info 
+            OMX.QCOM.index.param.container.info
 --------------------------------------------------------------------------------
 */
 
@@ -82,7 +82,7 @@ typedef enum QOMX_CONTAINER_FORMATTYPE {
     QOMX_FORMAT_QT,
     QOMX_FORMAT_M4A,
     QOMX_FORMAT_MP3,
-    QOMX_FORMAT_WAVE, 
+    QOMX_FORMAT_WAVE,
     QOMX_FORMAT_XMF,
     QOMX_FORMAT_AMR,
     QOMX_FORMAT_AAC,
@@ -118,7 +118,7 @@ typedef struct QOMX_CONFIG_FILEFORMATTYPE {
 
 /**The QOMX_RECORDINGSTATISTICSINTERVALTYPE structure is used to enable
 IL client to indicate the interval of the statistics notification to file mux
-component. Time interval will indicate the frequency(in ms) when client needs 
+component. Time interval will indicate the frequency(in ms) when client needs
 the statistics data*/
 typedef struct QOMX_RECORDINGSTATISTICSINTERVALTYPE {
     OMX_U32 nSize; /**< size of the structure in bytes */
@@ -127,7 +127,7 @@ typedef struct QOMX_RECORDINGSTATISTICSINTERVALTYPE {
    }QOMX_RECORDINGSTATISTICSINTERVALTYPE;
 
 /**QOMX_RECORDINGSTATISTICSTYPE indicates the current recording
-time and space statistics of this session, which can be used by client to 
+time and space statistics of this session, which can be used by client to
 identify current status of recorded data in milliseconds and bytes */
 typedef struct QOMX_RECORDINGSTATISTICSTYPE {
     OMX_U32 nSize;/**< size of the structure in bytes */
