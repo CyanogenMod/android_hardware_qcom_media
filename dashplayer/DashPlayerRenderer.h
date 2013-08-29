@@ -117,6 +117,7 @@ private:
 
     int64_t mLastPositionUpdateUs;
     int64_t mVideoLateByUs;
+    int64_t mAVSyncDelayWindowUs;
 
     bool onDrainAudioQueue();
     void postDrainAudioQueue(int64_t delayUs = 0);

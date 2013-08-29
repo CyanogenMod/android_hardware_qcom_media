@@ -23,6 +23,7 @@
 #include <media/stagefright/foundation/ABuffer.h>
 #include <media/stagefright/foundation/ADebug.h>
 #include <media/stagefright/foundation/AMessage.h>
+#include <cutils/properties.h>
 
 namespace android {
 
@@ -52,6 +53,21 @@ DashPlayer::Renderer::Renderer(
       mVideoLateByUs(0ll),
       mStats(NULL),
       mSeekTimeUs(0){
+
+      mAVSyncDelayWindowUs = 40000;
+
+      char avSyncDelayMsec[PROPERTY_VALUE_MAX] = {0};
+      property_get("persist.dash.avsync.window.msec", avSyncDelayMsec, NULL);
+
+      if(*avSyncDelayMsec) {
+          int64_t avSyncDelayWindowUs = atoi(avSyncDelayMsec) * 1000;
+
+          if(avSyncDelayWindowUs > 0) {
+             mAVSyncDelayWindowUs = avSyncDelayWindowUs;
+          }
+      }
+
+      ALOGV("AVsync window in Us %lld", mAVSyncDelayWindowUs);
 }
 
 DashPlayer::Renderer::~Renderer() {
@@ -396,7 +412,7 @@ void DashPlayer::Renderer::onDrainVideoQueue() {
     int64_t nowUs = ALooper::GetNowUs();
     mVideoLateByUs = nowUs - realTimeUs;
 
-    bool tooLate = (mVideoLateByUs > 40000);
+    bool tooLate = (mVideoLateByUs > mAVSyncDelayWindowUs);
 
     if (tooLate) {
         ALOGV("video late by %lld us (%.2f secs)",
