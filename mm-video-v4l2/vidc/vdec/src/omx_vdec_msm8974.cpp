@@ -73,17 +73,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define EGL_BUFFER_HANDLE_QCOM 0x4F00
 #define EGL_BUFFER_OFFSET_QCOM 0x4F01
 #endif
-#ifdef INPUT_BUFFER_LOG
-#define INPUT_BUFFER_FILE_NAME "/data/input-bitstream.\0\0\0\0"
-#define INPUT_BUFFER_FILE_NAME_LEN 30
-FILE *inputBufferFile1;
-char inputfilename [INPUT_BUFFER_FILE_NAME_LEN] = "\0";
-#endif
-#ifdef OUTPUT_BUFFER_LOG
-FILE *outputBufferFile1;
-char outputfilename [] = "/data/output.yuv";
 
-#endif
+#define BUFFER_LOG_LOC "/data/misc/media"
+
 #ifdef OUTPUT_EXTRADATA_LOG
 FILE *outputExtradataFile;
 char ouputextradatafilename [] = "/data/extradata";
@@ -532,11 +524,14 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 {
     /* Assumption is that , to begin with , we have all the frames with decoder */
     DEBUG_PRINT_HIGH("In OMX vdec Constructor");
+    memset(&m_debug,0,sizeof(m_debug));
 #ifdef _ANDROID_
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vidc.debug.level", property_value, "0");
     debug_level = atoi(property_value);
     property_value[0] = '\0';
+
+    DEBUG_PRINT_HIGH("In OMX vdec Constructor");
 
     property_get("vidc.dec.debug.perf", property_value, "0");
     perf_flag = atoi(property_value);
@@ -565,6 +560,19 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_reject_avc_1080p_mp = atoi(property_value);
     DEBUG_PRINT_HIGH("vidc.dec.profile.check value is %d",m_reject_avc_1080p_mp);
 
+    property_value[0] = '\0';
+    property_get("vidc.dec.log.in", property_value, "0");
+    m_debug.in_buffer_log = atoi(property_value);
+
+    property_value[0] = '\0';
+    property_get("vidc.dec.log.out", property_value, "0");
+    m_debug.out_buffer_log = atoi(property_value);
+    sprintf(m_debug.log_loc, "%s", BUFFER_LOG_LOC);
+
+    property_value[0] = '\0';
+    property_get("vidc.log.loc", property_value, "");
+    if (*property_value)
+        strlcpy(m_debug.log_loc, property_value, PROPERTY_VALUE_MAX);
 #endif
     memset(&m_cmp,0,sizeof(m_cmp));
     memset(&m_cb,0,sizeof(m_cb));
@@ -1230,6 +1238,118 @@ OMX_ERRORTYPE omx_vdec::is_video_session_supported()
     return OMX_ErrorNone;
 }
 
+int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
+{
+    if (m_debug.in_buffer_log && !m_debug.infile) {
+        if(!strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.mpeg4", OMX_MAX_STRINGNAME_SIZE)) {
+           sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.m4v",
+                   m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
+        else if(!strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.mpeg2", OMX_MAX_STRINGNAME_SIZE)) {
+                sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.mpg", m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this); }
+        else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.h263", OMX_MAX_STRINGNAME_SIZE)) {
+                sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.263",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
+        else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc", OMX_MAX_STRINGNAME_SIZE)) {
+                sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.264",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
+        else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vc1", OMX_MAX_STRINGNAME_SIZE)) {
+                sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.vc1",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
+        else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.wmv", OMX_MAX_STRINGNAME_SIZE)) {
+                sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.vc1",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
+        else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
+                sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.ivf",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
+        m_debug.infile = fopen (m_debug.infile_name, "ab");
+        if (!m_debug.infile) {
+            DEBUG_PRINT_HIGH("Failed to open input file: %s for logging\n", m_debug.infile_name);
+            m_debug.infile_name[0] = '\0';
+            return -1;
+        }
+        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
+            struct ivf_file_header {
+                OMX_U8 signature[4]; //='DKIF';
+                OMX_U8 version         ; //= 0;
+                OMX_U8 headersize      ; //= 32;
+                OMX_U32 FourCC;
+                OMX_U8 width;
+                OMX_U8 height;
+                OMX_U32 rate;
+                OMX_U32 scale;
+                OMX_U32 length;
+                OMX_U8 unused[4];
+            } file_header;
+
+            memset((void *)&file_header,0,sizeof(file_header));
+            file_header.signature[0] = 'D';
+            file_header.signature[1] = 'K';
+            file_header.signature[2] = 'I';
+            file_header.signature[3] = 'F';
+            file_header.version = 0;
+            file_header.headersize = 32;
+            file_header.FourCC = 0x30385056;
+            fwrite((const char *)&file_header,
+                    sizeof(file_header),1,m_debug.infile);
+         }
+    }
+    if (m_debug.infile && buffer_addr && buffer_len) {
+        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
+            struct vp8_ivf_frame_header {
+                OMX_U32 framesize;
+                OMX_U32 timestamp_lo;
+                OMX_U32 timestamp_hi;
+            } vp8_frame_header;
+            vp8_frame_header.framesize = buffer_len;
+            /* Currently FW doesn't use timestamp values */
+            vp8_frame_header.timestamp_lo = 0;
+            vp8_frame_header.timestamp_hi = 0;
+            fwrite((const char *)&vp8_frame_header,
+                    sizeof(vp8_frame_header),1,m_debug.infile);
+        }
+        fwrite(buffer_addr, buffer_len, 1, m_debug.infile);
+    }
+    return 0;
+}
+
+int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer) {
+    if (m_debug.out_buffer_log && !m_debug.outfile) {
+        sprintf(m_debug.outfile_name, "%s/output_%d_%d_%p.yuv",
+                m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        m_debug.outfile = fopen (m_debug.outfile_name, "ab");
+        if (!m_debug.outfile) {
+            DEBUG_PRINT_HIGH("Failed to open output file: %s for logging\n", m_debug.outfile);
+            m_debug.outfile_name[0] = '\0';
+            return -1;
+        }
+    }
+    if (m_debug.outfile && buffer && buffer->nFilledLen) {
+        int buf_index = buffer - m_out_mem_ptr;
+        int stride = drv_ctx.video_resolution.stride;
+        int scanlines = drv_ctx.video_resolution.scan_lines;
+        char *temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr;
+        unsigned i;
+        int bytes_written = 0;
+        for (i = 0; i < drv_ctx.video_resolution.frame_height; i++) {
+             bytes_written = fwrite(temp, drv_ctx.video_resolution.frame_width, 1, m_debug.outfile);
+             temp += stride;
+        }
+        temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr + stride * scanlines;
+        int stride_c = stride;
+        for(i = 0; i < drv_ctx.video_resolution.frame_height/2; i++) {
+            bytes_written += fwrite(temp, drv_ctx.video_resolution.frame_width, 1, m_debug.outfile);
+            temp += stride_c;
+        }
+    }
+    return 0;
+}
+
 /* ======================================================================
    FUNCTION
    omx_vdec::ComponentInit
@@ -1307,12 +1427,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         return OMX_ErrorInsufficientResources;
     }
 
-#ifdef INPUT_BUFFER_LOG
-    strcpy(inputfilename, INPUT_BUFFER_FILE_NAME);
-#endif
-#ifdef OUTPUT_BUFFER_LOG
-    outputBufferFile1 = fopen (outputfilename, "ab");
-#endif
 #ifdef OUTPUT_EXTRADATA_LOG
     outputExtradataFile = fopen (ouputextradatafilename, "ab");
 #endif
@@ -1331,9 +1445,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         /*Initialize Start Code for MPEG4*/
         codec_type_parse = CODEC_TYPE_MPEG4;
         m_frame_parser.init_start_codes (codec_type_parse);
-#ifdef INPUT_BUFFER_LOG
-        strcat(inputfilename, "m4v");
-#endif
     } else if (!strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.mpeg2",\
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.mpeg2",\
@@ -1344,9 +1455,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         /*Initialize Start Code for MPEG2*/
         codec_type_parse = CODEC_TYPE_MPEG2;
         m_frame_parser.init_start_codes (codec_type_parse);
-#ifdef INPUT_BUFFER_LOG
-        strcat(inputfilename, "mpg");
-#endif
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.h263",\
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.h263",OMX_MAX_STRINGNAME_SIZE);
@@ -1356,9 +1464,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         output_capability = V4L2_PIX_FMT_H263;
         codec_type_parse = CODEC_TYPE_H263;
         m_frame_parser.init_start_codes (codec_type_parse);
-#ifdef INPUT_BUFFER_LOG
-        strcat(inputfilename, "263");
-#endif
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx311",\
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.divx",OMX_MAX_STRINGNAME_SIZE);
@@ -1416,9 +1521,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         codec_type_parse = CODEC_TYPE_H264;
         m_frame_parser.init_start_codes (codec_type_parse);
         m_frame_parser.init_nal_length(nal_length);
-#ifdef INPUT_BUFFER_LOG
-        strcat(inputfilename, "264");
-#endif
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vc1",\
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.vc1",OMX_MAX_STRINGNAME_SIZE);
@@ -1427,9 +1529,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         codec_type_parse = CODEC_TYPE_VC1;
         output_capability = V4L2_PIX_FMT_VC1_ANNEX_G;
         m_frame_parser.init_start_codes (codec_type_parse);
-#ifdef INPUT_BUFFER_LOG
-        strcat(inputfilename, "vc1");
-#endif
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.wmv",\
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.vc1",OMX_MAX_STRINGNAME_SIZE);
@@ -1438,9 +1537,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         codec_type_parse = CODEC_TYPE_VC1;
         output_capability = V4L2_PIX_FMT_VC1_ANNEX_L;
         m_frame_parser.init_start_codes (codec_type_parse);
-#ifdef INPUT_BUFFER_LOG
-        strcat(inputfilename, "vc1");
-#endif
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",    \
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
@@ -1448,43 +1544,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eCompressionFormat = OMX_VIDEO_CodingVPX;
         codec_type_parse = CODEC_TYPE_VP8;
         arbitrary_bytes = false;
-#ifdef INPUT_BUFFER_LOG
-        strcat(inputfilename, "ivf");
-#endif
 
     } else {
         DEBUG_PRINT_ERROR("\nERROR:Unknown Component\n");
         eRet = OMX_ErrorInvalidComponentName;
     }
-#ifdef INPUT_BUFFER_LOG
-    inputBufferFile1 = fopen (inputfilename, "ab");
-    if (output_capability == V4L2_PIX_FMT_VP8) {
-        struct ivf_file_header {
-            OMX_U8 signature[4]; //='DKIF';
-            OMX_U8 version         ; //= 0;
-            OMX_U8 headersize      ; //= 32;
-            OMX_U32 FourCC;
-            OMX_U8 width;
-            OMX_U8 height;
-            OMX_U32 rate;
-            OMX_U32 scale;
-            OMX_U32 length;
-            OMX_U8 unused[4];
-        } file_header;
-        memset((void *)&file_header,0,sizeof(file_header));
-        file_header.signature[0] = 'D';
-        file_header.signature[1] = 'K';
-        file_header.signature[2] = 'I';
-        file_header.signature[3] = 'F';
-        file_header.version = 0;
-        file_header.headersize = 32;
-        file_header.FourCC = 0x30385056;
-        if (inputBufferFile1) {
-            fwrite((const char *)&file_header,
-                    sizeof(file_header),1,inputBufferFile1);
-        }
-    }
-#endif
     if (eRet == OMX_ErrorNone) {
 
         drv_ctx.output_format = VDEC_YUV_FORMAT_NV12;
@@ -5288,32 +5352,9 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     }
 #endif
 
-#ifdef INPUT_BUFFER_LOG
-    if (output_capability == V4L2_PIX_FMT_VP8) {
-        struct vp8_ivf_frame_header {
-            OMX_U32 framesize;
-            OMX_U32 timestamp_lo;
-            OMX_U32 timestamp_hi;
-        } vp8_frame_header;
-        vp8_frame_header.framesize = temp_buffer->buffer_len;
-        /* Currently FW doesn't use timestamp values */
-        vp8_frame_header.timestamp_lo = 0;
-        vp8_frame_header.timestamp_hi = 0;
-        if (inputBufferFile1) {
-            fwrite((const char *)&vp8_frame_header,
-                    sizeof(vp8_frame_header),1,inputBufferFile1);
-            fwrite((const char *)temp_buffer->bufferaddr,
-                    temp_buffer->buffer_len,1,inputBufferFile1);
-        }
-    } else {
-        if (inputBufferFile1) {
-            fwrite((const char *)temp_buffer->bufferaddr,
-                    temp_buffer->buffer_len,1,inputBufferFile1);
-        }
-    }
-#endif
+log_input_buffers((const char *)temp_buffer->bufferaddr, temp_buffer->buffer_len);
 
-    if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
+if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
         frameinfo.flags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
         buffer->nFlags &= ~QOMX_VIDEO_BUFFERFLAG_EOSEQ;
     }
@@ -5659,14 +5700,14 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     // NULL);
     DEBUG_PRINT_HIGH("\n Close the driver instance");
 
-#ifdef INPUT_BUFFER_LOG
-    if (inputBufferFile1)
-        fclose (inputBufferFile1);
-#endif
-#ifdef OUTPUT_BUFFER_LOG
-    if (outputBufferFile1)
-        fclose (outputBufferFile1);
-#endif
+    if (m_debug.infile) {
+        fclose(m_debug.infile);
+        m_debug.infile = NULL;
+    }
+    if (m_debug.outfile) {
+        fclose(m_debug.outfile);
+        m_debug.outfile = NULL;
+    }
 #ifdef OUTPUT_EXTRADATA_LOG
     if (outputExtradataFile)
         fclose (outputExtradataFile);
@@ -6107,26 +6148,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     }
 
     DEBUG_PRINT_LOW("\n In fill Buffer done call address %p ",buffer);
-#ifdef OUTPUT_BUFFER_LOG
-    if (outputBufferFile1 && buffer->nFilledLen) {
-        int buf_index = buffer - m_out_mem_ptr;
-        int stride = drv_ctx.video_resolution.stride;
-        int scanlines = drv_ctx.video_resolution.scan_lines;
-        char *temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr;
-        unsigned i;
-        int bytes_written = 0;
-        for (i = 0; i < drv_ctx.video_resolution.frame_height; i++) {
-            bytes_written = fwrite(temp, drv_ctx.video_resolution.frame_width, 1, outputBufferFile1);
-            temp += stride;
-        }
-        temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr + stride * scanlines;
-        int stride_c = stride;
-        for (i = 0; i < drv_ctx.video_resolution.frame_height/2; i++) {
-            bytes_written += fwrite(temp, drv_ctx.video_resolution.frame_width, 1, outputBufferFile1);
-            temp += stride_c;
-        }
-    }
-#endif
+    log_output_buffers(buffer);
 
     /* For use buffer we need to copy the data */
     if (!output_flush_progress) {

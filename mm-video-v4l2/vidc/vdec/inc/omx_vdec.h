@@ -109,6 +109,11 @@ extern "C" {
 #include "ts_parser.h"
 #include "vidc_color_converter.h"
 #include "vidc_debug.h"
+#ifdef _ANDROID_
+#include <cutils/properties.h>
+#else
+#define PROPERTY_VALUE_MAX 92
+#endif
 extern "C" {
     OMX_API void * get_omx_component_factory_fn(void);
 }
@@ -269,6 +274,17 @@ struct video_decoder_capability {
     unsigned int min_height;
     unsigned int max_height;
 };
+
+struct debug_cap {
+    bool in_buffer_log;
+    bool out_buffer_log;
+    char infile_name[PROPERTY_VALUE_MAX + 36];
+    char outfile_name[PROPERTY_VALUE_MAX + 36];
+    char log_loc[PROPERTY_VALUE_MAX];
+    FILE *infile;
+    FILE *outfile;
+};
+
 // OMX video decoder class
 class omx_vdec: public qc_omx_component
 {
@@ -939,6 +955,9 @@ class omx_vdec: public qc_omx_component
         allocate_color_convert_buf client_buffers;
 #endif
         struct video_decoder_capability m_decoder_capability;
+        struct debug_cap m_debug;
+        int log_input_buffers(const char *, int);
+        int log_output_buffers(OMX_BUFFERHEADERTYPE *);
 };
 
 #ifdef _MSM8974_
