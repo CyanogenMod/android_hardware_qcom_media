@@ -251,6 +251,7 @@ class venc_dev
         };
 
         int stopped;
+        int resume_in_stopped;
         bool m_max_allowed_bitrate_check;
         pthread_t m_tid;
         bool async_thread_created;
@@ -300,6 +301,8 @@ class venc_dev
         bool venc_set_slice_delivery_mode(OMX_U32 enable);
         bool venc_set_extradata(OMX_U32 extra_data);
         bool venc_set_idr_period(OMX_U32 nPFrames, OMX_U32 nIDRPeriod);
+        bool venc_reconfig_reqbufs();
+
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
         OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
