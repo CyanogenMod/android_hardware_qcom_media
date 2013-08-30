@@ -359,7 +359,7 @@ void* venc_dev::async_venc_message_thread (void *input)
                     break;
                 }
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_SYS_ERROR) {
-                DEBUG_PRINT_ERROR("\n HW Error recieved \n");
+                DEBUG_PRINT_ERROR("\n ERROR: Encoder is in bad state \n");
                 venc_msg.statuscode=VEN_S_EFAIL;
 
                 if (omx->async_message_process(input,&venc_msg) < 0) {
