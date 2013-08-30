@@ -27,27 +27,27 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 
 #ifndef __H_QOMX_IVCOMMONEXTENSIONS_H__
-#define __H_QOMX_IVCOMMONEXTENSIONS_H__ 
+#define __H_QOMX_IVCOMMONEXTENSIONS_H__
 
 /*========================================================================
 
-*//** @file QOMX_CommonExtensions.h 
+*//** @file QOMX_CommonExtensions.h
 
 @par FILE SERVICES:
       common extensions API for OpenMax IL.
 
       This file contains the description of the Qualcomm OpenMax IL
-      common extention interface, through which the IL client and OpenMax 
+      common extention interface, through which the IL client and OpenMax
       components can access additional capabilities.
 
 *//*====================================================================== */
 
- 
-/*======================================================================== 
- 
-                     INCLUDE FILES FOR MODULE 
- 
-========================================================================== */ 
+
+/*========================================================================
+
+                     INCLUDE FILES FOR MODULE
+
+========================================================================== */
 #include <OMX_Core.h>
 
 /*========================================================================
@@ -67,45 +67,45 @@ extern "C"
 #define OMX_QCOM_INDEX_PARAM_IMAGESIZECONTROL           "OMX.Qualcomm.index.param.ImageSizeControl" /**< reference: QOMX_IMAGE_IMAGESIZECONTROLTYPE */
 #define OMX_QCOM_INDEX_CONFIG_PAUSEPORT                 "OMX.QCOM.index.config.PausePort" /**< reference: QOMX_CONFIG_PAUSEPORTTYPE */
 
-/** reference: QOMX_URANGETYPE 
+/** reference: QOMX_URANGETYPE
  *  nMin, nMax, nStepSize give width in pixels */
-#define OMX_QCOM_INDEX_PARAM_FRAMEWIDTHRANGESUPPORTED   "OMX.QCOM.index.param.FrameWidthRangeSupported" 
+#define OMX_QCOM_INDEX_PARAM_FRAMEWIDTHRANGESUPPORTED   "OMX.QCOM.index.param.FrameWidthRangeSupported"
 
-/** reference: QOMX_URANGETYPE 
+/** reference: QOMX_URANGETYPE
  *  nMin, nMax, nStepSize give height in pixels */
-#define OMX_QCOM_INDEX_PARAM_FRAMEHEIGHTRANGESUPPORTED  "OMX.QCOM.index.param.FrameHeightRangeSupported" 
+#define OMX_QCOM_INDEX_PARAM_FRAMEHEIGHTRANGESUPPORTED  "OMX.QCOM.index.param.FrameHeightRangeSupported"
 
-/** reference: QOMX_URANGETYPE 
+/** reference: QOMX_URANGETYPE
  *  nMin, nMax, nStepSize give the number of macroblocks per
  *  frame. */
-#define OMX_QCOM_INDEX_PARAM_MACROBLOCKSPERFRAMERANGESUPPORTED "OMX.QCOM.index.param.MacroblocksPerFrameRangeSupported" 
+#define OMX_QCOM_INDEX_PARAM_MACROBLOCKSPERFRAMERANGESUPPORTED "OMX.QCOM.index.param.MacroblocksPerFrameRangeSupported"
 
-/** reference: QOMX_URANGETYPE 
- *  nMin, nMax, nStepSize give the number of macroblocks per 
+/** reference: QOMX_URANGETYPE
+ *  nMin, nMax, nStepSize give the number of macroblocks per
  *  second. */
-#define OMX_QCOM_INDEX_PARAM_MACROBLOCKSPERSECONDRANGESUPPORTED "OMX.QCOM.index.param.MacroblocksPerSecondRangeSupported" 
+#define OMX_QCOM_INDEX_PARAM_MACROBLOCKSPERSECONDRANGESUPPORTED "OMX.QCOM.index.param.MacroblocksPerSecondRangeSupported"
 
-/** reference: QOMX_URANGETYPE 
+/** reference: QOMX_URANGETYPE
  *  nMin, nMax, nStepSize give frame rate in frames per second
  *  in Q16 format. */
-#define OMX_QCOM_INDEX_PARAM_FRAMERATERANGESUPPORTED    "OMX.QCOM.index.param.FrameRateRangeSupported" 
+#define OMX_QCOM_INDEX_PARAM_FRAMERATERANGESUPPORTED    "OMX.QCOM.index.param.FrameRateRangeSupported"
 
 #define OMX_QCOM_INDEX_PARAM_PLANEDEFINITION            "OMX.QCOM.index.param.PlaneDefinition" /** reference: QOMX_PLANEDEFINITIONTYPE */
 
-/** reference: QOMX_URANGETYPE 
+/** reference: QOMX_URANGETYPE
  *  nMin, nMax, nStepSize give the crop width in pixels */
 #define OMX_QOMX_INDEX_PARAM_CROPWIDTHRANGESUPPORTED        "OMX.QCOM.index.param.CropWidthRangeSupported"
 
-/** reference: QOMX_URANGETYPE 
+/** reference: QOMX_URANGETYPE
  *  nMin, nMax, nStepSize give the crop height in pixels */
 #define OMX_QOMX_INDEX_PARAM_CROPHEIGHTRANGESUPPORTED        "OMX.QCOM.index.param.CropHeightRangeSupported"
 
-/** reference: QOMX_URANGETYPE 
+/** reference: QOMX_URANGETYPE
  *  nMin, nMax, nStepSize give the digital zoom factor on width
  *  in Q16 format. */
 #define OMX_QCOM_INDEX_PARAM_DIGITALZOOMWIDTHRANGESUPPORTED    "OMX.QCOM.index.param.DigitalZoomWidthRangeSupported"
 
-/** reference: QOMX_URANGETYPE 
+/** reference: QOMX_URANGETYPE
  *  nMin, nMax, nStepSize give the digital zoom factor on height
  *  in Q16 format. */
 #define OMX_QCOM_INDEX_PARAM_DIGITALZOOMHEIGHTRANGESUPPORTED    "OMX.QCOM.index.param.DigitalZoomHeightRangeSupported"
@@ -115,18 +115,18 @@ extern "C"
  * formats.
  *
  * ENUMS:
- *  YVU420PackedSemiPlanar       : Buffer containing all Y, and then V and U 
+ *  YVU420PackedSemiPlanar       : Buffer containing all Y, and then V and U
  *                                 interleaved.
- *  YVU420PackedSemiPlanar32m4ka : YUV planar format, similar to the 
+ *  YVU420PackedSemiPlanar32m4ka : YUV planar format, similar to the
  *                                 YVU420PackedSemiPlanar format, but with the
  *                                 following restrictions:
  *
- *                                 1. The width and height of both plane must 
+ *                                 1. The width and height of both plane must
  *                                 be a multiple of 32 texels.
  *
- *                                 2. The base address of both planes must be 
+ *                                 2. The base address of both planes must be
  *                                 aligned to a 4kB boundary.
- * 
+ *
  *  YUV420PackedSemiPlanar16m2ka : YUV planar format, similar to the
  *                                 YUV420PackedSemiPlanar format, but with the
  *                                 following restrictions:
@@ -134,14 +134,14 @@ extern "C"
  *                                 1. The width of the luma plane must be a
  *                                 multiple of 16 pixels.
  *
- *                                 2. The address of both planes must be 
+ *                                 2. The address of both planes must be
  *                                 aligned to a 2kB boundary.
- * 
- *  YUV420PackedSemiPlanar64x32Tile2m8ka : YUV planar format, similar to the 
+ *
+ *  YUV420PackedSemiPlanar64x32Tile2m8ka : YUV planar format, similar to the
  *                                 YUV420PackedSemiPlanar format, but with the
  *                                 following restrictions:
  *
- *                                 1. The data is laid out in a 4x2 MB tiling 
+ *                                 1. The data is laid out in a 4x2 MB tiling
  *                                 memory structure
  *
  *                                 2. The width of each plane is a multiple of
@@ -150,10 +150,10 @@ extern "C"
  *                                 3. The height of each plan is a multiple of
  *                                 a 4x2 MB tile.
  *
- *                                 4. The base address of both planes must be 
+ *                                 4. The base address of both planes must be
  *                                 aligned to an 8kB boundary.
  *
- *                                 5. The tiles are scanned in the order 
+ *                                 5. The tiles are scanned in the order
  *                                 defined in the MFCV5.1 User's Manual.
  */
 typedef enum QOMX_COLOR_FORMATTYPE
@@ -190,74 +190,74 @@ typedef enum QOMX_MEDIAINFOTAGTYPE {
     QOMX_MediaInfoTagGPSPrecision,  /**< OMX_U32. GPS degree of precision.*/
     QOMX_MediaInfoTagGPSDateStamp,  /**< QOMX_DATESTAMPTYPE. Date of the GPS data.*/
     QOMX_MediaInfoTagGPSTimeStamp,  /**< QOMX_TIMESTAMPTYPE. Time of the GPS data.*/
-    QOMX_MediaInfoTagMediaStreamType,/**< QOMX_MEDIASTREAMTYPE. Type of the stream. */ 
+    QOMX_MediaInfoTagMediaStreamType,/**< QOMX_MEDIASTREAMTYPE. Type of the stream. */
     QOMX_MediaInfoDuration,         /**< OMX_TICKS. Total duration of the media.*/
-    QOMX_MediaInfoSize,                          /**< OMX_U32. Total size of the media in bytes.*/ 
-    QOMX_MediaInfoTagAlbum,                     /**< OMX_U8*. Name of album/movie/show.*/ 
-    QOMX_MediaInfoTagLocation,                  /**< OMX_U8*. Recording location information.*/ 
-    QOMX_MediaInfoTagClassification,            /**< OMX_U8*. Classification information of media.*/ 
-    QOMX_MediaInfoTagRatings,                   /**< OMX_U8*. Media Ratings based on popularity & rating criteria.*/ 
-    QOMX_MediaInfoTagKeyword,                   /**< OMX_U8*. Keyword associated with media which are intended to reflect mood of the A/V.*/ 
-    QOMX_MediaInfoTagPerformance,               /**< OMX_U8*. Media Performer information..*/ 
-    QOMX_MediaInfoTagYear,                      /**< OMX_U8*. Production year information of media.*/ 
-    QOMX_MediaInfoTagComposer,                  /**< OMX_U8*. Name of the composer of media i.e. audio.*/ 
-    QOMX_MediaInfoTagEncoderName,                  /**< OMX_U8*. Name of the person or organisation who encoded media.*/ 
-    QOMX_MediaInfoTagCopyProhibitFlag,          /**< OMX_U8*. Flag to indicate if copy is allowed or not.*/ 
-    QOMX_MediaInfoTagLyricist,                  /**< OMX_U8*. Name of the lyricist or text writer in recording. Specific to ID3 tag.*/ 
-    QOMX_MediaInfoTagSubtitle,                  /**< OMX_U8*. Subtitle/Description used for informaton directly related to title of media.*/ 
-    QOMX_MediaInfoTagOriginalFileName,          /**< OMX_U8*. Original file name.*/ 
-    QOMX_MediaInfoTagOriginalLyricist,          /**< OMX_U8*. Name of the original lyricist/text writer of original recording.*/ 
-    QOMX_MediaInfoTagOriginalArtist,            /**< OMX_U8*. Name of the original artist.*/ 
-    QOMX_MediaInfoTagOriginalReleaseYear,       /**< OMX_U8*. Original release year of recorded media.*/ 
-    QOMX_MediaInfoTagFileOwner,                 /**< OMX_U8*. Licensee or name of the file owner.*/ 
-    QOMX_MediaInfoTagOrchestra,                 /**< OMX_U8*. Name of the orchestra or performers during recording.*/ 
-    QOMX_MediaInfoTagConductor,                 /**< OMX_U8*. Name of the conductor.*/ 
-    QOMX_MediaInfoTagRemixedBy,                 /**< OMX_U8*. Person or organization name who did the remix.*/ 
-    QOMX_MediaInfoTagAlbumArtist,               /**< OMX_U8*. Name of the album artist.*/ 
-    QOMX_MediaInfoTagPublisher,                 /**< OMX_U8*. Name of the publisher or label.*/ 
-    QOMX_MediaInfoTagRecordingDates,            /**< OMX_U8*. Recording date of media.*/ 
-    QOMX_MediaInfoTagInternetRadioStationName,  /**< OMX_U8*. Name of the Internet radio station from which the audio is streamed.*/ 
-    QOMX_MediaInfoTagInternetRadioStationOwner, /**< OMX_U8*. Name of the owner of the Internet radio station from which the audio is streamed.*/ 
-    QOMX_MediaInfoTagInternationalRecordingCode,/**< OMX_U8*. International standard recording code.*/ 
-    QOMX_MediaInfoTagEncoderSwHwSettings,       /**< OMX_U8*. Software,hardware settings used by encoder.*/ 
-    QOMX_MediaInfoTagInvolvedPeopleList,        /**< OMX_U8*. List of people involved. Specific to ID3 tag.*/ 
-    QOMX_MediaInfoTagComments,                  /**< OMX_U8*. Comments about the media. It can be any kind of full text informaton.*/ 
-    QOMX_MediaInfoTagCommissioned,              /**< OMX_U8*. Commissioned information of media.*/ 
-    QOMX_MediaInfoTagSubject,                   /**< OMX_U8*. Subject associated with media.*/ 
-    QOMX_MediaInfoTagContact,                   /**< OMX_U8*. Conatct information. URL information of the seller.*/ 
-    QOMX_MediaInfoTagValidityPeriod,            /**< OMX_U8*. Length or period of validity of media.*/ 
-    QOMX_MediaInfoTagValidityEffectiveDate,     /**< OMX_U8*. Validity effective date of media*/ 
-    QOMX_MediaInfoTagNumberOfAllowedPlaybacks,  /**< OMX_U8*. Number of allowed playbacks for this media*/ 
-    QOMX_MediaInfoTagPlayCounter,               /**< OMX_U8*. Current play counter of the media.Its number of times a file has been played.*/ 
-    QOMX_MediaInfoTagMemo,                      /**< OMX_U8*. Memo associatd with media.*/ 
-    QOMX_MediaInfoTagDeviceName,                /**< OMX_U8*. Name of the devices used in creating media.*/ 
-    QOMX_MediaInfoTagURL,                       /**< OMX_U8*. List artist /genre /movie sites URL.*/ 
-    QOMX_MediaInfoTagFileType,                  /**< OMX_U8*. Indicates type of audio track.*/ 
-    QOMX_MediaInfoTagContentGroupDesc,          /**< OMX_U8*. Content group description if the sound belongs to a larger category of of music /sound.*/ 
-    QOMX_MediaInfoTagInitialKeys,               /**< OMX_U8*. Contains the musical key in which media starts.*/ 
-    QOMX_MediaInfoTagLanguages,                 /**< OMX_U8*. Languages of the text or lyrics spoken or sung in the media.*/ 
-    QOMX_MediaInfoTagMediaType,                 /**< OMX_U8*. Describes from which media the media sound originated.*/ 
-    QOMX_MediaInfoTagPlaylistDelay,             /**< OMX_U8*. Denotes number of milliseconds between each song of the playlist.*/ 
-    QOMX_MediaInfoTagBeatsPerMinute,            /**< OMX_U8*. Number of beats per minute in main part of audio.*/ 
-    QOMX_MediaInfoTagPartOfSet,                 /**< OMX_U8*. Describes part of the set selected or played. */ 
-    QOMX_MediaInfoTagInstrumentName,            /**< OMX_U8*. Name of the instrument used in creating media.*/ 
-    QOMX_MediaInfoTagLyrics,                    /**< OMX_U8*. Lyrics of the media/audio track.*/ 
-    QOMX_MediaInfoTagTrackName,                 /**< OMX_U8*. Name of the media/audio track.*/ 
-    QOMX_MediaInfoTagMarker,                    /**< OMX_U8*. Text string cotnents placed at a specific location to denote information about the music at that point.*/ 
-    QOMX_MediaInfoTagCuePoint,                  /**< OMX_U8*. Subset of the content which can be optionally played.*/ 
-    QOMX_MediaInfoTagGPSPositioningName,        /**< OMX_U8*. GPS positioning name. */ 
-    QOMX_MediaInfoTagGPSPositioningMethod,      /**< OMX_U8*. GPS positioning method.*/ 
-    QOMX_MediaInfoTagGPSSurveyData,             /**< OMX_U8*. GPS survey data. */ 
-    QOMX_MediaInfoTagGPSByteOrder,              /**< OMX_U16.GPS byte order. */ 
-    QOMX_MediaInfoTagGPSLatitudeRef,            /**< OMX_U32.Reference GPS latitude. */ 
-    QOMX_MediaInfoTagGPSLongitudeRef,           /**< OMX_U32.Reference GPS longitude */ 
-    QOMX_MediaInfoTagGPSAltitudeRef,            /**< OMX_U32. Reference GPS altitude.*/ 
-    QOMX_MediaInfoTagGPSExtensionMapScaleInfo,  /**< OMX_U64. GPS extension map scale information.*/ 
-    QOMX_MediaInfoTagUUIDAtomInfo,              /**< OMX_U8*. The user defined data associated with UUID.*/ 
-    QOMX_MediaInfoTagUUIDAtomCount,             /**< OMX_U32 UUID atom count.*/ 
-    QOMX_MediaInfoTagLocationRole,              /**< OMX_32. Indicates the role of the place. i.e. ‘0’ indicate ‘shooting location'. ‘1’ ‘real location’.*/ 
-    QOMX_MediaInfoTagAstronomicalBody,          /**< OMX_U8*. Astronomical body on which the location exists.*/ 
-    QOMX_MediaInfoTagUserInfoData               /**< OMX_U8*. The user defined tag informaton.*/ 
+    QOMX_MediaInfoSize,                          /**< OMX_U32. Total size of the media in bytes.*/
+    QOMX_MediaInfoTagAlbum,                     /**< OMX_U8*. Name of album/movie/show.*/
+    QOMX_MediaInfoTagLocation,                  /**< OMX_U8*. Recording location information.*/
+    QOMX_MediaInfoTagClassification,            /**< OMX_U8*. Classification information of media.*/
+    QOMX_MediaInfoTagRatings,                   /**< OMX_U8*. Media Ratings based on popularity & rating criteria.*/
+    QOMX_MediaInfoTagKeyword,                   /**< OMX_U8*. Keyword associated with media which are intended to reflect mood of the A/V.*/
+    QOMX_MediaInfoTagPerformance,               /**< OMX_U8*. Media Performer information..*/
+    QOMX_MediaInfoTagYear,                      /**< OMX_U8*. Production year information of media.*/
+    QOMX_MediaInfoTagComposer,                  /**< OMX_U8*. Name of the composer of media i.e. audio.*/
+    QOMX_MediaInfoTagEncoderName,                  /**< OMX_U8*. Name of the person or organisation who encoded media.*/
+    QOMX_MediaInfoTagCopyProhibitFlag,          /**< OMX_U8*. Flag to indicate if copy is allowed or not.*/
+    QOMX_MediaInfoTagLyricist,                  /**< OMX_U8*. Name of the lyricist or text writer in recording. Specific to ID3 tag.*/
+    QOMX_MediaInfoTagSubtitle,                  /**< OMX_U8*. Subtitle/Description used for informaton directly related to title of media.*/
+    QOMX_MediaInfoTagOriginalFileName,          /**< OMX_U8*. Original file name.*/
+    QOMX_MediaInfoTagOriginalLyricist,          /**< OMX_U8*. Name of the original lyricist/text writer of original recording.*/
+    QOMX_MediaInfoTagOriginalArtist,            /**< OMX_U8*. Name of the original artist.*/
+    QOMX_MediaInfoTagOriginalReleaseYear,       /**< OMX_U8*. Original release year of recorded media.*/
+    QOMX_MediaInfoTagFileOwner,                 /**< OMX_U8*. Licensee or name of the file owner.*/
+    QOMX_MediaInfoTagOrchestra,                 /**< OMX_U8*. Name of the orchestra or performers during recording.*/
+    QOMX_MediaInfoTagConductor,                 /**< OMX_U8*. Name of the conductor.*/
+    QOMX_MediaInfoTagRemixedBy,                 /**< OMX_U8*. Person or organization name who did the remix.*/
+    QOMX_MediaInfoTagAlbumArtist,               /**< OMX_U8*. Name of the album artist.*/
+    QOMX_MediaInfoTagPublisher,                 /**< OMX_U8*. Name of the publisher or label.*/
+    QOMX_MediaInfoTagRecordingDates,            /**< OMX_U8*. Recording date of media.*/
+    QOMX_MediaInfoTagInternetRadioStationName,  /**< OMX_U8*. Name of the Internet radio station from which the audio is streamed.*/
+    QOMX_MediaInfoTagInternetRadioStationOwner, /**< OMX_U8*. Name of the owner of the Internet radio station from which the audio is streamed.*/
+    QOMX_MediaInfoTagInternationalRecordingCode,/**< OMX_U8*. International standard recording code.*/
+    QOMX_MediaInfoTagEncoderSwHwSettings,       /**< OMX_U8*. Software,hardware settings used by encoder.*/
+    QOMX_MediaInfoTagInvolvedPeopleList,        /**< OMX_U8*. List of people involved. Specific to ID3 tag.*/
+    QOMX_MediaInfoTagComments,                  /**< OMX_U8*. Comments about the media. It can be any kind of full text informaton.*/
+    QOMX_MediaInfoTagCommissioned,              /**< OMX_U8*. Commissioned information of media.*/
+    QOMX_MediaInfoTagSubject,                   /**< OMX_U8*. Subject associated with media.*/
+    QOMX_MediaInfoTagContact,                   /**< OMX_U8*. Conatct information. URL information of the seller.*/
+    QOMX_MediaInfoTagValidityPeriod,            /**< OMX_U8*. Length or period of validity of media.*/
+    QOMX_MediaInfoTagValidityEffectiveDate,     /**< OMX_U8*. Validity effective date of media*/
+    QOMX_MediaInfoTagNumberOfAllowedPlaybacks,  /**< OMX_U8*. Number of allowed playbacks for this media*/
+    QOMX_MediaInfoTagPlayCounter,               /**< OMX_U8*. Current play counter of the media.Its number of times a file has been played.*/
+    QOMX_MediaInfoTagMemo,                      /**< OMX_U8*. Memo associatd with media.*/
+    QOMX_MediaInfoTagDeviceName,                /**< OMX_U8*. Name of the devices used in creating media.*/
+    QOMX_MediaInfoTagURL,                       /**< OMX_U8*. List artist /genre /movie sites URL.*/
+    QOMX_MediaInfoTagFileType,                  /**< OMX_U8*. Indicates type of audio track.*/
+    QOMX_MediaInfoTagContentGroupDesc,          /**< OMX_U8*. Content group description if the sound belongs to a larger category of of music /sound.*/
+    QOMX_MediaInfoTagInitialKeys,               /**< OMX_U8*. Contains the musical key in which media starts.*/
+    QOMX_MediaInfoTagLanguages,                 /**< OMX_U8*. Languages of the text or lyrics spoken or sung in the media.*/
+    QOMX_MediaInfoTagMediaType,                 /**< OMX_U8*. Describes from which media the media sound originated.*/
+    QOMX_MediaInfoTagPlaylistDelay,             /**< OMX_U8*. Denotes number of milliseconds between each song of the playlist.*/
+    QOMX_MediaInfoTagBeatsPerMinute,            /**< OMX_U8*. Number of beats per minute in main part of audio.*/
+    QOMX_MediaInfoTagPartOfSet,                 /**< OMX_U8*. Describes part of the set selected or played. */
+    QOMX_MediaInfoTagInstrumentName,            /**< OMX_U8*. Name of the instrument used in creating media.*/
+    QOMX_MediaInfoTagLyrics,                    /**< OMX_U8*. Lyrics of the media/audio track.*/
+    QOMX_MediaInfoTagTrackName,                 /**< OMX_U8*. Name of the media/audio track.*/
+    QOMX_MediaInfoTagMarker,                    /**< OMX_U8*. Text string cotnents placed at a specific location to denote information about the music at that point.*/
+    QOMX_MediaInfoTagCuePoint,                  /**< OMX_U8*. Subset of the content which can be optionally played.*/
+    QOMX_MediaInfoTagGPSPositioningName,        /**< OMX_U8*. GPS positioning name. */
+    QOMX_MediaInfoTagGPSPositioningMethod,      /**< OMX_U8*. GPS positioning method.*/
+    QOMX_MediaInfoTagGPSSurveyData,             /**< OMX_U8*. GPS survey data. */
+    QOMX_MediaInfoTagGPSByteOrder,              /**< OMX_U16.GPS byte order. */
+    QOMX_MediaInfoTagGPSLatitudeRef,            /**< OMX_U32.Reference GPS latitude. */
+    QOMX_MediaInfoTagGPSLongitudeRef,           /**< OMX_U32.Reference GPS longitude */
+    QOMX_MediaInfoTagGPSAltitudeRef,            /**< OMX_U32. Reference GPS altitude.*/
+    QOMX_MediaInfoTagGPSExtensionMapScaleInfo,  /**< OMX_U64. GPS extension map scale information.*/
+    QOMX_MediaInfoTagUUIDAtomInfo,              /**< OMX_U8*. The user defined data associated with UUID.*/
+    QOMX_MediaInfoTagUUIDAtomCount,             /**< OMX_U32 UUID atom count.*/
+    QOMX_MediaInfoTagLocationRole,              /**< OMX_32. Indicates the role of the place. i.e. ‘0’ indicate ‘shooting location'. ‘1’ ‘real location’.*/
+    QOMX_MediaInfoTagAstronomicalBody,          /**< OMX_U8*. Astronomical body on which the location exists.*/
+    QOMX_MediaInfoTagUserInfoData               /**< OMX_U8*. The user defined tag informaton.*/
 } QOMX_MEDIAINFOTAGTYPE;
 
 typedef struct QOMX_MEDIAINFOTYPE {
@@ -338,7 +338,7 @@ typedef struct QOMX_IMAGE_IMAGESIZECONTROLTYPE {
 } QOMX_IMAGE_IMAGESIZECONTROLTYPE;
 
 typedef enum QOMX_URITYPE {
-    QOMX_URITYPE_RTSP, /**< RTSP URI Type. */ 
+    QOMX_URITYPE_RTSP, /**< RTSP URI Type. */
     QOMX_URITYPE_HTTP, /**< HTTP URI Type. */
     QOMX_URITYPE_LOCAL /**< Local URI Type.(i.e Non Network) */
 }QOMX_URITYPE;
@@ -354,7 +354,7 @@ typedef enum QOMX_STREAMTYPE {
 typedef struct QOMX_MEDIASTREAMTYPE{
     QOMX_URITYPE eURIType;
     QOMX_STREAMTYPE eStreamType;
-}QOMX_MEDIASTREAMTYPE;               
+}QOMX_MEDIASTREAMTYPE;
 
 
 /**
@@ -383,7 +383,7 @@ typedef struct QOMX_PLANEDEFINITIONTYPE {
  *  nSize           : Size of the structure in bytes
  *  nVersion        : OMX specification version information
  *  nPortIndex      : Index of port that this structure represent
- *  bPausePort      : Boolean field which indicates if port is paused or resume. By default bPausePort = OMX_FALSE 
+ *  bPausePort      : Boolean field which indicates if port is paused or resume. By default bPausePort = OMX_FALSE
  *                    & port will be paused when bPausePort = OMX_TRUE
  */
 typedef struct QOMX_CONFIG_PAUSEPORTTYPE {
