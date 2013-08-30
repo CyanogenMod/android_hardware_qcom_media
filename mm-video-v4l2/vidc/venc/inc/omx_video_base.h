@@ -57,6 +57,8 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <linux/msm_vidc_enc.h>
 #include "OMX_Core.h"
 #include "OMX_QCOMExtns.h"
+#include "OMX_VideoExt.h"
+#include "OMX_IndexExt.h"
 #include "qc_omx_component.h"
 #include "omx_video_common.h"
 #include "extra_data_handler.h"
@@ -552,6 +554,7 @@ class omx_video: public qc_omx_component
         OMX_VIDEO_PARAM_MPEG4TYPE m_sParamMPEG4;
         OMX_VIDEO_PARAM_H263TYPE m_sParamH263;
         OMX_VIDEO_PARAM_AVCTYPE m_sParamAVC;
+        OMX_VIDEO_PARAM_VP8TYPE m_sParamVP8;
         OMX_PORT_PARAM_TYPE m_sPortParam_img;
         OMX_PORT_PARAM_TYPE m_sPortParam_audio;
         OMX_VIDEO_CONFIG_BITRATETYPE m_sConfigBitrate;

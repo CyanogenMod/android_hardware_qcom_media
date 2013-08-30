@@ -64,6 +64,9 @@ typedef enum OMX_INDEXEXTTYPE {
     OMX_IndexKhronosExtParamNALStreamFormatSupported,   /**< reference: OMX_NALSTREAMFORMATTYPE */
     OMX_IndexKhronosExtParamNALStreamFormat,            /**< reference: OMX_NALSTREAMFORMATTYPE */
     OMX_IndexKhronosExtParamNALStreamFormatSelect,      /**< reference: OMX_NALSTREAMFORMATTYPE */
+    OMX_IndexParamVideoVp8,                             /**< reference: OMX_VIDEO_PARAM_VP8TYPE */
+    OMX_IndexConfigVideoVp8ReferenceFrame,              /**< reference: OMX_VIDEO_VP8REFERENCEFRAMETYPE */
+    OMX_IndexConfigVideoVp8ReferenceFrameType,          /**< reference: OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE */
 
     /* Image & Video common configurations */
     OMX_IndexExtCommonStartUnused = OMX_IndexKhronosExtensions + 0x00700000,

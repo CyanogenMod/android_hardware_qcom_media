@@ -31,6 +31,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "OMX_Types.h"
 #include "OMX_Core.h"
+#include "OMX_VideoExt.h"
 #include "OMX_QCOMExtns.h"
 #include "qc_omx_component.h"
 #include "omx_video_common.h"
