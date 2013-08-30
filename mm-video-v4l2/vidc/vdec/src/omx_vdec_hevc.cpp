@@ -7597,20 +7597,20 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     OMX_OTHER_EXTRADATATYPE *data = (struct OMX_OTHER_EXTRADATATYPE *)p_extradata;
     if (data) {
         while ((consumed_len < drv_ctx.extradata_info.buffer_size)
-                && (data->eType != (OMX_EXTRADATATYPE)EXTRADATA_NONE)) {
+                && (data->eType != (OMX_EXTRADATATYPE)MSM_VIDC_EXTRADATA_NONE)) {
             if ((consumed_len + data->nSize) > drv_ctx.extradata_info.buffer_size) {
                 DEBUG_PRINT_LOW("Invalid extra data size");
                 break;
             }
             switch ((unsigned long)data->eType) {
-                case EXTRADATA_INTERLACE_VIDEO:
+                case MSM_VIDC_EXTRADATA_INTERLACE_VIDEO:
                     struct msm_vidc_interlace_payload *payload;
                     payload = (struct msm_vidc_interlace_payload *)data->data;
-                    if (payload->format != INTERLACE_FRAME_PROGRESSIVE) {
+                    if (payload->format != MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE) {
                         int enable = 1;
                         OMX_U32 mbaff = 0;
                         mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
-                        if ((payload->format == INTERLACE_FRAME_PROGRESSIVE)  && !mbaff)
+                        if ((payload->format == MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE)  && !mbaff)
                             drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
                         else
                             drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
@@ -7623,25 +7623,25 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
                     }
                     break;
-                case EXTRADATA_FRAME_RATE:
+                case MSM_VIDC_EXTRADATA_FRAME_RATE:
                     struct msm_vidc_framerate_payload *frame_rate_payload;
                     frame_rate_payload = (struct msm_vidc_framerate_payload *)data->data;
                     frame_rate = frame_rate_payload->frame_rate;
                     break;
-                case EXTRADATA_TIMESTAMP:
+                case MSM_VIDC_EXTRADATA_TIMESTAMP:
                     struct msm_vidc_ts_payload *time_stamp_payload;
                     time_stamp_payload = (struct msm_vidc_ts_payload *)data->data;
                     p_buf_hdr->nTimeStamp = time_stamp_payload->timestamp_lo;
                     p_buf_hdr->nTimeStamp |= ((unsigned long long)time_stamp_payload->timestamp_hi << 32);
                     break;
-                case EXTRADATA_NUM_CONCEALED_MB:
+                case MSM_VIDC_EXTRADATA_NUM_CONCEALED_MB:
                     struct msm_vidc_concealmb_payload *conceal_mb_payload;
                     conceal_mb_payload = (struct msm_vidc_concealmb_payload *)data->data;
                     num_MB_in_frame = ((drv_ctx.video_resolution.frame_width + 15) *
                             (drv_ctx.video_resolution.frame_height + 15)) >> 8;
                     num_conceal_MB = ((num_MB_in_frame > 0)?(conceal_mb_payload->num_mbs * 100 / num_MB_in_frame) : 0);
                     break;
-                case EXTRADATA_ASPECT_RATIO:
+                case MSM_VIDC_EXTRADATA_ASPECT_RATIO:
                     struct msm_vidc_aspect_ratio_payload *aspect_ratio_payload;
                     aspect_ratio_payload = (struct msm_vidc_aspect_ratio_payload *)data->data;
                     ((struct vdec_output_frameinfo *)
@@ -7649,16 +7649,16 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     ((struct vdec_output_frameinfo *)
                      p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info.par_height = aspect_ratio_payload->aspect_height;
                     break;
-                case EXTRADATA_RECOVERY_POINT_SEI:
+                case MSM_VIDC_EXTRADATA_RECOVERY_POINT_SEI:
                     struct msm_vidc_recoverysei_payload *recovery_sei_payload;
                     recovery_sei_payload = (struct msm_vidc_recoverysei_payload *)data->data;
                     recovery_sei_flags = recovery_sei_payload->flags;
-                    if (recovery_sei_flags != FRAME_RECONSTRUCTION_CORRECT) {
+                    if (recovery_sei_flags != MSM_VIDC_FRAME_RECONSTRUCTION_CORRECT) {
                         p_buf_hdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
                         DEBUG_PRINT_HIGH("Extradata: OMX_BUFFERFLAG_DATACORRUPT Received\n");
                     }
                     break;
-                case EXTRADATA_PANSCAN_WINDOW:
+                case MSM_VIDC_EXTRADATA_PANSCAN_WINDOW:
                     panscan_payload = (struct msm_vidc_panscan_window_payload *)data->data;
                     break;
                 default:
@@ -7849,7 +7849,7 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     interlace_format->nVersion.nVersion = OMX_SPEC_VERSION;
     interlace_format->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
     mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
-    if ((interlaced_format_type == INTERLACE_FRAME_PROGRESSIVE)  && !mbaff) {
+    if ((interlaced_format_type == MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE)  && !mbaff) {
         interlace_format->bInterlaceFormat = OMX_FALSE;
         interlace_format->nInterlaceFormats = OMX_InterlaceFrameProgressive;
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
