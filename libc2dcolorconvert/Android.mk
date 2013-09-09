@@ -8,6 +8,11 @@ else
 DISPLAY := display
 endif
 
+LOCAL_COPY_HEADERS_TO         := linux
+LOCAL_COPY_HEADERS            := ../../../../$(TARGET_KERNEL_SOURCE)/include/linux/msm_kgsl.h
+#Copy the headers regardless of whether libc2dcolorconvert is built
+include $(BUILD_COPY_HEADERS)
+
 LOCAL_SRC_FILES := \
         C2DColorConverter.cpp
 
