@@ -898,7 +898,8 @@ private:
         struct vidc_heap m_heap_ptr[MAX_COUNT];
     };
     allocate_color_convert_buf client_buffers;
-    static bool m_secure_display; //For qservice
+    static int m_secure_display; //For qservice
+    static pthread_mutex_t m_secure_display_lock;
     int secureDisplay(int mode);
     int unsecureDisplay(int mode);
     int set_turbo_mode(bool mode);
