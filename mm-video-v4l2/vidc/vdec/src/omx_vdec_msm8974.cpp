@@ -5381,7 +5381,7 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
     int rc;
     unsigned long  print_count;
     if (temp_buffer->buffer_len == 0 || (buffer->nFlags & OMX_BUFFERFLAG_EOS)) {
-        buf.flags = V4L2_BUF_FLAG_EOS;
+        buf.flags = V4L2_QCOM_BUF_FLAG_EOS;
         DEBUG_PRINT_HIGH("\n  INPUT EOS reached \n") ;
     }
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
@@ -6409,7 +6409,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                     omxhdr->nTimeStamp = vdec_msg->msgdata.output_frame.time_stamp;
                     omxhdr->nFlags = 0;
 
-                    if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_EOS) {
+                    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS) {
                         omxhdr->nFlags |= OMX_BUFFERFLAG_EOS;
                         //rc = -1;
                     }
@@ -6429,7 +6429,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                     }
                     if (omxhdr && (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DROP_FRAME) &&
                             !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) &&
-                            !(v4l2_buf_ptr->flags & V4L2_BUF_FLAG_EOS)) {
+                            !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS)) {
                         omx->time_stamp_dts.remove_time_stamp(
                                 omxhdr->nTimeStamp,
                                 (omx->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
