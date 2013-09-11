@@ -164,7 +164,7 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
     /*Need Minimum Start Code size for destination to copy atleast Start code*/
     if ((start_code == H263_start_code && dest_len < 3) ||
             (start_code != H263_start_code && dest_len < 4) || (source_len == 0)) {
-        DEBUG_PRINT_LOW("\n FrameParser: dest_len %d source_len %d",dest_len,source_len);
+        DEBUG_PRINT_LOW("\n FrameParser: dest_len %lu source_len %lu",dest_len,source_len);
 
         if (source_len == 0 && (source->nFlags & 0x01)) {
             DEBUG_PRINT_LOW("\n FrameParser: EOS rxd!! Notify it as a complete frame");
@@ -318,7 +318,7 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
     if (parse_state == A4 || parse_state == A5) {
         *partialframe = 0;
         check_skip_frame_boundary(partialframe);
-        DEBUG_PRINT_LOW("\n FrameParser: Parsed Len = %d", dest->nFilledLen);
+        DEBUG_PRINT_LOW("\n FrameParser: Parsed Len = %lu", dest->nFilledLen);
         return 1;
     }
 
@@ -491,8 +491,8 @@ int frame_parse::parse_h264_nallength (OMX_BUFFERHEADERTYPE *source,
     source_len = source->nFilledLen;
 
     if (dest_len < 4 || source_len == 0 || nal_length == 0) {
-        DEBUG_PRINT_LOW("\n FrameParser: NAL Parsing Error! dest_len %d "
-                "source_len %d nal_length %d", dest_len, source_len, nal_length);
+        DEBUG_PRINT_LOW("\n FrameParser: NAL Parsing Error! dest_len %lu "
+                "source_len %lu nal_length %u", dest_len, source_len, nal_length);
         return -1;
     }
 
