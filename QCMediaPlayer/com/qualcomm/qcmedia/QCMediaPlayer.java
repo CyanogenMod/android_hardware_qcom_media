@@ -67,6 +67,17 @@ public class QCMediaPlayer extends MediaPlayer
     Log.d(TAG, "QCMediaPlayer::QCMediaPlayer");
   }
 
+  public boolean setParameter(int key, String value) {
+    return false;
+  }
+
+  public String getStringParameter(int key) {
+        Parcel p = Parcel.obtain();
+        //getParameter(key, p);
+        //String ret = p.readString();
+        //p.recycle();
+        return "null";
+   }
   private void callOnPreparedListener()
   {
     Log.d(TAG, "callOnPreparedListener");
