@@ -631,6 +631,7 @@ class omx_vdec: public qc_omx_component
                 OMX_U32 num_conceal_mb,
                 OMX_U32 picture_type,
                 OMX_U32 frame_rate,
+                OMX_TICKS time_stamp,
                 struct msm_vidc_panscan_window_payload *panscan_payload,
                 struct vdec_aspectratioinfo *aspect_ratio_info);
 #else
