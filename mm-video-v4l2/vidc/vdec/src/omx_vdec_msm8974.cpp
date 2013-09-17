@@ -7777,6 +7777,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 {
     OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL;
     OMX_U32 num_conceal_MB = 0;
+    OMX_TICKS time_stamp = 0;
     OMX_U32 frame_rate = 0;
     int consumed_len = 0;
     OMX_U32 num_MB_in_frame;
@@ -7830,8 +7831,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                 case EXTRADATA_TIMESTAMP:
                     struct msm_vidc_ts_payload *time_stamp_payload;
                     time_stamp_payload = (struct msm_vidc_ts_payload *)data->data;
-                    p_buf_hdr->nTimeStamp = time_stamp_payload->timestamp_lo;
-                    p_buf_hdr->nTimeStamp |= ((unsigned long long)time_stamp_payload->timestamp_hi << 32);
+                    time_stamp = time_stamp_payload->timestamp_lo;
+                    time_stamp |= ((unsigned long long)time_stamp_payload->timestamp_hi << 32);
+                    p_buf_hdr->nTimeStamp = time_stamp;
                     break;
                 case EXTRADATA_NUM_CONCEALED_MB:
                     struct msm_vidc_concealmb_payload *conceal_mb_payload;
@@ -7887,7 +7889,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
             p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
             append_frame_info_extradata(p_extra,
                     num_conceal_MB, ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->pic_type, frame_rate,
-                    panscan_payload,&((struct vdec_output_frameinfo *)
+                    time_stamp, panscan_payload,&((struct vdec_output_frameinfo *)
                         p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info);
         }
     }
@@ -8024,6 +8026,7 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
                 " Pan Scan Total Frame Num: %lu \n"
                 "   Concealed Macro Blocks: %lu \n"
                 "               frame rate: %lu \n"
+                "               Time Stamp: %lu \n"
                 "           Aspect Ratio X: %lu \n"
                 "           Aspect Ratio Y: %lu \n",
                 fminfo->ePicType,
@@ -8031,6 +8034,7 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
                 fminfo->panScan.numWindows,
                 fminfo->nConcealedMacroblocks,
                 fminfo->nFrameRate,
+                fminfo->nTimeStamp,
                 fminfo->aspectRatio.aspectRatioX,
                 fminfo->aspectRatio.aspectRatioY);
 
@@ -8091,13 +8095,13 @@ void omx_vdec::fill_aspect_ratio_info(
     m_extradata = frame_info;
     m_extradata->aspectRatio.aspectRatioX = aspect_ratio_info->par_width;
     m_extradata->aspectRatio.aspectRatioY = aspect_ratio_info->par_height;
-    DEBUG_PRINT_LOW("aspectRatioX %lu aspectRatioX %lu", m_extradata->aspectRatio.aspectRatioX,
+    DEBUG_PRINT_LOW("aspectRatioX %lu aspectRatioY %lu", m_extradata->aspectRatio.aspectRatioX,
             m_extradata->aspectRatio.aspectRatioY);
 }
 
 void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
         OMX_U32 num_conceal_mb, OMX_U32 picture_type, OMX_U32 frame_rate,
-        struct msm_vidc_panscan_window_payload *panscan_payload,
+        OMX_TICKS time_stamp, struct msm_vidc_panscan_window_payload *panscan_payload,
         struct vdec_aspectratioinfo *aspect_ratio_info)
 {
     OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info = NULL;
@@ -8133,6 +8137,7 @@ void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     memset(&frame_info->aspectRatio, 0, sizeof(frame_info->aspectRatio));
     frame_info->nConcealedMacroblocks = num_conceal_mb;
     frame_info->nFrameRate = frame_rate;
+    frame_info->nTimeStamp = time_stamp;
     frame_info->panScan.numWindows = 0;
     if (output_capability == V4L2_PIX_FMT_MPEG2) {
         if (m_disp_hor_size && m_disp_vert_size) {
