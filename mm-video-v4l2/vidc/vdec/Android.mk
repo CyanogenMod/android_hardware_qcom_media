@@ -60,6 +60,7 @@ libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_MSM8974_
+libOmxVdec-def += -D_HEVC_USE_ADSP_HEAP_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
 libOmxVdec-def += -DMAX_RES_1080P
@@ -107,7 +108,7 @@ libmm-vdec-inc          += hardware/qcom/display/libqdutils
 libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
 libmm-vdec-inc      += hardware/qcom/display/libcopybit
 libmm-vdec-inc      += frameworks/av/include/media/stagefright
-
+libmm-vdec-inc      += $(TARGET_OUT_HEADERS)/mm-video/SwVdec
 
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
@@ -147,7 +148,10 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
-ifeq ($(call is-board-platform-in-list,msm8974 msm8610 apq8084 mpq8092),true)
+# libOmxVdecHevc library is not built for OSS builds as QCPATH is null in OSS builds.
+
+ifneq "$(wildcard $(QCPATH) )" ""
+ifeq ($(call is-board-platform-in-list,msm8974 msm8610 apq8084 mpq8092 msm8226),true)
 
 LOCAL_MODULE                    := libOmxVdecHevc
 LOCAL_MODULE_TAGS               := optional
@@ -165,7 +169,13 @@ LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
 
+ifeq ($(call is-board-platform-in-list,msm8974 msm8226),true)
+LOCAL_SHARED_LIBRARIES  += libHevcSwDecoder
+LOCAL_SRC_FILES         += src/omx_vdec_hevc_swvdec.cpp
+else
 LOCAL_SRC_FILES         += src/omx_vdec_hevc.cpp
+endif
+
 LOCAL_SRC_FILES         += src/hevc_utils.cpp
 
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
@@ -174,6 +184,7 @@ LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
 
+endif
 endif
 
 # ---------------------------------------------------------------------------------

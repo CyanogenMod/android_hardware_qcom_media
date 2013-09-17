@@ -226,6 +226,7 @@ typedef enum {
 #ifdef _MSM8974_
     CODEC_FORMAT_VP8,
     CODEC_FORMAT_HEVC,
+    CODEC_FORMAT_HEVC_HYBRID,
 #endif
     CODEC_FORMAT_MAX
 } codec_format;
@@ -1312,6 +1313,7 @@ int main(int argc, char **argv)
 #ifdef _MSM8974_
         printf(" 7--> VP8\n");
         printf(" 8--> HEVC\n");
+        printf(" 9--> HYBRID\n");
 #endif
         fflush(stdin);
         fgets(tempbuf,sizeof(tempbuf),stdin);
@@ -1806,6 +1808,11 @@ int Init_Decoder()
 #endif
     else if (codec_format_option == CODEC_FORMAT_HEVC) {
         strlcpy(vdecCompNames, "OMX.qcom.video.decoder.hevc", 28);
+        DEBUG_PRINT_ERROR("vdecCompNames: %s\n", vdecCompNames);
+    }
+    else if (codec_format_option == CODEC_FORMAT_HEVC_HYBRID) {
+        strlcpy(vdecCompNames, "OMX.qcom.video.decoder.hevchybrid", 34);
+        DEBUG_PRINT_ERROR("vdecCompNames: %s\n", vdecCompNames);
     }
 #ifdef MAX_RES_1080P
     else if (file_type_option == FILE_TYPE_DIVX_311) {
@@ -1860,7 +1867,8 @@ int Init_Decoder()
             (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingDivx;
     } else if (codec_format_option == CODEC_FORMAT_MPEG2) {
         portFmt.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG2;
-    } else if (codec_format_option == CODEC_FORMAT_HEVC) {
+    } else if (codec_format_option == CODEC_FORMAT_HEVC ||
+        codec_format_option == CODEC_FORMAT_HEVC_HYBRID) {
         portFmt.format.video.eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingHevc;
     } else {
         DEBUG_PRINT_ERROR("Error: Unsupported codec %d\n", codec_format_option);
@@ -2109,7 +2117,9 @@ int Play_Decoder()
             portFmt.format.video.nFrameWidth,
             portFmt.format.video.nFrameHeight);
     if (codec_format_option == CODEC_FORMAT_H264 ||
-            codec_format_option == CODEC_FORMAT_HEVC) {
+       codec_format_option == CODEC_FORMAT_HEVC ||
+       codec_format_option == CODEC_FORMAT_HEVC_HYBRID)
+    {
         OMX_VIDEO_CONFIG_NALSIZE naluSize;
         naluSize.nNaluBytes = nalSize;
         DEBUG_PRINT("\n Nal length is %d index %d",nalSize,OMX_IndexConfigVideoNalSize);
