@@ -1384,7 +1384,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_dec";
 
 #ifdef _ANDROID_
-    char platform_name[64];
+    char platform_name[PROPERTY_VALUE_MAX];
     property_get("ro.board.platform", platform_name, "0");
     if (!strncmp(platform_name, "msm8610", 7)) {
         device_name = (OMX_STRING)"/dev/video/q6_dec";
