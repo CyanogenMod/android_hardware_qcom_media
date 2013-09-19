@@ -109,6 +109,7 @@ libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
 libmm-vdec-inc      += hardware/qcom/display/libcopybit
 libmm-vdec-inc      += frameworks/av/include/media/stagefright
 libmm-vdec-inc      += $(TARGET_OUT_HEADERS)/mm-video/SwVdec
+libmm-vdec-inc      += $(TARGET_OUT_HEADERS)/qcom/display/
 
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
