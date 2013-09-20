@@ -118,7 +118,7 @@ LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
-ifeq ($(call is-board-platform-in-list,msm8974 msm8610 msm8226 apq8084 mpq8092),true)
+ifneq ($(filter msm8974 msm8610 msm8226 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
 else
 LOCAL_SHARED_LIBRARIES  += libhardware
@@ -140,7 +140,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
-ifeq ($(call is-board-platform-in-list,msm8974 msm8610 apq8084 mpq8092),true)
+ifneq ($(filter msm8974 msm8610 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
 
 LOCAL_MODULE                    := libOmxVdecHevc
 LOCAL_MODULE_TAGS               := optional
