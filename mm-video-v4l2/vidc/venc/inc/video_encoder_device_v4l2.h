@@ -304,7 +304,7 @@ class venc_dev
         bool venc_set_extradata(OMX_U32 extra_data);
         bool venc_set_idr_period(OMX_U32 nPFrames, OMX_U32 nIDRPeriod);
         bool venc_reconfig_reqbufs();
-
+        bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
         OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
