@@ -149,9 +149,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
-# QCPATH is defined if vendor/qcom/proprietary folder is present in the build.
-# The above folder will be removed in for open source(OSS) builds.
-# Hence libOmxVdecHevc library is not built for OSS build as QCPATH is null in OSS build.
+# libOmxVdecHevc library is not built for OSS builds as QCPATH is null in OSS builds.
 
 ifneq "$(wildcard $(QCPATH) )" ""
 ifeq ($(call is-board-platform-in-list,msm8974 msm8610 apq8084 mpq8092 msm8226),true)
