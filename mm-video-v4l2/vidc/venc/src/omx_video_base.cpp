@@ -1864,6 +1864,14 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                 memcpy(pParam, &m_sConfigAVCIDRPeriod, sizeof(m_sConfigAVCIDRPeriod));
                 break;
             }
+        case OMX_IndexConfigCommonDeinterlace:
+            {
+                OMX_VIDEO_CONFIG_DEINTERLACE *pParam =
+                    reinterpret_cast<OMX_VIDEO_CONFIG_DEINTERLACE*>(configData);
+                DEBUG_PRINT_LOW("get_config: OMX_IndexConfigCommonDeinterlace");
+                memcpy(pParam, &m_sConfigDeinterlace, sizeof(m_sConfigDeinterlace));
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
