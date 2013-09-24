@@ -822,6 +822,7 @@ typedef struct OMX_QCOM_EXTRADATA_FRAMEINFO
    OMX_QCOM_DISPLAY_ASPECT_RATIO displayAspectRatio;
    OMX_U32                nConcealedMacroblocks;
    OMX_U32                nFrameRate;
+   OMX_TICKS              nTimeStamp;
 } OMX_QCOM_EXTRADATA_FRAMEINFO;
 
 typedef struct OMX_QCOM_EXTRADATA_FRAMEDIMENSION
