@@ -789,6 +789,9 @@ private:
     OMX_U32 m_demux_entries;
     OMX_U32 m_disp_hor_size;
     OMX_U32 m_disp_vert_size;
+    OMX_U32 m_smoothstreaming_height;
+    OMX_U32 m_smoothstreaming_width;
+    bool m_use_smoothstreaming;
 
     OMX_S64 prev_ts;
     bool rst_prev_ts;
