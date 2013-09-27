@@ -1975,7 +1975,7 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
 #endif
 #ifdef _ANDROID_ICS_
   if (!strncmp(paramName, extns[1], strlen(extns[1]))) {
-        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoEncodeMetaBufferMode;
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
         return OMX_ErrorNone;
   } else if (!strncmp(paramName, extns[2], strlen(extns[2]))) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR;
