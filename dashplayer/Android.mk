@@ -51,5 +51,7 @@ LOCAL_MODULE:= libdashplayer
 
 LOCAL_MODULE_TAGS := eng
 
+ifeq ($(TARGET_ENABLE_QC_AV_ENHANCEMENTS), true)
  include $(BUILD_SHARED_LIBRARY)
+endif
 
