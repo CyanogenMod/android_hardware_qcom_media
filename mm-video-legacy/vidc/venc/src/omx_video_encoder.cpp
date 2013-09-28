@@ -990,7 +990,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       break;
     }
 #ifdef _ANDROID_ICS_
-  case OMX_QcomIndexParamVideoEncodeMetaBufferMode:
+  case OMX_QcomIndexParamVideoMetaBufferMode:
     {
       StoreMetaDataInBuffersParams *pParam =
         (StoreMetaDataInBuffersParams*)paramData;
