@@ -139,11 +139,6 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 #define MAX_NUM_INPUT_BUFFERS 32
 #endif
 void* message_thread(void *);
-#ifdef USE_ION
-int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
-        struct ion_fd_data *fd_data,int flag);
-void free_ion_memory(struct venc_ion *buf_ion_info);
-#endif
 
 // OMX video class
 class omx_video: public qc_omx_component
@@ -160,6 +155,7 @@ class omx_video: public qc_omx_component
         bool get_syntaxhdr_enable;
         OMX_BUFFERHEADERTYPE  *psource_frame;
         OMX_BUFFERHEADERTYPE  *pdest_frame;
+        bool secure_session;
 
         class omx_c2d_conv
         {
@@ -222,6 +218,7 @@ class omx_video: public qc_omx_component
         virtual bool dev_loaded_stop(void) = 0;
         virtual bool dev_loaded_start_done(void) = 0;
         virtual bool dev_loaded_stop_done(void) = 0;
+        virtual bool is_secure_session(void) = 0;
 #ifdef _MSM8974_
         virtual int dev_handle_extradata(void*, int) = 0;
         virtual int dev_set_format(int) = 0;
@@ -523,6 +520,13 @@ class omx_video: public qc_omx_component
         }
 
         void complete_pending_buffer_done_cbs();
+
+#ifdef USE_ION
+        int alloc_map_ion_memory(int size,
+                                 struct ion_allocation_data *alloc_data,
+                                 struct ion_fd_data *fd_data,int flag);
+        void free_ion_memory(struct venc_ion *buf_ion_info);
+#endif
 
         //*************************************************************
         //*******************MEMBER VARIABLES *************************

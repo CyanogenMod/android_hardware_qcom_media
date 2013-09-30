@@ -76,6 +76,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define VC1_STRUCT_B_POS            24
 #define VC1_SEQ_LAYER_SIZE          36
 
+#define SZ_4K                       0x1000
+#define SZ_1M                       0x100000
+#define SECURE_BUFPTR               0xDEADBEEF
+
 typedef struct OMXComponentCapabilityFlagsType {
     ////////////////// OMX COMPONENT CAPABILITY RELATED MEMBERS
     OMX_BOOL iIsOMXComponentMultiThreaded;
@@ -212,6 +216,7 @@ omx_video::omx_video():
     mUsesColorConversion(false),
     psource_frame(NULL),
     pdest_frame(NULL),
+    secure_session(false),
     m_pInput_pmem(NULL),
     m_pOutput_pmem(NULL),
 #ifdef USE_ION
@@ -2078,17 +2083,23 @@ OMX_ERRORTYPE  omx_video::use_input_buffer(
 #endif
             m_pInput_pmem[i].size = m_sInPortDef.nBufferSize;
             m_pInput_pmem[i].offset = 0;
-            m_pInput_pmem[i].buffer = (unsigned char *)mmap(NULL,m_pInput_pmem[i].size,PROT_READ|PROT_WRITE,
+
+            m_pInput_pmem[i].buffer = (OMX_U8 *)SECURE_BUFPTR;
+            if(!secure_session) {
+                m_pInput_pmem[i].buffer = (unsigned char *)mmap(
+                    NULL,m_pInput_pmem[i].size,PROT_READ|PROT_WRITE,
                     MAP_SHARED,m_pInput_pmem[i].fd,0);
 
-            if (m_pInput_pmem[i].buffer == MAP_FAILED) {
-                DEBUG_PRINT_ERROR("\nERROR: mmap() Failed");
-                close(m_pInput_pmem[i].fd);
+                if (m_pInput_pmem[i].buffer == MAP_FAILED) {
+                    DEBUG_PRINT_ERROR("\nERROR: mmap() Failed");
+                    close(m_pInput_pmem[i].fd);
 #ifdef USE_ION
-                free_ion_memory(&m_pInput_ion[i]);
+                    free_ion_memory(&m_pInput_ion[i]);
 #endif
-                return OMX_ErrorInsufficientResources;
+                    return OMX_ErrorInsufficientResources;
+                }
             }
+
         } else {
             OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pParam = reinterpret_cast<OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *>((*bufferHdr)->pAppPrivate);
             DEBUG_PRINT_LOW("Inside qcom_ext with luma:(fd:%lu,offset:0x%x)", pParam->pmem_fd, (unsigned)pParam->offset);
@@ -2234,7 +2245,7 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
             if (!m_use_output_pmem) {
 #ifdef USE_ION
 #ifdef _MSM8974_
-                align_size = ((m_sOutPortDef.nBufferSize + 4095)/4096) * 4096;
+                align_size = (m_sOutPortDef.nBufferSize + (SZ_4K - 1)) & ~(SZ_4K - 1);
                 m_pOutput_ion[i].ion_device_fd = alloc_map_ion_memory(align_size,
                         &m_pOutput_ion[i].ion_alloc_data,
                         &m_pOutput_ion[i].fd_ion_data,0);
@@ -2263,20 +2274,26 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
 #endif
                 m_pOutput_pmem[i].size = m_sOutPortDef.nBufferSize;
                 m_pOutput_pmem[i].offset = 0;
+
+                m_pOutput_pmem[i].buffer = (OMX_U8 *)SECURE_BUFPTR;
+                if(!secure_session) {
 #ifdef _MSM8974_
-                m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,align_size,PROT_READ|PROT_WRITE,
+                    m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,
+                        align_size,PROT_READ|PROT_WRITE,
                         MAP_SHARED,m_pOutput_pmem[i].fd,0);
 #else
-                m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,m_pOutput_pmem[i].size,PROT_READ|PROT_WRITE,
+                    m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,
+                        m_pOutput_pmem[i].size,PROT_READ|PROT_WRITE,
                         MAP_SHARED,m_pOutput_pmem[i].fd,0);
 #endif
-                if (m_pOutput_pmem[i].buffer == MAP_FAILED) {
-                    DEBUG_PRINT_ERROR("\nERROR: mmap() Failed");
-                    close(m_pOutput_pmem[i].fd);
+                    if (m_pOutput_pmem[i].buffer == MAP_FAILED) {
+                        DEBUG_PRINT_ERROR("\nERROR: mmap() Failed");
+                        close(m_pOutput_pmem[i].fd);
 #ifdef USE_ION
-                    free_ion_memory(&m_pOutput_ion[i]);
+                        free_ion_memory(&m_pOutput_ion[i]);
 #endif
-                    return OMX_ErrorInsufficientResources;
+                        return OMX_ErrorInsufficientResources;
+                    }
                 }
             } else {
                 OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pParam = reinterpret_cast<OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO*>((*bufferHdr)->pAppPrivate);
@@ -2411,7 +2428,9 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
     if (index < m_sInPortDef.nBufferCountActual && m_pInput_pmem) {
         if (m_pInput_pmem[index].fd > 0 && input_use_buffer == false) {
             DEBUG_PRINT_LOW("\n FreeBuffer:: i/p AllocateBuffer case");
-            munmap (m_pInput_pmem[index].buffer,m_pInput_pmem[index].size);
+            if(!secure_session) {
+                munmap (m_pInput_pmem[index].buffer,m_pInput_pmem[index].size);
+            }
             close (m_pInput_pmem[index].fd);
 #ifdef USE_ION
             free_ion_memory(&m_pInput_ion[index]);
@@ -2423,7 +2442,9 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
             if (dev_free_buf(&m_pInput_pmem[index],PORT_INDEX_IN) != true) {
                 DEBUG_PRINT_ERROR("\nERROR: dev_free_buf() Failed for i/p buf");
             }
-            munmap (m_pInput_pmem[index].buffer,m_pInput_pmem[index].size);
+            if(!secure_session) {
+                munmap (m_pInput_pmem[index].buffer,m_pInput_pmem[index].size);
+            }
             close (m_pInput_pmem[index].fd);
 #ifdef USE_ION
             free_ion_memory(&m_pInput_ion[index]);
@@ -2456,7 +2477,10 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
     if (index < m_sOutPortDef.nBufferCountActual && m_pOutput_pmem) {
         if (m_pOutput_pmem[index].fd > 0 && output_use_buffer == false ) {
             DEBUG_PRINT_LOW("\n FreeBuffer:: o/p AllocateBuffer case");
-            munmap (m_pOutput_pmem[index].buffer,m_pOutput_pmem[index].size);
+            if(!secure_session) {
+                munmap (m_pOutput_pmem[index].buffer,
+                        m_pOutput_pmem[index].size);
+            }
             close (m_pOutput_pmem[index].fd);
 #ifdef USE_ION
             free_ion_memory(&m_pOutput_ion[index]);
@@ -2468,7 +2492,10 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
             if (dev_free_buf(&m_pOutput_pmem[index],PORT_INDEX_OUT) != true) {
                 DEBUG_PRINT_ERROR("ERROR: dev_free_buf Failed for o/p buf");
             }
-            munmap (m_pOutput_pmem[index].buffer,m_pOutput_pmem[index].size);
+            if(!secure_session) {
+                munmap (m_pOutput_pmem[index].buffer,
+                        m_pOutput_pmem[index].size);
+            }
             close (m_pOutput_pmem[index].fd);
 #ifdef USE_ION
             free_ion_memory(&m_pOutput_ion[index]);
@@ -2607,6 +2634,8 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
         (*bufferHdr)->nAllocLen         = m_sInPortDef.nBufferSize;
         (*bufferHdr)->pAppPrivate       = appData;
         (*bufferHdr)->nInputPortIndex   = PORT_INDEX_IN;
+        // make fd available to app layer, help with testing
+        (*bufferHdr)->pInputPortPrivate = (OMX_PTR)&m_pInput_pmem[i];
 
 #ifdef USE_ION
 #ifdef _MSM8974_
@@ -2639,15 +2668,19 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
         m_pInput_pmem[i].size = m_sInPortDef.nBufferSize;
         m_pInput_pmem[i].offset = 0;
 
-        m_pInput_pmem[i].buffer = (unsigned char *)mmap(NULL,m_pInput_pmem[i].size,PROT_READ|PROT_WRITE,
+        m_pInput_pmem[i].buffer = (OMX_U8 *)SECURE_BUFPTR;
+        if(!secure_session) {
+            m_pInput_pmem[i].buffer = (unsigned char *)mmap(NULL,
+                m_pInput_pmem[i].size,PROT_READ|PROT_WRITE,
                 MAP_SHARED,m_pInput_pmem[i].fd,0);
-        if (m_pInput_pmem[i].buffer == MAP_FAILED) {
-            DEBUG_PRINT_ERROR("\nERROR: mmap FAILED= %d\n", errno);
-            close(m_pInput_pmem[i].fd);
+            if (m_pInput_pmem[i].buffer == MAP_FAILED) {
+                DEBUG_PRINT_ERROR("\nERROR: mmap FAILED= %d\n", errno);
+                close(m_pInput_pmem[i].fd);
 #ifdef USE_ION
-            free_ion_memory(&m_pInput_ion[i]);
+                free_ion_memory(&m_pInput_ion[i]);
 #endif
-            return OMX_ErrorInsufficientResources;
+                return OMX_ErrorInsufficientResources;
+            }
         }
 
         (*bufferHdr)->pBuffer           = (OMX_U8 *)m_pInput_pmem[i].buffer;
@@ -2734,6 +2767,8 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                 bufHdr->nFilledLen         = 0;
                 bufHdr->pAppPrivate        = appData;
                 bufHdr->nOutputPortIndex   = PORT_INDEX_OUT;
+                // make fd available to app layer, help with testing
+                bufHdr->pOutputPortPrivate = (OMX_PTR)&m_pOutput_pmem[i];
                 bufHdr->pBuffer            = NULL;
                 bufHdr++;
                 m_pOutput_pmem[i].fd = -1;
@@ -2788,20 +2823,26 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
 #endif
             m_pOutput_pmem[i].size = m_sOutPortDef.nBufferSize;
             m_pOutput_pmem[i].offset = 0;
+
+            m_pOutput_pmem[i].buffer = (OMX_U8 *)SECURE_BUFPTR;
+            if(!secure_session) {
 #ifdef _MSM8974_
-            m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,align_size,PROT_READ|PROT_WRITE,
+                m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,
+                    align_size,PROT_READ|PROT_WRITE,
                     MAP_SHARED,m_pOutput_pmem[i].fd,0);
 #else
-            m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,m_pOutput_pmem[i].size,PROT_READ|PROT_WRITE,
+                m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,
+                    m_pOutput_pmem[i].size,PROT_READ|PROT_WRITE,
                     MAP_SHARED,m_pOutput_pmem[i].fd,0);
 #endif
-            if (m_pOutput_pmem[i].buffer == MAP_FAILED) {
-                DEBUG_PRINT_ERROR("\nERROR: MMAP_FAILED in o/p alloc buffer");
-                close (m_pOutput_pmem[i].fd);
+                if (m_pOutput_pmem[i].buffer == MAP_FAILED) {
+                    DEBUG_PRINT_ERROR("\nERROR: MMAP_FAILED in o/p alloc buffer");
+                    close (m_pOutput_pmem[i].fd);
 #ifdef USE_ION
-                free_ion_memory(&m_pOutput_ion[i]);
+                    free_ion_memory(&m_pOutput_ion[i]);
 #endif
-                return OMX_ErrorInsufficientResources;
+                    return OMX_ErrorInsufficientResources;
+                }
             }
 
             *bufferHdr = (m_out_mem_ptr + i );
@@ -3761,13 +3802,16 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
 
     pending_output_buffers--;
 
-    extra_data_handle.create_extra_data(buffer);
+    if(!secure_session) {
+        extra_data_handle.create_extra_data(buffer);
 #ifndef _MSM8974_
-    if (buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
-        DEBUG_PRINT_LOW("parsing extradata");
-        extra_data_handle.parse_extra_data(buffer);
-    }
+        if (buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
+            DEBUG_PRINT_LOW("parsing extradata");
+            extra_data_handle.parse_extra_data(buffer);
+        }
 #endif
+    }
+
     /* For use buffer we need to copy the data */
     if (m_pCallbacks.FillBufferDone) {
         if (buffer->nFilledLen > 0) {
@@ -4038,7 +4082,8 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
 #endif
 
 #ifdef USE_ION
-int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
+int omx_video::alloc_map_ion_memory(int size,
+        struct ion_allocation_data *alloc_data,
         struct ion_fd_data *fd_data,int flag)
 {
     struct venc_ion buf_ion_info;
@@ -4054,19 +4099,31 @@ int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
         DEBUG_PRINT_ERROR("\nERROR: ION Device open() Failed");
         return ion_device_fd;
     }
-    alloc_data->len = size;
-    alloc_data->align = 4096;
-    alloc_data->flags = flag;
+
+    if(secure_session) {
+        alloc_data->len = (size + (SZ_1M - 1)) & ~(SZ_1M - 1);
+        alloc_data->align = SZ_1M;
+        alloc_data->flags = ION_SECURE;
+        alloc_data->heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID);
+        DEBUG_PRINT_HIGH("ION ALLOC sec buf: size %d align %d flags %x\n",
+                alloc_data->len, alloc_data->align,alloc_data->flags);
+    } else {
+        alloc_data->len = (size + (SZ_4K - 1)) & ~(SZ_4K - 1);
+        alloc_data->align = SZ_4K;
+        alloc_data->flags = (flag & ION_FLAG_CACHED ? ION_FLAG_CACHED : 0);
 #ifdef MAX_RES_720P
-    alloc_data->len = (size + (alloc_data->align - 1)) & ~(alloc_data->align - 1);
-    alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
+        alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
 #else
-    alloc_data->heap_mask = (ION_HEAP(MEM_HEAP_ID) |
-            ION_HEAP(ION_IOMMU_HEAP_ID));
+        alloc_data->heap_mask = (ION_HEAP(MEM_HEAP_ID) |
+                                 ION_HEAP(ION_IOMMU_HEAP_ID));
 #endif
+        DEBUG_PRINT_HIGH("ION ALLOC unsec buf: size %d align %d flags %x\n",
+                alloc_data->len, alloc_data->align,alloc_data->flags);
+    }
+
     rc = ioctl(ion_device_fd,ION_IOC_ALLOC,alloc_data);
     if (rc || !alloc_data->handle) {
-        DEBUG_PRINT_ERROR("\n ION ALLOC memory failed ");
+        DEBUG_PRINT_ERROR("\n ION ALLOC memory failed 0x%x", rc);
         alloc_data->handle =NULL;
         close(ion_device_fd);
         ion_device_fd = -1;
@@ -4086,7 +4143,7 @@ int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
     return ion_device_fd;
 }
 
-void free_ion_memory(struct venc_ion *buf_ion_info)
+void omx_video::free_ion_memory(struct venc_ion *buf_ion_info)
 {
     if (!buf_ion_info) {
         DEBUG_PRINT_ERROR("\n Invalid input to free_ion_memory");
@@ -4402,6 +4459,10 @@ OMX_ERRORTYPE omx_video::convert_queue_buffer(OMX_HANDLETYPE hComp,
     if (!psource_frame || !pdest_frame) {
         DEBUG_PRINT_ERROR("\n convert_queue_buffer invalid params");
         return OMX_ErrorBadParameter;
+    }
+    if (secure_session) {
+        DEBUG_PRINT_ERROR("cannot convert buffer during secure session");
+        return OMX_ErrorInvalidState;
     }
 
     if (!psource_frame->nFilledLen) {
