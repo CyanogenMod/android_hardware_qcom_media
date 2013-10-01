@@ -133,10 +133,6 @@ extern "C"{
 
 int debug_level = PRIO_ERROR;
 
-#define DEBUG_PRINT_LOW DEBUG_PRINT_ERROR
-#define DEBUG_PRINT_HIGH DEBUG_PRINT_ERROR
-
-
 void* async_message_thread (void *input)
 {
     OMX_BUFFERHEADERTYPE *buffer;
@@ -4856,10 +4852,6 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
             heap_id = ION_ADSP_HEAP_ID;
 #endif
         }
-        else {
-            DEBUG_PRINT_HIGH("allocate output buffer cached \n");
-            flags |= ION_FLAG_CACHED;
-        }
         ion_device_fd = alloc_map_ion_memory(
             drv_ctx.op_buf.buffer_size * drv_ctx.op_buf.actualcount,
             drv_ctx.op_buf.alignment,
@@ -5365,7 +5357,7 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
                 free_output_buffer_header();
                 if (m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
                 {
-                    DEBUG_PRINT_LOW("release_output_done: start free_interm_buffers in reconfig %d\n", in_reconfig);
+                    DEBUG_PRINT_LOW("release_output_done: start free_interm_buffers");
                     free_interm_buffers();
                 }
             }
@@ -6392,10 +6384,12 @@ bool omx_vdec::release_done(void)
 bool omx_vdec::release_interm_done(void)
 {
     bool bRet = true;
-    unsigned i=0,j=0;
+    unsigned int i=0;
+
+    if (!drv_ctx.ptr_interm_outputbuffer) return bRet;
 
     pthread_mutex_lock(&m_lock);
-    for(;j < 32 ; j++)
+    for(;i < 32  && drv_ctx.ptr_interm_outputbuffer[i].pmem_fd ; i++)
     {
         if(m_interm_buf_state[i] != WITH_COMPONENT)
         {
@@ -6512,8 +6506,8 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         buffer->nFlags &= ~OMX_BUFFERFLAG_DATACORRUPT;
     }
 
-    DEBUG_PRINT_LOW("\n fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p idx %d, in op flush %d",
-        buffer, buffer->pBuffer, buffer - m_out_mem_ptr, output_flush_progress);
+    DEBUG_PRINT_LOW("\n fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p idx %d, TS %lld %d",
+        buffer, buffer->pBuffer, buffer - m_out_mem_ptr, buffer->nTimeStamp );
     pending_output_buffers --;
 
     if (buffer->nFlags & OMX_BUFFERFLAG_EOS)
@@ -7362,6 +7356,7 @@ void omx_vdec::free_ion_memory(struct vdec_ion *buf_ion_info) {
         &buf_ion_info->ion_alloc_data.handle)) {
             DEBUG_PRINT_ERROR("\n ION: free failed" );
     }
+
     close(buf_ion_info->ion_device_fd);
     buf_ion_info->ion_device_fd = -1;
     buf_ion_info->ion_alloc_data.handle = NULL;
@@ -9846,8 +9841,8 @@ OMX_ERRORTYPE omx_vdec::free_interm_buffers()
         {
             if (drv_ctx.ptr_interm_outputbuffer[i].pmem_fd > 0)
             {
-                DEBUG_PRINT_LOW("\n Free interm ouput Buffer index = %d addr = %x", 0,
-                    (unsigned int)drv_ctx.ptr_interm_outputbuffer[0].bufferaddr);
+                DEBUG_PRINT_LOW("\n Free interm ouput Buffer index = %d addr = %x", i,
+                    (unsigned int)drv_ctx.ptr_interm_outputbuffer[i].bufferaddr);
 
                 munmap (drv_ctx.ptr_interm_outputbuffer[i].bufferaddr,
                     drv_ctx.ptr_interm_outputbuffer[i].mmaped_size);
