@@ -8145,6 +8145,9 @@ void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
         if (m_disp_hor_size && m_disp_vert_size) {
             frame_info->displayAspectRatio.displayHorizontalSize = m_disp_hor_size;
             frame_info->displayAspectRatio.displayVerticalSize = m_disp_vert_size;
+        } else {
+            frame_info->displayAspectRatio.displayHorizontalSize = 0;
+            frame_info->displayAspectRatio.displayVerticalSize = 0;
         }
     }
 
