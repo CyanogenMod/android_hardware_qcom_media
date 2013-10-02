@@ -1103,6 +1103,8 @@ OMX_ERRORTYPE EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
                 waitForPortSettingsChanged = 0;
                 event_complete();
             }
+            sem_post(&etb_sem);
+            sem_post(&fbd_sem);
             break;
         case OMX_EventPortSettingsChanged:
             DEBUG_PRINT("OMX_EventPortSettingsChanged port[%d]\n", nData1);
