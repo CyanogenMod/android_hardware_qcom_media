@@ -1680,8 +1680,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
-        if (eRet == OMX_ErrorNone && !secure_mode)
-            enable_extradata(DEFAULT_EXTRADATA, true, true);
+        if (strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",    \
+            OMX_MAX_STRINGNAME_SIZE)) {
+            if (eRet == OMX_ErrorNone && !secure_mode)
+                enable_extradata(DEFAULT_EXTRADATA, true, true);
+        }
 #endif
         if (mInSmoothstreamingMode) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
