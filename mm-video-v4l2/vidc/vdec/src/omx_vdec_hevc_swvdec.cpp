@@ -3543,8 +3543,17 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         DEBUG_PRINT_ERROR("\n Sync frame setting failed");
                         eRet = OMX_ErrorUnsupportedSetting;
                     }
+                    /* Setting sync frame decoding on driver might change
+                     * buffer requirements so update them here*/
+                    if (get_buffer_req(&drv_ctx.ip_buf)) {
+                        DEBUG_PRINT_ERROR("\n Sync frame setting failed: falied to get buffer i/p requirements");
+                        eRet = OMX_ErrorUnsupportedSetting;
+                    }
+                    if (get_buffer_req(&drv_ctx.interm_op_buf)) {
+                        DEBUG_PRINT_ERROR("\n Sync frame setting failed: falied to get buffer o/p requirements");
+                        eRet = OMX_ErrorUnsupportedSetting;
+                    }
                 }
-                // for TODO swvdec
             }
         }
         break;
@@ -6249,10 +6258,13 @@ bool omx_vdec::allocate_done(void)
     if(bRet_In && bRet_Out)
     {
         bRet = true;
-        if (m_pSwVdec && m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY &&
-            allocate_interm_buffer(drv_ctx.interm_op_buf.buffer_size) != OMX_ErrorNone)
+        if (m_pSwVdec && m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
         {
-            bRet = false;
+            if (allocate_interm_buffer(drv_ctx.interm_op_buf.buffer_size) != OMX_ErrorNone)
+            {
+                omx_report_error();
+                bRet = false;
+            }
         }
     }
 
@@ -9198,6 +9210,12 @@ OMX_ERRORTYPE omx_vdec::fill_all_buffers_proxy_dsp(OMX_HANDLETYPE hComp)
         return nRet;
     }
     m_fill_internal_bufers = OMX_FALSE;
+
+    if (m_interm_mem_ptr == NULL)
+    {
+        DEBUG_PRINT_ERROR("\n fill_all_buffers_proxy_dsp called in bad state");
+        return nRet;
+    }
 
     for (idx=0; idx < (int)drv_ctx.interm_op_buf.actualcount; idx++)
     {
