@@ -1097,6 +1097,7 @@ OMX_ERRORTYPE EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
                         sem_post(&seq_sem);
                         printf("\n Posted seq_sem in ERROR");
                     }
+                    event_complete();
                 }
             }
             if (waitForPortSettingsChanged) {
