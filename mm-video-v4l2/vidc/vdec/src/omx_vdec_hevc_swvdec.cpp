@@ -1133,7 +1133,14 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                             if(BITMASK_PRESENT(&pThis->m_flags,
                                 OMX_COMPONENT_OUTPUT_FLUSH_PENDING))
                             {
-                                DEBUG_PRINT_LOW("\n Notify Output Flush done");
+                                if (pThis->release_interm_done() == false)
+                                {
+                                    DEBUG_PRINT_ERROR("\n OMX_COMPONENT_OUTPUT_FLUSH failed not all interm buffers are returned");
+                                    pThis->omx_report_error ();
+                                    break;
+                                }
+                                pThis->m_fill_internal_bufers = OMX_TRUE;
+                                DEBUG_PRINT_HIGH("\n Notify Output Flush done");
                                 BITMASK_CLEAR (&pThis->m_flags,OMX_COMPONENT_OUTPUT_FLUSH_PENDING);
                                 pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                     OMX_EventCmdComplete,OMX_CommandFlush,
@@ -6389,11 +6396,12 @@ bool omx_vdec::release_interm_done(void)
     if (!drv_ctx.ptr_interm_outputbuffer) return bRet;
 
     pthread_mutex_lock(&m_lock);
-    for(;i < 32  && drv_ctx.ptr_interm_outputbuffer[i].pmem_fd ; i++)
+    for(; (i<drv_ctx.interm_op_buf.actualcount) && drv_ctx.ptr_interm_outputbuffer[i].pmem_fd ; i++)
     {
         if(m_interm_buf_state[i] != WITH_COMPONENT)
         {
             bRet = false;
+            DEBUG_PRINT_ERROR("\n interm buffer i %d state %d",i, m_interm_buf_state[i]);
             break;
         }
     }
@@ -6506,7 +6514,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         buffer->nFlags &= ~OMX_BUFFERFLAG_DATACORRUPT;
     }
 
-    DEBUG_PRINT_LOW("\n fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p idx %d, TS %lld %d",
+    DEBUG_PRINT_LOW("\n fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p idx %d, TS %lld",
         buffer, buffer->pBuffer, buffer - m_out_mem_ptr, buffer->nTimeStamp );
     pending_output_buffers --;
 
@@ -9127,7 +9135,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy_swvdec(OMX_IN OMX_HANDLETYPE hC
 
     if(m_interm_bEnabled != OMX_TRUE || m_interm_flush_swvdec_progress == true)
     {
-        DEBUG_PRINT_LOW("\n m_interm_flush_swvdec_progress buf %d", nPortIndex);
+        DEBUG_PRINT_ERROR("\n empty_this_buffer_proxy_swvdec called when swvdec flush is in progress");
         return OMX_ErrorNone;
     }
 
@@ -9161,13 +9169,21 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done_swvdec(OMX_HANDLETYPE hComp,
 
     buffer->nFilledLen = 0;
     pthread_mutex_lock(&m_lock);
+    if (m_interm_buf_state[idx] != WITH_SWVDEC)
+    {
+        DEBUG_PRINT_ERROR("\n empty_buffer_done_swvdec error: bufhdr = %p, idx %d, buffer not with swvdec ",buffer, idx);
+        pthread_mutex_unlock(&m_lock);
+        return OMX_ErrorBadParameter;
+    }
     m_interm_buf_state[idx] = WITH_COMPONENT;
     pthread_mutex_unlock(&m_lock);
 
-    // need to hold the buffer if the state is not executing or in flushing
-    if(m_interm_bEnabled != OMX_TRUE || m_interm_flush_dsp_progress == true)
+    if(m_interm_bEnabled != OMX_TRUE ||
+       output_flush_progress == true ||
+       m_interm_flush_dsp_progress == true ||
+       m_interm_flush_swvdec_progress == true)
     {
-        DEBUG_PRINT_LOW("empty_buffer_done_swvdec: Buffer (%p) flushed idx %d", buffer, idx);
+        DEBUG_PRINT_HIGH("empty_buffer_done_swvdec: Buffer (%p) flushed idx %d", buffer, idx);
         buffer->nFilledLen = 0;
         buffer->nTimeStamp = 0;
         buffer->nFlags &= ~OMX_BUFFERFLAG_EXTRADATA;
@@ -9284,7 +9300,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy_dsp(
 
     if(m_interm_bEnabled != OMX_TRUE || m_interm_flush_dsp_progress == true)
     {
-        DEBUG_PRINT_LOW("\n interm output buffers return flush/disable condition");
+        DEBUG_PRINT_ERROR("\n fill_this_buffer_proxy_dsp called when dsp flush in progress");
         buffer->nFilledLen = 0;
         return OMX_ErrorNone;
     }
@@ -9377,12 +9393,21 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done_dsp(OMX_HANDLETYPE hComp,
         buffer, buffer->pBuffer, idx, buffer->nFilledLen, (unsigned int)buffer->nFlags);
 
     pthread_mutex_lock(&m_lock);
+    if (m_interm_buf_state[idx] != WITH_DSP)
+    {
+        DEBUG_PRINT_ERROR("\n fill_buffer_done_dsp error: bufhdr = %p, idx %d, buffer not with dsp", buffer, idx);
+        pthread_mutex_unlock(&m_lock);
+        return OMX_ErrorBadParameter;
+    }
     m_interm_buf_state[idx] = WITH_COMPONENT;
     pthread_mutex_unlock(&m_lock);
 
-    if (m_interm_bEnabled != OMX_TRUE || m_interm_flush_swvdec_progress)
+    if (m_interm_bEnabled != OMX_TRUE ||
+       output_flush_progress == true ||
+       m_interm_flush_dsp_progress == true ||
+       m_interm_flush_swvdec_progress == true)
     {
-        DEBUG_PRINT_LOW("fill_buffer_done_dsp: Buffer (%p) flushed idx %d", buffer, idx);
+        DEBUG_PRINT_HIGH("fill_buffer_done_dsp: Buffer (%p) flushed idx %d", buffer, idx);
         buffer->nFilledLen = 0;
         buffer->nTimeStamp = 0;
         buffer->nFlags &= ~OMX_BUFFERFLAG_EXTRADATA;
@@ -9776,10 +9801,10 @@ void omx_vdec::swvdec_handle_event(SWVDEC_EVENTHANDLER *pEvent)
 
 bool omx_vdec::execute_input_flush_swvdec()
 {
-    unsigned       i =0;
-    unsigned      p1 = 0; // Parameter - 1
-    unsigned      p2 = 0; // Parameter - 2
-    unsigned      ident = 0;
+    int idx =0;
+    unsigned int p1 = 0; // Parameter - 1
+    unsigned int p2 = 0; // Parameter - 2
+    unsigned int ident = 0;
     bool bRet = true;
 
     DEBUG_PRINT_LOW("\n execute_input_flush_swvdec qsize %d, actual %d",
@@ -9788,27 +9813,46 @@ bool omx_vdec::execute_input_flush_swvdec()
     pthread_mutex_lock(&m_lock);
     while (m_etb_q_swvdec.m_size)
     {
+        OMX_BUFFERHEADERTYPE* bufHdr = NULL;
         m_etb_q_swvdec.pop_entry(&p1,&p2,&ident);
+        if (ident == OMX_COMPONENT_GENERATE_ETB_SWVDEC)
+        {
+            bufHdr = (OMX_BUFFERHEADERTYPE*)p2;
+        }
+        else if (ident == OMX_COMPONENT_GENERATE_EBD_SWVDEC)
+        {
+            bufHdr = (OMX_BUFFERHEADERTYPE*)p1;
+        }
+        idx = (bufHdr - m_interm_mem_ptr);
+        if (idx >= 0 && idx < (int)drv_ctx.interm_op_buf.actualcount)
+        {
+            DEBUG_PRINT_ERROR("\n execute_input_flush_swvdec flushed buffer idx %d", idx);
+            m_interm_buf_state[idx] = WITH_COMPONENT;
+        }
+        else
+        {
+            DEBUG_PRINT_ERROR("\n execute_input_flush_swvdec issue: invalid idx %d", idx);
+        }
     }
+    m_interm_flush_swvdec_progress = false;
     pthread_mutex_unlock(&m_lock);
 
-    for (int idx = 0; idx < (int)drv_ctx.interm_op_buf.actualcount; idx++)
+    for (idx = 0; idx < (int)drv_ctx.interm_op_buf.actualcount; idx++)
     {
         DEBUG_PRINT_LOW("\n Flush swvdec interm bufq idx %d, state %d", idx, m_interm_buf_state[idx]);
         // m_interm_buf_state[idx] = WITH_COMPONENT;
     }
 
-    m_interm_flush_swvdec_progress = false;
     return true;
 }
 
 
 bool omx_vdec::execute_output_flush_dsp()
 {
-    unsigned       i =0;
-    unsigned      p1 = 0; // Parameter - 1
-    unsigned      p2 = 0; // Parameter - 2
-    unsigned      ident = 0;
+    int idx =0;
+    unsigned int p1 = 0; // Parameter - 1
+    unsigned int p2 = 0; // Parameter - 2
+    unsigned int ident = 0;
     bool bRet = true;
 
     DEBUG_PRINT_LOW("\n execute_output_flush_dsp qsize %d, actual %d",
@@ -9817,13 +9861,32 @@ bool omx_vdec::execute_output_flush_dsp()
     pthread_mutex_lock(&m_lock);
     while (m_ftb_q_dsp.m_size)
     {
+        OMX_BUFFERHEADERTYPE* bufHdr = NULL;
         m_ftb_q_dsp.pop_entry(&p1,&p2,&ident);
+        if (ident == OMX_COMPONENT_GENERATE_FTB_DSP)
+        {
+            bufHdr = (OMX_BUFFERHEADERTYPE*)p2;
+        }
+        else if (ident == OMX_COMPONENT_GENERATE_FBD_DSP)
+        {
+            bufHdr = (OMX_BUFFERHEADERTYPE*)p1;
+        }
+        idx = (bufHdr - m_interm_mem_ptr);
+        if (idx >= 0 && idx < (int)drv_ctx.interm_op_buf.actualcount)
+        {
+            DEBUG_PRINT_ERROR("\n execute_output_flush_dsp flushed buffer idx %d", idx);
+            m_interm_buf_state[idx] = WITH_COMPONENT;
+        }
+        else
+        {
+            DEBUG_PRINT_ERROR("\n execute_output_flush_dsp issue: invalid idx %d", idx);
+        }
     }
     m_interm_flush_dsp_progress = false;
     m_fill_internal_bufers = OMX_TRUE;
     pthread_mutex_unlock(&m_lock);
 
-    for (int idx = 0; idx < (int)drv_ctx.interm_op_buf.actualcount; idx++)
+    for (idx = 0; idx < (int)drv_ctx.interm_op_buf.actualcount; idx++)
     {
         DEBUG_PRINT_LOW("\n Flush dsp interm bufq idx %d, state %d", idx, m_interm_buf_state[idx]);
         // m_interm_buf_state[idx] = WITH_COMPONENT;
