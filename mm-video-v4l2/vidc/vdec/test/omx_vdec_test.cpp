@@ -184,6 +184,28 @@ static inline float log2f(const float& x)
 }
 #endif
 
+/* fwrite doesn't necessarily write the entire buffer in one shot hence a helper
+ * function to make sure the entire buffer is written */
+size_t fwrite_helper(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    size_t written = 0, to_write = size * nmemb;
+    const char *ptr2 = (char *)ptr;
+
+    while (written < to_write) {
+        /* XXX: Ideally we'd like to do fwrite(..., size, 1, ...) as it makes
+         * more sense, but fwrite(..., 1, size, ...) seems to give better perf.
+         * for some reason.  Seems contrary to what one would expect */
+        size_t temp = fwrite(ptr2 + written, 1, to_write - written, stream);
+
+        if (temp < 0)
+            return temp;
+
+        written += temp;
+    }
+
+    return written;
+}
+
 uint16 crc_16_l_step_nv12 (uint16 seed, const void *buf_ptr,
         unsigned int byte_len, unsigned int height, unsigned int width)
 {
@@ -821,18 +843,18 @@ void* fbd_thread(void* pArg)
 
                     temp += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
                     for (i = 0; i < crop_rect.nHeight; i++) {
-                        bytes_written = fwrite(temp, crop_rect.nWidth, 1, outputBufferFile);
+                        bytes_written = fwrite_helper(temp, crop_rect.nWidth, 1, outputBufferFile);
                         temp += stride;
                     }
 
                     temp = (char *)pBuffer->pBuffer + stride * scanlines;
                     temp += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
                     for (i = 0; i < crop_rect.nHeight/2; i++) {
-                        bytes_written += fwrite(temp, crop_rect.nWidth, 1, outputBufferFile);
+                        bytes_written += fwrite_helper(temp, crop_rect.nWidth, 1, outputBufferFile);
                         temp += stride;
                     }
                 } else {
-                    bytes_written = fwrite((const char *)pBuffer->pBuffer,
+                    bytes_written = fwrite_helper((const char *)pBuffer->pBuffer,
                             pBuffer->nFilledLen,1,outputBufferFile);
                 }
                 if (bytes_written < 0) {
@@ -847,7 +869,7 @@ void* fbd_thread(void* pArg)
                 uint16 crc_val;
                 crc_val = crc_16_l_step_nv12(CRC_INIT, pBuffer->pBuffer,
                         pBuffer->nFilledLen, height, width);
-                unsigned int num_bytes = fwrite(&crc_val, 1, sizeof(crc_val), crcFile);
+                unsigned int num_bytes = fwrite_helper(&crc_val, 1, sizeof(crc_val), crcFile);
                 if (num_bytes < sizeof(crc_val)) {
                     printf("Failed to write CRC value into file\n");
                 }
