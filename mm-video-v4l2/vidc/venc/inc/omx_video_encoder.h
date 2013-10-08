@@ -55,6 +55,7 @@ class omx_venc: public omx_video
                 OMX_INDEXTYPE  configIndex,
                 OMX_PTR        configData);
         OMX_ERRORTYPE component_deinit(OMX_HANDLETYPE hComp);
+        bool is_secure_session();
         //OMX strucutres
         OMX_U32 m_nVenc_format;
         class venc_dev *handle;
