@@ -402,6 +402,11 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.QCOM.index.config.video.LTRMark"*/
     QOMX_IndexConfigVideoLTRMark = 0x7F000029,
+
+    /* OMX.google.android.index.prependSPSPPSToIDRFrames */
+    OMX_QcomIndexParamSequenceHeaderWithIDR = 0x7F00002A,
+
+    OMX_QcomIndexParamH264AUDelimiter = 0x7F00002B,
 };
 
 /**
@@ -701,6 +706,17 @@ typedef struct OMX_QCOM_VIDEO_CONFIG_QPRANGE
    OMX_U32 nMaxQP;          /** The number for maximum quantization parameter */
 } OMX_QCOM_VIDEO_CONFIG_QPRANGE;
 
+/**
+ * This structure describes the parameters for the
+ * OMX_QcomIndexParamH264AUDelimiter extension.  It enables/disables
+ * the AU delimiters in the H264 stream, which is used by WFD.
+ */
+typedef struct OMX_QCOM_VIDEO_CONFIG_H264_AUD
+{
+   OMX_U32 nSize;           /** Size of the structure in bytes */
+   OMX_VERSIONTYPE nVersion;/** OMX specification version information */
+   OMX_BOOL bEnable;        /** Enable/disable the setting */
+} OMX_QCOM_VIDEO_CONFIG_H264_AUD;
 
 typedef struct OMX_VENDOR_EXTRADATATYPE  {
     OMX_U32 nPortIndex;

@@ -307,6 +307,8 @@ class venc_dev
         bool venc_reconfig_reqbufs();
         bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
         bool venc_set_deinterlace(OMX_U32 enable);
+        bool venc_set_inband_video_header(OMX_BOOL enable);
+        bool venc_set_au_delimiter(OMX_BOOL enable);
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
         OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
