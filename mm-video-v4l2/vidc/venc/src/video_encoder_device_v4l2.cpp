@@ -56,6 +56,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define POLL_TIMEOUT 1000
 #define MAX_SUPPORTED_SLICES_PER_FRAME 28 /* Max supported slices with 32 output buffers */
 
+#define SZ_4K 0x1000
+#define SZ_1M 0x100000
+
 /* MPEG4 profile and level table*/
 static const unsigned int mpeg4_profile_level_table[][5]= {
     /*max mb per frame, max mb per sec, max bitrate, level, profile*/
@@ -473,12 +476,12 @@ OMX_ERRORTYPE venc_dev::allocate_extradata()
         if (extradata_info.ion.ion_alloc_data.handle) {
             munmap((void *)extradata_info.uaddr, extradata_info.size);
             close(extradata_info.ion.fd_ion_data.fd);
-            free_ion_memory(&extradata_info.ion);
+            venc_handle->free_ion_memory(&extradata_info.ion);
         }
 
         extradata_info.size = (extradata_info.size + 4095) & (~4095);
 
-        extradata_info.ion.ion_device_fd = alloc_map_ion_memory(
+        extradata_info.ion.ion_device_fd = venc_handle->alloc_map_ion_memory(
                 extradata_info.size,
                 &extradata_info.ion.ion_alloc_data,
                 &extradata_info.ion.fd_ion_data, 0);
@@ -496,7 +499,7 @@ OMX_ERRORTYPE venc_dev::allocate_extradata()
         if (extradata_info.uaddr == MAP_FAILED) {
             DEBUG_PRINT_ERROR("Failed to map extradata memory\n");
             close(extradata_info.ion.fd_ion_data.fd);
-            free_ion_memory(&extradata_info.ion);
+            venc_handle->free_ion_memory(&extradata_info.ion);
             return OMX_ErrorInsufficientResources;
         }
     }
@@ -513,7 +516,7 @@ void venc_dev::free_extradata()
     if (extradata_info.uaddr) {
         munmap((void *)extradata_info.uaddr, extradata_info.size);
         close(extradata_info.ion.fd_ion_data.fd);
-        free_ion_memory(&extradata_info.ion);
+        venc_handle->free_ion_memory(&extradata_info.ion);
     }
 
     memset(&extradata_info, 0, sizeof(extradata_info));
@@ -642,7 +645,13 @@ bool venc_dev::venc_open(OMX_U32 codec)
         fdesc.index++;
     }
 
-    m_sOutput_buff_property.alignment=m_sInput_buff_property.alignment=4096;
+    if (venc_handle->is_secure_session()) {
+        m_sOutput_buff_property.alignment = SZ_1M;
+        m_sInput_buff_property.alignment  = SZ_1M;
+    } else {
+        m_sOutput_buff_property.alignment = SZ_4K;
+        m_sInput_buff_property.alignment  = SZ_4K;
+    }
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
     fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
@@ -679,6 +688,16 @@ bool venc_dev::venc_open(OMX_U32 codec)
     ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
     m_sOutput_buff_property.mincount = m_sOutput_buff_property.actualcount = bufreq.count;
 
+    if(venc_handle->is_secure_session()) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_SECURE;
+        control.value = 1;
+        DEBUG_PRINT_HIGH("ioctl: open secure device\n");
+        ret=ioctl(m_nDriver_fd, VIDIOC_S_CTRL,&control);
+        if (ret) {
+            DEBUG_PRINT_ERROR("ioctl: open secure dev fail, rc %d\n", ret);
+            return false;
+        }
+    }
 
     resume_in_stopped = 0;
     metadatamode = 0;

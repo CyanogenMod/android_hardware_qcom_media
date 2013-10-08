@@ -113,6 +113,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     DEBUG_PRINT_HIGH("\n omx_venc(): Inside component_init()");
     // Copy the role information which provides the decoder m_nkind
     strlcpy((char *)m_nkind,role,OMX_MAX_STRINGNAME_SIZE);
+    secure_session = false;
 
     if (!strncmp((char *)m_nkind,"OMX.qcom.video.encoder.mpeg4",\
                 OMX_MAX_STRINGNAME_SIZE)) {
@@ -127,6 +128,12 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_encoder.avc",OMX_MAX_STRINGNAME_SIZE);
         codec_type = OMX_VIDEO_CodingAVC;
+    }
+    else if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.avc.secure",\
+            OMX_MAX_STRINGNAME_SIZE)) {
+        strlcpy((char *)m_cRole, "video_encoder.avc",OMX_MAX_STRINGNAME_SIZE);
+        codec_type = OMX_VIDEO_CodingAVC;
+        secure_session = true;
     }
 #ifdef _MSM8974_
     else if (!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.vp8",    \
@@ -1780,5 +1787,14 @@ int omx_venc::async_message_process (void *context, void* message)
 bool omx_venc::dev_color_align(OMX_BUFFERHEADERTYPE *buffer,
                 OMX_U32 width, OMX_U32 height)
 {
+    if(secure_session) {
+        DEBUG_PRINT_ERROR("Cannot align colors in secure session.");
+        return OMX_FALSE;
+    }
     return handle->venc_color_align(buffer, width,height);
+}
+
+bool omx_venc::is_secure_session()
+{
+    return secure_session;
 }
