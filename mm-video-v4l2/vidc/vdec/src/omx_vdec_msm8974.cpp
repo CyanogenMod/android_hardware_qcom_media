@@ -234,7 +234,7 @@ void* async_message_thread (void *input)
                 }
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_RELEASE_BUFFER_REFERENCE) {
                 unsigned int *ptr = (unsigned int *)dqevent.u.data;
-                DEBUG_PRINT_HIGH("REFERENCE RELEASE EVENT RECVD fd = %d offset = %d\n", ptr[0], ptr[1]);
+                DEBUG_PRINT_LOW("REFERENCE RELEASE EVENT RECVD fd = %d offset = %d\n", ptr[0], ptr[1]);
                 omx->buf_ref_remove(ptr[0], ptr[1]);
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_RELEASE_UNQUEUED_BUFFER) {
                 unsigned int *ptr = (unsigned int *)dqevent.u.data;
@@ -6422,9 +6422,12 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         BufferDim_t dim;
         dim.sliceWidth = drv_ctx.video_resolution.frame_width;
         dim.sliceHeight = drv_ctx.video_resolution.frame_height;
-        DEBUG_PRINT_ERROR("set metadata: update buf-geometry with stride %d slice %d",
+        DEBUG_PRINT_LOW("set metadata: update buf-geometry with stride %d slice %d",
                 dim.sliceWidth, dim.sliceHeight);
-        setMetaData(native_buffer[buf_index].privatehandle, UPDATE_BUFFER_GEOMETRY, (void*)&dim);
+        private_handle_t *private_handle = native_buffer[buf_index].privatehandle;
+        if (private_handle) {
+            setMetaData(private_handle, UPDATE_BUFFER_GEOMETRY, (void*)&dim);
+        }
   }
 
     return OMX_ErrorNone;
@@ -7972,9 +7975,12 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
                         enable = 1;
                     }
-                    if (m_enable_android_native_buffers)
-                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
-                                PP_PARAM_INTERLACED, (void*)&enable);
+                    if (m_enable_android_native_buffers) {
+                        private_handle_t *private_handle = native_buffer[buf_index].privatehandle;
+                        if (private_handle) {
+                            setMetaData(private_handle, PP_PARAM_INTERLACED, (void*)&enable);
+                        }
+                    }
                     if (!secure_mode && (client_extradata & OMX_INTERLACE_EXTRADATA)) {
                         append_interlace_extradata(p_extra, payload->format);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
