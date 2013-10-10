@@ -5169,7 +5169,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     int rc;
     unsigned long  print_count;
     if (temp_buffer->buffer_len == 0 || (buffer->nFlags & OMX_BUFFERFLAG_EOS)) {
-        buf.flags = V4L2_BUF_FLAG_EOS;
+        buf.flags = V4L2_QCOM_BUF_FLAG_EOS;
         DEBUG_PRINT_HIGH("\n  INPUT EOS reached \n") ;
     }
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
@@ -6166,7 +6166,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                     omxhdr->nTimeStamp = vdec_msg->msgdata.output_frame.time_stamp;
                     omxhdr->nFlags = omx->m_out_mem_ptr[v4l2_buf_ptr->index].nFlags;
 
-                    if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_EOS) {
+                    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS) {
                         omxhdr->nFlags |= OMX_BUFFERFLAG_EOS;
                         //rc = -1;
                     }
