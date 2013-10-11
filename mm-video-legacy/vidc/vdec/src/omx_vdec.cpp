@@ -149,6 +149,14 @@ char ouputextradatafilename [] = "/data/extradata";
 
 bool omx_vdec::m_secure_display = false;
 
+#ifdef MAX_RES_1080P
+static const OMX_U32 kMaxSmoothStreamingWidth = 1920;
+static const OMX_U32 kMaxSmoothStreamingHeight = 1088;
+#else
+static const OMX_U32 kMaxSmoothStreamingWidth = 1280;
+static const OMX_U32 kMaxSmoothStreamingHeight = 720;
+#endif
+
 void* async_message_thread (void *input)
 {
   struct vdec_ioctl_msg ioctl_msg;
@@ -492,6 +500,8 @@ omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
                     ,m_desc_buffer_ptr(NULL)
                     ,m_extradata(NULL)
                     ,m_use_smoothstreaming(false)
+                    ,m_smoothstreaming_height(0)
+                    ,m_smoothstreaming_width(0)
 {
   /* Assumption is that , to begin with , we have all the frames with decoder */
   DEBUG_PRINT_HIGH("In OMX vdec Constructor");
@@ -1440,15 +1450,16 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
                       VDEC_IOCTL_SET_CONT_ON_RECONFIG);
       if(rc < 0) {
           DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
+      } else {
+          m_smoothstreaming_width = kMaxSmoothStreamingWidth;
+          m_smoothstreaming_height = kMaxSmoothStreamingHeight;
       }
   }
 
-#ifdef MAX_RES_720P
-    update_resolution(1280, 720);
-#endif
-#ifdef MAX_RES_1080P
-    update_resolution(1920, 1088);
-#endif
+    if (m_use_smoothstreaming)
+        update_resolution(kMaxSmoothStreamingWidth, kMaxSmoothStreamingHeight);
+    else
+        update_resolution(176, 144);
 
     ioctl_msg.in = &drv_ctx.video_resolution;
     ioctl_msg.out = NULL;
@@ -3089,20 +3100,28 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                            portDefn->format.video.nFrameWidth,
                            portDefn->format.video.nFrameHeight);
              if (portDefn->format.video.nFrameHeight != 0x0 &&
-                 portDefn->format.video.nFrameWidth != 0x0)
-             {
-               update_resolution(portDefn->format.video.nFrameWidth,
-                 portDefn->format.video.nFrameHeight);
-               ioctl_msg.in = &drv_ctx.video_resolution;
-               ioctl_msg.out = NULL;
-               if (ioctl (drv_ctx.video_driver_fd, VDEC_IOCTL_SET_PICRES,
-                            (void*)&ioctl_msg) < 0)
-               {
-                   DEBUG_PRINT_ERROR("\n Set Resolution failed");
-                   eRet = OMX_ErrorUnsupportedSetting;
-               }
-               else
-                   eRet = get_buffer_req(&drv_ctx.op_buf);
+                     portDefn->format.video.nFrameWidth != 0x0) {
+                 if (m_use_smoothstreaming &&
+                         ((portDefn->format.video.nFrameHeight * portDefn->format.video.nFrameWidth) <
+                         (m_smoothstreaming_height * m_smoothstreaming_width))) {
+
+                     update_resolution(m_smoothstreaming_width, m_smoothstreaming_height);
+                     DEBUG_PRINT_HIGH("NOTE: Setting initial resolution [%u x %u] in"
+                             "smothstreaming mode [%u x %u]",
+                              portDefn->format.video.nFrameWidth, portDefn->format.video.nFrameHeight,
+                              drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height);
+                 } else {
+                     update_resolution(portDefn->format.video.nFrameWidth,
+                     portDefn->format.video.nFrameHeight);
+                 }
+                 ioctl_msg.in = &drv_ctx.video_resolution;
+                 ioctl_msg.out = NULL;
+                 if (ioctl (drv_ctx.video_driver_fd, VDEC_IOCTL_SET_PICRES,
+                         (void*)&ioctl_msg) < 0) {
+                     DEBUG_PRINT_ERROR("\n Set Resolution failed");
+                     eRet = OMX_ErrorUnsupportedSetting;
+                 } else
+                     eRet = get_buffer_req(&drv_ctx.op_buf);
              }
          }
          else if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
@@ -3560,6 +3579,66 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         }
       }
       break;
+
+#if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
+    case OMX_GoogleAndroidIndexPrepareForAdaptivePlayback:
+        {
+            DEBUG_PRINT_LOW("set_parameter: "
+                    "OMX_GoogleAndroidIndexPrepareForAdaptivePlayback");
+            PrepareForAdaptivePlaybackParams* adaptivePlaybackParams =
+                    (PrepareForAdaptivePlaybackParams *) paramData;
+            if (adaptivePlaybackParams->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
+                if (!adaptivePlaybackParams->bEnable) {
+                    return OMX_ErrorNone;
+                }
+                if (adaptivePlaybackParams->nMaxFrameWidth > kMaxSmoothStreamingWidth
+                        || adaptivePlaybackParams->nMaxFrameHeight > kMaxSmoothStreamingHeight) {
+                    DEBUG_PRINT_ERROR("Adaptive playback request exceeds max supported "
+                            "resolution : [%d x %d] vs [%d x %d]",
+                             adaptivePlaybackParams->nMaxFrameWidth,
+                             adaptivePlaybackParams->nMaxFrameHeight,
+                             kMaxSmoothStreamingWidth, kMaxSmoothStreamingHeight);
+                    eRet = OMX_ErrorBadParameter;
+                } else {
+                    int rc = ioctl(drv_ctx.video_driver_fd,
+                            VDEC_IOCTL_SET_CONT_ON_RECONFIG);
+                    if (rc < 0) {
+                        DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
+                        eRet = OMX_ErrorInsufficientResources;
+                    } else {
+                        update_resolution(adaptivePlaybackParams->nMaxFrameWidth,
+                                adaptivePlaybackParams->nMaxFrameHeight);
+
+                        ioctl_msg.in = &drv_ctx.video_resolution;
+                        ioctl_msg.out = NULL;
+
+                        if (ioctl (drv_ctx.video_driver_fd,VDEC_IOCTL_SET_PICRES,
+                                (void*)&ioctl_msg) < 0) {
+                            DEBUG_PRINT_ERROR("Adaptive-playback: Set Resolution failed");
+                            eRet = OMX_ErrorInsufficientResources;
+                        } else {
+                            eRet = get_buffer_req(&drv_ctx.op_buf);
+                            if (eRet != OMX_ErrorNone) {
+                                DEBUG_PRINT_ERROR("get_buffer_req(op_buf) failed!!");
+                            } else {
+                                DEBUG_PRINT_ERROR("Enabling Adaptive playback for %d x %d",
+                                        adaptivePlaybackParams->nMaxFrameWidth,
+                                        adaptivePlaybackParams->nMaxFrameHeight);
+                                m_use_smoothstreaming = true;
+                                m_smoothstreaming_width = adaptivePlaybackParams->nMaxFrameWidth;
+                                m_smoothstreaming_height = adaptivePlaybackParams->nMaxFrameHeight;
+                            }
+                        }
+                    }
+                }
+            } else {
+                DEBUG_PRINT_ERROR("Prepare for adaptive playback supported only "
+                        "on output port");
+                eRet = OMX_ErrorBadParameter;
+            }
+        }
+        break;
+#endif
     default:
     {
       DEBUG_PRINT_ERROR("Setparameter: unknown param %d\n", paramIndex);
@@ -3904,6 +3983,10 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     }
     else if(!strncmp(paramName,"OMX.google.android.index.getAndroidNativeBufferUsage", sizeof("OMX.google.android.index.getAndroidNativeBufferUsage") - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage;
+    }
+    else if (!strncmp(paramName,"OMX.google.android.index.prepareForAdaptivePlayback",
+            sizeof("OMX.google.android.index.prepareForAdaptivePlayback") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexPrepareForAdaptivePlayback;
     }
 #endif
 	else {
@@ -6588,7 +6671,8 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     dim.sliceWidth = m_port_def.format.video.nStride;
     dim.sliceHeight = m_port_def.format.video.nSliceHeight;
     handle = (private_handle_t *)native_buffer[buf_index];
-    DEBUG_PRINT_LOW("set metadata: update buffer geo with stride %d slice %d", dim.sliceWidth, dim.sliceHeight);
+    DEBUG_PRINT_LOW("NOTE: set metadata: update buffer geo with "
+            "stride %d slice %d", dim.sliceWidth, dim.sliceHeight);
     setMetaData(handle, UPDATE_BUFFER_GEOMETRY, (void*)&dim);
   }
 
@@ -7773,8 +7857,25 @@ OMX_ERRORTYPE omx_vdec::start_port_reconfig()
         }
       }
       in_reconfig = true;
+
       op_buf_rcnfg.buffer_type = VDEC_BUFFER_TYPE_OUTPUT;
       eRet = get_buffer_req(&op_buf_rcnfg);
+    }
+    if (m_use_smoothstreaming) {
+        if (drv_ctx.video_resolution.frame_width > kMaxSmoothStreamingWidth ||
+                drv_ctx.video_resolution.frame_height > kMaxSmoothStreamingHeight) {
+            DEBUG_PRINT_ERROR("NOTE: Exceeds max smoothstreaming resolution");
+            eRet = OMX_ErrorInsufficientResources;
+        } else {
+            if (drv_ctx.video_resolution.frame_width > m_smoothstreaming_width)
+                m_smoothstreaming_width = drv_ctx.video_resolution.frame_width;
+            if (drv_ctx.video_resolution.frame_height > m_smoothstreaming_height)
+                m_smoothstreaming_height = drv_ctx.video_resolution.frame_height;
+
+            DEBUG_PRINT_HIGH("Port Settings changed : "
+                    "Will continue smoosthtreaming @ [%u x %u]",
+                    m_smoothstreaming_width, m_smoothstreaming_height);
+        }
     }
   }
   return eRet;
@@ -7791,6 +7892,7 @@ OMX_ERRORTYPE omx_vdec::update_picture_resolution()
     DEBUG_PRINT_ERROR("Error VDEC_IOCTL_GET_PICRES");
     eRet = OMX_ErrorHardware;
   }
+
   return eRet;
 }
 

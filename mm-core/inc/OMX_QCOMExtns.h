@@ -406,6 +406,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexParamSequenceHeaderWithIDR = 0x7F00002A,
 
     OMX_QcomIndexParamEnableVUIStreamRestrictFlag = 0x7F00002B,
+
+    OMX_GoogleAndroidIndexPrepareForAdaptivePlayback = 0x7F00002C,
 };
 
 /**
