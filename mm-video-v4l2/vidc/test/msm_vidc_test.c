@@ -110,6 +110,11 @@ enum test_types {
 	HELP,
 };
 
+enum marker_flags {
+	TS_DISCONTINUITY = 1,
+	TS_ERROR,
+};
+
 typedef enum paramtype {
 	STRING,
 	INT16,
@@ -217,6 +222,7 @@ struct arguments {
 		read_bytes,
 		ring_num_hdrs,
 		output_buf_size,
+		marker_flag,
 		random_seed;
 	char codec_type[20], read_mode[20];
 	char sequence[300][MAX_FILE_PATH_SIZE];
@@ -382,6 +388,7 @@ int parse_cfg(const char *filename)
 		{"ring_num_headers",   INT32,        &input_args->ring_num_hdrs,MAX_FILE_PATH_SIZE},
 		{"ring_buf_size",      INT32,        &input_args->output_buf_size,MAX_FILE_PATH_SIZE},
 		{"output_buf_size",    INT32,        &input_args->output_buf_size,MAX_FILE_PATH_SIZE},
+		{"marker_flag",        INT32,        &input_args->marker_flag,MAX_FILE_PATH_SIZE},
 		{"eot",                FLAG,          NULL,0}
 	};
 	rc = parse_param_file(filename, param_table, sizeof(param_table)/sizeof(param_table[0]));
@@ -2452,6 +2459,14 @@ static int q_single_buf(struct bufinfo *binfo)
 		buf.length = 1;
 	}
 	buf.m.planes = plane;
+	if (input_args->marker_flag & TS_DISCONTINUITY) {
+		buf.flags |= V4L2_QCOM_BUF_TS_DISCONTINUITY;
+		V("ETB: Marker Flag TS_DISCONTINUITY\n");
+	}
+	if (input_args->marker_flag & TS_ERROR) {
+		buf.flags |= V4L2_QCOM_BUF_TS_ERROR;
+		V("ETB: Marker Flag TS_ERROR\n");
+	}
 	D("Queueing:%d, port:(%d) fd = %d, userptr = %p,"
 		" offset = %d, flags=0x%x, bytesused= %d, length= %d\n",
 		video_inst.fd, port,
@@ -2631,6 +2646,10 @@ static void* poll_func(void *data)
 					}
 					D("Written %d segments successfully, stride = %d, scan_lines = %d, frame = %d x %d\n",
 						bytes_written, stride, scanlines, (int)input_args->input_width, (int)input_args->input_height);
+					if (v4l2_buf.flags & V4L2_QCOM_BUF_TS_DISCONTINUITY)
+						V("FBD: Received Marker Flag TS_DISCONTINUITY\n");
+					if (v4l2_buf.flags & V4L2_QCOM_BUF_TS_ERROR)
+						V("FBD: Received Marker Flag TS_ERROR\n");
 				} else if (input_args->session == ENCODER_SESSION) {
 					rc = fwrite((const char *)binfo->vaddr,
 							filled_len,1,video_inst.outputfile);
