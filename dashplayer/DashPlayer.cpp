@@ -820,6 +820,14 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                    mSource->pause();
                 }
             }
+
+            if (mAudioDecoder != NULL) {
+                mAudioDecoder->signalConcurrencyParam(true);
+            }
+            if (mVideoDecoder != NULL) {
+                mVideoDecoder->signalConcurrencyParam(true);
+            }
+
             break;
         }
 
@@ -857,6 +865,14 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     postScanSources();
                 }
             }
+
+            if (mAudioDecoder != NULL) {
+                mAudioDecoder->signalConcurrencyParam(false);
+            }
+            if (mVideoDecoder != NULL) {
+                mVideoDecoder->signalConcurrencyParam(false);
+            }
+
             break;
         }
 

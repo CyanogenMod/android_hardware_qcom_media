@@ -36,6 +36,7 @@ struct DashPlayer::Decoder : public AHandler {
     void signalResume();
     void initiateShutdown();
     void setSink(const sp<MediaPlayerBase::AudioSink> &sink, sp<Renderer> Renderer);
+    void signalConcurrencyParam(bool streamPaused);
 
 protected:
     virtual ~Decoder();
