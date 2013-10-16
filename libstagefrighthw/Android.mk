@@ -22,6 +22,10 @@ LOCAL_SRC_FILES := \
 
 LOCAL_CFLAGS := $(PV_CFLAGS_MINUS_VISIBILITY)
 
+ifeq ($(PLATFORM_SDK_VERSION), 18)  #JB_MR2
+LOCAL_CFLAGS += -DANDROID_JELLYBEAN_MR2=1
+endif
+
 LOCAL_C_INCLUDES:= \
         frameworks/native/include/media/openmax \
         frameworks/native/include/media/hardware

@@ -111,6 +111,11 @@ libmm-vdec-inc      += hardware/qcom/display/libcopybit
 libmm-vdec-inc      += frameworks/av/include/media/stagefright
 libmm-vdec-inc      += $(TARGET_OUT_HEADERS)/mm-video/SwVdec
 
+ifeq ($(PLATFORM_SDK_VERSION), 18)  #JB_MR2
+libOmxVdec-def += -DANDROID_JELLYBEAN_MR2=1
+libmm-vdec-inc += hardware/qcom/media/libstagefrighthw
+endif
+
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libOmxVdec-def)

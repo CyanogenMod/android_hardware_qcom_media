@@ -27,4 +27,13 @@ namespace android {
         MetadataBufferType buffer_type;
         buffer_handle_t meta_handle;
     } encoder_media_buffer_type;
+
+#ifdef ANDROID_JELLYBEAN_MR2
+    // Meta data buffer layout used to transport output frames to the decoder for
+    // dynamic buffer handling.
+    struct VideoDecoderOutputMetaData {
+        MetadataBufferType eType;
+        buffer_handle_t pHandle;
+    };
+#endif
 }
