@@ -49,6 +49,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <media/hardware/HardwareAPI.h>
 #include <media/msm_media_info.h>
 
 #ifndef _ANDROID_
@@ -230,7 +231,36 @@ void* async_message_thread (void *input)
                     DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
                     break;
                 }
-            } else {
+            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_RELEASE_BUFFER_REFERENCE) {
+                unsigned int *ptr = (unsigned int *)dqevent.u.data;
+                DEBUG_PRINT_LOW("REFERENCE RELEASE EVENT RECVD fd = %d offset = %d\n", ptr[0], ptr[1]);
+                omx->buf_ref_remove(ptr[0], ptr[1]);
+            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_RELEASE_UNQUEUED_BUFFER) {
+                unsigned int *ptr = (unsigned int *)dqevent.u.data;
+                struct vdec_msginfo vdec_msg;
+
+                DEBUG_PRINT_LOW("Release unqueued buffer event recvd fd = %d offset = %d\n", ptr[0], ptr[1]);
+
+                v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+                v4l2_buf.memory = V4L2_MEMORY_USERPTR;
+                v4l2_buf.length = omx->drv_ctx.num_planes;
+                v4l2_buf.m.planes = plane;
+                v4l2_buf.index = ptr[5];
+                v4l2_buf.flags = 0;
+
+                vdec_msg.msgcode = VDEC_MSG_RESP_OUTPUT_BUFFER_DONE;
+                vdec_msg.status_code = VDEC_S_SUCCESS;
+                vdec_msg.msgdata.output_frame.client_data = (void*)&v4l2_buf;
+                vdec_msg.msgdata.output_frame.len = 0;
+                vdec_msg.msgdata.output_frame.bufferaddr = (void*)ptr[2];
+                vdec_msg.msgdata.output_frame.time_stamp = ((uint64_t)ptr[3] * (uint64_t)1000000) +
+                    (uint64_t)ptr[4];
+                if (omx->async_message_process(input,&vdec_msg) < 0) {
+                    DEBUG_PRINT_HIGH("\n async_message_thread Exited  \n");
+                    break;
+                }
+            }
+            else {
                 DEBUG_PRINT_HIGH("\n VIDC Some Event recieved \n");
                 continue;
             }
@@ -609,12 +639,16 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 #endif
     m_fill_output_msg = OMX_COMPONENT_GENERATE_FTB;
     client_buffers.set_vdec_client(this);
+    dynamic_buf_mode = false;
+    out_dynamic_list = NULL;
 }
 
 static const int event_type[] = {
     V4L2_EVENT_MSM_VIDC_FLUSH_DONE,
     V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT,
     V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT,
+    V4L2_EVENT_MSM_VIDC_RELEASE_BUFFER_REFERENCE,
+    V4L2_EVENT_MSM_VIDC_RELEASE_UNQUEUED_BUFFER,
     V4L2_EVENT_MSM_VIDC_CLOSE_DONE,
     V4L2_EVENT_MSM_VIDC_SYS_ERROR
 };
@@ -3381,6 +3415,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     if (!rc) {
                         DEBUG_PRINT_HIGH(" %s buffer mode\n",
                            (metabuffer->bStoreMetaData == true)? "Enabled dynamic" : "Disabled dynamic");
+                               dynamic_buf_mode = metabuffer->bStoreMetaData;
                     } else {
                         DEBUG_PRINT_ERROR("Failed to %s buffer mode\n",
                            (metabuffer->bStoreMetaData == true)? "enable dynamic" : "disable dynamic");
@@ -3897,6 +3932,28 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
     if (i >= drv_ctx.op_buf.actualcount) {
         DEBUG_PRINT_ERROR("Already using %d o/p buffers\n", drv_ctx.op_buf.actualcount);
         eRet = OMX_ErrorInsufficientResources;
+    }
+
+    if (dynamic_buf_mode) {
+        *bufferHdr = (m_out_mem_ptr + i );
+        (*bufferHdr)->pBuffer = NULL;
+        if (i == (drv_ctx.op_buf.actualcount -1) && !streaming[CAPTURE_PORT]) {
+            enum v4l2_buf_type buf_type;
+            int rr = 0;
+            buf_type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+            if (rr = ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMON,&buf_type)) {
+                DEBUG_PRINT_ERROR("STREAMON FAILED : %d", rr);
+                return OMX_ErrorInsufficientResources;
+            } else {
+                streaming[CAPTURE_PORT] = true;
+                DEBUG_PRINT_LOW("STREAMON Successful");
+            }
+        }
+        BITMASK_SET(&m_out_bm_count,i);
+        (*bufferHdr)->pAppPrivate = appData;
+        (*bufferHdr)->pBuffer = buffer;
+        (*bufferHdr)->nAllocLen = sizeof(struct VideoDecoderOutputMetaData);
+        return eRet;
     }
 
     if (eRet == OMX_ErrorNone) {
@@ -5499,6 +5556,41 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
 OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         OMX_IN OMX_BUFFERHEADERTYPE* buffer)
 {
+    if (dynamic_buf_mode) {
+        private_handle_t *handle = NULL;
+        struct VideoDecoderOutputMetaData *meta;
+        OMX_U8 *buff = NULL;
+        unsigned int nPortIndex = 0;
+
+        if (!buffer || !buffer->pBuffer) {
+            DEBUG_PRINT_ERROR("%s: invalid params: %p %p", __FUNCTION__, buffer, buffer->pBuffer);
+            return OMX_ErrorBadParameter;
+        }
+
+        //get the buffer type and fd info
+        meta = (struct VideoDecoderOutputMetaData *)buffer->pBuffer;
+        handle = (private_handle_t *)meta->pHandle;
+        DEBUG_PRINT_LOW("FTB: buftype: %d bufhndl: %p", meta->eType, meta->pHandle);
+
+        //map the buffer handle based on the size set on output port definition.
+        if (!secure_mode) {
+            buff = (OMX_U8*)mmap(0, drv_ctx.op_buf.buffer_size,
+                          PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd, 0);
+        } else {
+            buff = (OMX_U8*) buffer;
+        }
+
+        //Fill outputbuffer with buffer details, this will be sent to f/w during VIDIOC_QBUF
+        nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
+        drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd = handle->fd;
+        drv_ctx.ptr_outputbuffer[nPortIndex].offset = 0;
+        drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr = buff;
+        drv_ctx.ptr_outputbuffer[nPortIndex].buffer_len = drv_ctx.op_buf.buffer_size;
+        drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size = drv_ctx.op_buf.buffer_size;
+        buf_ref_add(drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd,
+                    drv_ctx.ptr_outputbuffer[nPortIndex].offset);
+    }
+
 
     if (m_state == OMX_StateInvalid) {
         DEBUG_PRINT_ERROR("FTB in Invalid State\n");
@@ -5613,6 +5705,9 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
     }
     buf.m.planes = plane;
     buf.length = drv_ctx.num_planes;
+    DEBUG_PRINT_LOW("SENDING FTB TO F/W - fd[0] = %d fd[1] = %d offset[1] = %d\n",
+             plane[0].reserved[0],plane[extra_idx].reserved[0], plane[extra_idx].reserved[1]);
+
     rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
     if (rc) {
         /*TODO: How to handle this case */
@@ -6174,6 +6269,13 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             buffer, buffer->pBuffer);
     pending_output_buffers --;
 
+    if (dynamic_buf_mode && !secure_mode) {
+        unsigned int nPortIndex = 0;
+        nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
+        munmap(drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr,
+                        drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size);
+    }
+
     if (buffer->nFlags & OMX_BUFFERFLAG_EOS) {
         DEBUG_PRINT_HIGH("\n Output EOS has been reached");
         if (!output_flush_progress)
@@ -6452,6 +6554,9 @@ int omx_vdec::async_message_process (void *context, void* message)
                     ((omxhdr - omx->m_out_mem_ptr) < (int)omx->drv_ctx.op_buf.actualcount) &&
                     (((struct vdec_output_frameinfo *)omxhdr->pOutputPortPrivate
                       - omx->drv_ctx.ptr_respbuffer) < (int)omx->drv_ctx.op_buf.actualcount)) {
+                if (omx->dynamic_buf_mode && vdec_msg->msgdata.output_frame.len) {
+                    vdec_msg->msgdata.output_frame.len = omxhdr->nAllocLen;
+                }
                 if ( vdec_msg->msgdata.output_frame.len <=  omxhdr->nAllocLen) {
                     omxhdr->nFilledLen = vdec_msg->msgdata.output_frame.len;
                     omxhdr->nOffset = vdec_msg->msgdata.output_frame.offset;
@@ -6475,6 +6580,16 @@ int omx_vdec::async_message_process (void *context, void* message)
                     }
                     if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) {
                         omxhdr->nFlags |= OMX_BUFFERFLAG_DECODEONLY;
+                    }
+
+                    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_READONLY) {
+                         DEBUG_PRINT_LOW("F_B_D: READONLY BUFFER - REFERENCE WITH F/W fd = %d",
+                                    omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].pmem_fd);
+                    }
+
+                    if (omx->dynamic_buf_mode && !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_READONLY)) {
+                        omx->buf_ref_remove(omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].pmem_fd,
+                            omxhdr->nOffset);
                     }
                     if (omxhdr && (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DROP_FRAME) &&
                             !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) &&
@@ -7238,6 +7353,10 @@ void omx_vdec::free_output_buffer_header()
         drv_ctx.op_buf_ion_info = NULL;
     }
 #endif
+    if (out_dynamic_list) {
+        free(out_dynamic_list);
+        out_dynamic_list = NULL;
+    }
 }
 
 void omx_vdec::free_input_buffer_header()
@@ -7618,6 +7737,10 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
         drv_ctx.op_buf_ion_info = (struct vdec_ion * ) \
                       calloc (sizeof(struct vdec_ion),drv_ctx.op_buf.actualcount);
 #endif
+        if (dynamic_buf_mode) {
+            out_dynamic_list = (struct dynamic_buf_list *) \
+                calloc (sizeof(struct dynamic_buf_list), drv_ctx.op_buf.actualcount);
+        }
 
         if (m_out_mem_ptr && pPtr && drv_ctx.ptr_outputbuffer
                 && drv_ctx.ptr_respbuffer) {
@@ -8773,4 +8896,65 @@ bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE
             dest_color_format = OMX_COLOR_FormatYUV420Planar;
     }
     return status;
+}
+
+void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
+{
+    int i = 0;
+    bool buf_present = false;
+    pthread_mutex_lock(&m_lock);
+    for (i = 0; i < drv_ctx.op_buf.actualcount; i++) {
+        //check the buffer fd, offset, uv addr with list contents
+        //If present increment reference.
+        if ((out_dynamic_list[i].fd == fd) &&
+            (out_dynamic_list[i].offset == offset)) {
+               out_dynamic_list[i].ref_count++;
+               DEBUG_PRINT_LOW("buf_ref_add: [ALREADY PRESENT] fd = %d ref_count = %d\n",
+                     out_dynamic_list[i].fd, out_dynamic_list[i].ref_count);
+               buf_present = true;
+               break;
+        }
+    }
+    if (!buf_present) {
+        for (i = 0; i < drv_ctx.op_buf.actualcount; i++) {
+            //search for a entry to insert details of the new buffer
+            if (out_dynamic_list[i].dup_fd == 0) {
+                out_dynamic_list[i].fd = fd;
+                out_dynamic_list[i].offset = offset;
+                out_dynamic_list[i].dup_fd = dup(fd);
+                out_dynamic_list[i].ref_count++;
+                DEBUG_PRINT_LOW("buf_ref_add: [ADDED] fd = %d ref_count = %d\n",
+                     out_dynamic_list[i].fd, out_dynamic_list[i].ref_count);
+                break;
+            }
+        }
+    }
+   pthread_mutex_unlock(&m_lock);
+}
+
+void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
+{
+    int i = 0;
+    pthread_mutex_lock(&m_lock);
+    for (i = 0; i < drv_ctx.op_buf.actualcount; i++) {
+        //check the buffer fd, offset, uv addr with list contents
+        //If present decrement reference.
+        if ((out_dynamic_list[i].fd == fd) &&
+            (out_dynamic_list[i].offset == offset)) {
+            out_dynamic_list[i].ref_count--;
+            if (out_dynamic_list[i].ref_count == 0) {
+                close(out_dynamic_list[i].dup_fd);
+                DEBUG_PRINT_LOW("buf_ref_remove: [REMOVED] fd = %d ref_count = %d\n",
+                     out_dynamic_list[i].fd, out_dynamic_list[i].ref_count);
+                out_dynamic_list[i].dup_fd = 0;
+                out_dynamic_list[i].fd = 0;
+                out_dynamic_list[i].offset = 0;
+            }
+            break;
+        }
+    }
+    if (i  >= drv_ctx.op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("Error - could not remove ref, no match with any entry in list\n");
+    }
+    pthread_mutex_unlock(&m_lock);
 }
