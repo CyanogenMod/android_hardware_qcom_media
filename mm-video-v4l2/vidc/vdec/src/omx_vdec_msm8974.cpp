@@ -6583,6 +6583,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                     }
 
                     if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_READONLY) {
+                         omxhdr->nFlags |= OMX_BUFFERFLAG_READONLY;
                          DEBUG_PRINT_LOW("F_B_D: READONLY BUFFER - REFERENCE WITH F/W fd = %d",
                                     omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].pmem_fd);
                     }
