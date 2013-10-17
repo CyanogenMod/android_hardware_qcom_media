@@ -71,7 +71,7 @@ omx_venc::omx_venc()
     get_syntaxhdr_enable = false;
 #endif
     char property_value[PROPERTY_VALUE_MAX] = {0};
-    property_get("vidc.debug.level", property_value, "0");
+    property_get("vidc.debug.level", property_value, "1");
     debug_level = atoi(property_value);
     property_value[0] = '\0';
 }
