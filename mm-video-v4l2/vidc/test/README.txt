@@ -165,6 +165,12 @@ SET_CTRL
     #       id: V4L2_CID_MPEG_VIDC_VIDEO_SCS_THRESHOLD
     #       val: 1 -> INT_MAX
 
+GET_CTRL
+    # Get Controls
+    # IOCTL: VIDIOC_G_CTRL
+    # Options DECODE:
+    #   CURRENT_PROFILE
+
 PREPARE_BUFS CAPTURE
     # Prepare buffers for selected port
     # IOCTL: VIDIOC_PREPARE_BUF
