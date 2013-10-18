@@ -6819,7 +6819,7 @@ int omx_vdec::async_message_process (void *context, void* message)
 
         if (omx->output_use_buffer)
           memcpy ( omxhdr->pBuffer,
-                   (vdec_msg->msgdata.output_frame.bufferaddr +
+                   ((char*)vdec_msg->msgdata.output_frame.bufferaddr +
                     vdec_msg->msgdata.output_frame.offset),
                     vdec_msg->msgdata.output_frame.len );
       }
