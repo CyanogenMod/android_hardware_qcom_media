@@ -1803,12 +1803,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     if (eRet != OMX_ErrorNone && ( (!m_pSwVdec) || (m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY) ))
     {
         DEBUG_PRINT_ERROR("Component Init Failed");
-        DEBUG_PRINT_HIGH("Calling VDEC_IOCTL_STOP_NEXT_MSG");
-        (void)ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_STOP_NEXT_MSG,
-            NULL);
-        DEBUG_PRINT_HIGH("Calling close() on Video Driver");
-        close (drv_ctx.video_driver_fd);
-        drv_ctx.video_driver_fd = -1;
     }
     else
     {
