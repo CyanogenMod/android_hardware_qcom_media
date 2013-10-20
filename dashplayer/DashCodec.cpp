@@ -51,6 +51,8 @@
 #define MIN_WIDTH 480;
 #define MIN_HEIGHT 320;
 
+#include "ResourceManager.h"
+
 namespace android {
 
 template<class T>
@@ -380,6 +382,8 @@ DashCodec::DashCodec()
       mChannelMaskPresent(false),
       mChannelMask(0),
       mSmoothStreaming(false) {
+    mUseCase = "";
+    mUseCaseFlag = false;
     mUninitializedState = new UninitializedState(this);
     mLoadedState = new LoadedState(this);
     mLoadedToIdleState = new LoadedToIdleState(this);
@@ -447,6 +451,12 @@ void DashCodec::initiateShutdown(bool keepComponentAllocated) {
 
 void DashCodec::signalRequestIDRFrame() {
     (new AMessage(kWhatRequestIDRFrame, id()))->post();
+}
+
+void DashCodec::signalConcurrencyParam(bool streamPaused) {
+    sp<AMessage> msg = new AMessage(kWhatConcurrencyParam, id());
+    msg->setInt32("streamPaused", streamPaused);
+    msg->post();
 }
 
 status_t DashCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
@@ -2550,6 +2560,17 @@ bool DashCodec::BaseState::onMessageReceived(const sp<AMessage> &msg) {
             return true;
         }
 
+        case kWhatConcurrencyParam:
+        {
+            status_t err = OK;
+            err = ResourceManager::AudioConcurrencyInfo::updateConcurrencyParam(
+                    msg, mCodec->mUseCase,  mCodec->mUseCaseFlag);
+            if(err != OK) {
+                    mCodec->signalError(OMX_ErrorUndefined, INVALID_OPERATION);
+            }
+            break;
+        }
+
         default:
             return false;
     }
@@ -3113,6 +3134,9 @@ DashCodec::UninitializedState::UninitializedState(DashCodec *codec)
 
 void DashCodec::UninitializedState::stateEntered() {
     ALOGV("Now uninitialized");
+
+    ResourceManager::AudioConcurrencyInfo::resetParameter(
+        mCodec->mUseCase, mCodec->mUseCaseFlag);
 }
 
 bool DashCodec::UninitializedState::onMessageReceived(const sp<AMessage> &msg) {
@@ -3177,8 +3201,9 @@ bool DashCodec::UninitializedState::onAllocateComponent(const sp<AMessage> &msg)
     Vector<OMXCodec::CodecNameAndQuirks> matchingCodecs;
 
     AString mime;
-
+    int32_t encoder = 0;
     AString componentName;
+
     uint32_t quirks = 0;
     if (msg->findString("componentName", &componentName)) {
         ssize_t index = matchingCodecs.add();
@@ -3192,7 +3217,6 @@ bool DashCodec::UninitializedState::onAllocateComponent(const sp<AMessage> &msg)
     } else {
         CHECK(msg->findString("mime", &mime));
 
-        int32_t encoder;
         if (!msg->findInt32("encoder", &encoder)) {
             encoder = false;
         }
@@ -3220,10 +3244,18 @@ bool DashCodec::UninitializedState::onAllocateComponent(const sp<AMessage> &msg)
         androidSetThreadPriority(tid, prevPriority);
 
         if (err == OK) {
+            err = ResourceManager::AudioConcurrencyInfo::findUseCaseAndSetParameter(
+                mime.c_str(), componentName.c_str(), !encoder, mCodec->mUseCase, mCodec->mUseCaseFlag);
+        }
+
+        if (err == OK) {
             break;
         }
 
+        if(node != NULL) {
+            CHECK_EQ(omx->freeNode(node), (status_t)OK);
         node = NULL;
+    }
     }
 
     if (node == NULL) {

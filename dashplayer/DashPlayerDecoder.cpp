@@ -233,5 +233,11 @@ void DashPlayer::Decoder::initiateShutdown() {
    }
 }
 
+void DashPlayer::Decoder::signalConcurrencyParam(bool streamPaused) {
+    if (mCodec != NULL) {
+        mCodec->signalConcurrencyParam(streamPaused);
+    }
+}
+
 }  // namespace android
 
