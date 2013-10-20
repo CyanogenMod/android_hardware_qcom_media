@@ -4161,7 +4161,7 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 
   switch(configIndex)
   {
-    case OMX_IndexVendorVideoExtraData:
+    case static_cast<int>(OMX_IndexVendorVideoExtraData):
     {
     OMX_VENDOR_EXTRADATATYPE *config = (OMX_VENDOR_EXTRADATATYPE *) configData;
     DEBUG_PRINT_LOW("Index OMX_IndexVendorVideoExtraData called");
