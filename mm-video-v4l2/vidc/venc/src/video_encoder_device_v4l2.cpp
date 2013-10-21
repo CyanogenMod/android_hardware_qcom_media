@@ -1112,8 +1112,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                     } else {
                         if (pParam->eProfile == OMX_VIDEO_MPEG4ProfileAdvancedSimple) {
                             if (pParam->nBFrames) {
-                                DEBUG_PRINT_HIGH("INFO: Only 1 Bframe is supported");
-                                bFrames = 1;
+                                bFrames = pParam->nBFrames;
                             }
                         } else {
                             if (pParam->nBFrames) {
@@ -1187,8 +1186,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                         if ((pParam->eProfile != OMX_VIDEO_AVCProfileBaseline) &&
                             (pParam->eProfile != QOMX_VIDEO_AVCProfileConstrainedBaseline)) {
                             if (pParam->nBFrames) {
-                                DEBUG_PRINT_HIGH("INFO: Only 1 Bframe is supported");
-                                bFrames = 1;
+                                bFrames = pParam->nBFrames;
                             }
                         } else {
                             if (pParam->nBFrames) {
@@ -2641,10 +2639,10 @@ bool venc_dev::venc_set_voptiming_cfg( OMX_U32 TimeIncRes)
 bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
 {
 
-    DEBUG_PRINT_LOW("venc_set_intra_period: nPFrames = %lu",
-            nPFrames);
+    DEBUG_PRINT_LOW("venc_set_intra_period: nPFrames = %u, nBFrames: %lu", nPFrames, nBFrames);
     int rc;
     struct v4l2_control control;
+    int pframe = 0, bframe = 0;
 
     if ((codec_profile.profile != V4L2_MPEG_VIDEO_MPEG4_PROFILE_ADVANCED_SIMPLE) &&
             (codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_MAIN) &&
@@ -2653,7 +2651,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
     }
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
-    control.value = nPFrames;
+    control.value = (m_sVenc_cfg.fps_num /m_sVenc_cfg.fps_den) - (nBFrames+1);
 
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 
@@ -2675,10 +2673,8 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
         return false;
     }
 
-    DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
-
-
-    intra_period.num_bframes = control.value;
+    intra_period.num_bframes = nBFrames;
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, intra_period.num_bframes);
 
     if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
         control.id = V4L2_CID_MPEG_VIDC_VIDEO_IDR_PERIOD;
@@ -2714,7 +2710,8 @@ bool venc_dev::venc_set_idr_period(OMX_U32 nPFrames, OMX_U32 nIDRPeriod)
         return false;
     }
 
-    intra_period.num_pframes = nPFrames;
+    if (!intra_period.num_bframes)
+        intra_period.num_pframes = nPFrames;
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_IDR_PERIOD;
     control.value = nIDRPeriod;
 

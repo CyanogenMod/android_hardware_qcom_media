@@ -51,7 +51,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 extern int m_pipe;
 int debug_level = PRIO_ERROR;
-
+static int bframes;
+static int entropy;
 // factory function executed by the core to create instances
 void *get_omx_component_factory_fn(void)
 {
@@ -70,9 +71,16 @@ omx_venc::omx_venc()
     mUseProxyColorFormat = false;
     get_syntaxhdr_enable = false;
 #endif
+    bframes = entropy = 0;
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vidc.debug.level", property_value, "0");
     debug_level = atoi(property_value);
+    property_value[0] = '\0';
+    property_get("vidc.debug.bframes", property_value, "0");
+    bframes = atoi(property_value);
+    property_value[0] = '\0';
+    property_get("vidc.debug.entropy", property_value, "0");
+    entropy = !!atoi(property_value);
     property_value[0] = '\0';
 }
 
@@ -681,6 +689,14 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         mp4_param.nBFrames = 0;
                     }
 #endif
+#ifdef _MSM8974_
+                    if (pParam->nBFrames || bframes)
+                        mp4_param.nBFrames = (pParam->nBFrames > (unsigned int) bframes)? pParam->nBFrames : bframes;
+                    if (mp4_param.nBFrames > 3)
+                        mp4_param.nBFrames = 3;
+                    DEBUG_PRINT_HIGH("MPEG4: %lu BFrames are being set", mp4_param.nBFrames);
+#endif
+
                 } else {
                     if (pParam->nBFrames) {
                         DEBUG_PRINT_ERROR("Warning: B frames not supported");
@@ -692,7 +708,10 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 memcpy(&m_sParamMPEG4,pParam, sizeof(struct OMX_VIDEO_PARAM_MPEG4TYPE));
                 m_sIntraperiod.nPFrames = m_sParamMPEG4.nPFrames;
-                m_sIntraperiod.nBFrames = m_sParamMPEG4.nBFrames;
+                if (pParam->nBFrames || bframes)
+                    m_sIntraperiod.nBFrames = m_sParamMPEG4.nBFrames = mp4_param.nBFrames;
+                else
+                    m_sIntraperiod.nBFrames = m_sParamMPEG4.nBFrames;
                 break;
             }
         case OMX_IndexParamVideoH263:
@@ -735,6 +754,27 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         avc_param.nRefFrames = 1;
                     }
 #endif
+#ifdef _MSM8974_
+                    if (pParam->nBFrames || bframes) {
+                        avc_param.nBFrames = (pParam->nBFrames > (unsigned int) bframes)? pParam->nBFrames : bframes;
+                        avc_param.nRefFrames = avc_param.nBFrames + 1;
+                    } else {
+                        avc_param.nBFrames = 1;
+                        avc_param.nRefFrames = 2;
+                    }
+                    if (avc_param.nBFrames > 3) {
+                        avc_param.nBFrames = 3;
+                        avc_param.nRefFrames = avc_param.nBFrames + 1;
+                    }
+                    DEBUG_PRINT_HIGH("AVC: RefFrames: %lu, BFrames: %lu", avc_param.nRefFrames, avc_param.nBFrames);
+                    if (entropy) {
+                        avc_param.bEntropyCodingCABAC = OMX_TRUE;
+                        avc_param.nCabacInitIdc = 1;
+                    } else {
+                        avc_param.bEntropyCodingCABAC = OMX_FALSE;
+                        avc_param.nCabacInitIdc = 0;
+                    }
+#endif
                 } else {
                     if (pParam->nRefFrames != 1) {
                         DEBUG_PRINT_ERROR("Warning: Only 1 RefFrame is supported, changing RefFrame from %lu to 1)", pParam->nRefFrames);
@@ -750,7 +790,10 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 memcpy(&m_sParamAVC,pParam, sizeof(struct OMX_VIDEO_PARAM_AVCTYPE));
                 m_sIntraperiod.nPFrames = m_sParamAVC.nPFrames;
-                m_sIntraperiod.nBFrames = m_sParamAVC.nBFrames;
+                if (pParam->nBFrames || bframes)
+                    m_sIntraperiod.nBFrames = m_sParamAVC.nBFrames = avc_param.nBFrames;
+                else
+                    m_sIntraperiod.nBFrames = m_sParamAVC.nBFrames;
                 break;
             }
         case (OMX_INDEXTYPE)OMX_IndexParamVideoVp8:
