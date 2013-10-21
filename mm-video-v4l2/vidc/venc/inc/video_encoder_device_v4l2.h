@@ -113,7 +113,7 @@ struct msm_venc_capability {
 };
 
 struct msm_venc_entropycfg {
-    unsigned longentropysel;
+    unsigned long    entropysel;
     unsigned long    cabacmodel;
 };
 
