@@ -2380,7 +2380,7 @@ void venc_dev::venc_config_print()
             multislice.mslice_size);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: EntropyMode: %d, CabacModel: %ld",
-            entropy.longentropysel, entropy.cabacmodel);
+            entropy.entropysel, entropy.cabacmodel);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: DB-Mode: %ld, alpha: %ld, Beta: %ld",
             dbkfilter.db_mode, dbkfilter.slicealpha_offset,
@@ -3755,7 +3755,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
         }
 
         DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
-        entropy.longentropysel = control.value;
+        entropy.entropysel = control.value;
 
         if (i_cabac_level == 0) {
             control.value = V4L2_CID_MPEG_VIDC_VIDEO_H264_CABAC_MODEL_0;
@@ -3789,7 +3789,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
         }
 
         DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
-        entropy.longentropysel=control.value;
+        entropy.entropysel=control.value;
     } else {
         DEBUG_PRINT_ERROR("Invalid Entropy mode for Baseline Profile");
         return false;
