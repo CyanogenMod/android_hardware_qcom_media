@@ -1425,7 +1425,7 @@ void venc_dev::venc_config_print()
                    multislice.mslice_size);
 
   DEBUG_PRINT_HIGH("\nENC_CONFIG: EntropyMode: %d, CabacModel: %d",
-                   entropy.longentropysel, entropy.cabacmodel);
+                   entropy.entropysel, entropy.cabacmodel);
 
   DEBUG_PRINT_HIGH("\nENC_CONFIG: DB-Mode: %d, alpha: %d, Beta: %d\n",
                    dbkfilter.db_mode, dbkfilter.slicealpha_offset,
@@ -2170,7 +2170,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
   DEBUG_PRINT_LOW("\n venc_set_entropy_config: CABAC = %u level: %u", enable, i_cabac_level);
 
   if(enable &&(codec_profile.profile != VEN_PROFILE_H264_BASELINE)){
-    entropy_cfg.longentropysel = VEN_ENTROPY_MODEL_CABAC;
+    entropy_cfg.entropysel = VEN_ENTROPY_MODEL_CABAC;
       if (i_cabac_level == 0) {
          entropy_cfg.cabacmodel = VEN_CABAC_MODEL_0;
       }
@@ -2190,7 +2190,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
 #endif
   }
   else if(!enable){
-    entropy_cfg.longentropysel = VEN_ENTROPY_MODEL_CAVLC;
+    entropy_cfg.entropysel = VEN_ENTROPY_MODEL_CAVLC;
     }
   else{
     DEBUG_PRINT_ERROR("\nInvalid Entropy mode for Baseline Profile");
@@ -2204,7 +2204,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
     DEBUG_PRINT_ERROR("\nERROR: Request for setting entropy config failed");
     return false;
   }
-  entropy.longentropysel = entropy_cfg.longentropysel;
+  entropy.entropysel = entropy_cfg.entropysel;
   entropy.cabacmodel  = entropy_cfg.cabacmodel;
   return true;
 }

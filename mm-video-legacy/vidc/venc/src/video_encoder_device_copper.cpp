@@ -1378,7 +1378,7 @@ void venc_dev::venc_config_print()
                    multislice.mslice_size);
 
   DEBUG_PRINT_HIGH("\nENC_CONFIG: EntropyMode: %d, CabacModel: %d",
-                   entropy.longentropysel, entropy.cabacmodel);
+                   entropy.entropysel, entropy.cabacmodel);
 
   DEBUG_PRINT_HIGH("\nENC_CONFIG: DB-Mode: %d, alpha: %d, Beta: %d\n",
                    dbkfilter.db_mode, dbkfilter.slicealpha_offset,
@@ -2140,7 +2140,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
 		return false;
 	}
 	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
-	entropy.longentropysel = control.value;
+	entropy.entropysel = control.value;
 	  if (i_cabac_level == 0) {
          control.value = V4L2_CID_MPEG_VIDC_VIDEO_H264_CABAC_MODEL_0;
       }
@@ -2160,7 +2160,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
 		return false;
 	}
 	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
-	entropy.longentropysel=control.value;
+	entropy.entropysel=control.value;
   }
   else if(!enable){
     control.value =  V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC;
@@ -2172,8 +2172,8 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
 		return false;
 	}
 	printf("Success IOCTL set control for id=%d, value=%d\n", control.id, control.value);
-	entropy.longentropysel=control.value;
-	//entropy_cfg.longentropysel = control.value;
+	entropy.entropysel=control.value;
+	//entropy_cfg.entropysel = control.value;
     }
   else{
     DEBUG_PRINT_ERROR("\nInvalid Entropy mode for Baseline Profile");
@@ -2185,7 +2185,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
     DEBUG_PRINT_ERROR("\nERROR: Request for setting entropy config failed");
     return false;
   }
-  //entropy.longentropysel = entropy_cfg.longentropysel;
+  //entropy.entropysel = entropy_cfg.entropysel;
   //entropy.cabacmodel  = entropy_cfg.cabacmodel;
   return true;
 }
