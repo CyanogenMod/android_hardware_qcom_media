@@ -175,17 +175,17 @@ void* async_venc_message_thread (void *input)
         error_code = ioctl(omx->handle->m_nDriver_fd,VEN_IOCTL_CMD_READ_NEXT_MSG,(void *)&ioctl_msg);
 
         if (error_code == -512) { // ERESTARTSYS
-            DEBUG_PRINT_ERROR("\n ERESTARTSYS received in ioctl read next msg!");
+            DEBUG_PRINT_ERROR("ERESTARTSYS received in ioctl read next msg!");
         } else if (error_code <0) {
-            DEBUG_PRINT_LOW("\nioctl VEN_IOCTL_CMD_READ_NEXT_MSG failed");
+            DEBUG_PRINT_LOW("ioctl VEN_IOCTL_CMD_READ_NEXT_MSG failed");
             break;
         } else if (omx->async_message_process(input,&venc_msg) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: Wrong ioctl message");
+            DEBUG_PRINT_ERROR("ERROR: Wrong ioctl message");
             break;
         }
     }
 
-    DEBUG_PRINT_HIGH("omx_venc: Async Thread exit\n");
+    DEBUG_PRINT_HIGH("omx_venc: Async Thread exit");
     return NULL;
 }
 
@@ -198,25 +198,25 @@ bool venc_dev::venc_open(OMX_U32 codec)
     m_nDriver_fd = open ("/dev/msm_vidc_enc",O_RDWR|O_NONBLOCK);
 
     if (m_nDriver_fd == 0) {
-        DEBUG_PRINT_ERROR("ERROR: Got fd as 0 for msm_vidc_enc, Opening again\n");
+        DEBUG_PRINT_ERROR("ERROR: Got fd as 0 for msm_vidc_enc, Opening again");
         m_nDriver_fd = open ("/dev/msm_vidc_enc",O_RDWR|O_NONBLOCK);
     }
 
     if ((int)m_nDriver_fd < 0) {
-        DEBUG_PRINT_ERROR("ERROR: Omx_venc::Comp Init Returning failure\n");
+        DEBUG_PRINT_ERROR("ERROR: Omx_venc::Comp Init Returning failure");
         return false;
     }
 
-    DEBUG_PRINT_LOW("\nm_nDriver_fd = %d\n", m_nDriver_fd);
+    DEBUG_PRINT_LOW("m_nDriver_fd = %d", m_nDriver_fd);
 #ifdef SINGLE_ENCODER_INSTANCE
     OMX_U32 num_instances = 0;
     ioctl_msg.in = NULL;
     ioctl_msg.out = &num_instances;
 
     if (ioctl (m_nDriver_fd, VEN_IOCTL_GET_NUMBER_INSTANCES, (void*)&ioctl_msg) < 0 ) {
-        DEBUG_PRINT_ERROR("\nERROR: Request number of encoder instances failed");
+        DEBUG_PRINT_ERROR("ERROR: Request number of encoder instances failed");
     } else if (num_instances > 1) {
-        DEBUG_PRINT_ERROR("\nSecond encoder instance rejected!");
+        DEBUG_PRINT_ERROR("Second encoder instance rejected!");
         venc_close();
         return false;
     }
@@ -272,7 +272,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < 0 ) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting base configuration failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting base configuration failed");
         return false;
     }
 
@@ -287,7 +287,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     ioctl_msg.out = (void*)&m_sInput_buff_property;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for getting i/p buffer requirement failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for getting i/p buffer requirement failed");
         return false;
     }
 
@@ -295,7 +295,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     ioctl_msg.out = (void*)&m_sOutput_buff_property;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for getting o/p buffer requirement failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for getting o/p buffer requirement failed");
         return false;
     }
 
@@ -303,7 +303,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     m_level_set = false;
 
     if (venc_set_profile_level(0, 0)) {
-        DEBUG_PRINT_HIGH("\n %s(): Init Profile/Level setting success",
+        DEBUG_PRINT_HIGH("%s(): Init Profile/Level setting success",
                 __func__);
     }
 
@@ -317,13 +317,13 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
 void venc_dev::venc_close()
 {
-    DEBUG_PRINT_LOW("\nvenc_close: fd = %d", m_nDriver_fd);
+    DEBUG_PRINT_LOW("venc_close: fd = %d", m_nDriver_fd);
 
     if ((int)m_nDriver_fd >= 0) {
-        DEBUG_PRINT_HIGH("\n venc_close(): Calling VEN_IOCTL_CMD_STOP_READ_MSG");
+        DEBUG_PRINT_HIGH("venc_close(): Calling VEN_IOCTL_CMD_STOP_READ_MSG");
         (void)ioctl(m_nDriver_fd, VEN_IOCTL_CMD_STOP_READ_MSG,
                 NULL);
-        DEBUG_PRINT_LOW("\nCalling close()\n");
+        DEBUG_PRINT_LOW("Calling close()");
         close(m_nDriver_fd);
         m_nDriver_fd = -1;
     }
@@ -352,12 +352,12 @@ bool venc_dev::venc_set_buf_req(unsigned long *min_buff_count,
             ioctl_msg.out = NULL;
 
             if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-                DEBUG_PRINT_ERROR("\nERROR: Request for setting i/p buffer requirement failed");
+                DEBUG_PRINT_ERROR("ERROR: Request for setting i/p buffer requirement failed");
                 m_sInput_buff_property.actualcount = temp_count;
                 return false;
             }
 
-            DEBUG_PRINT_LOW("\n I/P Count set to %lu\n", *actual_buff_count);
+            DEBUG_PRINT_LOW("I/P Count set to %lu", *actual_buff_count);
         }
     } else {
         if (*actual_buff_count > m_sOutput_buff_property.mincount) {
@@ -367,12 +367,12 @@ bool venc_dev::venc_set_buf_req(unsigned long *min_buff_count,
             ioctl_msg.out = NULL;
 
             if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-                DEBUG_PRINT_ERROR("\nERROR: Request for setting o/p buffer requirement failed");
+                DEBUG_PRINT_ERROR("ERROR: Request for setting o/p buffer requirement failed");
                 m_sOutput_buff_property.actualcount = temp_count;
                 return false;
             }
 
-            DEBUG_PRINT_LOW("\n O/P Count set to %lu\n", *actual_buff_count);
+            DEBUG_PRINT_LOW("O/P Count set to %lu", *actual_buff_count);
         }
     }
 
@@ -542,7 +542,7 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
         ioctl_msg.out = (void*)&m_sInput_buff_property;
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: Request for getting i/p buffer requirement failed");
+            DEBUG_PRINT_ERROR("ERROR: Request for getting i/p buffer requirement failed");
             return false;
         }
 
@@ -561,7 +561,7 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
         ioctl_msg.out = (void*)&m_sOutput_buff_property;
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: Request for getting o/p buffer requirement failed");
+            DEBUG_PRINT_ERROR("ERROR: Request for getting o/p buffer requirement failed");
             return false;
         }
 
@@ -577,7 +577,7 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
 bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 {
     venc_ioctl_msg ioctl_msg = {NULL,NULL};
-    DEBUG_PRINT_LOW("venc_set_param:: venc-720p\n");
+    DEBUG_PRINT_LOW("venc_set_param:: venc-720p");
 
     switch (index) {
         case OMX_IndexParamPortDefinition:
@@ -604,7 +604,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                     ioctl_msg.out = NULL;
 
                     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < 0) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for setting base config failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting base config failed");
                         return false;
                     }
 
@@ -618,7 +618,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                     ioctl_msg.out = (void*)&m_sInput_buff_property;
 
                     if (ioctl (m_nDriver_fd, VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for getting i/p bufreq failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for getting i/p bufreq failed");
                         return false;
                     }
 
@@ -632,7 +632,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                     ioctl_msg.out = (void*)&m_sOutput_buff_property;
 
                     if (ioctl (m_nDriver_fd, VEN_IOCTL_GET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for getting o/p bufreq failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for getting o/p bufreq failed");
                         return false;
                     }
 
@@ -645,7 +645,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                     ioctl_msg.out = NULL;
 
                     if (ioctl (m_nDriver_fd, VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for setting o/p bufreq failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting o/p bufreq failed");
                         return false;
                     }
 
@@ -656,13 +656,13 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                         ioctl_msg.out = NULL;
 
                         if (ioctl(m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-                            DEBUG_PRINT_ERROR("\nERROR: Request for setting i/p buffer requirements failed");
+                            DEBUG_PRINT_ERROR("ERROR: Request for setting i/p buffer requirements failed");
                             return false;
                         }
                     }
 
                     if (m_sInput_buff_property.datasize != portDefn->nBufferSize) {
-                        DEBUG_PRINT_ERROR("\nWARNING: Requested i/p bufsize[%u],"
+                        DEBUG_PRINT_ERROR("WARNING: Requested i/p bufsize[%u],"
                                 "Driver's updated i/p bufsize = %u", portDefn->nBufferSize,
                                 m_sInput_buff_property.datasize);
                     }
@@ -688,15 +688,15 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                         ioctl_msg.out = NULL;
 
                         if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_OUTPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-                            DEBUG_PRINT_ERROR("\nERROR: ioctl VEN_IOCTL_SET_OUTPUT_BUFFER_REQ failed");
+                            DEBUG_PRINT_ERROR("ERROR: ioctl VEN_IOCTL_SET_OUTPUT_BUFFER_REQ failed");
                             return false;
                         }
                     } else {
-                        DEBUG_PRINT_ERROR("\nERROR: Setting Output buffer requirements failed");
+                        DEBUG_PRINT_ERROR("ERROR: Setting Output buffer requirements failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamPortDefinition");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamPortDefinition");
                 }
 
                 break;
@@ -705,7 +705,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
             {
                 OMX_VIDEO_PARAM_PORTFORMATTYPE *portFmt;
                 portFmt =(OMX_VIDEO_PARAM_PORTFORMATTYPE *)paramData;
-                DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamVideoPortFormat\n");
+                DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamVideoPortFormat");
 
                 if (portFmt->nPortIndex == (OMX_U32) PORT_INDEX_IN) {
                     if (!venc_set_color_format(portFmt->eColorFormat)) {
@@ -716,7 +716,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoPortFormat");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoPortFormat");
                 }
 
                 break;
@@ -725,20 +725,20 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
             {
                 OMX_VIDEO_PARAM_BITRATETYPE* pParam;
                 pParam = (OMX_VIDEO_PARAM_BITRATETYPE*)paramData;
-                DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamVideoBitrate\n");
+                DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamVideoBitrate");
 
                 if (pParam->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     if (!venc_set_target_bitrate(pParam->nTargetBitrate, 0)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Target Bit Rate setting failed");
+                        DEBUG_PRINT_ERROR("ERROR: Target Bit Rate setting failed");
                         return false;
                     }
 
                     if (!venc_set_ratectrl_cfg(pParam->eControlRate)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Rate Control setting failed");
+                        DEBUG_PRINT_ERROR("ERROR: Rate Control setting failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoBitrate");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoBitrate");
                 }
 
                 break;
@@ -749,11 +749,11 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                 OMX_U32 bFrames = 0;
 
                 pParam = (OMX_VIDEO_PARAM_MPEG4TYPE*)paramData;
-                DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamVideoMpeg4\n");
+                DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamVideoMpeg4");
 
                 if (pParam->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     if (!venc_set_voptiming_cfg(pParam->nTimeIncRes)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for setting vop_timing failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting vop_timing failed");
                         return false;
                     }
 
@@ -761,7 +761,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                     m_level_set = false;
 
                     if (!venc_set_profile_level (pParam->eProfile, pParam->eLevel)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Unsuccessful in updating Profile and level");
+                        DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level");
                         return false;
                     }
 
@@ -774,7 +774,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                             }
                         } else {
                             if (pParam->nBFrames) {
-                                DEBUG_PRINT_ERROR("Warning: B frames not supported\n");
+                                DEBUG_PRINT_ERROR("Warning: B frames not supported");
                                 bFrames = 0;
                             }
                         }
@@ -783,16 +783,16 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 #endif
 
                     if (!venc_set_intra_period (pParam->nPFrames,bFrames)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for setting intra period failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
                         return false;
                     }
 
                     if (!venc_set_multislice_cfg(OMX_IndexParamVideoMpeg4,pParam->nSliceHeaderSpacing)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Unsuccessful in updating slice_config");
+                        DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating slice_config");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoMpeg4");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoMpeg4");
                 }
 
                 break;
@@ -800,7 +800,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
         case OMX_IndexParamVideoH263:
             {
                 OMX_VIDEO_PARAM_H263TYPE* pParam = (OMX_VIDEO_PARAM_H263TYPE*)paramData;
-                DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamVideoH263\n");
+                DEBUG_PRINT_LOW("venc_set_param: OMX_IndexParamVideoH263");
                 OMX_U32 bFrames = 0;
 
                 if (pParam->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
@@ -808,38 +808,38 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                     m_level_set = false;
 
                     if (!venc_set_profile_level (pParam->eProfile, pParam->eLevel)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Unsuccessful in updating Profile and level");
+                        DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level");
                         return false;
                     }
 
                     if (pParam->nBFrames)
-                        DEBUG_PRINT_ERROR("\nWARNING: B frame not supported for H.263");
+                        DEBUG_PRINT_ERROR("WARNING: B frame not supported for H.263");
 
                     if (venc_set_intra_period (pParam->nPFrames, bFrames) == false) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for setting intra period failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoH263");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoH263");
                 }
 
                 break;
             }
         case OMX_IndexParamVideoAvc:
             {
-                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoAvc\n");
+                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoAvc");
                 OMX_VIDEO_PARAM_AVCTYPE* pParam = (OMX_VIDEO_PARAM_AVCTYPE*)paramData;
                 OMX_U32 bFrames = 0;
 
                 if (pParam->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
-                    DEBUG_PRINT_LOW("pParam->eProfile :%d ,pParam->eLevel %d\n",
+                    DEBUG_PRINT_LOW("pParam->eProfile :%d ,pParam->eLevel %d",
                             pParam->eProfile,pParam->eLevel);
 
                     m_profile_set = false;
                     m_level_set = false;
 
                     if (!venc_set_profile_level (pParam->eProfile,pParam->eLevel)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Unsuccessful in updating Profile and level %d, %d",
+                        DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level %d, %d",
                                 pParam->eProfile, pParam->eLevel);
                         return false;
                     }
@@ -853,7 +853,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                             }
                         } else {
                             if (pParam->nBFrames) {
-                                DEBUG_PRINT_ERROR("Warning: B frames not supported\n");
+                                DEBUG_PRINT_ERROR("Warning: B frames not supported");
                                 bFrames = 0;
                             }
                         }
@@ -862,26 +862,26 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 #endif
 
                     if (!venc_set_intra_period (pParam->nPFrames, bFrames)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for setting intra period failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
                         return false;
                     }
 
                     if (!venc_set_entropy_config (pParam->bEntropyCodingCABAC, pParam->nCabacInitIdc)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for setting Entropy failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting Entropy failed");
                         return false;
                     }
 
                     if (!venc_set_inloop_filter (pParam->eLoopFilterMode)) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for setting Inloop filter failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting Inloop filter failed");
                         return false;
                     }
 
                     if (!venc_set_multislice_cfg(OMX_IndexParamVideoAvc, pParam->nSliceHeaderSpacing)) {
-                        DEBUG_PRINT_ERROR("\nWARNING: Unsuccessful in updating slice_config");
+                        DEBUG_PRINT_ERROR("WARNING: Unsuccessful in updating slice_config");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoAvc");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoAvc");
                 }
 
                 //TBD, lot of other variables to be updated, yet to decide
@@ -889,41 +889,41 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
             }
         case OMX_IndexParamVideoIntraRefresh:
             {
-                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoIntraRefresh\n");
+                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoIntraRefresh");
                 OMX_VIDEO_PARAM_INTRAREFRESHTYPE *intra_refresh =
                     (OMX_VIDEO_PARAM_INTRAREFRESHTYPE *)paramData;
 
                 if (intra_refresh->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     if (venc_set_intra_refresh(intra_refresh->eRefreshMode, intra_refresh->nCirMBs) == false) {
-                        DEBUG_PRINT_ERROR("\nERROR: Setting Intra refresh failed");
+                        DEBUG_PRINT_ERROR("ERROR: Setting Intra refresh failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoIntraRefresh");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoIntraRefresh");
                 }
 
                 break;
             }
         case OMX_IndexParamVideoErrorCorrection:
             {
-                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoErrorCorrection\n");
+                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoErrorCorrection");
                 OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE *error_resilience =
                     (OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE *)paramData;
 
                 if (error_resilience->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     if (venc_set_error_resilience(error_resilience) == false) {
-                        DEBUG_PRINT_ERROR("\nERROR: Setting Intra refresh failed");
+                        DEBUG_PRINT_ERROR("ERROR: Setting Intra refresh failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoErrorCorrection");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoErrorCorrection");
                 }
 
                 break;
             }
         case OMX_IndexParamVideoProfileLevelCurrent:
             {
-                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoProfileLevelCurrent\n");
+                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoProfileLevelCurrent");
                 OMX_VIDEO_PARAM_PROFILELEVELTYPE *profile_level =
                     (OMX_VIDEO_PARAM_PROFILELEVELTYPE *)paramData;
 
@@ -933,29 +933,29 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 
                     if (!venc_set_profile_level (profile_level->eProfile,
                                 profile_level->eLevel)) {
-                        DEBUG_PRINT_ERROR("\nWARNING: Unsuccessful in updating Profile and level");
+                        DEBUG_PRINT_ERROR("WARNING: Unsuccessful in updating Profile and level");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoProfileLevelCurrent");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoProfileLevelCurrent");
                 }
 
                 break;
             }
         case OMX_IndexParamVideoQuantization:
             {
-                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoQuantization\n");
+                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoQuantization");
                 OMX_VIDEO_PARAM_QUANTIZATIONTYPE *session_qp =
                     (OMX_VIDEO_PARAM_QUANTIZATIONTYPE *)paramData;
 
                 if (session_qp->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     if (venc_set_session_qp (session_qp->nQpI,
                                 session_qp->nQpP) == false) {
-                        DEBUG_PRINT_ERROR("\nERROR: Setting Session QP failed");
+                        DEBUG_PRINT_ERROR("ERROR: Setting Session QP failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamVideoQuantization");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoQuantization");
                 }
 
                 break;
@@ -963,18 +963,18 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 
         case OMX_QcomIndexParamVideoQPRange:
             {
-                DEBUG_PRINT_LOW("venc_set_param:OMX_QcomIndexParamVideoQPRange\n");
+                DEBUG_PRINT_LOW("venc_set_param:OMX_QcomIndexParamVideoQPRange");
                 OMX_QCOM_VIDEO_PARAM_QPRANGETYPE *qp_range =
                     (OMX_QCOM_VIDEO_PARAM_QPRANGETYPE *)paramData;
 
                 if (qp_range->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     if (venc_set_qp_range (qp_range->minQP,
                                 qp_range->maxQP) == false) {
-                        DEBUG_PRINT_ERROR("\nERROR: Setting QP Range failed");
+                        DEBUG_PRINT_ERROR("ERROR: Setting QP Range failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_QcomIndexParamVideoQPRange");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_QcomIndexParamVideoQPRange");
                 }
 
                 break;
@@ -1091,7 +1091,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
 {
     venc_ioctl_msg ioctl_msg = {NULL,NULL};
-    DEBUG_PRINT_LOW("\n Inside venc_set_config");
+    DEBUG_PRINT_LOW("Inside venc_set_config");
 
     switch (index) {
         case OMX_IndexConfigVideoBitrate:
@@ -1105,15 +1105,15 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                     return false;
                 }
 
-                DEBUG_PRINT_LOW("\n venc_set_config: OMX_IndexConfigVideoBitrate");
+                DEBUG_PRINT_LOW("venc_set_config: OMX_IndexConfigVideoBitrate");
 
                 if (bit_rate->nPortIndex == (OMX_U32)PORT_INDEX_OUT) {
                     if (venc_set_target_bitrate(bit_rate->nEncodeBitrate, 1) == false) {
-                        DEBUG_PRINT_ERROR("\nERROR: Setting Target Bit rate failed");
+                        DEBUG_PRINT_ERROR("ERROR: Setting Target Bit rate failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexConfigVideoBitrate");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexConfigVideoBitrate");
                 }
 
                 break;
@@ -1122,28 +1122,28 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
             {
                 OMX_CONFIG_FRAMERATETYPE *frame_rate = (OMX_CONFIG_FRAMERATETYPE *)
                     configData;
-                DEBUG_PRINT_LOW("\n venc_set_config: OMX_IndexConfigVideoFramerate");
+                DEBUG_PRINT_LOW("venc_set_config: OMX_IndexConfigVideoFramerate");
 
                 if (frame_rate->nPortIndex == (OMX_U32)PORT_INDEX_OUT) {
                     if (venc_set_encode_framerate(frame_rate->xEncodeFramerate, 1) == false) {
-                        DEBUG_PRINT_ERROR("\nERROR: Setting Encode Framerate failed");
+                        DEBUG_PRINT_ERROR("ERROR: Setting Encode Framerate failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexConfigVideoFramerate");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexConfigVideoFramerate");
                 }
 
                 break;
             }
         case QOMX_IndexConfigVideoIntraperiod:
             {
-                DEBUG_PRINT_LOW("venc_set_param:QOMX_IndexConfigVideoIntraperiod\n");
+                DEBUG_PRINT_LOW("venc_set_param:QOMX_IndexConfigVideoIntraperiod");
                 QOMX_VIDEO_INTRAPERIODTYPE *intraperiod =
                     (QOMX_VIDEO_INTRAPERIODTYPE *)configData;
 
                 if (intraperiod->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     if (venc_set_intra_period(intraperiod->nPFrames, intraperiod->nBFrames) == false) {
-                        DEBUG_PRINT_ERROR("\nERROR: Request for setting intra period failed");
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
                         return false;
                     }
                 }
@@ -1154,15 +1154,15 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
             {
                 OMX_CONFIG_INTRAREFRESHVOPTYPE *intra_vop_refresh = (OMX_CONFIG_INTRAREFRESHVOPTYPE *)
                     configData;
-                DEBUG_PRINT_LOW("\n venc_set_config: OMX_IndexConfigVideoIntraVOPRefresh");
+                DEBUG_PRINT_LOW("venc_set_config: OMX_IndexConfigVideoIntraVOPRefresh");
 
                 if (intra_vop_refresh->nPortIndex == (OMX_U32)PORT_INDEX_OUT) {
                     if (venc_set_intra_vop_refresh(intra_vop_refresh->IntraRefreshVOP) == false) {
-                        DEBUG_PRINT_ERROR("\nERROR: Setting Encode Framerate failed");
+                        DEBUG_PRINT_ERROR("ERROR: Setting Encode Framerate failed");
                         return false;
                     }
                 } else {
-                    DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexConfigVideoFramerate");
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexConfigVideoFramerate");
                 }
 
                 break;
@@ -1174,7 +1174,7 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 venc_ioctl_msg ioctl_msg = {NULL,NULL};
                 OMX_U32 nFrameWidth;
 
-                DEBUG_PRINT_HIGH("\nvenc_set_config: updating the new Dims");
+                DEBUG_PRINT_HIGH("venc_set_config: updating the new Dims");
                 nFrameWidth = m_sVenc_cfg.input_width;
                 m_sVenc_cfg.input_width  = m_sVenc_cfg.input_height;
                 m_sVenc_cfg.input_height = nFrameWidth;
@@ -1182,7 +1182,7 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 ioctl_msg.out = NULL;
 
                 if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_BASE_CFG,(void*)&ioctl_msg) < 0) {
-                    DEBUG_PRINT_ERROR("\nERROR: Dimension Change for Rotation failed");
+                    DEBUG_PRINT_ERROR("ERROR: Dimension Change for Rotation failed");
                     return false;
                 }
 
@@ -1262,14 +1262,14 @@ unsigned venc_dev::venc_set_message_thread_id(pthread_t)
 
 unsigned venc_dev::venc_start(void)
 {
-    DEBUG_PRINT_HIGH("\n %s(): Check Profile/Level set in driver before start",
+    DEBUG_PRINT_HIGH("%s(): Check Profile/Level set in driver before start",
             __func__);
 
     if (!venc_set_profile_level(0, 0)) {
-        DEBUG_PRINT_ERROR("\n ERROR: %s(): Driver Profile/Level is NOT SET",
+        DEBUG_PRINT_ERROR("ERROR: %s(): Driver Profile/Level is NOT SET",
                 __func__);
     } else {
-        DEBUG_PRINT_HIGH("\n %s(): Driver Profile[%lu]/Level[%lu] successfully SET",
+        DEBUG_PRINT_HIGH("%s(): Driver Profile[%lu]/Level[%lu] successfully SET",
                 __func__, codec_profile.profile, profile_level.level);
     }
 
@@ -1299,7 +1299,7 @@ unsigned venc_dev::venc_start(void)
     if (!venc_allocate_recon_buffers())
         return ioctl(m_nDriver_fd, VEN_IOCTL_CMD_START, NULL);
     else {
-        DEBUG_PRINT_ERROR("Failed in creating Recon buffers\n");
+        DEBUG_PRINT_ERROR("Failed in creating Recon buffers");
         return -1;
     }
 
@@ -1318,26 +1318,26 @@ OMX_U32 venc_dev::venc_allocate_recon_buffers()
     recon_buff_size.width =  ((m_sVenc_cfg.input_width + 15) / 16) * 16;
     recon_buff_size.height = ((m_sVenc_cfg.input_height + 15) / 16 ) * 16;
 
-    DEBUG_PRINT_LOW("Width %d, Height %d, w_round %d, h_round %d\n", m_sVenc_cfg.input_width,
+    DEBUG_PRINT_LOW("Width %d, Height %d, w_round %d, h_round %d", m_sVenc_cfg.input_width,
             m_sVenc_cfg.input_height, recon_buff_size.width, recon_buff_size.height);
 
     ioctl_msg.in = NULL;
     ioctl_msg.out = (void*)&recon_buff_size;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_GET_RECON_BUFFER_SIZE, (void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\n VEN_IOCTL_GET_RECON_BUFFER_SIZE Failed for width: %d, Height %d" ,
+        DEBUG_PRINT_ERROR("VEN_IOCTL_GET_RECON_BUFFER_SIZE Failed for width: %d, Height %d" ,
                 recon_buff_size.width, recon_buff_size.height);
         return OMX_ErrorInsufficientResources;
     }
 
-    DEBUG_PRINT_HIGH("Width %d, Height %d, w_round %d, h_round %d, yuv_size %d alignment %d count %d\n",
+    DEBUG_PRINT_HIGH("Width %d, Height %d, w_round %d, h_round %d, yuv_size %d alignment %d count %d",
             m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, recon_buff_size.width,
             recon_buff_size.height, recon_buff_size.size, recon_buff_size.alignment,
             recon_buffers_count);
 
     for (int i = 0; i < recon_buffers_count; i++) {
         if (pmem_allocate(recon_buff_size.size, recon_buff_size.alignment,i)) {
-            DEBUG_PRINT_ERROR("Error returned in allocating recon buffers\n");
+            DEBUG_PRINT_ERROR("Error returned in allocating recon buffers");
             return -1;
         }
     }
@@ -1357,7 +1357,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
     recon_buff[count].ion_device_fd = open (MEM_DEVICE,O_RDONLY);
 
     if (recon_buff[count].ion_device_fd < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: ION Device open() Failed");
+        DEBUG_PRINT_ERROR("ERROR: ION Device open() Failed");
         return -1;
     }
 
@@ -1377,7 +1377,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
     rc = ioctl(recon_buff[count].ion_device_fd,ION_IOC_ALLOC,&recon_buff[count].alloc_data);
 
     if (rc || !recon_buff[count].alloc_data.handle) {
-        DEBUG_PRINT_ERROR("\n ION ALLOC memory failed ");
+        DEBUG_PRINT_ERROR("ION ALLOC memory failed ");
         recon_buff[count].alloc_data.handle=NULL;
         return -1;
     }
@@ -1386,7 +1386,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
     rc = ioctl(recon_buff[count].ion_device_fd,ION_IOC_MAP,&recon_buff[count].ion_alloc_fd);
 
     if (rc) {
-        DEBUG_PRINT_ERROR("\n ION MAP failed ");
+        DEBUG_PRINT_ERROR("ION MAP failed ");
         recon_buff[count].ion_alloc_fd.fd =-1;
         recon_buff[count].ion_alloc_fd.fd =-1;
         return -1;
@@ -1398,7 +1398,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
     pmem_fd = open(MEM_DEVICE, O_RDWR);
 
     if ((int)(pmem_fd) < 0) {
-        DEBUG_PRINT_ERROR("\n Failed to get an pmem handle");
+        DEBUG_PRINT_ERROR("Failed to get an pmem handle");
         return -1;
     }
 
@@ -1409,7 +1409,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
         allocation.align = 8192;
 
     if (ioctl(pmem_fd, PMEM_ALLOCATE_ALIGNED, &allocation) < 0) {
-        DEBUG_PRINT_ERROR("\n Aligment(%u) failed with pmem driver Sz(%lu)",
+        DEBUG_PRINT_ERROR("Aligment(%u) failed with pmem driver Sz(%lu)",
                 allocation.align, allocation.size);
         return -1;
     }
@@ -1422,7 +1422,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
     if (buf_addr == (void*) MAP_FAILED) {
         close(pmem_fd);
         pmem_fd = -1;
-        DEBUG_PRINT_ERROR("Error returned in allocating recon buffers buf_addr: %p\n",buf_addr);
+        DEBUG_PRINT_ERROR("Error returned in allocating recon buffers buf_addr: %p",buf_addr);
 #ifdef USE_ION
 
         if (ioctl(recon_buff[count].ion_device_fd,ION_IOC_FREE,
@@ -1438,7 +1438,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
         return -1;
     }
 
-    DEBUG_PRINT_HIGH("\n Allocated virt:%p, FD: %d of size %d \n", buf_addr, pmem_fd, size);
+    DEBUG_PRINT_HIGH("Allocated virt:%p, FD: %d of size %d", buf_addr, pmem_fd, size);
 
     recon_addr.buffer_size = size;
     recon_addr.pmem_fd = pmem_fd;
@@ -1449,7 +1449,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_RECON_BUFFER, (void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("Failed to set the Recon_buffers\n");
+        DEBUG_PRINT_ERROR("Failed to set the Recon_buffers");
         return -1;
     }
 
@@ -1458,7 +1458,7 @@ OMX_U32 venc_dev::pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count)
     recon_buff[count].offset = 0;
     recon_buff[count].pmem_fd = pmem_fd;
 
-    DEBUG_PRINT_ERROR("\n Allocated virt:%p, FD: %d of size %d at index: %d\n", recon_buff[count].virtual_address,
+    DEBUG_PRINT_ERROR("Allocated virt:%p, FD: %d of size %d at index: %d", recon_buff[count].virtual_address,
             recon_buff[count].pmem_fd, recon_buff[count].size, count);
     return 0;
 }
@@ -1495,7 +1495,7 @@ OMX_U32 venc_dev::pmem_free()
             close(recon_buff[cnt].ion_device_fd);
             recon_buff[cnt].ion_device_fd =-1;
 #endif
-            DEBUG_PRINT_LOW("\n cleaning Index %d of size %d \n",cnt,recon_buff[cnt].size);
+            DEBUG_PRINT_LOW("cleaning Index %d of size %d",cnt,recon_buff[cnt].size);
             recon_buff[cnt].pmem_fd = -1;
             recon_buff[cnt].virtual_address = NULL;
             recon_buff[cnt].offset = 0;
@@ -1511,34 +1511,34 @@ OMX_U32 venc_dev::pmem_free()
 void venc_dev::venc_config_print()
 {
 
-    DEBUG_PRINT_HIGH("\nENC_CONFIG: Codec: %d, Profile %d, level : %d",
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Codec: %d, Profile %d, level : %d",
             m_sVenc_cfg.codectype, codec_profile.profile, profile_level.level);
 
-    DEBUG_PRINT_HIGH("\n ENC_CONFIG: Width: %d, Height:%d, Fps: %d",
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Width: %d, Height:%d, Fps: %d",
             m_sVenc_cfg.input_width, m_sVenc_cfg.input_height,
             m_sVenc_cfg.fps_num/m_sVenc_cfg.fps_den);
 
-    DEBUG_PRINT_HIGH("\nENC_CONFIG: Bitrate: %d, RC: %d, I-Period: %d",
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Bitrate: %d, RC: %d, I-Period: %d",
             bitrate.target_bitrate, rate_ctrl.rcmode, intra_period.num_pframes);
 
-    DEBUG_PRINT_HIGH("\nENC_CONFIG: qpI: %d, qpP: %d, qpb: 0",
+    DEBUG_PRINT_HIGH("ENC_CONFIG: qpI: %d, qpP: %d, qpb: 0",
             session_qp.iframeqp, session_qp.pframqp);
 
-    DEBUG_PRINT_HIGH("\nENC_CONFIG: minQP: %d, maxQP: %d",
+    DEBUG_PRINT_HIGH("ENC_CONFIG: minQP: %d, maxQP: %d",
             qp_range.minqp, qp_range.maxqp);
 
-    DEBUG_PRINT_HIGH("\nENC_CONFIG: VOP_Resolution: %d, Slice-Mode: %d, Slize_Size: %d",
+    DEBUG_PRINT_HIGH("ENC_CONFIG: VOP_Resolution: %d, Slice-Mode: %d, Slize_Size: %d",
             voptimecfg.voptime_resolution, multislice.mslice_mode,
             multislice.mslice_size);
 
-    DEBUG_PRINT_HIGH("\nENC_CONFIG: EntropyMode: %d, CabacModel: %d",
+    DEBUG_PRINT_HIGH("ENC_CONFIG: EntropyMode: %d, CabacModel: %d",
             entropy.longentropysel, entropy.cabacmodel);
 
-    DEBUG_PRINT_HIGH("\nENC_CONFIG: DB-Mode: %d, alpha: %d, Beta: %d\n",
+    DEBUG_PRINT_HIGH("ENC_CONFIG: DB-Mode: %d, alpha: %d, Beta: %d",
             dbkfilter.db_mode, dbkfilter.slicealpha_offset,
             dbkfilter.slicebeta_offset);
 
-    DEBUG_PRINT_HIGH("\nENC_CONFIG: IntraMB/Frame: %d, HEC: %d\n",
+    DEBUG_PRINT_HIGH("ENC_CONFIG: IntraMB/Frame: %d, HEC: %d",
             intra_refresh.mbcount, hec.header_extension);
 }
 
@@ -1577,7 +1577,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
 
     pmem_tmp = (struct pmem *)buf_addr;
 
-    DEBUG_PRINT_LOW("\n venc_use_buf:: pmem_tmp = %p", pmem_tmp);
+    DEBUG_PRINT_LOW("venc_use_buf:: pmem_tmp = %p", pmem_tmp);
 
     if (port == PORT_INDEX_IN) {
         dev_buffer.pbuffer = (OMX_U8 *)pmem_tmp->buffer;
@@ -1603,7 +1603,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
             ioctl_msg.out = (void*)&buff_alloc_property;
 
             if (ioctl (m_nDriver_fd,VEN_IOCTL_GET_INPUT_BUFFER_REQ,(void*)&ioctl_msg) < 0) {
-                DEBUG_PRINT_ERROR("\nERROR: venc_use_buf:get input buffer failed ");
+                DEBUG_PRINT_ERROR("ERROR: venc_use_buf:get input buffer failed ");
                 return false;
             }
 
@@ -1621,14 +1621,14 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
         ioctl_msg.in  = (void*)&dev_buffer;
         ioctl_msg.out = NULL;
 
-        DEBUG_PRINT_LOW("\n venc_use_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
+        DEBUG_PRINT_LOW("venc_use_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
                 dev_buffer.fd, \
                 dev_buffer.offset, \
                 dev_buffer.maped_size);
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_INPUT_BUFFER,&ioctl_msg) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: venc_use_buf:set input buffer failed ");
+            DEBUG_PRINT_ERROR("ERROR: venc_use_buf:set input buffer failed ");
             return false;
         }
     } else if (port == PORT_INDEX_OUT) {
@@ -1640,18 +1640,18 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned)
         ioctl_msg.in  = (void*)&dev_buffer;
         ioctl_msg.out = NULL;
 
-        DEBUG_PRINT_LOW("\n venc_use_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
+        DEBUG_PRINT_LOW("venc_use_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
                 dev_buffer.fd, \
                 dev_buffer.offset, \
                 dev_buffer.maped_size);
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_OUTPUT_BUFFER,&ioctl_msg) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: venc_use_buf:set output buffer failed ");
+            DEBUG_PRINT_ERROR("ERROR: venc_use_buf:set output buffer failed ");
             return false;
         }
     } else {
-        DEBUG_PRINT_ERROR("\nERROR: venc_use_buf:Invalid Port Index ");
+        DEBUG_PRINT_ERROR("ERROR: venc_use_buf:Invalid Port Index ");
         return false;
     }
 
@@ -1666,7 +1666,7 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
 
     pmem_tmp = (struct pmem *)buf_addr;
 
-    DEBUG_PRINT_LOW("\n venc_use_buf:: pmem_tmp = %p", pmem_tmp);
+    DEBUG_PRINT_LOW("venc_use_buf:: pmem_tmp = %p", pmem_tmp);
 
     if (port == PORT_INDEX_IN) {
         dev_buffer.pbuffer = (OMX_U8 *)pmem_tmp->buffer;
@@ -1677,14 +1677,14 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
         ioctl_msg.in  = (void*)&dev_buffer;
         ioctl_msg.out = NULL;
 
-        DEBUG_PRINT_LOW("\n venc_free_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
+        DEBUG_PRINT_LOW("venc_free_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
                 dev_buffer.fd, \
                 dev_buffer.offset, \
                 dev_buffer.maped_size);
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_CMD_FREE_INPUT_BUFFER,&ioctl_msg) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: venc_free_buf: free input buffer failed ");
+            DEBUG_PRINT_ERROR("ERROR: venc_free_buf: free input buffer failed ");
             return false;
         }
     } else if (port == PORT_INDEX_OUT) {
@@ -1696,18 +1696,18 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
         ioctl_msg.in  = (void*)&dev_buffer;
         ioctl_msg.out = NULL;
 
-        DEBUG_PRINT_LOW("\n venc_free_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
+        DEBUG_PRINT_LOW("venc_free_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
                 dev_buffer.pbuffer, \
                 dev_buffer.fd, \
                 dev_buffer.offset, \
                 dev_buffer.maped_size);
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_CMD_FREE_OUTPUT_BUFFER,&ioctl_msg) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: venc_free_buf: free output buffer failed ");
+            DEBUG_PRINT_ERROR("ERROR: venc_free_buf: free output buffer failed ");
             return false;
         }
     } else {
-        DEBUG_PRINT_ERROR("\nERROR: venc_free_buf:Invalid Port Index ");
+        DEBUG_PRINT_ERROR("ERROR: venc_free_buf:Invalid Port Index ");
         return false;
     }
 
@@ -1729,19 +1729,19 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned,unsigne
     struct OMX_BUFFERHEADERTYPE *bufhdr;
 
     if (buffer == NULL) {
-        DEBUG_PRINT_ERROR("\nERROR: venc_etb: buffer is NULL");
+        DEBUG_PRINT_ERROR("ERROR: venc_etb: buffer is NULL");
         return false;
     }
 
     bufhdr = (OMX_BUFFERHEADERTYPE *)buffer;
 
-    DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
+    DEBUG_PRINT_LOW("Input buffer length %d",bufhdr->nFilledLen);
 
     if (pmem_data_buf) {
-        DEBUG_PRINT_LOW("\n Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
+        DEBUG_PRINT_LOW("Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
         frameinfo.ptrbuffer = (OMX_U8 *)pmem_data_buf;
     } else {
-        DEBUG_PRINT_LOW("\n Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
+        DEBUG_PRINT_LOW("Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
         frameinfo.ptrbuffer = (OMX_U8 *)bufhdr->pBuffer;
     }
 
@@ -1751,7 +1751,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned,unsigne
     frameinfo.flags = bufhdr->nFlags;
     frameinfo.offset = bufhdr->nOffset;
     frameinfo.timestamp = bufhdr->nTimeStamp;
-    DEBUG_PRINT_LOW("\n i/p TS = %u", (OMX_U32)frameinfo.timestamp);
+    DEBUG_PRINT_LOW("i/p TS = %u", (OMX_U32)frameinfo.timestamp);
     ioctl_msg.in = &frameinfo;
     ioctl_msg.out = NULL;
 
@@ -1775,10 +1775,10 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf,unsigned,unsigne
     c_offset= (y_size + 2047) & (~(2047));
 
     if (pmem_data_buf) {
-        DEBUG_PRINT_LOW("\n Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
+        DEBUG_PRINT_LOW("Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
         buf_addr = (OMX_U8 *)pmem_data_buf;
     } else {
-        DEBUG_PRINT_LOW("\n Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
+        DEBUG_PRINT_LOW("Shared PMEM addr for i/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
         buf_addr = (unsigned char *)mmap(NULL,
                 ((encoder_media_buffer_type *)bufhdr->pBuffer)->meta_handle->data[2],
                 PROT_READ|PROT_WRITE, MAP_SHARED,
@@ -1816,10 +1816,10 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned,unsigned
     bufhdr = (OMX_BUFFERHEADERTYPE *)buffer;
 
     if (pmem_data_buf) {
-        DEBUG_PRINT_LOW("\n Internal PMEM addr for o/p Heap UseBuf: %p", pmem_data_buf);
+        DEBUG_PRINT_LOW("Internal PMEM addr for o/p Heap UseBuf: %p", pmem_data_buf);
         frameinfo.ptrbuffer = (OMX_U8 *)pmem_data_buf;
     } else {
-        DEBUG_PRINT_LOW("\n Shared PMEM addr for o/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
+        DEBUG_PRINT_LOW("Shared PMEM addr for o/p PMEM UseBuf/AllocateBuf: %p", bufhdr->pBuffer);
         frameinfo.ptrbuffer = (OMX_U8 *)bufhdr->pBuffer;
     }
 
@@ -1834,7 +1834,7 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned,unsigned
             bufhdr->pBuffer, frameinfo.ptrbuffer, frameinfo.offset, frameinfo.len);
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_CMD_FILL_OUTPUT_BUFFER,&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: ioctl VEN_IOCTL_CMD_FILL_OUTPUT_BUFFER failed");
+        DEBUG_PRINT_ERROR("ERROR: ioctl VEN_IOCTL_CMD_FILL_OUTPUT_BUFFER failed");
         return false;
     }
 
@@ -1977,7 +1977,7 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp)
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_SESSION_QP,(void*)&ioctl_msg)< 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting session qp failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting session qp failed");
         return false;
     }
 
@@ -2001,7 +2001,7 @@ bool venc_dev::venc_set_qp_range(OMX_U32 min_qp, OMX_U32 max_qp)
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_QP_RANGE,(void*)&ioctl_msg)< 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting qp range failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting qp range failed");
         return false;
     }
 
@@ -2039,7 +2039,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
     DEBUG_PRINT_LOW("Validating Profile/Level from table");
 
     if (!venc_validate_profile_level(&eProfile, &eLevel)) {
-        DEBUG_PRINT_LOW("\nERROR: Profile/Level validation failed");
+        DEBUG_PRINT_LOW("ERROR: Profile/Level validation failed");
         return false;
     }
 
@@ -2059,7 +2059,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
                 (&mpeg4_profile_level_table[MPEG4_ASP_START]);
             profile_tbl += MPEG4_720P_LEVEL*5;
         } else {
-            DEBUG_PRINT_LOW("\nERROR: Unsupported MPEG4 profile = %u",
+            DEBUG_PRINT_LOW("ERROR: Unsupported MPEG4 profile = %u",
                     eProfile);
             return false;
         }
@@ -2097,10 +2097,10 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
 
                     if ((requested_profile.profile == VEN_PROFILE_MPEG4_SP) && (mb_per_frame >= profile_tbl[0]) &&
                             (mb_per_sec >= profile_tbl[1])) {
-                        DEBUG_PRINT_LOW("\nMPEG4 Level 6 is set for 720p resolution");
+                        DEBUG_PRINT_LOW("MPEG4 Level 6 is set for 720p resolution");
                         requested_level.level = VEN_LEVEL_MPEG4_6;
                     } else {
-                        DEBUG_PRINT_LOW("\nMPEG4 Level 5 is set for non-720p resolution");
+                        DEBUG_PRINT_LOW("MPEG4 Level 5 is set for non-720p resolution");
                         requested_level.level = VEN_LEVEL_MPEG4_5;
                     }
 
@@ -2115,7 +2115,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
         if (eProfile == OMX_VIDEO_H263ProfileBaseline) {
             requested_profile.profile = VEN_PROFILE_H263_BASELINE;
         } else {
-            DEBUG_PRINT_LOW("\nERROR: Unsupported H.263 profile = %u",
+            DEBUG_PRINT_LOW("ERROR: Unsupported H.263 profile = %u",
                     requested_profile.profile);
             return false;
         }
@@ -2158,7 +2158,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
         } else if (eProfile == OMX_VIDEO_AVCProfileHigh) {
             requested_profile.profile = VEN_PROFILE_H264_HIGH;
         } else {
-            DEBUG_PRINT_LOW("\nERROR: Unsupported H.264 profile = %u",
+            DEBUG_PRINT_LOW("ERROR: Unsupported H.264 profile = %u",
                     requested_profile.profile);
             return false;
         }
@@ -2202,7 +2202,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
                 requested_level.level = VEN_LEVEL_H264_4;
                 break;
             default :
-                DEBUG_PRINT_ERROR("\nERROR: Unsupported H.264 level= %u",
+                DEBUG_PRINT_ERROR("ERROR: Unsupported H.264 level= %u",
                         requested_level.level);
                 return false;
                 break;
@@ -2214,7 +2214,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
         ioctl_msg.out = NULL;
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_CODEC_PROFILE,(void*)&ioctl_msg)< 0) {
-            DEBUG_PRINT_ERROR("\nERROR: Request for setting profile failed");
+            DEBUG_PRINT_ERROR("ERROR: Request for setting profile failed");
             return false;
         }
 
@@ -2228,7 +2228,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
         ioctl_msg.out = NULL;
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_PROFILE_LEVEL,(void*)&ioctl_msg)< 0) {
-            DEBUG_PRINT_ERROR("\nERROR: Request for setting profile level failed");
+            DEBUG_PRINT_ERROR("ERROR: Request for setting profile level failed");
             return false;
         }
 
@@ -2254,7 +2254,7 @@ bool venc_dev::venc_set_voptiming_cfg( OMX_U32 TimeIncRes)
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_VOP_TIMING_CFG,(void*)&ioctl_msg)< 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting Vop Timing failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting Vop Timing failed");
         return false;
     }
 
@@ -2302,7 +2302,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_INTRA_PERIOD,(void*)&ioctl_msg)< 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting intra period failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
         return false;
     }
 
@@ -2317,7 +2317,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
     struct venc_entropycfg entropy_cfg;
 
     memset(&entropy_cfg,0,sizeof(entropy_cfg));
-    DEBUG_PRINT_LOW("\n venc_set_entropy_config: CABAC = %u level: %u", enable, i_cabac_level);
+    DEBUG_PRINT_LOW("venc_set_entropy_config: CABAC = %u level: %u", enable, i_cabac_level);
 
     if (enable &&(codec_profile.profile != VEN_PROFILE_H264_BASELINE)) {
         entropy_cfg.longentropysel = VEN_ENTROPY_MODEL_CABAC;
@@ -2343,7 +2343,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
     } else if (!enable) {
         entropy_cfg.longentropysel = VEN_ENTROPY_MODEL_CAVLC;
     } else {
-        DEBUG_PRINT_ERROR("\nInvalid Entropy mode for Baseline Profile");
+        DEBUG_PRINT_ERROR("Invalid Entropy mode for Baseline Profile");
         return false;
     }
 
@@ -2351,7 +2351,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_ENTROPY_CFG,(void*)&ioctl_msg)< 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting entropy config failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting entropy config failed");
         return false;
     }
 
@@ -2374,14 +2374,14 @@ bool venc_dev::venc_set_multislice_cfg(OMX_INDEXTYPE Codec, OMX_U32 nSlicesize) 
         multislice_cfg.mslice_size = 0;
     }
 
-    DEBUG_PRINT_LOW("\n %s(): mode = %u, size = %u", __func__, multislice_cfg.mslice_mode,
+    DEBUG_PRINT_LOW("%s(): mode = %u, size = %u", __func__, multislice_cfg.mslice_mode,
             multislice_cfg.mslice_size);
 
     ioctl_msg.in = (void*)&multislice_cfg;
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd, VEN_IOCTL_SET_MULTI_SLICE_CFG,(void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting multi-slice cfg failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting multi-slice cfg failed");
         status = false;
     } else {
         multislice.mslice_mode = multislice_cfg.mslice_mode;
@@ -2406,7 +2406,7 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
         intraRefresh_cfg.irmode = VEN_IR_CYCLIC;
         intraRefresh_cfg.mbcount = irMBs;
     } else {
-        DEBUG_PRINT_ERROR("\nERROR: Invalid IntraRefresh Parameters:"
+        DEBUG_PRINT_ERROR("ERROR: Invalid IntraRefresh Parameters:"
                 "mb count: %d, mb mode:%d", irMBs, ir_mode);
         return false;
     }
@@ -2415,7 +2415,7 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_INTRA_REFRESH,(void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting Intra Refresh failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting Intra Refresh failed");
         status = false;
     } else {
         intra_refresh.irmode = intraRefresh_cfg.irmode;
@@ -2443,7 +2443,7 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
         ioctl_msg.out = NULL;
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_HEC,(void*)&ioctl_msg) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: Request for setting HEader Error correction failed");
+            DEBUG_PRINT_ERROR("ERROR: Request for setting HEader Error correction failed");
             return false;
         }
 
@@ -2451,13 +2451,13 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
     }
 
     if (error_resilience->bEnableRVLC) {
-        DEBUG_PRINT_ERROR("\n RVLC is not Supported");
+        DEBUG_PRINT_ERROR("RVLC is not Supported");
         return false;
     }
 
     if (( m_sVenc_cfg.codectype != OMX_VIDEO_CodingH263) &&
             (error_resilience->bEnableDataPartitioning)) {
-        DEBUG_PRINT_ERROR("\n DataPartioning are not Supported for MPEG4/H264");
+        DEBUG_PRINT_ERROR("DataPartioning are not Supported for MPEG4/H264");
         return false;
     }
 
@@ -2474,13 +2474,13 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
         multislice_cfg.mslice_size = 0;
     }
 
-    DEBUG_PRINT_LOW("\n %s(): mode = %u, size = %u", __func__, multislice_cfg.mslice_mode,
+    DEBUG_PRINT_LOW("%s(): mode = %u, size = %u", __func__, multislice_cfg.mslice_mode,
             multislice_cfg.mslice_size);
     ioctl_msg.in = (void*)&multislice_cfg;
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_MULTI_SLICE_CFG,(void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting multi-slice cfg failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting multi-slice cfg failed");
         status = false;
     } else {
         multislice.mslice_mode = multislice_cfg.mslice_mode ;
@@ -2497,7 +2497,7 @@ bool venc_dev::venc_set_inloop_filter(OMX_VIDEO_AVCLOOPFILTERTYPE loopfilter)
     struct venc_dbcfg filter_cfg;
 
     memset(&filter_cfg, 0, sizeof(filter_cfg));
-    DEBUG_PRINT_LOW("\n venc_set_inloop_filter: %u",loopfilter);
+    DEBUG_PRINT_LOW("venc_set_inloop_filter: %u",loopfilter);
 
     if (loopfilter == OMX_VIDEO_AVCLoopFilterEnable) {
         filter_cfg.db_mode = VEN_DB_ALL_BLKG_BNDRY;
@@ -2513,7 +2513,7 @@ bool venc_dev::venc_set_inloop_filter(OMX_VIDEO_AVCLOOPFILTERTYPE loopfilter)
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_DEBLOCKING_CFG,(void*)&ioctl_msg)< 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting inloop filter failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting inloop filter failed");
         return false;
     }
 
@@ -2534,7 +2534,7 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
     ioctl_msg.out = NULL;
 
     if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_TARGET_BITRATE,(void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting bit rate failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting bit rate failed");
         return false;
     }
 
@@ -2545,7 +2545,7 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
         m_level_set = false;
 
         if (venc_set_profile_level(0, 0)) {
-            DEBUG_PRINT_LOW("Calling set level (Bitrate) with %d\n",profile_level.level);
+            DEBUG_PRINT_LOW("Calling set level (Bitrate) with %d",profile_level.level);
         }
     }
 
@@ -2567,7 +2567,7 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
 
     if (ioctl(m_nDriver_fd, VEN_IOCTL_SET_FRAME_RATE,
                 (void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting framerate failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting framerate failed");
         return false;
     }
 
@@ -2596,20 +2596,20 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
         m_sVenc_cfg.inputformat = VEN_INPUTFMT_NV12;
 #endif
     } else {
-        DEBUG_PRINT_ERROR("\nWARNING: Unsupported Color format [%d]", color_format);
+        DEBUG_PRINT_ERROR("WARNING: Unsupported Color format [%d]", color_format);
 #ifdef MAX_RES_1080P
         m_sVenc_cfg.inputformat= VEN_INPUTFMT_NV12_16M2KA;
 #else
         m_sVenc_cfg.inputformat = VEN_INPUTFMT_NV12;
 #endif
-        DEBUG_PRINT_HIGH("\n Default color format YUV420SemiPlanar is set");
+        DEBUG_PRINT_HIGH("Default color format YUV420SemiPlanar is set");
     }
 
     ioctl_msg.in = (void*)&m_sVenc_cfg;
     ioctl_msg.out = NULL;
 
     if (ioctl(m_nDriver_fd, VEN_IOCTL_SET_BASE_CFG, (void*)&ioctl_msg) < 0) {
-        DEBUG_PRINT_ERROR("\nERROR: Request for setting color format failed");
+        DEBUG_PRINT_ERROR("ERROR: Request for setting color format failed");
         return false;
     }
 
@@ -2618,15 +2618,15 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
 
 bool venc_dev::venc_set_intra_vop_refresh(OMX_BOOL intra_vop_refresh)
 {
-    DEBUG_PRINT_LOW("\n venc_set_intra_vop_refresh: intra_vop = %uc", intra_vop_refresh);
+    DEBUG_PRINT_LOW("venc_set_intra_vop_refresh: intra_vop = %uc", intra_vop_refresh);
 
     if (intra_vop_refresh == OMX_TRUE) {
         if (ioctl(m_nDriver_fd, VEN_IOCTL_CMD_REQUEST_IFRAME, NULL) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: Request for setting Intra VOP Refresh failed");
+            DEBUG_PRINT_ERROR("ERROR: Request for setting Intra VOP Refresh failed");
             return false;
         }
     } else {
-        DEBUG_PRINT_ERROR("\nERROR: VOP Refresh is False, no effect");
+        DEBUG_PRINT_ERROR("ERROR: VOP Refresh is False, no effect");
     }
 
     return true;
@@ -2665,7 +2665,7 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
         ioctl_msg.out = NULL;
 
         if (ioctl (m_nDriver_fd,VEN_IOCTL_SET_RATE_CTRL_CFG,(void*)&ioctl_msg) < 0) {
-            DEBUG_PRINT_ERROR("\nERROR: Request for setting rate control failed");
+            DEBUG_PRINT_ERROR("ERROR: Request for setting rate control failed");
             status = false;
         } else
             rate_ctrl.rcmode = ratectrl_cfg.rcmode;
@@ -2839,7 +2839,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
     OMX_U32 mb_per_frame, mb_per_sec;
     bool profile_level_found = false;
 
-    DEBUG_PRINT_LOW("\n Init profile table for respective codec");
+    DEBUG_PRINT_LOW("Init profile table for respective codec");
 
     //validate the ht,width,fps,bitrate and set the appropriate profile and level
     if (m_sVenc_cfg.codectype == VEN_CODEC_MPEG4) {
@@ -2855,7 +2855,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
                         *eProfile = OMX_VIDEO_MPEG4ProfileSimple;
                         break;
                     default:
-                        DEBUG_PRINT_LOW("\n %s(): Unknown Error", __func__);
+                        DEBUG_PRINT_LOW("%s(): Unknown Error", __func__);
                         return false;
                 }
             }
@@ -2871,7 +2871,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
             profile_tbl = (unsigned int const *)
                 (&mpeg4_profile_level_table[MPEG4_ASP_START]);
         } else {
-            DEBUG_PRINT_LOW("\n Unsupported MPEG4 profile type %lu", *eProfile);
+            DEBUG_PRINT_LOW("Unsupported MPEG4 profile type %lu", *eProfile);
             return false;
         }
     } else if (m_sVenc_cfg.codectype == VEN_CODEC_H264) {
@@ -2890,7 +2890,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
                         *eProfile = OMX_VIDEO_AVCProfileHigh;
                         break;
                     default:
-                        DEBUG_PRINT_LOW("\n %s(): Unknown Error", __func__);
+                        DEBUG_PRINT_LOW("%s(): Unknown Error", __func__);
                         return false;
                 }
             }
@@ -2909,7 +2909,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
             profile_tbl = (unsigned int const *)
                 (&h264_profile_level_table[H264_MP_START]);
         } else {
-            DEBUG_PRINT_LOW("\n Unsupported AVC profile type %lu", *eProfile);
+            DEBUG_PRINT_LOW("Unsupported AVC profile type %lu", *eProfile);
             return false;
         }
     } else if (m_sVenc_cfg.codectype == VEN_CODEC_H263) {
@@ -2922,7 +2922,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
                         *eProfile = OMX_VIDEO_H263ProfileBaseline;
                         break;
                     default:
-                        DEBUG_PRINT_LOW("\n %s(): Unknown Error", __func__);
+                        DEBUG_PRINT_LOW("%s(): Unknown Error", __func__);
                         return false;
                 }
             }
@@ -2935,11 +2935,11 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
         if (*eProfile == OMX_VIDEO_H263ProfileBaseline) {
             profile_tbl = (unsigned int const *)h263_profile_level_table;
         } else {
-            DEBUG_PRINT_LOW("\n Unsupported H.263 profile type %lu", *eProfile);
+            DEBUG_PRINT_LOW("Unsupported H.263 profile type %lu", *eProfile);
             return false;
         }
     } else {
-        DEBUG_PRINT_LOW("\n Invalid codec type");
+        DEBUG_PRINT_LOW("Invalid codec type");
         return false;
     }
 
@@ -2969,7 +2969,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
                     new_level = (int)profile_tbl[3];
                     new_profile = (int)profile_tbl[4];
                     profile_level_found = true;
-                    DEBUG_PRINT_LOW("\n Appropriate profile/level found %d/%d\n", new_profile, new_level);
+                    DEBUG_PRINT_LOW("Appropriate profile/level found %d/%d", new_profile, new_level);
                     break;
                 }
             }
@@ -2979,7 +2979,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
     } while (profile_tbl[0] != 0);
 
     if (profile_level_found != true) {
-        DEBUG_PRINT_LOW("\n ERROR: Unsupported profile/level\n");
+        DEBUG_PRINT_LOW("ERROR: Unsupported profile/level");
         return false;
     }
 

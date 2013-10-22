@@ -101,7 +101,7 @@ void RbspParser::advance ()
          * I don't see a problem here
          */
         //throw false;
-        ALOGV("H264Parser-->NEED TO THROW THE EXCEPTION...\n");
+        ALOGV("H264Parser-->NEED TO THROW THE EXCEPTION...");
     }
     cursor <<= 8;
     //cursor |= static_cast<uint32> (*pos);
@@ -292,7 +292,7 @@ boolean H264_Utils::extract_rbsp(OMX_IN   OMX_U8  *buffer,
     }
     nal_unit->nal_ref_idc   = (buffer[pos] & 0x60) >> 5;
     nal_unit->nalu_type = buffer[pos++] & 0x1f;
-    ALOGV("\n@#@# Pos = %x NalType = %x buflen = %d",
+    ALOGV("@#@# Pos = %x NalType = %x buflen = %d",
             pos-1, nal_unit->nalu_type, buffer_length);
     *rbsp_length = 0;
 
@@ -365,7 +365,7 @@ bool H264_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
     bool eRet = true;
 
     ALOGV("isNewFrame: buffer %p buffer_length %d "
-            "size_of_nal_length_field %d\n", buffer, buffer_length,
+            "size_of_nal_length_field %d", buffer, buffer_length,
             size_of_nal_length_field);
 
     if ( false == extract_rbsp(buffer, buffer_length, size_of_nal_length_field,
@@ -378,7 +378,7 @@ bool H264_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
         switch (nal_unit.nalu_type) {
             case NALU_TYPE_IDR:
             case NALU_TYPE_NON_IDR: {
-                            ALOGV("\n AU Boundary with NAL type %d ",nal_unit.nalu_type);
+                            ALOGV("AU Boundary with NAL type %d ",nal_unit.nalu_type);
                             if (m_forceToStichNextNAL) {
                                 isNewFrame = OMX_FALSE;
                             } else {
@@ -402,7 +402,7 @@ bool H264_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
             case NALU_TYPE_SPS:
             case NALU_TYPE_PPS:
             case NALU_TYPE_SEI: {
-                            ALOGV("\n Non-AU boundary with NAL type %d", nal_unit.nalu_type);
+                            ALOGV("Non-AU boundary with NAL type %d", nal_unit.nalu_type);
                             if (m_au_data) {
                                 isNewFrame = OMX_TRUE;
                                 m_au_data = false;
@@ -425,7 +425,7 @@ bool H264_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
         } // end of switch
     } // end of if
     m_prv_nalu = nal_unit;
-    ALOGV("get_h264_nal_type - newFrame value %d\n",isNewFrame);
+    ALOGV("get_h264_nal_type - newFrame value %d",isNewFrame);
     return eRet;
 }
 
@@ -1198,7 +1198,7 @@ void h264_stream_parser::parse_frame_pack()
     property_get("vidc.dec.debug.panframedata", property_value, "0");
     enable_framepack_log = atoi(property_value);
 #endif
-    ALOGV("\n%s:%d parse_frame_pack", __func__, __LINE__);
+    ALOGV("%s:%d parse_frame_pack", __func__, __LINE__);
 
     frame_packing_arrangement.id = uev();
 
@@ -1235,33 +1235,33 @@ void h264_stream_parser::parse_frame_pack()
 
 void h264_stream_parser::print_frame_pack()
 {
-    ALOGV("\n ## frame_packing_arrangement.id = %u", frame_packing_arrangement.id);
-    ALOGV("\n ## frame_packing_arrangement.cancel_flag = %u",
+    ALOGV("## frame_packing_arrangement.id = %u", frame_packing_arrangement.id);
+    ALOGV("## frame_packing_arrangement.cancel_flag = %u",
             frame_packing_arrangement.cancel_flag);
     if (!frame_packing_arrangement.cancel_flag) {
-        ALOGV("\n ## frame_packing_arrangement.type = %u",
+        ALOGV("## frame_packing_arrangement.type = %u",
                 frame_packing_arrangement.type);
-        ALOGV("\n ## frame_packing_arrangement.quincunx_sampling_flag = %u",
+        ALOGV("## frame_packing_arrangement.quincunx_sampling_flag = %u",
                 frame_packing_arrangement.quincunx_sampling_flag);
-        ALOGV("\n ## frame_packing_arrangement.content_interpretation_type = %u",
+        ALOGV("## frame_packing_arrangement.content_interpretation_type = %u",
                 frame_packing_arrangement.content_interpretation_type);
-        ALOGV("\n ## frame_packing_arrangement.spatial_flipping_flag = %u",
+        ALOGV("## frame_packing_arrangement.spatial_flipping_flag = %u",
                 frame_packing_arrangement.spatial_flipping_flag);
-        ALOGV("\n ## frame_packing_arrangement.frame0_flipped_flag = %u",
+        ALOGV("## frame_packing_arrangement.frame0_flipped_flag = %u",
                 frame_packing_arrangement.frame0_flipped_flag);
-        ALOGV("\n ## frame_packing_arrangement.field_views_flag = %u",
+        ALOGV("## frame_packing_arrangement.field_views_flag = %u",
                 frame_packing_arrangement.field_views_flag);
-        ALOGV("\n ## frame_packing_arrangement.current_frame_is_frame0_flag = %u",
+        ALOGV("## frame_packing_arrangement.current_frame_is_frame0_flag = %u",
                 frame_packing_arrangement.current_frame_is_frame0_flag);
-        ALOGV("\n ## frame_packing_arrangement.frame0_self_contained_flag = %u",
+        ALOGV("## frame_packing_arrangement.frame0_self_contained_flag = %u",
                 frame_packing_arrangement.frame0_self_contained_flag);
-        ALOGV("\n ## frame_packing_arrangement.frame1_self_contained_flag = %u",
+        ALOGV("## frame_packing_arrangement.frame1_self_contained_flag = %u",
                 frame_packing_arrangement.frame1_self_contained_flag);
-        ALOGV("\n ## frame_packing_arrangement.reserved_byte = %u",
+        ALOGV("## frame_packing_arrangement.reserved_byte = %u",
                 frame_packing_arrangement.reserved_byte);
-        ALOGV("\n ## frame_packing_arrangement.repetition_period = %u",
+        ALOGV("## frame_packing_arrangement.repetition_period = %u",
                 frame_packing_arrangement.repetition_period);
-        ALOGV("\n ## frame_packing_arrangement.extension_flag = %u",
+        ALOGV("## frame_packing_arrangement.extension_flag = %u",
                 frame_packing_arrangement.extension_flag);
     }
 }
@@ -1270,7 +1270,7 @@ void h264_stream_parser::print_frame_pack()
 void h264_stream_parser::get_frame_pack_data(
         OMX_QCOM_FRAME_PACK_ARRANGEMENT *frame_pack)
 {
-    ALOGV("\n%s:%d get frame data", __func__, __LINE__);
+    ALOGV("%s:%d get frame data", __func__, __LINE__);
     memcpy(&frame_pack->id,&frame_packing_arrangement.id,
             FRAME_PACK_SIZE*sizeof(OMX_U32));
     return;
@@ -1279,7 +1279,7 @@ void h264_stream_parser::get_frame_pack_data(
 
 bool h264_stream_parser::is_mbaff()
 {
-    ALOGV("\n%s:%d MBAFF flag=%d", __func__, __LINE__,mbaff_flag);
+    ALOGV("%s:%d MBAFF flag=%d", __func__, __LINE__,mbaff_flag);
     return mbaff_flag;
 }
 

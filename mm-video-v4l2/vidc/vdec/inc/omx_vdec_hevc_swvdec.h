@@ -76,9 +76,9 @@ extern "C"{
 #define TIMEOUT 5000
 
 #else //_ANDROID_
-#define DEBUG_PRINT_LOW printf
-#define DEBUG_PRINT_HIGH printf
-#define DEBUG_PRINT_ERROR printf
+#define DEBUG_PRINT_LOW(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
+#define DEBUG_PRINT_HIGH(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
+#define DEBUG_PRINT_ERROR(fmt, ...) printf(fmt "\n", ##__VA_ARGS__)
 #endif // _ANDROID_
 
 
