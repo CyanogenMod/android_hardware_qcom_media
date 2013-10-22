@@ -50,7 +50,7 @@ OMX_U32 extra_data_handler::d_u(OMX_U32 num_bits)
     OMX_U32 rem_bits = num_bits, bins = 0, shift = 0;
 
     while (rem_bits >= bit_ptr) {
-        DEBUG_PRINT_LOW("\nIn %s() bit_ptr/byte_ptr :%lu/%lu/%x", __func__, bit_ptr,
+        DEBUG_PRINT_LOW("In %s() bit_ptr/byte_ptr :%lu/%lu/%x", __func__, bit_ptr,
                 byte_ptr, rbsp_buf[byte_ptr]);
         bins <<= shift;
         shift = (8-bit_ptr);
@@ -60,7 +60,7 @@ OMX_U32 extra_data_handler::d_u(OMX_U32 num_bits)
         byte_ptr ++;
     }
 
-    DEBUG_PRINT_LOW("\nIn %s() bit_ptr/byte_ptr :%lu/%lu/%x", __func__, bit_ptr,
+    DEBUG_PRINT_LOW("In %s() bit_ptr/byte_ptr :%lu/%lu/%x", __func__, bit_ptr,
             byte_ptr, rbsp_buf[byte_ptr]);
 
     if (rem_bits) {
@@ -74,10 +74,10 @@ OMX_U32 extra_data_handler::d_u(OMX_U32 num_bits)
         }
     }
 
-    DEBUG_PRINT_LOW("\nIn %s() bit_ptr/byte_ptr :%lu/%lu/%x", __func__, bit_ptr,
+    DEBUG_PRINT_LOW("In %s() bit_ptr/byte_ptr :%lu/%lu/%x", __func__, bit_ptr,
             byte_ptr, rbsp_buf[byte_ptr]);
 
-    DEBUG_PRINT_LOW("\nIn %s() bin/num_bits : %x/%lu", __func__, (unsigned)bins, num_bits);
+    DEBUG_PRINT_LOW("In %s() bin/num_bits : %x/%lu", __func__, (unsigned)bins, num_bits);
     return bins;
 }
 
@@ -93,7 +93,7 @@ OMX_U32 extra_data_handler::d_ue()
 
     symbol = ((1 << lead_zeros) - 1) + d_u(lead_zeros);
 
-    DEBUG_PRINT_LOW("\nIn %s() symbol : %lu", __func__,symbol);
+    DEBUG_PRINT_LOW("In %s() symbol : %lu", __func__,symbol);
     return symbol;
 }
 
@@ -145,19 +145,19 @@ OMX_S32 extra_data_handler::parse_rbsp(OMX_U8 *buf, OMX_U32 len)
     }
 
     if (startcode != H264_START_CODE) {
-        DEBUG_PRINT_ERROR("\nERROR: In %s() Start code not found", __func__);
+        DEBUG_PRINT_ERROR("ERROR: In %s() Start code not found", __func__);
         return -1;
     }
 
     forbidden_zero_bit = (buf[i] & 0x80) >>7;
 
     if (forbidden_zero_bit) {
-        DEBUG_PRINT_ERROR("\nERROR: In %s() Non-zero forbidden bit", __func__);
+        DEBUG_PRINT_ERROR("ERROR: In %s() Non-zero forbidden bit", __func__);
         return -1;
     }
 
     nal_ref_idc = (buf[i] & 0x60) >>5;
-    DEBUG_PRINT_LOW("\nIn %s() nal_ref_idc ; %lu", __func__, nal_ref_idc);
+    DEBUG_PRINT_LOW("In %s() nal_ref_idc ; %lu", __func__, nal_ref_idc);
 
     nal_unit_type = (buf[i++] & 0x1F);
 
@@ -181,7 +181,7 @@ OMX_S32 extra_data_handler::parse_sei(OMX_U8 *buffer, OMX_U32 buffer_length)
     nal_unit_type = parse_rbsp(buffer, buffer_length);
 
     if (nal_unit_type != NAL_TYPE_SEI) {
-        DEBUG_PRINT_ERROR("\nERROR: In %s() - Non SEI NAL ", __func__);
+        DEBUG_PRINT_ERROR("ERROR: In %s() - Non SEI NAL ", __func__);
         return -1;
     } else {
 
@@ -190,22 +190,22 @@ OMX_S32 extra_data_handler::parse_sei(OMX_U8 *buffer, OMX_U32 buffer_length)
 
         payload_type += rbsp_buf[byte_ptr++];
 
-        DEBUG_PRINT_LOW("\nIn %s() payload_type : %lu", __func__, payload_type);
+        DEBUG_PRINT_LOW("In %s() payload_type : %lu", __func__, payload_type);
 
         while (rbsp_buf[byte_ptr] == 0xFF)
             payload_size += rbsp_buf[byte_ptr++];
 
         payload_size += rbsp_buf[byte_ptr++];
 
-        DEBUG_PRINT_LOW("\nIn %s() payload_size : %lu", __func__, payload_size);
+        DEBUG_PRINT_LOW("In %s() payload_size : %lu", __func__, payload_size);
 
         switch (payload_type) {
             case SEI_PAYLOAD_FRAME_PACKING_ARRANGEMENT:
-                DEBUG_PRINT_LOW("\nIn %s() Frame Packing SEI ", __func__);
+                DEBUG_PRINT_LOW("In %s() Frame Packing SEI ", __func__);
                 parse_frame_pack(payload_size);
                 break;
             default:
-                DEBUG_PRINT_LOW("\nINFO: In %s() Not Supported SEI NAL ", __func__);
+                DEBUG_PRINT_LOW("INFO: In %s() Not Supported SEI NAL ", __func__);
                 break;
         }
     }
@@ -218,19 +218,19 @@ OMX_S32 extra_data_handler::parse_sei(OMX_U8 *buffer, OMX_U32 buffer_length)
                 pad = d_u(bit_ptr);
 
                 if (pad) {
-                    DEBUG_PRINT_ERROR("\nERROR: In %s() padding Bits Error in SEI",
+                    DEBUG_PRINT_ERROR("ERROR: In %s() padding Bits Error in SEI",
                             __func__);
                     return -1;
                 }
             }
         } else {
-            DEBUG_PRINT_ERROR("\nERROR: In %s() Marker Bit Error in SEI",
+            DEBUG_PRINT_ERROR("ERROR: In %s() Marker Bit Error in SEI",
                     __func__);
             return -1;
         }
     }
 
-    DEBUG_PRINT_LOW("\nIn %s() payload_size : %lu/%lu", __func__,
+    DEBUG_PRINT_LOW("In %s() payload_size : %lu/%lu", __func__,
             payload_size, byte_ptr);
     return 1;
 }
@@ -364,7 +364,7 @@ OMX_U32 extra_data_handler::parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr)
 OMX_U32 extra_data_handler::get_frame_pack_data(
         OMX_QCOM_FRAME_PACK_ARRANGEMENT *frame_pack)
 {
-    DEBUG_PRINT_LOW("\n%s:%d get frame data", __func__, __LINE__);
+    DEBUG_PRINT_LOW("%s:%d get frame data", __func__, __LINE__);
     memcpy(&frame_pack->id,&frame_packing_arrangement.id,
             FRAME_PACK_SIZE*sizeof(OMX_U32));
     return 1;
@@ -373,7 +373,7 @@ OMX_U32 extra_data_handler::get_frame_pack_data(
 OMX_U32 extra_data_handler::set_frame_pack_data(OMX_QCOM_FRAME_PACK_ARRANGEMENT
         *frame_pack)
 {
-    DEBUG_PRINT_LOW("\n%s:%d set frame data", __func__, __LINE__);
+    DEBUG_PRINT_LOW("%s:%d set frame data", __func__, __LINE__);
     memcpy(&frame_packing_arrangement.id, &frame_pack->id,
             FRAME_PACK_SIZE*sizeof(OMX_U32));
     pack_sei = true;
@@ -385,14 +385,14 @@ OMX_U32 extra_data_handler::e_u(OMX_U32 symbol, OMX_U32 num_bits)
 {
     OMX_U32 rem_bits = num_bits, shift;
 
-    DEBUG_PRINT_LOW("\n%s bin  : %x/%lu", __func__, (unsigned)symbol, num_bits);
+    DEBUG_PRINT_LOW("%s bin  : %x/%lu", __func__, (unsigned)symbol, num_bits);
 
     while (rem_bits >= bit_ptr) {
         shift = rem_bits - bit_ptr;
         rbsp_buf[byte_ptr] |= (symbol >> shift);
         symbol = (symbol << (32 - shift)) >> (32 - shift);
         rem_bits -= bit_ptr;
-        DEBUG_PRINT_LOW("\n%sstream byte/rem_bits %x/%lu", __func__,
+        DEBUG_PRINT_LOW("%sstream byte/rem_bits %x/%lu", __func__,
                 (unsigned)rbsp_buf[byte_ptr], rem_bits);
         byte_ptr ++;
         bit_ptr = 8;
@@ -402,7 +402,7 @@ OMX_U32 extra_data_handler::e_u(OMX_U32 symbol, OMX_U32 num_bits)
         shift = bit_ptr - rem_bits;
         rbsp_buf[byte_ptr] |= (symbol << shift);
         bit_ptr -= rem_bits;
-        DEBUG_PRINT_LOW("\n%s 2 stream byte/rem_bits %x/%lu", __func__,
+        DEBUG_PRINT_LOW("%s 2 stream byte/rem_bits %x/%lu", __func__,
                 (unsigned)rbsp_buf[byte_ptr], rem_bits);
 
         if (bit_ptr == 0) {
@@ -419,7 +419,7 @@ OMX_U32 extra_data_handler::e_ue(OMX_U32 symbol)
     OMX_U32 i, sym_len, sufix_len, info;
     OMX_U32 nn =(symbol + 1) >> 1;
 
-    DEBUG_PRINT_LOW("\n%s bin  : %x", __func__, (unsigned)symbol);
+    DEBUG_PRINT_LOW("%s bin  : %x", __func__, (unsigned)symbol);
 
     for (i=0; i < 33 && nn != 0; i++)
         nn >>= 1;
@@ -492,7 +492,7 @@ OMX_S32 extra_data_handler::create_rbsp(OMX_U8 *buf, OMX_U32 nalu_type)
         }
     }
 
-    DEBUG_PRINT_LOW("\n%s rbsp length %lu", __func__, j);
+    DEBUG_PRINT_LOW("%s rbsp length %lu", __func__, j);
     return j;
 }
 
@@ -534,7 +534,7 @@ OMX_U32 extra_data_handler::create_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr)
     OMX_U32 msg_size;
 
     if (buf_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-        DEBUG_PRINT_LOW("\n%s:%d create extra data with config", __func__,
+        DEBUG_PRINT_LOW("%s:%d create extra data with config", __func__,
                 __LINE__);
 
         if (pack_sei) {

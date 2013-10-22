@@ -61,7 +61,7 @@ struct video_msgq * queue_get_cmd (void* queuecontext ) {
     struct video_msgq *pitem = NULL;
 
     if ( NULL == queuecontext ) {
-        printf("\n queue_get_cmd: Invalid Input parameter\n");
+        printf("queue_get_cmd: Invalid Input parameter");
         return NULL;
     }
 
@@ -106,7 +106,7 @@ int queue_post_cmdq ( void* queuecontext,
     pthread_mutex_lock(&ptr_q->mutex);
 
     if ((ptr_q->write_comq + 1) % ptr_q->commandq_size == ptr_q->read_comq) {
-        printf("\n QUEUE is FULL");
+        printf("QUEUE is FULL");
         /* Unlock the mutex to release the critical section */
         pthread_mutex_unlock(&ptr_q->mutex);
         return 0;
@@ -142,7 +142,7 @@ int queue_post_dataq ( void *queuecontext,
     pthread_mutex_lock(&ptr_q->mutex);
 
     if ((ptr_q->write_dataq + 1) % ptr_q->dataq_size == ptr_q->read_dataq) {
-        printf("\n QUEUE is FULL");
+        printf("QUEUE is FULL");
         /* Unlock the mutex to release the critical section */
         pthread_mutex_unlock(&ptr_q->mutex);
         return 0;
