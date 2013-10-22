@@ -371,7 +371,7 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
   }
   nSize = (nSize + 4095) & (~4095);
   ion_data.alloc_data.len = nSize;
-  ion_data.alloc_data.heap_mask = 0x1 << ION_CP_MM_HEAP_ID;
+  ion_data.alloc_data.heap_id_mask = 0x1 << ION_CP_MM_HEAP_ID;
   ion_data.alloc_data.align = 4096;
   ion_data.alloc_data.flags = 0;
 

@@ -7596,10 +7596,10 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
   }
 
   if(secure_mode) {
-    alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
+    alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
     alloc_data->flags |= ION_SECURE;
   } else {
-    alloc_data->heap_mask = (ION_HEAP(ION_IOMMU_HEAP_ID));
+    alloc_data->heap_id_mask = (ION_HEAP(ION_IOMMU_HEAP_ID));
   }
   rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
   if (rc || !alloc_data->handle) {

@@ -4035,9 +4035,9 @@ int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
     alloc_data->flags = flag;
 #ifdef MAX_RES_720P
     alloc_data->len = (size + (alloc_data->align - 1)) & ~(alloc_data->align - 1);
-    alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
+    alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
 #else
-    alloc_data->heap_mask = (ION_HEAP(MEM_HEAP_ID) |
+    alloc_data->heap_id_mask = (ION_HEAP(MEM_HEAP_ID) |
             ION_HEAP(ION_IOMMU_HEAP_ID));
 #endif
     rc = ioctl(ion_device_fd,ION_IOC_ALLOC,alloc_data);
