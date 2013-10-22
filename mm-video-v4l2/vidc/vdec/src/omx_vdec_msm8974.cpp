@@ -67,6 +67,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "DivXDrmDecrypt.h"
 #endif //_ANDROID_
 
+#ifdef META_DATA_MODE_SUPPORTED
+#include "QComOMXMetadata.h"
+#endif
+
 #ifdef USE_EGL_IMAGE_GPU
 #include <EGL/egl.h>
 #include <EGL/eglQCOM.h>

@@ -111,6 +111,11 @@ libmm-vdec-inc      += frameworks/av/include/media/stagefright
 libmm-vdec-inc      += $(TARGET_OUT_HEADERS)/mm-video/SwVdec
 libmm-vdec-inc      += $(TARGET_OUT_HEADERS)/qcom/display/
 
+ifdef TARGET_ENABLE_DEC_META_DATA_MODE
+libOmxVdec-def += -DMETA_DATA_MODE_SUPPORTED
+libmm-vdec-inc += hardware/qcom/media/libstagefrighthw
+endif
+
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libOmxVdec-def)

@@ -22,6 +22,10 @@ LOCAL_SRC_FILES := \
 
 LOCAL_CFLAGS := $(PV_CFLAGS_MINUS_VISIBILITY)
 
+ifdef TARGET_ENABLE_DEC_META_DATA_MODE
+LOCAL_CFLAGS += -DMETA_DATA_MODE_SUPPORTED
+endif
+
 LOCAL_C_INCLUDES:= \
         frameworks/native/include/media/openmax \
         frameworks/native/include/media/hardware
