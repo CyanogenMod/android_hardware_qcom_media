@@ -43,7 +43,8 @@ LOCAL_C_INCLUDES := \
 	$(TOP)/frameworks/av/media/libstagefright/rtsp                \
 	$(TOP)/hardware/qcom/media/mm-core/inc                        \
 
-ifeq ($(PLATFORM_SDK_VERSION), 18)
+#ifeq ($(PLATFORM_SDK_VERSION), 18)
+ifeq ($(call is-platform-sdk-version-at-least,18),true)
   LOCAL_CFLAGS += -DANDROID_JB_MR2
 endif
 
