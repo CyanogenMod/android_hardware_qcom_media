@@ -71,6 +71,7 @@ extern "C" {
 }
 #include <linux/videodev2.h>
 #include <poll.h>
+#include "hevc_utils.h"
 #define TIMEOUT 5000
 #endif // _ANDROID_
 
@@ -606,6 +607,7 @@ class omx_vdec: public qc_omx_component
         OMX_ERRORTYPE push_input_buffer (OMX_HANDLETYPE hComp);
         OMX_ERRORTYPE push_input_sc_codec (OMX_HANDLETYPE hComp);
         OMX_ERRORTYPE push_input_h264 (OMX_HANDLETYPE hComp);
+        OMX_ERRORTYPE push_input_hevc (OMX_HANDLETYPE hComp);
         OMX_ERRORTYPE push_input_vc1 (OMX_HANDLETYPE hComp);
 
         OMX_ERRORTYPE fill_this_buffer_proxy(OMX_HANDLETYPE       hComp,
@@ -807,6 +809,10 @@ class omx_vdec: public qc_omx_component
 
         /*Variables for arbitrary Byte parsing support*/
         frame_parse m_frame_parser;
+        h264_stream_parser *h264_parser;
+        MP4_Utils mp4_headerparser;
+        HEVC_Utils m_hevc_utils;
+
         omx_cmd_queue m_input_pending_q;
         omx_cmd_queue m_input_free_q;
         bool arbitrary_bytes;
@@ -842,7 +848,6 @@ class omx_vdec: public qc_omx_component
         struct vdec_allocatorproperty op_buf_rcnfg;
         bool in_reconfig;
         OMX_NATIVE_WINDOWTYPE m_display_id;
-        h264_stream_parser *h264_parser;
         OMX_U32 client_extradata;
 #ifdef _ANDROID_
         bool m_debug_timestamp;
@@ -856,9 +861,7 @@ class omx_vdec: public qc_omx_component
         bool m_debug_extradata;
         bool m_debug_concealedmb;
 #endif
-#ifdef MAX_RES_1080P
-        MP4_Utils mp4_headerparser;
-#endif
+
 
         struct h264_mv_buffer {
             unsigned char* buffer;

@@ -43,7 +43,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 
 #include "frameparser.h"
-//#include "omx_vdec.h"
 #include "vidc_debug.h"
 
 #ifdef _ANDROID_
