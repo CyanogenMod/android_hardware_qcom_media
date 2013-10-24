@@ -187,6 +187,7 @@ class VideoHeap : public MemoryHeapBase
 #define OMX_PORTDEF_EXTRADATA   0x00080000
 #define OMX_EXTNUSER_EXTRADATA  0x00100000
 #define OMX_FRAMEDIMENSION_EXTRADATA  0x00200000
+#define OMX_FRAMEPACK_EXTRADATA 0x00400000
 #define DRIVER_EXTRADATA_MASK   0x0000FFFF
 
 #define OMX_INTERLACE_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
@@ -197,6 +198,8 @@ class VideoHeap : public MemoryHeapBase
             sizeof(OMX_PARAM_PORTDEFINITIONTYPE) + 3)&(~3))
 #define OMX_FRAMEDIMENSION_EXTRADATA_SIZE (sizeof(OMX_OTHER_EXTRADATATYPE) +\
             sizeof(OMX_QCOM_EXTRADATA_FRAMEDIMENSION) + 3)&(~3)
+#define OMX_FRAMEPACK_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
+            sizeof(OMX_QCOM_FRAME_PACK_ARRANGEMENT) + 3)&(~3))
 
 //  Define next macro with required values to enable default extradata,
 //    VDEC_EXTRADATA_MB_ERROR_MAP
@@ -660,6 +663,8 @@ class omx_vdec: public qc_omx_component
         void append_frame_dimension_extradata(OMX_OTHER_EXTRADATATYPE *extra);
         void append_extn_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_extn);
         void append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_user);
+        void append_framepack_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+                struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload);
         void insert_demux_addr_offset(OMX_U32 address_offset);
         void extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr);
         OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
@@ -890,6 +895,7 @@ class omx_vdec: public qc_omx_component
         DivXDrmDecrypt* iDivXDrmDecrypt;
 #endif //_ANDROID_
         OMX_PARAM_PORTDEFINITIONTYPE m_port_def;
+        OMX_QCOM_FRAME_PACK_ARRANGEMENT m_frame_pack_arrangement;
         omx_time_stamp_reorder time_stamp_dts;
         desc_buffer_hdr *m_desc_buffer_ptr;
         bool secure_mode;
