@@ -1249,6 +1249,33 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 break;
 
            }
+        case OMX_QcomIndexParamPerfLevel:
+            {
+                if (!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE) OMX_QcomIndexParamPerfLevel)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting performance level");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamH264VUITimingInfo:
+            {
+                if (!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE) OMX_QcomIndexParamH264VUITimingInfo)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting VUI timing info");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamPeakBitrate:
+            {
+                if (!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE) OMX_QcomIndexParamPeakBitrate)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting peak bitrate");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -1719,6 +1746,36 @@ bool omx_venc::dev_get_capability_ltrcount(OMX_U32 *min, OMX_U32 *max, OMX_U32 *
     return false;
 #else
     return handle->venc_get_capability_ltrcount(min, max, step_size);
+#endif
+}
+
+bool omx_venc::dev_get_performance_level(OMX_U32 *perflevel)
+{
+#ifdef _MSM8974_
+    return handle->venc_get_performance_level(perflevel);
+#else
+    DEBUG_PRINT_ERROR("Get performance level is not supported");
+    return false;
+#endif
+}
+
+bool omx_venc::dev_get_vui_timing_info(OMX_U32 *enabled)
+{
+#ifdef _MSM8974_
+    return handle->venc_get_vui_timing_info(enabled);
+#else
+    DEBUG_PRINT_ERROR("Get vui timing information is not supported");
+    return false;
+#endif
+}
+
+bool omx_venc::dev_get_peak_bitrate(OMX_U32 *peakbitrate)
+{
+#ifdef _MSM8974_
+    return handle->venc_get_peak_bitrate(peakbitrate);
+#else
+    DEBUG_PRINT_ERROR("Get peak bitrate is not supported");
+    return false;
 #endif
 }
 

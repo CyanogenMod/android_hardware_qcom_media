@@ -225,6 +225,9 @@ class omx_video: public qc_omx_component
 #endif
         virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
         virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
+        virtual bool dev_get_performance_level(OMX_U32 *) = 0;
+        virtual bool dev_get_vui_timing_info(OMX_U32 *) = 0;
+        virtual bool dev_get_peak_bitrate(OMX_U32 *) = 0;
 #ifdef _ANDROID_ICS_
         void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif
