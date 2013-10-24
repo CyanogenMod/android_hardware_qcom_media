@@ -624,6 +624,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     memset(&native_buffer, 0 ,(sizeof(struct nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
 #endif
     memset(&drv_ctx.extradata_info, 0, sizeof(drv_ctx.extradata_info));
+    memset(&m_frame_pack_arrangement, 0, sizeof(OMX_QCOM_FRAME_PACK_ARRANGEMENT));
     drv_ctx.timestamp_adjust = false;
     drv_ctx.video_driver_fd = -1;
     m_vendor_config.pData = NULL;
@@ -3296,6 +3297,15 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    eRet = OMX_ErrorUnsupportedSetting;
                                }
                                break;
+        case OMX_QcomIndexParamVideoFramePackingExtradata:
+                               if (!secure_mode)
+                                   eRet = enable_extradata(OMX_FRAMEPACK_EXTRADATA, false,
+                                           ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                               else {
+                                   DEBUG_PRINT_ERROR("\n Setting extradata in secure mode is not supported");
+                                   eRet = OMX_ErrorUnsupportedSetting;
+                               }
+                               break;
         case OMX_QcomIndexParamVideoDivx: {
                               QOMX_VIDEO_PARAM_DIVXTYPE* divXType = (QOMX_VIDEO_PARAM_DIVXTYPE *) paramData;
                           }
@@ -3555,7 +3565,8 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                                           if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264) {
                                               OMX_QCOM_FRAME_PACK_ARRANGEMENT *configFmt =
                                                   (OMX_QCOM_FRAME_PACK_ARRANGEMENT *) configData;
-                                              h264_parser->get_frame_pack_data(configFmt);
+                                              memcpy(configFmt, &m_frame_pack_arrangement,
+                                                  sizeof(OMX_QCOM_FRAME_PACK_ARRANGEMENT));
                                           } else {
                                               DEBUG_PRINT_ERROR("get_config: Framepack data not supported for non H264 codecs");
                                           }
@@ -3799,6 +3810,8 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     return OMX_ErrorNotImplemented;
 }
 
+#define extn_equals(param, extn) (!strncmp(param, extn, strlen(extn)))
+
 /* ======================================================================
    FUNCTION
    omx_vdec::GetExtensionIndex
@@ -3820,24 +3833,28 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     if (m_state == OMX_StateInvalid) {
         DEBUG_PRINT_ERROR("Get Extension Index in Invalid State");
         return OMX_ErrorInvalidState;
-    } else if (!strncmp(paramName, "OMX.QCOM.index.param.video.SyncFrameDecodingMode",sizeof("OMX.QCOM.index.param.video.SyncFrameDecodingMode") - 1)) {
+    } else if (extn_equals(paramName, "OMX.QCOM.index.param.video.SyncFrameDecodingMode")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoSyncFrameDecodingMode;
-    } else if (!strncmp(paramName, "OMX.QCOM.index.param.IndexExtraData",sizeof("OMX.QCOM.index.param.IndexExtraData") - 1)) {
+    } else if (extn_equals(paramName, "OMX.QCOM.index.param.IndexExtraData")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamIndexExtraDataType;
+    } else if (extn_equals(paramName, OMX_QCOM_INDEX_PARAM_VIDEO_FRAMEPACKING_EXTRADATA)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoFramePackingExtradata;
+    } else if (extn_equals(paramName, OMX_QCOM_INDEX_CONFIG_VIDEO_FRAMEPACKING_INFO)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoFramePackingArrangement;
     }
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
-    else if (!strncmp(paramName,"OMX.google.android.index.enableAndroidNativeBuffers", sizeof("OMX.google.android.index.enableAndroidNativeBuffers") - 1)) {
+    else if (extn_equals(paramName, "OMX.google.android.index.enableAndroidNativeBuffers")) {
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexEnableAndroidNativeBuffers;
-    } else if (!strncmp(paramName,"OMX.google.android.index.useAndroidNativeBuffer2", sizeof("OMX.google.android.index.enableAndroidNativeBuffer2") - 1)) {
+    } else if (extn_equals(paramName, "OMX.google.android.index.useAndroidNativeBuffer2")) {
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexUseAndroidNativeBuffer2;
-    } else if (!strncmp(paramName,"OMX.google.android.index.useAndroidNativeBuffer", sizeof("OMX.google.android.index.enableAndroidNativeBuffer") - 1)) {
+    } else if (extn_equals(paramName, "OMX.google.android.index.useAndroidNativeBuffer")) {
         DEBUG_PRINT_ERROR("Extension: %s is supported", paramName);
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexUseAndroidNativeBuffer;
-    } else if (!strncmp(paramName,"OMX.google.android.index.getAndroidNativeBufferUsage", sizeof("OMX.google.android.index.getAndroidNativeBufferUsage") - 1)) {
+    } else if (extn_equals(paramName, "OMX.google.android.index.getAndroidNativeBufferUsage")) {
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage;
     }
 #endif
-    else if (!strncmp(paramName, "OMX.google.android.index.storeMetaDataInBuffers", sizeof("OMX.google.android.index.storeMetaDataInBuffers") - 1)) {
+    else if (extn_equals(paramName, "OMX.google.android.index.storeMetaDataInBuffers")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
     }
     else {
@@ -7593,6 +7610,10 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
             DEBUG_PRINT_HIGH("Smooth streaming enabled extra_data_size=%d",
                     client_extra_data_size);
         }
+        if (client_extradata & OMX_FRAMEPACK_EXTRADATA) {
+            client_extra_data_size += OMX_FRAMEPACK_EXTRADATA_SIZE;
+            DEBUG_PRINT_HIGH("framepack extradata enabled");
+        }
         if (client_extra_data_size) {
             client_extra_data_size += sizeof(OMX_OTHER_EXTRADATATYPE); //Space for terminator
             buf_size = ((buf_size + 3)&(~3)); //Align extradata start address to 64Bit
@@ -8028,7 +8049,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     struct msm_vidc_panscan_window_payload *panscan_payload = NULL;
     OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr) +
         p_buf_hdr->nOffset;
+
     if (!drv_ctx.extradata_info.uaddr) {
+        DEBUG_PRINT_HIGH("NULL drv_ctx.extradata_info.uaddr");
         return;
     }
     if (!secure_mode)
@@ -8051,6 +8074,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                 DEBUG_PRINT_LOW("Invalid extra data size");
                 break;
             }
+            DEBUG_PRINT_LOW("handle_extradata: eType = %d", data->eType);
             switch ((unsigned long)data->eType) {
                 case EXTRADATA_INTERLACE_VIDEO:
                     struct msm_vidc_interlace_payload *payload;
@@ -8130,6 +8154,14 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         m_disp_vert_size = seqdisp_payload->disp_height;
                     }
                     break;
+                case EXTRADATA_S3D_FRAME_PACKING:
+                    struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload;
+                    s3d_frame_packing_payload = (struct msm_vidc_s3d_frame_packing_payload *)data->data;
+                    if (!secure_mode && (client_extradata & OMX_FRAMEPACK_EXTRADATA)) {
+                        append_framepack_extradata(p_extra, s3d_frame_packing_payload);
+                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                    }
+                    break;
                 default:
                     goto unrecognized_extradata;
             }
@@ -8178,7 +8210,8 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
                 DEBUG_PRINT_HIGH("Failed to set interlaced extradata."
                         " Quality of interlaced clips might be impacted.");
             }
-        } else if (requested_extradata & OMX_FRAMEINFO_EXTRADATA) {
+        }
+        if (requested_extradata & OMX_FRAMEINFO_EXTRADATA) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
             control.value = V4L2_MPEG_VIDC_EXTRADATA_FRAME_RATE;
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
@@ -8211,11 +8244,24 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
                     DEBUG_PRINT_HIGH("Failed to set panscan extradata");
                 }
             }
-        } else if (requested_extradata & OMX_TIMEINFO_EXTRADATA) {
+        }
+        if (requested_extradata & OMX_TIMEINFO_EXTRADATA) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
             control.value = V4L2_MPEG_VIDC_EXTRADATA_TIMESTAMP;
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
                 DEBUG_PRINT_HIGH("Failed to set timeinfo extradata");
+            }
+        }
+        if (requested_extradata & OMX_FRAMEPACK_EXTRADATA) {
+            if (output_capability == V4L2_PIX_FMT_H264) {
+                DEBUG_PRINT_HIGH("enable OMX_FRAMEPACK_EXTRADATA");
+                control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+                control.value =  V4L2_MPEG_VIDC_EXTRADATA_S3D_FRAME_PACKING;
+                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                    DEBUG_PRINT_HIGH("Failed to set S3D_FRAME_PACKING extradata");
+                }
+            } else {
+                DEBUG_PRINT_HIGH("OMX_FRAMEPACK_EXTRADATA supported for H264 only");
             }
         }
     }
@@ -8303,6 +8349,48 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
         }
 
         DEBUG_PRINT_HIGH("========= End of Frame Format ==========");
+    } else if (extra->eType == (OMX_EXTRADATATYPE)OMX_ExtraDataFramePackingArrangement) {
+        OMX_QCOM_FRAME_PACK_ARRANGEMENT *framepack = (OMX_QCOM_FRAME_PACK_ARRANGEMENT *)extra->data;
+        DEBUG_PRINT_HIGH(
+                "------------------ Framepack Format ----------\n"
+                "                           id: %lu \n"
+                "                  cancel_flag: %lu \n"
+                "                         type: %lu \n"
+                " quincunx_sampling_flagFormat: %lu \n"
+                "  content_interpretation_type: %lu \n"
+                "  content_interpretation_type: %lu \n"
+                "        spatial_flipping_flag: %lu \n"
+                "          frame0_flipped_flag: %lu \n"
+                "             field_views_flag: %lu \n"
+                " current_frame_is_frame0_flag: %lu \n"
+                "   frame0_self_contained_flag: %lu \n"
+                "   frame1_self_contained_flag: %lu \n"
+                "       frame0_grid_position_x: %lu \n"
+                "       frame0_grid_position_y: %lu \n"
+                "       frame1_grid_position_x: %lu \n"
+                "       frame1_grid_position_y: %lu \n"
+                "                reserved_byte: %lu \n"
+                "            repetition_period: %lu \n"
+                "               extension_flag: %lu \n"
+                "================== End of Framepack ===========",
+                framepack->id,
+                framepack->cancel_flag,
+                framepack->type,
+                framepack->quincunx_sampling_flag,
+                framepack->content_interpretation_type,
+                framepack->spatial_flipping_flag,
+                framepack->frame0_flipped_flag,
+                framepack->field_views_flag,
+                framepack->current_frame_is_frame0_flag,
+                framepack->frame0_self_contained_flag,
+                framepack->frame1_self_contained_flag,
+                framepack->frame0_grid_position_x,
+                framepack->frame0_grid_position_y,
+                framepack->frame1_grid_position_x,
+                framepack->frame1_grid_position_y,
+                framepack->reserved_byte,
+                framepack->repetition_period,
+                framepack->extension_flag);
     } else if (extra->eType == OMX_ExtraDataNone) {
         DEBUG_PRINT_HIGH("========== End of Terminator ===========");
     } else {
@@ -8436,6 +8524,30 @@ void omx_vdec::append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra)
             portDefn->format.video.nFrameWidth,
             portDefn->format.video.nStride,
             portDefn->format.video.nSliceHeight);
+}
+
+void omx_vdec::append_framepack_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+        struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload)
+{
+    OMX_QCOM_FRAME_PACK_ARRANGEMENT *framepack;
+    if (FRAME_PACK_SIZE*sizeof(OMX_U32) != sizeof(struct msm_vidc_s3d_frame_packing_payload)) {
+        DEBUG_PRINT_ERROR("frame packing size mismatch");
+        return;
+    }
+    extra->nSize = OMX_FRAMEPACK_EXTRADATA_SIZE;
+    extra->nVersion.nVersion = OMX_SPEC_VERSION;
+    extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
+    extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataFramePackingArrangement;
+    extra->nDataSize = sizeof(OMX_QCOM_FRAME_PACK_ARRANGEMENT);
+    framepack = (OMX_QCOM_FRAME_PACK_ARRANGEMENT *)extra->data;
+    framepack->nSize = sizeof(OMX_QCOM_FRAME_PACK_ARRANGEMENT);
+    framepack->nVersion.nVersion = OMX_SPEC_VERSION;
+    framepack->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
+    memcpy(&framepack->id, s3d_frame_packing_payload,
+        sizeof(struct msm_vidc_s3d_frame_packing_payload));
+    memcpy(&m_frame_pack_arrangement, framepack,
+        sizeof(OMX_QCOM_FRAME_PACK_ARRANGEMENT));
+    print_debug_extradata(extra);
 }
 
 void omx_vdec::append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra)
