@@ -1801,6 +1801,48 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(hierp, &m_sHierLayers, sizeof(m_sHierLayers));
                 break;
             }
+        case OMX_QcomIndexParamPerfLevel:
+            {
+                OMX_U32 perflevel;
+                OMX_QCOM_VIDEO_PARAM_PERF_LEVEL *pParam =
+                    reinterpret_cast<OMX_QCOM_VIDEO_PARAM_PERF_LEVEL*>(paramData);
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamPerfLevel");
+                if (!dev_get_performance_level(&perflevel)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from get_performance_level %d",
+                        pParam->ePerfLevel);
+                } else {
+                    pParam->ePerfLevel = (QOMX_VIDEO_PERF_LEVEL)perflevel;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamH264VUITimingInfo:
+            {
+                OMX_U32 enabled;
+                OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO *pParam =
+                    reinterpret_cast<OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO*>(paramData);
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamH264VUITimingInfo");
+                if (!dev_get_vui_timing_info(&enabled)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from get_vui_Timing_info %d",
+                        pParam->bEnable);
+                } else {
+                    pParam->bEnable = (OMX_BOOL)enabled;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamPeakBitrate:
+            {
+                OMX_U32 peakbitrate;
+                OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE *pParam =
+                    reinterpret_cast<OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE*>(paramData);
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamPeakBitrate");
+                if (!dev_get_peak_bitrate(&peakbitrate)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from get_peak_bitrate %d",
+                        pParam->nPeakBitrate);
+                } else {
+                    pParam->nPeakBitrate = peakbitrate;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {

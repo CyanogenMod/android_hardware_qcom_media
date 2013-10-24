@@ -446,6 +446,12 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* VP8 Hierarchical P support */
     OMX_QcomIndexHierarchicalStructure = 0x7F000037,
+
+    OMX_QcomIndexParamPerfLevel = 0x7F000038,
+
+    OMX_QcomIndexParamH264VUITimingInfo = 0x7F000039,
+
+    OMX_QcomIndexParamPeakBitrate = 0x7F00003A,
 };
 
 /**
@@ -756,6 +762,45 @@ typedef struct OMX_QCOM_VIDEO_CONFIG_H264_AUD
    OMX_VERSIONTYPE nVersion;/** OMX specification version information */
    OMX_BOOL bEnable;        /** Enable/disable the setting */
 } OMX_QCOM_VIDEO_CONFIG_H264_AUD;
+
+typedef enum QOMX_VIDEO_PERF_LEVEL
+{
+    OMX_QCOM_PerfLevelNominal,
+    OMX_QCOM_PerfLevelTurbo
+} QOMX_VIDEO_PERF_LEVEL;
+
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QcomIndexParamPerfLevel extension. It will set
+ * the performance mode specified as QOMX_VIDEO_PERF_LEVEL.
+ */
+typedef struct OMX_QCOM_VIDEO_PARAM_PERF_LEVEL {
+    OMX_U32 nSize;                      /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;           /** OMX specification version information */
+    QOMX_VIDEO_PERF_LEVEL ePerfLevel;   /** Performance level */
+} OMX_QCOM_VIDEO_PARAM_PERF_LEVEL;
+
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QcomIndexParamH264VUITimingInfo extension. It
+ * will enable/disable the VUI timing info.
+ */
+typedef struct OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO {
+    OMX_U32 nSize;              /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;   /** OMX specification version information */
+    OMX_BOOL bEnable;           /** Enable/disable the setting */
+} OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO;
+
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QcomIndexParamPeakBitrate extension. It will
+ * set the peak bitrate specified by nPeakBitrate.
+ */
+typedef struct OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE {
+    OMX_U32 nSize;              /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;   /** OMX specification version information */
+    OMX_U32 nPeakBitrate;       /** Peak bitrate value */
+} OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE;
 
 typedef struct OMX_VENDOR_EXTRADATATYPE  {
     OMX_U32 nPortIndex;
