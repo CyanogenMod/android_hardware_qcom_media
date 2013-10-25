@@ -654,8 +654,8 @@ bool venc_dev::venc_open(OMX_U32 codec)
         m_sInput_buff_property.alignment  = SZ_4K;
     }
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-    fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
-    fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+    fmt.fmt.pix_mp.height = m_sVenc_cfg.dvs_height;
+    fmt.fmt.pix_mp.width = m_sVenc_cfg.dvs_width;
     fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
 
     /*TODO: Return values not handled properly in this function anywhere.
@@ -885,15 +885,15 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
     } else {
         int extra_idx = 0;
         fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-        fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
-        fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+        fmt.fmt.pix_mp.height = m_sVenc_cfg.dvs_height;
+        fmt.fmt.pix_mp.width = m_sVenc_cfg.dvs_width;
         fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
 
         ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
         m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
         fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-        fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
-        fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+        fmt.fmt.pix_mp.height = m_sVenc_cfg.dvs_height;
+        fmt.fmt.pix_mp.width = m_sVenc_cfg.dvs_width;
         fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
 
         ret = ioctl(m_nDriver_fd, VIDIOC_G_FMT, &fmt);
@@ -993,9 +993,11 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                     DEBUG_PRINT_LOW("input: actual: %d, min: %d, count_req: %d\n",
                             portDefn->nBufferCountActual, m_sInput_buff_property.mincount, bufreq.count);
                 } else if (portDefn->nPortIndex == PORT_INDEX_OUT) {
+                    m_sVenc_cfg.dvs_height = portDefn->format.video.nFrameHeight;
+                    m_sVenc_cfg.dvs_width = portDefn->format.video.nFrameWidth;
                     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-                    fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
-                    fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+                    fmt.fmt.pix_mp.height = m_sVenc_cfg.dvs_height;
+                    fmt.fmt.pix_mp.width = m_sVenc_cfg.dvs_width;
                     fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
 
                     if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
@@ -1009,8 +1011,6 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                         return false;
                     }
 
-                    if ((portDefn->nBufferCountActual >= m_sOutput_buff_property.mincount)
-                            && (m_sOutput_buff_property.datasize == portDefn->nBufferSize)) {
                         m_sOutput_buff_property.actualcount = portDefn->nBufferCountActual;
                         bufreq.memory = V4L2_MEMORY_USERPTR;
                         bufreq.count = portDefn->nBufferCountActual;
@@ -1030,10 +1030,6 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 
                         if (num_planes > 1)
                             extradata_info.count = m_sOutput_buff_property.actualcount;
-                    } else {
-                        DEBUG_PRINT_ERROR("\nERROR: Setting Output buffer requirements failed");
-                        return false;
-                    }
 
                     DEBUG_PRINT_LOW("Output: actual: %d, min: %d, count_req: %d\n",
                             portDefn->nBufferCountActual, m_sOutput_buff_property.mincount, bufreq.count);
@@ -1452,9 +1448,9 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 OMX_U32 nFrameWidth;
 
                 DEBUG_PRINT_HIGH("\nvenc_set_config: updating the new Dims");
-                nFrameWidth = m_sVenc_cfg.input_width;
-                m_sVenc_cfg.input_width  = m_sVenc_cfg.input_height;
-                m_sVenc_cfg.input_height = nFrameWidth;
+                nFrameWidth = m_sVenc_cfg.dvs_width;
+                m_sVenc_cfg.dvs_width  = m_sVenc_cfg.dvs_height;
+                m_sVenc_cfg.dvs_height = nFrameWidth;
 
                 if(venc_set_vpe_rotation(config_rotation->nRotation) == false) {
                     DEBUG_PRINT_ERROR("\nERROR: Dimension Change for Rotation failed");
@@ -1619,9 +1615,9 @@ unsigned venc_dev::venc_start(void)
 
     /* Check if slice_delivery mode is enabled & max slices is sufficient for encoding complete frame */
     if (slice_mode.enable && multislice.mslice_size &&
-            (m_sVenc_cfg.input_width *  m_sVenc_cfg.input_height)/(256 * multislice.mslice_size) >= MAX_SUPPORTED_SLICES_PER_FRAME) {
-        DEBUG_PRINT_ERROR("slice_mode: %d, max slices (%d) should be less than (%d)\n", slice_mode.enable,
-                (m_sVenc_cfg.input_width *  m_sVenc_cfg.input_height)/(256 * multislice.mslice_size),
+            (m_sVenc_cfg.dvs_width *  m_sVenc_cfg.dvs_height)/(256 * multislice.mslice_size) >= MAX_SUPPORTED_SLICES_PER_FRAME) {
+        DEBUG_PRINT_ERROR("slice_mode: %lu, max slices (%lu) should be less than (%d)\n", slice_mode.enable,
+                (m_sVenc_cfg.dvs_width *  m_sVenc_cfg.dvs_height)/(256 * multislice.mslice_size),
                 MAX_SUPPORTED_SLICES_PER_FRAME);
         return 1;
     }
@@ -1644,8 +1640,12 @@ void venc_dev::venc_config_print()
     DEBUG_PRINT_HIGH("\nENC_CONFIG: Codec: %ld, Profile %ld, level : %ld",
             m_sVenc_cfg.codectype, codec_profile.profile, profile_level.level);
 
-    DEBUG_PRINT_HIGH("\n ENC_CONFIG: Width: %ld, Height:%ld, Fps: %ld",
+    DEBUG_PRINT_HIGH("\n ENC_CONFIG: Input Width: %ld, Height:%ld, Fps: %ld",
             m_sVenc_cfg.input_width, m_sVenc_cfg.input_height,
+            m_sVenc_cfg.fps_num/m_sVenc_cfg.fps_den);
+
+    DEBUG_PRINT_HIGH("\n ENC_CONFIG: Output Width: %ld, Height:%ld, Fps: %ld",
+            m_sVenc_cfg.dvs_width, m_sVenc_cfg.dvs_height,
             m_sVenc_cfg.fps_num/m_sVenc_cfg.fps_den);
 
     DEBUG_PRINT_HIGH("\nENC_CONFIG: Bitrate: %ld, RC: %ld, I-Period: %ld",
@@ -2227,8 +2227,8 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
     unsigned long mb_per_frame = 0;
     DEBUG_PRINT_LOW("venc_set_profile_level:: eProfile = %d, Level = %d",
             eProfile, eLevel);
-    mb_per_frame = ((m_sVenc_cfg.input_height + 15) >> 4)*
-        ((m_sVenc_cfg.input_width + 15) >> 4);
+    mb_per_frame = ((m_sVenc_cfg.dvs_height + 15) >> 4)*
+        ((m_sVenc_cfg.dvs_width + 15) >> 4);
 
     if ((eProfile == 0) && (eLevel == 0) && m_profile_set && m_level_set) {
         DEBUG_PRINT_LOW("\n Profile/Level setting complete before venc_start");
@@ -2758,17 +2758,17 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
         control_mode.value = V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_NONE;
         return status;
     } else if ((ir_mode == OMX_VIDEO_IntraRefreshCyclic) &&
-            (irMBs < ((m_sVenc_cfg.input_width * m_sVenc_cfg.input_height)>>8))) {
+            (irMBs < ((m_sVenc_cfg.dvs_width * m_sVenc_cfg.dvs_height)>>8))) {
         control_mode.value = V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_CYCLIC;
         control_mbs.id=V4L2_CID_MPEG_VIDC_VIDEO_CIR_MBS;
         control_mbs.value=irMBs;
     } else if ((ir_mode == OMX_VIDEO_IntraRefreshAdaptive) &&
-            (irMBs < ((m_sVenc_cfg.input_width * m_sVenc_cfg.input_height)>>8))) {
+            (irMBs < ((m_sVenc_cfg.dvs_width * m_sVenc_cfg.dvs_height)>>8))) {
         control_mode.value = V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_ADAPTIVE;
         control_mbs.id=V4L2_CID_MPEG_VIDC_VIDEO_AIR_MBS;
         control_mbs.value=irMBs;
     } else if ((ir_mode == OMX_VIDEO_IntraRefreshBoth) &&
-            (irMBs < ((m_sVenc_cfg.input_width * m_sVenc_cfg.input_height)>>8))) {
+            (irMBs < ((m_sVenc_cfg.dvs_width * m_sVenc_cfg.dvs_height)>>8))) {
         control_mode.value = V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_CYCLIC_ADAPTIVE;
     } else {
         DEBUG_PRINT_ERROR("\nERROR: Invalid IntraRefresh Parameters:"
@@ -3084,8 +3084,8 @@ bool venc_dev::venc_set_vpe_rotation(OMX_S32 rotation_angle)
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, value=%d\n", control.id, control.value);
 
     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-    fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
-    fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+    fmt.fmt.pix_mp.height = m_sVenc_cfg.dvs_height;
+    fmt.fmt.pix_mp.width = m_sVenc_cfg.dvs_width;
     fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.codectype;
     if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
         DEBUG_PRINT_ERROR("Failed to set format on capture port\n");
@@ -3516,8 +3516,8 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
         return false;
     }
 
-    mb_per_frame = ((m_sVenc_cfg.input_height + 15) >> 4)*
-        ((m_sVenc_cfg.input_width + 15)>> 4);
+    mb_per_frame = ((m_sVenc_cfg.dvs_height + 15) >> 4)*
+        ((m_sVenc_cfg.dvs_width + 15)>> 4);
 
     if ((mb_per_frame >= 3600) && (m_sVenc_cfg.codectype == (unsigned long) V4L2_PIX_FMT_MPEG4)) {
         if (codec_profile.profile == (unsigned long) V4L2_MPEG_VIDEO_MPEG4_PROFILE_ADVANCED_SIMPLE)
