@@ -2901,6 +2901,31 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port\n");
                                    m_display_id = portDefn->format.video.pNativeWindow;
                                    unsigned int buffer_size;
+                                      DEBUG_PRINT_LOW("\n SetParam OP: WxH(%lu x %lu)\n",
+                                               portDefn->format.video.nFrameWidth,
+                                               portDefn->format.video.nFrameHeight);
+                                       if (portDefn->format.video.nFrameHeight != 0x0 &&
+                                               portDefn->format.video.nFrameWidth != 0x0) {
+                                           update_resolution(portDefn->format.video.nFrameWidth,
+                                                   portDefn->format.video.nFrameHeight,
+                                                   portDefn->format.video.nFrameWidth,
+                                                   portDefn->format.video.nFrameHeight);
+                                           eRet = is_video_session_supported();
+                                           if (eRet)
+                                               break;
+                                           fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+                                           fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
+                                           fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+                                           fmt.fmt.pix_mp.pixelformat = capture_capability;
+                                           DEBUG_PRINT_LOW("\n fmt.fmt.pix_mp.height = %d , fmt.fmt.pix_mp.width = %d \n",fmt.fmt.pix_mp.height,fmt.fmt.pix_mp.width);
+                                           ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+                                           if (ret) {
+                                               DEBUG_PRINT_ERROR("\n Set Resolution failed");
+                                               eRet = OMX_ErrorUnsupportedSetting;
+                                           } else
+                                               eRet = get_buffer_req(&drv_ctx.op_buf);
+                                       }
+
                                    if (!client_buffers.get_buffer_req(buffer_size)) {
                                        DEBUG_PRINT_ERROR("\n Error in getting buffer requirements");
                                        eRet = OMX_ErrorBadParameter;
@@ -3438,6 +3463,33 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 break;
         }
 #endif
+        case OMX_QcomIndexParamVideoDownScalar: {
+            QOMX_INDEXDOWNSCALAR* pParam = (QOMX_INDEXDOWNSCALAR*)paramData;
+                struct v4l2_control control;
+                int rc;
+                if (pParam) {
+                    is_down_scalar_enabled = pParam->bEnable;
+                    if (is_down_scalar_enabled) {
+                        control.id = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_MODE;
+                        control.value = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_SECONDARY;
+                        DEBUG_PRINT_LOW("set_parameter:  OMX_QcomIndexParamVideoDownScalar value = %d\n",
+                            pParam->bEnable);
+                        rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
+                        if (rc < 0) {
+                            DEBUG_PRINT_ERROR("Failed to set down scalar on driver.");
+                            eRet = OMX_ErrorUnsupportedSetting;
+                        }
+                        control.id = V4L2_CID_MPEG_VIDC_VIDEO_KEEP_ASPECT_RATIO;
+                        control.value = 1;
+                        rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
+                        if (rc < 0) {
+                            DEBUG_PRINT_ERROR("Failed to set keep aspect ratio on driver.");
+                            eRet = OMX_ErrorUnsupportedSetting;
+                        }
+                    }
+                }
+                break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("Setparameter: unknown param %d\n", paramIndex);
                  eRet = OMX_ErrorUnsupportedIndex;

@@ -907,6 +907,7 @@ class omx_vdec: public qc_omx_component
         bool streaming[MAX_PORT];
         OMX_CONFIG_RECTTYPE rectangle;
         int prev_n_filled_len;
+        bool is_down_scalar_enabled;
 #endif
         bool m_power_hinted;
         OMX_ERRORTYPE power_module_register();
