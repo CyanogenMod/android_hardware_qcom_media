@@ -166,7 +166,7 @@ struct v4l2testappval {
 	status cur_test_status;
 	int events_subscribed;
 	int poll_created;
-	__u8 *input_buf;
+	__u8 *ring_buf;
 	int secure_mode;
 	int verbosity;
 };
@@ -216,7 +216,7 @@ struct arguments {
 		n_read_mode,
 		read_bytes,
 		ring_num_hdrs,
-		ring_buf_size,
+		output_buf_size,
 		random_seed;
 	char codec_type[20], read_mode[20];
 	char sequence[300][MAX_FILE_PATH_SIZE];
@@ -380,7 +380,8 @@ int parse_cfg(const char *filename)
 		{"random_seed",        INT32,        &input_args->random_seed,MAX_FILE_PATH_SIZE},
 		{"fix_buf_size_file",  STRING,       input_args->bufsize_filename,MAX_FILE_PATH_SIZE},
 		{"ring_num_headers",   INT32,        &input_args->ring_num_hdrs,MAX_FILE_PATH_SIZE},
-		{"ring_buf_size",      INT32,        &input_args->ring_buf_size,MAX_FILE_PATH_SIZE},
+		{"ring_buf_size",      INT32,        &input_args->output_buf_size,MAX_FILE_PATH_SIZE},
+		{"output_buf_size",    INT32,        &input_args->output_buf_size,MAX_FILE_PATH_SIZE},
 		{"eot",                FLAG,          NULL,0}
 	};
 	rc = parse_param_file(filename, param_table, sizeof(param_table)/sizeof(param_table[0]));
@@ -796,7 +797,11 @@ static int prepare_bufs(int fd, enum v4l2_buf_type buf_type)
 		numbufs = video_inst.bufreq[CAPTURE_PORT].count;
 		port = CAPTURE_PORT;
 	} else {
-		size = video_inst.fmt[OUTPUT_PORT].fmt.pix_mp.plane_fmt[0].sizeimage;
+		if (input_args->output_buf_size > 0) {
+			size = input_args->output_buf_size;
+		} else {
+			size = video_inst.fmt[OUTPUT_PORT].fmt.pix_mp.plane_fmt[0].sizeimage;
+		}
 		numbufs = video_inst.bufreq[OUTPUT_PORT].count;
 		port = OUTPUT_PORT;
 	}
@@ -911,12 +916,12 @@ static int allocate_ring_buffer(int fd, enum v4l2_buf_type buf_type)
 	}
 
 	D("User requested ring_buf_size = %lu, component requested size = %d\n",
-		input_args->ring_buf_size, size);
-	if (input_args->ring_buf_size) {
-		if ((int)input_args->ring_buf_size < size)
+		input_args->output_buf_size, size);
+	if (input_args->output_buf_size) {
+		if ((int)input_args->output_buf_size < size)
 			D("Warning: Ring buffer size is less than requested size = %d\n",
 				size);
-		ring_size = input_args->ring_buf_size;
+		ring_size = input_args->output_buf_size;
 	} else {
 		ring_size = size;
 	}
@@ -993,9 +998,9 @@ static int allocate_ring_buffer(int fd, enum v4l2_buf_type buf_type)
 	video_inst.ring_info.ring_read_idx = 0;
 	video_inst.ring_info.ring_write_idx = 0;
 
-	video_inst.input_buf = (__u8 *)calloc(size, sizeof(__u8));
-	if (!video_inst.input_buf) {
-		E("input_buf allocation failed\n");
+	video_inst.ring_buf = (__u8 *)calloc(size, sizeof(__u8));
+	if (!video_inst.ring_buf) {
+		E("ring_buf allocation failed\n");
 		rc = -ENOMEM;
 		goto ring_error;
 	}
@@ -1046,8 +1051,8 @@ int configure_session (void)
 		I("fix_buf_size_file: %s\n", input_args->bufsize_filename);
 	if (input_args->ring_num_hdrs)
 		I("Number of headers to use for OUTPUT port: %ld\n", input_args->ring_num_hdrs);
-	if (input_args->ring_buf_size)
-		I("Ring buffer size: %ld\n", input_args->ring_buf_size);
+	if (input_args->output_buf_size)
+		I("Output port/Ring buffer size: %ld\n", input_args->output_buf_size);
 
 	return 0;
 }
@@ -1791,9 +1796,7 @@ int commands_controls(void)
 			goto close_fd;
 		}
 	}
-	return rc;
 close_fd:
-	//	close(fd);
 	return rc;
 }
 
@@ -2128,8 +2131,11 @@ static int get_v4l2_format(char *fmt_str)
 		V("\n MPEG4 Selected \n ");
 	} else if (!strcmp(fmt_str, "VP8")) {
 		fmt = V4L2_PIX_FMT_VP8;
+	} else if (!strcmp(fmt_str, "MPEG2")) {
+		fmt = V4L2_PIX_FMT_MPEG2;
 	} else {
-		E("Unrecognized format string. Defaulting to H264\n");
+		E("Unrecognized format string.\n");
+		fmt = -1;
 	}
 	return fmt;
 }
@@ -2143,6 +2149,8 @@ static int set_format(int fd, enum v4l2_buf_type buf_type)
 	if (input_args->session == DECODER_SESSION) {
 		if (buf_type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 			format = get_v4l2_format(input_args->codec_type);
+			if (format == -1)
+				return -EINVAL;
 		} else if (buf_type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 			format = V4L2_PIX_FMT_NV12;
 		} else {
@@ -2155,6 +2163,8 @@ static int set_format(int fd, enum v4l2_buf_type buf_type)
 			format = V4L2_PIX_FMT_NV12;
 		} else if (buf_type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 			format = get_v4l2_format(input_args->codec_type);
+			if (format == -1)
+				return -EINVAL;
 		} else {
 			E("Invalid port\n");
 			return -EINVAL;
@@ -2170,8 +2180,8 @@ static int set_format(int fd, enum v4l2_buf_type buf_type)
 	fmt.fmt.pix_mp.height = input_args->input_height;
 	fmt.fmt.pix_mp.width = input_args->input_width;
 	fmt.fmt.pix_mp.pixelformat = format;
-	V("VIDIOC_S_FMT port = %d: h: %d, w: %d\n",
-		port, fmt.fmt.pix_mp.height, fmt.fmt.pix_mp.width);
+	V("VIDIOC_S_FMT port = %d: h: %d, w: %d, size: %d\n",
+		port, fmt.fmt.pix_mp.height, fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.plane_fmt[0].sizeimage);
 	rc = ioctl(fd, VIDIOC_S_FMT, &fmt);
 	if (rc) {
 		E("Failed to set format\n");
@@ -2346,14 +2356,24 @@ static int q_single_buf(struct bufinfo *binfo)
 					bytes_to_read = get_bytes_to_read();
 					V("Reading arbitrary bytes = %d\n", bytes_to_read);
 					rc = read_n_bytes(video_inst.inputfile,
-							video_inst.input_buf,
-							 bytes_to_read);
+							video_inst.ring_buf,
+							bytes_to_read);
 				} else {
-					rc = read_one_frame(video_inst.inputfile, video_inst.input_buf);
-					V("Copy read frame to input buffer, size = %d\n", rc);
+					rc = read_one_frame(video_inst.inputfile, video_inst.ring_buf);
+					V("Copy read frame to ring buffer, size = %d\n", rc);
 				}
-			} else
-				rc = read_one_frame(video_inst.inputfile, binfo->vaddr);
+			} else {
+				if (input_args->n_read_mode) {
+					bytes_to_read = input_args->read_bytes;
+					V("Reading bytes = %d\n", bytes_to_read);
+					rc = read_n_bytes(video_inst.inputfile,
+								binfo->vaddr,
+								bytes_to_read);
+				} else {
+					rc = read_one_frame(video_inst.inputfile, binfo->vaddr);
+					V("Copy read frame to buffer, size = %d\n", rc);
+				}
+			}
 		} else if (input_args->session == ENCODER_SESSION) {
 			rc = read_yuv_nv12(video_inst.inputfile, binfo->vaddr);
 		} else {
@@ -2371,7 +2391,7 @@ static int q_single_buf(struct bufinfo *binfo)
 		read_size = rc;
 		if (input_args->alloc_type == V4L2_MPEG_VIDC_VIDEO_RING) {
 			binfo->offset = ring_buf_write(&video_inst.ring_info,
-							video_inst.input_buf,
+							video_inst.ring_buf,
 							(__u32*)&read_size);
 			D("ETB: offset = %d\n", binfo->offset);
 			if (read_size < rc) {
@@ -2479,7 +2499,7 @@ static void* queue_func(void *data)
 		pthread_mutex_lock(&video_inst.q_lock[port]);
 
 		if (video_inst.stop_feeding) {
-			D("Aborting the session\n");
+			D("Aborting the session, port: %d\n", port);
 			pthread_mutex_unlock(&video_inst.q_lock[port]);
 			break;
 		}
@@ -2506,10 +2526,12 @@ static void* queue_func(void *data)
 			D("pop'ed binfo after wait (%d)\n", port);
 			pthread_mutex_unlock(&video_inst.q_lock[port]);
 		}
+
 		if (!rc && binfo) {
 			rc = q_single_buf(binfo);
 			if (rc == -1) {
 				D("EOS received exit thread, port: %d\n", port);
+				break;
 			}
 			else if (rc) {
 				E("Failed to q buf exit thread, port: %d\n", port);
@@ -2565,15 +2587,15 @@ static void* poll_func(void *data)
 				if (v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_EOS ||
 					video_inst.fbd_count >= input_args->frame_count) {
 					if (v4l2_buf.flags & V4L2_QCOM_BUF_FLAG_EOS)
-						V("Received eos on capture port = 0x%x\n", v4l2_buf.flags);
+						V("Received eos on capture port, flags = 0x%x\n", v4l2_buf.flags);
 					else
 						V("frame_count reached = %d\n", video_inst.fbd_count);
 					video_inst.stop_feeding = 1;
 					video_inst.cur_test_status = SUCCESS;
 				}
 				filled_len = plane[0].bytesused;
-				D("FBD COUNT: %d, filled length = %d, userptr = %p, offset = %d\n",
-					video_inst.fbd_count, filled_len, (void *)plane[0].m.userptr, plane[0].data_offset);
+				D("FBD COUNT: %d, filled length = %d, userptr = %p, offset = %d, flags = 0x%x\n",
+					video_inst.fbd_count, filled_len, (void *)plane[0].m.userptr, plane[0].data_offset, v4l2_buf.flags);
 				if (input_args->session == DECODER_SESSION && filled_len) {
 					int stride = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].bytesperline;
 					int scanlines = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].reserved[0];
@@ -2641,7 +2663,7 @@ static void* poll_func(void *data)
 					if (rc)
 						E("Error reading ring buffer\n");
 					else
-						D("Sucess updating ring offset\n");
+						D("Success updating ring offset\n");
 				}
 				D("push buf in port (0)\n");
 				rc = push(&video_inst.buf_queue[OUTPUT_PORT], (void *) binfo);
@@ -2926,6 +2948,99 @@ err:
 	return rc;
 }
 
+int read_mpeg2_chunk(FILE * bits, unsigned char * pBuf)
+{
+	const unsigned int mp2StartCode = 0x00000100;
+	const unsigned int mp2GrpStartCode = 0x000001B8;
+	const unsigned int mp2SeqHdrCode = 0x000001B3;
+	const unsigned int mp2SeqEndCode = 0x000001B7;
+	const unsigned int read_max = 10000;
+	static unsigned int word = 0x0;
+	unsigned char temp_buf[read_max];
+	unsigned int length = 0;
+	unsigned int seqFound = 0;
+	unsigned int picFound = 0;
+	unsigned int seqEndFound = 0;
+	unsigned int read_size = 0;
+	unsigned int curr_ptr = 0;
+	int is_full_frame_found = 0;
+
+	if (word == mp2SeqHdrCode) {
+		D("mpeg2: Previous word is mp2SeqHdrCode 0x%x\n", word);
+		seqFound = 1;
+	} else if (word == mp2StartCode) {
+		D("mpeg2: Previous word is mp2StartCode 0x%x\n", word);
+		picFound = 1;
+	} else if (word == mp2SeqEndCode) {
+		D("mpeg2: Previous word is mp2SeqEndCode 0x%x\n", word);
+		seqEndFound = 1;
+	} else {
+		D("mpeg2: Previous word is 0x%x \n", word);
+	}
+
+	if (word && !seqEndFound) {
+		*pBuf++ = (word >>24) & 0xff;
+		*pBuf++ = (word >> 16) & 0xff;
+		*pBuf++ = (word >> 8) & 0xff;
+		*pBuf++ = word & 0xff;
+		length = 4;
+	}
+
+	while (!feof(bits)) {
+		read_size = fread(temp_buf, 1, read_max, bits);
+		if (read_size == 0) {
+			D("\n EOF reached \n");
+			break;
+		}
+		curr_ptr = 0;
+		D("mpeg2: read_size = %d\n", read_size);
+		do {
+			word = (word << 8) | temp_buf[curr_ptr++];
+
+			if (word == mp2StartCode) {
+				if (picFound) {
+					is_full_frame_found = 1;
+					length++;
+					break;
+				} else {
+					picFound = 1;
+					length++;
+				}
+			} else if (word == mp2SeqHdrCode) {
+				if (picFound) {
+					is_full_frame_found = 1;
+					length++;
+					break;
+				} else {
+					seqFound = 1;
+					length++;
+				}
+			} else if (word == mp2SeqEndCode) {
+				length++;
+				is_full_frame_found = 1;
+				D("mpeg2: mp2SeqEndCode found!!!\n");
+				break;
+			} else {
+				length++;
+			}
+		} while(curr_ptr < read_size);
+		memcpy(pBuf, temp_buf, curr_ptr);
+		pBuf+=curr_ptr;
+		fseek (bits, (int)(curr_ptr - read_size), SEEK_CUR);
+		if (is_full_frame_found) {
+			D("mpeg2: Found something: pic = %u, seq = %u\n", picFound, seqFound);
+			if (word != mp2SeqEndCode)
+				length-=4; // Not consider last word to avoid repetition
+			break;
+		}
+	}
+	D("mpeg2: last word: 0x%x\n", word);
+	if (!is_full_frame_found) {
+		D("mpeg2: no full frame found\n");
+	}
+	return length;
+}
+
 int read_mpeg4_chunk(FILE * bits, unsigned char * pBuf)
 {
 	unsigned char temp_buf[2048];
@@ -2937,6 +3052,7 @@ int read_mpeg4_chunk(FILE * bits, unsigned char * pBuf)
 	int curr_ptr = 0;
 	int word = 0,i;
 	int length = 0;
+
 	if(first_time == 1) {
 		pBuf[0]=0;
 		pBuf[1]=0;
@@ -2945,7 +3061,7 @@ int read_mpeg4_chunk(FILE * bits, unsigned char * pBuf)
 		pBuf+=4;
 	}
 	while (startCodeFound == 0 && (!feof(bits))) {
-		read_size = fread(temp_buf, 1,256, bits);
+		read_size = fread(temp_buf, 1, 256, bits);
 		if (read_size == 0) {
 			V("\n EOF reached \n");
 			break;
@@ -3089,6 +3205,12 @@ int read_one_frame(FILE * bits, unsigned char * pBuf)
 		read_length = read_mpeg4_chunk(bits,pBuf);
 	} else if (!strcmp(input_args->codec_type, "VP8")) {
 		read_length = read_vp8_chunk(bits,pBuf);
+	} else if (!strcmp(input_args->codec_type, "MPEG2")) {
+		read_length = read_mpeg2_chunk(bits,pBuf);
+		D("mpeg2: chunk starts w/ 0x%x\n", pBuf[0]);
+		D("mpeg2: chunk starts w/ 0x%x\n", pBuf[1]);
+		D("mpeg2: chunk starts w/ 0x%x\n", pBuf[2]);
+		D("mpeg2: chunk starts w/ 0x%x\n", pBuf[3]);
 	} else {
 		E("\n Unrecognised CODECS \n");
 		read_length = -1;
