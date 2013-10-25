@@ -1051,6 +1051,23 @@ typedef struct OMX_VIDEO_CONFIG_NALSIZE {
     OMX_U32 nNaluBytes;
 } OMX_VIDEO_CONFIG_NALSIZE;
 
+
+/**
+ * Deinterlace Config
+ *
+ * STRUCT MEMBERS:
+ *  nSize      : Size of the structure in bytes
+ *  nVersion   : OMX specification version information
+ *  nPortIndex : Port that this structure applies to
+ *  nEnable : Specifies to enable deinterlace
+ */
+typedef struct OMX_VIDEO_CONFIG_DEINTERLACE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nEnable;
+} OMX_VIDEO_CONFIG_DEINTERLACE;
+
 /** @} */
 
 #ifdef __cplusplus
