@@ -260,6 +260,7 @@ class venc_dev
         void free_extradata();
         bool handle_extradata(void *, int);
         int venc_set_format(int);
+        bool deinterlace_enabled;
     private:
         struct msm_venc_basecfg             m_sVenc_cfg;
         struct msm_venc_ratectrlcfg         rate_ctrl;
@@ -305,6 +306,7 @@ class venc_dev
         bool venc_set_inband_video_header(OMX_BOOL enable);
         bool venc_set_au_delimiter(OMX_BOOL enable);
         bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
+        bool venc_set_deinterlace(OMX_U32 enable);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
