@@ -33,9 +33,11 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <media/msm_vidc.h>
 #include <linux/videodev2.h>
 #include <linux/ion.h>
 #include <linux/msm_ion.h>
+#include <linux/types.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <utils/Log.h>
@@ -49,8 +51,11 @@
 #define DEVICE_BASE_MINOR 32
 #define MAX_LINE 2048
 #define MAX_FILE_PATH_SIZE 128
+#define MAX_NAME_LENGTH 128
 #define TIMEOUT 20000  /*In milliseconds*/
 #define MAX_NUM_BUFS 32
+#define MEM_DEVICE "/dev/ion"
+#define MEM_HEAP_ID ION_CP_MM_HEAP_ID
 
 #define EXTRADATA_IDX(__num_planes) (__num_planes - 1)
 
@@ -118,14 +123,27 @@ typedef enum paramtype {
 	FLAG,
 } paramtype;
 
+struct ion_info {
+	int ion_device_fd;
+	struct ion_fd_data fd_ion_data;
+	struct ion_allocation_data ion_alloc_data;
+};
+
 struct bufinfo {
-	int fd;
 	__u32 offset;
 	__u8* vaddr;
 	__u32 size;
-	struct ion_handle *handle;
+	struct ion_info ion;
 	enum v4l2_buf_type buf_type;
 	int index;
+};
+
+struct extradata_buffer_info {
+	__u32 buffer_size;
+	__u8* uaddr;
+	__u32 count;
+	__u32 size;
+	struct ion_info ion;
 };
 
 struct v4l2testappval {
@@ -134,6 +152,7 @@ struct v4l2testappval {
 	struct v4l2_format fmt[MAX_PORTS];
 	struct v4l2_fmtdesc fdesc[MAX_PORTS];
 	struct bufinfo binfo[MAX_PORTS][MAX_NUM_BUFS];
+	struct extradata_buffer_info extradata_info;
 	Queue buf_queue[MAX_PORTS];
 	ring_buf_header ring_info;
 	pthread_mutex_t q_lock[MAX_PORTS];
@@ -148,6 +167,7 @@ struct v4l2testappval {
 	int events_subscribed;
 	int poll_created;
 	__u8 *input_buf;
+	int secure_mode;
 	int verbosity;
 };
 
@@ -242,10 +262,13 @@ static void nominal_test();
 static void adversarial_test();
 static void repeatability_test();
 static void stress_test();
-
+static int alloc_map_ion_memory(__u32 buffer_size, __u32 alignment,
+	struct ion_allocation_data *alloc_data, struct ion_fd_data *fd_data, int flag);
+void free_ion_memory(struct ion_info *buf_ion_info);
+int get_extradata_value(const char * param_name);
 
 static struct arguments *input_args;
-static int ion_fd,sequence_count;
+static int sequence_count;
 static struct v4l2testappval video_inst;
 static int num_of_test_fail;
 static int num_of_test_pass;
@@ -262,6 +285,16 @@ static void (*test_func[]) () = {
 	[REPEAT] = repeatability_test,
 	[STRESS] = stress_test,
 };
+
+inline int clip2(int x) {
+	x = x -1;
+	x = x | x >> 1;
+	x = x | x >> 2;
+	x = x | x >> 4;
+	x = x | x >> 16;
+	x = x + 1;
+	return x;
+}
 
 void help()
 {
@@ -363,81 +396,400 @@ err:
 	return rc;
 }
 
+int get_extradata_value(const char * param_name)
+{
+	int val = -1;
+	const char *v4l2_name;
+	if ((v4l2_name = "NONE") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_NONE;
+	} else if ((v4l2_name = "MB_QUANTIZATION") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_MB_QUANTIZATION;
+	} else if ((v4l2_name = "INTERLACE_VIDEO") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_INTERLACE_VIDEO;
+	} else if ((v4l2_name = "VC1_FRAMEDISP") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_VC1_FRAMEDISP;
+	} else if ((v4l2_name = "VC1_SEQDISP") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_VC1_SEQDISP;
+	} else if ((v4l2_name = "TIMESTAMP") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_TIMESTAMP;
+	} else if ((v4l2_name = "S3D_FRAME_PACKING") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_S3D_FRAME_PACKING;
+	} else if ((v4l2_name = "FRAME_RATE") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_FRAME_RATE;
+	} else if ((v4l2_name = "PANSCAN_WINDOW") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_PANSCAN_WINDOW;
+	} else if ((v4l2_name = "RECOVERY_POINT_SEI") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_RECOVERY_POINT_SEI;
+	} else if ((v4l2_name = "CLOSED_CAPTION_UD") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_CLOSED_CAPTION_UD;
+	} else if ((v4l2_name = "AFD_UD") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_AFD_UD;
+	} else if ((v4l2_name = "MULTISLICE_INFO") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_MULTISLICE_INFO;
+	} else if ((v4l2_name = "NUM_CONCEALED_MB") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_NUM_CONCEALED_MB;
+	} else if ((v4l2_name = "METADATA_FILLER") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_METADATA_FILLER;
+	} else if ((v4l2_name = "INPUT_CROP") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_INDEX_EXTRADATA_INPUT_CROP;
+	} else if ((v4l2_name = "DIGITAL_ZOOM") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_INDEX_EXTRADATA_DIGITAL_ZOOM;
+	} else if ((v4l2_name = "ASPECT_RATIO") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO;
+	} else if ((v4l2_name = "MPEG2_SEQDISP") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
+	} else {
+		E("Not found %s \n", param_name);
+		val = -1;
+	}
+	return val;
+}
+
+int handle_extradata_v4l2(struct v4l2_buffer v4l2_buf)
+{
+	struct bufinfo *binfo = NULL;
+	struct msm_vidc_extradata_header *data = NULL;
+	struct v4l2_plane *plane = NULL;
+	const char * p_extradata = NULL;
+	unsigned int consumed_len = 0;
+	unsigned int pos = 0;
+	int rc = 0;
+	int buf_index;
+	int extra_idx;
+	int port;
+	int bytesused;
+
+	if (v4l2_buf.type != V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
+		D("Test app only handle extra data for CAPTURE PORT\n");
+		return 0;
+	} else {
+		port = CAPTURE_PORT;
+	}
+	extra_idx = EXTRADATA_IDX(video_inst.fmt[port].fmt.pix_mp.num_planes);
+	if (!extra_idx) {
+		D("Port doesn't have planes for extra data\n");
+		return 0;
+	}
+	buf_index = v4l2_buf.index;
+	binfo = &video_inst.binfo[port][buf_index];
+	plane = v4l2_buf.m.planes;
+	bytesused = plane[extra_idx].bytesused;
+	// TODO: Fix driver trash values for plane[extra_idx].m.userptr & plane[extra_idx].data_offset
+	// While that fix is done using alternative method to get the extradata address
+	p_extradata = (const char *)video_inst.extradata_info.uaddr + buf_index * video_inst.extradata_info.buffer_size;
+	D("extra_idx = %d, buf_index = %d, bytesused = %d, p_extradata = %p or other = %p, data_offset = %u, reserved[0] = %u, reserved[1] = %u\n",
+		extra_idx, buf_index, bytesused, p_extradata,
+		((const char *)plane[extra_idx].m.userptr + plane[extra_idx].data_offset),
+		plane[extra_idx].data_offset,
+		plane[1].reserved[0], plane[1].reserved[1]);
+	if (!video_inst.extradata_info.uaddr) {
+		D("No memory allocated for extra data buffer\n");
+		return 0;
+	}
+
+	consumed_len = 0;
+	data = (struct msm_vidc_extradata_header *)p_extradata;
+	if (data) {
+		while ((consumed_len < video_inst.extradata_info.buffer_size)
+				&& (data->type != EXTRADATA_NONE)) {
+			if ((consumed_len + data->size) > video_inst.extradata_info.buffer_size) {
+				D("Invalid extra data size\n");
+				break;
+			}
+			rc++;
+			switch (data->type) {
+				case EXTRADATA_INTERLACE_VIDEO:
+				{
+					struct msm_vidc_interlace_payload *payload;
+					payload = (struct msm_vidc_interlace_payload *)data->data;
+					if (payload) {
+						switch (payload->format) {
+						case INTERLACE_FRAME_PROGRESSIVE:
+							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_FRAME_PROGRESSIVE\n");
+							break;
+						case INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST:
+							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST\n");
+							break;
+						case INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST:
+							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST\n");
+							break;
+						case INTERLACE_FRAME_TOPFIELDFIRST:
+							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_FRAME_TOPFIELDFIRST\n");
+							break;
+						case INTERLACE_FRAME_BOTTOMFIELDFIRST:
+							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_FRAME_BOTTOMFIELDFIRST\n");
+							break;
+						default:
+							E("Not recognized EXTRADATA_INTERLACE_VIDEO: 0x%x\n", payload->format);
+							break;
+						}
+					}
+					break;
+				}
+				case EXTRADATA_FRAME_RATE:
+				{
+					struct msm_vidc_framerate_payload *frame_rate_payload;
+					frame_rate_payload = (struct msm_vidc_framerate_payload *)data->data;
+					I("EXTRADATA_FRAME_RATE = %u\n", frame_rate_payload->frame_rate);
+					break;
+				}
+				case EXTRADATA_TIMESTAMP:
+				{
+					struct msm_vidc_ts_payload *time_stamp_payload;
+					time_stamp_payload = (struct msm_vidc_ts_payload *)data->data;
+					I("EXTRADATA_TIMESTAMP = timestamp_hi:timestamp_low = %u:%u\n",
+						time_stamp_payload->timestamp_hi, time_stamp_payload->timestamp_lo);
+					break;
+				}
+				case EXTRADATA_NUM_CONCEALED_MB:
+				{
+					struct msm_vidc_concealmb_payload *conceal_mb_payload;
+					unsigned int num_MB_in_frame;
+					unsigned int num_conceal_MB;
+					conceal_mb_payload = (struct msm_vidc_concealmb_payload *)data->data;
+					num_MB_in_frame = ((video_inst.fmt[port].fmt.pix_mp.width + 15) *
+							(video_inst.fmt[port].fmt.pix_mp.height+ 15)) >> 8;
+					num_conceal_MB = ((num_MB_in_frame > 0)?(conceal_mb_payload->num_mbs * 100 / num_MB_in_frame) : 0);
+					I("EXTRADATA_NUM_CONCEALED_MB -> num_mbs = %u, num_conceal_MB = %u\n",
+						conceal_mb_payload->num_mbs, num_conceal_MB);
+					break;
+				}
+				case EXTRADATA_INDEX:
+				{
+					int * p_type;
+					p_type  = (int *)(data->data);
+					if (p_type) {
+						if (*p_type == EXTRADATA_ASPECT_RATIO) {
+							struct msm_vidc_aspect_ratio_payload *aspect_ratio_payload;
+							aspect_ratio_payload = (struct msm_vidc_aspect_ratio_payload *)(++p_type);
+							if (aspect_ratio_payload) {
+								I("EXTRADATA_INDEX->EXTRADATA_ASPECT_RATIO = %u x %u\n",
+									aspect_ratio_payload->aspect_width, aspect_ratio_payload->aspect_height);
+							}
+						} else {
+							E("EXTRADATA_INDEX not recognized by application: %u\n", *p_type);
+						}
+					} else {
+						E("EXTRADATA_INDEX is NULL\n");
+					}
+					break;
+				}
+				case EXTRADATA_RECOVERY_POINT_SEI:
+				{
+					struct msm_vidc_recoverysei_payload *recovery_sei_payload;
+					unsigned int recovery_sei_flags;
+					recovery_sei_payload = (struct msm_vidc_recoverysei_payload *)data->data;
+					recovery_sei_flags = recovery_sei_payload->flags;
+					I("EXTRADATA_RECOVERY_POINT_SEI = %x\n", recovery_sei_payload->flags);
+					if (recovery_sei_flags != FRAME_RECONSTRUCTION_CORRECT) {
+						I("***************************************************\n");
+						E("EXTRADATA_RECOVERY_POINT_SEI: DATACORRUPT Received\n");
+						I("***************************************************\n");
+					}
+					break;
+				}
+				case EXTRADATA_PANSCAN_WINDOW:
+				{
+					struct msm_vidc_panscan_window_payload *panscan_payload = NULL;
+					panscan_payload = (struct msm_vidc_panscan_window_payload *)data->data;
+					I("EXTRADATA_PANSCAN_WINDOW received\n");
+					break;
+				}
+				case EXTRADATA_MPEG2_SEQDISP: //SEQUENCE           : SET_CTRL VIDEO_EXTRADATA MPEG2_SEQDISP
+				{
+					struct msm_vidc_mpeg2_seqdisp_payload *seqdisp_payload;
+					seqdisp_payload = (struct msm_vidc_mpeg2_seqdisp_payload *)data->data;
+					if (seqdisp_payload) {
+						I("EXTRADATA_MPEG2_SEQDISP: display size = %u x %u\n",
+							seqdisp_payload->disp_width,
+							seqdisp_payload->disp_height);
+					} else {
+						I("EXTRADATA_MPEG2_SEQDISP: NULL\n");
+					}
+					break;
+				}
+				default:
+					rc--;
+					E("EXTRADATA not recognized by application = 0x%x\n", data->type);
+					goto unrecognized_extradata;
+			}
+			consumed_len += data->size;
+			data = (struct msm_vidc_extradata_header *)((char *)data + data->size);
+		}
+	}
+unrecognized_extradata:
+	return rc;
+}
+
+
 static int deqbufs(int fd, enum v4l2_buf_type buf_type)
 {
 	int rc = 0;
 	return rc;
 }
 
-int allocate_ion_mem(__u32 size, __u32 align, struct ion_handle **handle)
+int alloc_map_ion_memory(__u32 buffer_size,
+		__u32 alignment, struct ion_allocation_data *alloc_data,
+		struct ion_fd_data *fd_data, int flag)
 {
-	struct ion_allocation_data alloc_data;
-	struct ion_fd_data fd_data;
-	int rc;
-	alloc_data.len = size;
-	alloc_data.align = align;
-	alloc_data.heap_mask = ION_HEAP(ION_CP_MM_HEAP_ID) |
-				ION_HEAP(ION_IOMMU_HEAP_ID);
-	alloc_data.flags = 0;
-	if (ion_fd < 0) {
-		ion_fd = open("/dev/ion", O_RDONLY | O_DSYNC);
+	int fd = -EINVAL;
+	int rc = -EINVAL;
+	int ion_dev_flag;
+	const int secure_mode = video_inst.secure_mode;
+	struct ion_info ion_buf_info;
+	if (!alloc_data || buffer_size <= 0 || !fd_data) {
+		E("Invalid arguments to alloc_map_ion_memory\n");
+		return -EINVAL;
 	}
-	if (ion_fd < 0) {
-		E("Failed to open ion device: %d\n", ion_fd);
-		return -ENODEV;
+	ion_dev_flag = O_RDONLY;
+	fd = open (MEM_DEVICE, ion_dev_flag);
+	if (fd < 0) {
+		E("opening ion device failed with fd = %d\n", fd);
+		return fd;
 	}
-	rc = ioctl(ion_fd,ION_IOC_ALLOC,&alloc_data);
+	alloc_data->flags = 0;
+	if (!secure_mode && (flag & ION_FLAG_CACHED)) {
+		alloc_data->flags |= ION_FLAG_CACHED;
+	}
+	alloc_data->len = buffer_size;
+	alloc_data->align = clip2(alignment);
+	if (alloc_data->align < 4096) {
+		alloc_data->align = 4096;
+	}
+	if ((secure_mode) && (flag & ION_SECURE))
+		alloc_data->flags |= ION_SECURE;
+
+	alloc_data->heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
+	if (secure_mode)
+		alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
+	rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
+	if (rc || !alloc_data->handle) {
+		E("ION ALLOC memory failed \n");
+		alloc_data->handle = NULL;
+		close(fd);
+		fd = -ENOMEM;
+		return fd;
+	}
+	fd_data->handle = alloc_data->handle;
+	rc = ioctl(fd,ION_IOC_MAP,fd_data);
 	if (rc) {
-		E("Failed to allocate ion memory: size %d, align: %d\n",
-			alloc_data.len, alloc_data.align);
-		return -ENOMEM;
+		E("ION MAP failed \n");
+		ion_buf_info.ion_alloc_data = *alloc_data;
+		ion_buf_info.ion_device_fd = fd;
+		ion_buf_info.fd_ion_data = *fd_data;
+		free_ion_memory(&ion_buf_info);
+		fd_data->fd =-1;
+		close(fd);
+		fd = -ENOMEM;
 	}
-	*handle = fd_data.handle = alloc_data.handle;
-	rc = ioctl(ion_fd,ION_IOC_MAP,&fd_data);
-	if (rc) {
-		E("Failed to MAP ion memory\n");
-		/*TODO: Handle error*/
-		return -ENOMEM;
-	}
-	return fd_data.fd;
+
+	return fd;
 }
 
-void free_ion_mem(struct bufinfo *binfo)
+void free_ion_memory(struct ion_info *buf_ion_info)
 {
-	struct ion_handle_data handle_data;
-	handle_data.handle = binfo->handle;
-	int rc = ioctl(ion_fd, ION_IOC_FREE, &handle_data);
-	if (rc)
-		E("Failed to free ion memory: %p, rc: %d\n", binfo->handle, rc);
+
+	if (!buf_ion_info) {
+		E("ION: free called with invalid fd/allocdata\n");
+		return;
+	}
+	if (ioctl(buf_ion_info->ion_device_fd,ION_IOC_FREE,
+		&buf_ion_info->ion_alloc_data.handle)) {
+		E("ION: free failed\n");
+	}
+	D("Closing ION device fd: %d\n", buf_ion_info->ion_device_fd);
+	close(buf_ion_info->ion_device_fd);
+	buf_ion_info->ion_device_fd = -1;
+	buf_ion_info->ion_alloc_data.handle = NULL;
+	buf_ion_info->fd_ion_data.fd = -1;
 }
 
+
+int alloc_extra_data(void)
+{
+	int rc = 0;
+	struct extradata_buffer_info *edata_info = &video_inst.extradata_info;
+	if (edata_info->size == 0) {
+		rc = 0;
+		D("No extra data buffer required, edata size = %d\n", edata_info->size);
+		return rc;
+	}
+	if (edata_info->ion.ion_alloc_data.handle) {
+		rc = munmap((void *)edata_info->uaddr, edata_info->size);
+		if (rc)
+			E("Fail to munmap(%p, %u)\n", (void *)edata_info->uaddr, edata_info->size);
+		close(edata_info->ion.fd_ion_data.fd);
+		free_ion_memory(&edata_info->ion);
+	}
+	edata_info->size = (edata_info->size + 4095) & (~4095);
+	edata_info->ion.ion_device_fd = alloc_map_ion_memory(
+			edata_info->size,
+			4096,
+			&edata_info->ion.ion_alloc_data,
+			&edata_info->ion.fd_ion_data,
+			0);
+
+	if (edata_info->ion.ion_device_fd >= 0) {
+		edata_info->uaddr = (__u8 *)mmap(NULL, edata_info->size,
+			PROT_READ | PROT_WRITE, MAP_SHARED,
+			edata_info->ion.fd_ion_data.fd, 0);
+		if (edata_info->uaddr == MAP_FAILED) {
+			E("Failed to get buffer virtual address\n");
+			close(edata_info->ion.fd_ion_data.fd);
+			free_ion_memory(&edata_info->ion);
+			rc = -ENOMEM;
+		} else {
+			D("Success alloc extra data buf size = %d, ion_device_fd = %d, uaddr = %p, fd_ion_data = %d\n",
+				edata_info->size, edata_info->ion.ion_device_fd,
+				edata_info->uaddr, edata_info->ion.fd_ion_data.fd);
+		}
+	} else {
+		E("Failed to allocate memory\n");
+		rc = -ENOMEM;
+	}
+	return rc;
+}
 static void free_buffers()
 {
-	int i,port;
+	int i, port, rc;
 	struct bufinfo *binfo = NULL;
 	int check_ring_fd = -1;
 	for (port = 0; port < MAX_PORTS; port++) {
+		if (port == CAPTURE_PORT && video_inst.extradata_info.size) {
+			struct extradata_buffer_info *edata_info = &video_inst.extradata_info;
+			if (edata_info->ion.ion_alloc_data.handle != NULL) {
+				rc = munmap((void *)edata_info->uaddr, edata_info->size);
+				if (rc)
+					E("Fail to munmap(%p, %u)\n", (void *)edata_info->uaddr, edata_info->size);
+				close(edata_info->ion.fd_ion_data.fd);
+				free_ion_memory(&edata_info->ion);
+			}
+		}
 		for(i = 0; i < MAX_NUM_BUFS; i++) {
 			binfo = &video_inst.binfo[port][i];
-			if (binfo->handle && check_ring_fd != binfo->fd) {
-				munmap(binfo->vaddr, binfo->size);
-				close(binfo->fd);
-				free_ion_mem(binfo);
+			if (binfo->ion.ion_alloc_data.handle != NULL && check_ring_fd != binfo->ion.fd_ion_data.fd) {
+				check_ring_fd = binfo->ion.fd_ion_data.fd; //ring buffer shall be free only once
+				rc = munmap((void *)binfo->vaddr, binfo->size);
+				if (rc)
+					E("Fail to munmap(%p, %u)\n", (void *)binfo->vaddr, binfo->size);
+				close(binfo->ion.fd_ion_data.fd);
+				free_ion_memory(&binfo->ion);
 			}
-			check_ring_fd = binfo->fd;
 		}
 	}
 }
 
 static int prepare_bufs(int fd, enum v4l2_buf_type buf_type)
 {
-	int i;
-	struct bufinfo *binfo;
+	int i = 0;
+	struct bufinfo *binfo = NULL;
 	struct v4l2_buffer buf;
 	struct v4l2_plane plane[VIDEO_MAX_PLANES];
 	int size = 0;
 	int numbufs = 0;
 	int port = CAPTURE_PORT;
+	int align = 4096;
+
 
 	if (buf_type == V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE) {
 		size = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].sizeimage;
@@ -449,30 +801,45 @@ static int prepare_bufs(int fd, enum v4l2_buf_type buf_type)
 		port = OUTPUT_PORT;
 	}
 
-	int align = 4096;
 	size = (size + (align-1)) & (~(align-1));
-	V("Port: %d: Buffer size required per buffer: %d, num of buf: %d\n",
+	V("Port: %d: buffer size required per buffer: %d, num of buf: %d\n",
 		port, size, numbufs);
 	int rc = 0;
 	if (fd < 0) {
 		E("Invalid fd: %d\n", fd);
 		return -EINVAL;
 	}
+	if (port == CAPTURE_PORT) {
+		rc = alloc_extra_data();
+		if (rc) {
+			E("Fail extra data allocation\n");
+			return rc;
+		}
+	}
 	for (i=0; i< numbufs; i++) {
 		int extra_idx = 0;
 		binfo = &video_inst.binfo[port][i];
-		binfo->fd = allocate_ion_mem(size, align, &binfo->handle);
-		if (binfo->fd < 0) {
+		binfo->ion.ion_device_fd = alloc_map_ion_memory(size,
+				align,
+				&binfo->ion.ion_alloc_data,
+				&binfo->ion.fd_ion_data,
+				0);
+		if (binfo->ion.ion_device_fd < 0) {
 			E("Failed to allocate memory\n");
 			rc = -ENOMEM;
 			break;
 		}
-		binfo->vaddr = (__u8 *)mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, binfo->fd, 0);
+		binfo->vaddr = (__u8 *)mmap(NULL, size,
+			PROT_READ | PROT_WRITE, MAP_SHARED,
+			binfo->ion.fd_ion_data.fd, 0);
 		if (binfo->vaddr == MAP_FAILED) {
 			E("Failed to get buffer virtual address\n");
+			close(binfo->ion.fd_ion_data.fd);
+			free_ion_memory(&binfo->ion);
 			rc = -ENOMEM;
 			break;
 		}
+
 		binfo->buf_type = buf_type;
 		binfo->index = i;
 		binfo->size = size;
@@ -481,17 +848,19 @@ static int prepare_bufs(int fd, enum v4l2_buf_type buf_type)
 		buf.memory = V4L2_MEMORY_USERPTR;
 		plane[0].length = size;
 		plane[0].m.userptr = (unsigned long)binfo->vaddr;
-		plane[0].reserved[0] = binfo->fd;
+		plane[0].reserved[0] = binfo->ion.fd_ion_data.fd;
 		plane[0].reserved[1] = 0;
 		plane[0].data_offset = binfo->offset;
 		extra_idx = EXTRADATA_IDX(video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.num_planes);
 		if (port == CAPTURE_PORT &&
 			((extra_idx >= 1) && (extra_idx < VIDEO_MAX_PLANES))) {
-			plane[extra_idx].length = 0;
-			plane[extra_idx].reserved[0] = 0;
-			plane[extra_idx].reserved[1] = 0;
-			plane[extra_idx].data_offset = 0;
 			buf.length = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.num_planes;
+			plane[extra_idx].length = video_inst.extradata_info.buffer_size;
+			plane[extra_idx].m.userptr = (long unsigned int) (video_inst.extradata_info.uaddr + i * video_inst.extradata_info.buffer_size);
+			plane[extra_idx].reserved[0] = video_inst.extradata_info.ion.fd_ion_data.fd;
+			plane[extra_idx].reserved[1] = i * video_inst.extradata_info.buffer_size;
+			plane[extra_idx].data_offset = 0;
+
 		} else {
 			buf.length = 1;
 		}
@@ -499,7 +868,7 @@ static int prepare_bufs(int fd, enum v4l2_buf_type buf_type)
 
 
 		D("Preparing Buffer port:%d : binfo: %p, vaddr: %p, fd: %d\n",
-			port, binfo, binfo->vaddr, binfo->fd);
+			port, binfo, binfo->vaddr, binfo->ion.fd_ion_data.fd);
 		pthread_mutex_lock(&video_inst.q_lock[port]);
 		if(push(&video_inst.buf_queue[port], (void *) binfo) < 0) {
 			E("Error in pushing buffers to queue \n");
@@ -528,6 +897,10 @@ static int allocate_ring_buffer(int fd, enum v4l2_buf_type buf_type)
 	int align = 4096;
 	int rc = 0;
 
+	if (fd < 0) {
+		E("Invalid fd: %d\n", fd);
+		return -EINVAL;
+	}
 	if (buf_type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) {
 		size = video_inst.fmt[OUTPUT_PORT].fmt.pix_mp.plane_fmt[0].sizeimage;
 		numbufs = video_inst.bufreq[OUTPUT_PORT].count;
@@ -537,38 +910,44 @@ static int allocate_ring_buffer(int fd, enum v4l2_buf_type buf_type)
 		return -EINVAL;
 	}
 
+	D("User requested ring_buf_size = %lu, component requested size = %d\n",
+		input_args->ring_buf_size, size);
 	if (input_args->ring_buf_size) {
 		if ((int)input_args->ring_buf_size < size)
-			I("Warning: ring buffer size is less than requested size = %d\n",
+			D("Warning: Ring buffer size is less than requested size = %d\n",
 				size);
 		ring_size = input_args->ring_buf_size;
+	} else {
+		ring_size = size;
 	}
-	else
-		ring_size = size * 4;
 
 	ring_size = (ring_size + (align-1)) & (~(align-1));
-	if (fd < 0) {
-		E("Invalid fd: %d\n", fd);
-		return -EINVAL;
-	}
 	V("Port: %d: Buffer size required per buffer: %d, num of buf: %d, aligned size = %d\n",
 		port, size, numbufs, ring_size);
 	{
 		i = 0;
-		int extra_idx = 0;
 		binfo = &video_inst.binfo[port][i];
-		binfo->fd = allocate_ion_mem(ring_size, align, &binfo->handle);
-		if (binfo->fd < 0) {
+		binfo->ion.ion_device_fd = alloc_map_ion_memory(ring_size,
+				align,
+				&binfo->ion.ion_alloc_data,
+				&binfo->ion.fd_ion_data,
+				0);
+		if (binfo->ion.ion_device_fd < 0) {
 			E("Failed to allocate memory\n");
 			rc = -ENOMEM;
 			goto ring_error;
 		}
-		binfo->vaddr = (__u8 *)mmap(NULL, ring_size, PROT_READ | PROT_WRITE, MAP_SHARED, binfo->fd, 0);
+		binfo->vaddr = (__u8 *)mmap(NULL, ring_size,
+			PROT_READ | PROT_WRITE, MAP_SHARED,
+			binfo->ion.fd_ion_data.fd, 0);
 		if (binfo->vaddr == MAP_FAILED) {
 			E("Failed to get buffer virtual address\n");
+			close(binfo->ion.fd_ion_data.fd);
+			free_ion_memory(&binfo->ion);
 			rc = -ENOMEM;
 			goto ring_error;
 		}
+
 		binfo->buf_type = buf_type;
 		binfo->index = i;
 		binfo->size = ring_size;
@@ -577,7 +956,7 @@ static int allocate_ring_buffer(int fd, enum v4l2_buf_type buf_type)
 		buf.memory = V4L2_MEMORY_USERPTR;
 		plane[0].length = ring_size;
 		plane[0].m.userptr = (unsigned long)binfo->vaddr;
-		plane[0].reserved[0] = binfo->fd;
+		plane[0].reserved[0] = binfo->ion.fd_ion_data.fd;
 		plane[0].reserved[1] = 0;
 		plane[0].data_offset = binfo->offset;
 		buf.length = 1;
@@ -617,7 +996,7 @@ static int allocate_ring_buffer(int fd, enum v4l2_buf_type buf_type)
 	video_inst.input_buf = (__u8 *)calloc(size, sizeof(__u8));
 	if (!video_inst.input_buf) {
 		E("input_buf allocation failed\n");
-		rc = -1;
+		rc = -ENOMEM;
 		goto ring_error;
 	}
 
@@ -676,7 +1055,7 @@ int configure_session (void)
 int commands_controls(void)
 {
 	int i,pos1,pos2,pos3,pos4,str_len,rc=0;
-	char line[MAX_LINE], param_name[128], param_name1[128];
+	char line[MAX_LINE], param_name[MAX_NAME_LENGTH], param_name1[MAX_NAME_LENGTH];
 	int fd = -1;
 	V("\n \n ****** Commands and Controls ****** \n \n");
 	for(i=0; i<sequence_count && !rc; i++) {
@@ -1163,6 +1542,21 @@ int commands_controls(void)
 				control.value = input_args->enable_frame_assembly;
 				rc = set_control(fd, &control);
 				V("FRAME_ASSEMBLY Set Control Done\n");
+			} else if(!(strncmp(param_name,"VIDEO_EXTRADATA",pos2))) {
+				V("VIDEO_EXTRADATA Control\n");
+				rc = 0;
+				pos3 = strcspn(input_args->sequence[i]+pos1+1+pos2+1," ");
+				strlcpy(param_name,input_args->sequence[i]+pos1+1+pos2+1,pos3+1);
+				control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+				control.value = get_extradata_value(param_name);
+				if (control.value < 0) {
+					E("Parser didn't handle SET_CTRL VIDEO_EXTRADATA %s \n",
+						param_name);
+					rc = -1;
+				} else {
+					rc = set_control(fd, &control);
+					V("VIDEO_EXTRADATA Set Control Done\n");
+				}
 			} else {
 				E("ERROR .... Wrong Control \n");
 				rc = -EINVAL;
@@ -1185,10 +1579,7 @@ int commands_controls(void)
 			}
 		} else if(!(strncmp(param_name,"CLOSE\r",pos1))) {
 			V("CLOSE Command\n");
-			/*if (fd >= 0)
-				close(fd);
-			if (ion_fd >= 0)
-				close(ion_fd);*/
+			// TODO: handle this command
 		} else if(!(strncmp(param_name,"STREAM_ON",pos1))) {
 			V("STREAM_ON Command\n");
 			pos2 = strcspn(input_args->sequence[i]+pos1+1," ");
@@ -1662,6 +2053,8 @@ static int get_format(int fd, enum v4l2_buf_type buf_type)
 	struct v4l2_format fmt;
 	int port;
 	int rc;
+	int extra_idx = 0;
+	int extra_data_size = 0;
 	memset(&fmt, 0, sizeof(fmt));
 	fmt.type = buf_type;
 	rc = ioctl(fd, VIDIOC_G_FMT, &fmt);
@@ -1692,7 +2085,21 @@ static int get_format(int fd, enum v4l2_buf_type buf_type)
 			fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
 		video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].reserved[0]=
 			fmt.fmt.pix_mp.plane_fmt[0].reserved[0];
-		//TODO: Add extra data info
+
+		extra_idx = EXTRADATA_IDX(fmt.fmt.pix_mp.num_planes);
+		if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
+			extra_data_size =  fmt.fmt.pix_mp.plane_fmt[extra_idx].sizeimage;
+			D("Required extra data size per buffer = %d, idx = %d\n", extra_data_size, extra_idx);
+		} else if (extra_idx >= VIDEO_MAX_PLANES) {
+			E("Extradata index is more than allowed: %d\n", extra_idx);
+			return -1;
+		}
+		/* If count has has not been initialize it will update the extradata_ingo again in get_bufreqs() */
+		video_inst.extradata_info.size = video_inst.bufreq[CAPTURE_PORT].count * extra_data_size;
+		video_inst.extradata_info.count = video_inst.bufreq[CAPTURE_PORT].count;
+		video_inst.extradata_info.buffer_size = extra_data_size;
+		D("Update: VIDIOC_G_FMT: extra data all buffers size = %d\n",
+			video_inst.extradata_info.size);
 		break;
 	case OUTPUT_PORT :
 		video_inst.fmt[OUTPUT_PORT].fmt.pix_mp.height=fmt.fmt.pix_mp.height;
@@ -1831,6 +2238,10 @@ static int get_bufreqs(int fd, enum v4l2_buf_type buf_type)
 	case CAPTURE_PORT :
 		video_inst.bufreq[CAPTURE_PORT].count = bufreq.count;
 		video_inst.bufreq[CAPTURE_PORT].type = bufreq.type;
+		video_inst.extradata_info.size = bufreq.count * video_inst.extradata_info.buffer_size;
+		video_inst.extradata_info.count = bufreq.count;
+		D("Update: VIDIOC_REQBUFS extra data all buffers size = %d\n",
+			video_inst.extradata_info.size);
 		break;
 	case OUTPUT_PORT :
 		video_inst.bufreq[OUTPUT_PORT].count = bufreq.count;
@@ -1938,8 +2349,8 @@ static int q_single_buf(struct bufinfo *binfo)
 							video_inst.input_buf,
 							 bytes_to_read);
 				} else {
-					V("copy read frame to input buffer\n");
 					rc = read_one_frame(video_inst.inputfile, video_inst.input_buf);
+					V("Copy read frame to input buffer, size = %d\n", rc);
 				}
 			} else
 				rc = read_one_frame(video_inst.inputfile, binfo->vaddr);
@@ -1977,17 +2388,26 @@ static int q_single_buf(struct bufinfo *binfo)
 	plane[0].bytesused = read_size;
 	plane[0].length = binfo->size;
 	plane[0].m.userptr = (unsigned long)binfo->vaddr;
-	plane[0].reserved[0] = binfo->fd;
+	plane[0].reserved[0] = binfo->ion.fd_ion_data.fd;
 	plane[0].reserved[1] = 0;
 	plane[0].data_offset = binfo->offset;
 	extra_idx = EXTRADATA_IDX(video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.num_planes);
 	if (port == CAPTURE_PORT) {
 		if ((extra_idx >= 1) && (extra_idx < VIDEO_MAX_PLANES)) {
-			plane[extra_idx].length = 0;
-			plane[extra_idx].reserved[0] = 0;
-			plane[extra_idx].reserved[1] = 0;
+			plane[extra_idx].bytesused = 0;
+			plane[extra_idx].length = video_inst.extradata_info.buffer_size;
+			plane[extra_idx].m.userptr = (unsigned long)(video_inst.extradata_info.uaddr + buf.index * video_inst.extradata_info.buffer_size);
+			plane[extra_idx].reserved[0] = video_inst.extradata_info.ion.fd_ion_data.fd;
+			plane[extra_idx].reserved[1] = buf.index * video_inst.extradata_info.buffer_size;
 			plane[extra_idx].data_offset = 0;
 			buf.length = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.num_planes;
+			D("Queueing extra data: port:(%d), index: %d, fd = %d,reserved[1] = %u, userptr = %p,"
+				" offset = %d, flags=0x%x, bytesused= %d, length= %d, num_planes = %d\n",
+				port, buf.index,
+				plane[extra_idx].reserved[0], plane[extra_idx].reserved[1],
+				(void *)plane[extra_idx].m.userptr,
+				plane[extra_idx].data_offset, buf.flags,
+				plane[extra_idx].bytesused, plane[extra_idx].length, buf.length);
 		} else
 			buf.length = 1;
 	} else {
@@ -2152,7 +2572,8 @@ static void* poll_func(void *data)
 					video_inst.cur_test_status = SUCCESS;
 				}
 				filled_len = plane[0].bytesused;
-				D("FBD COUNT: %d, filled length = %d\n", video_inst.fbd_count, filled_len);
+				D("FBD COUNT: %d, filled length = %d, userptr = %p, offset = %d\n",
+					video_inst.fbd_count, filled_len, (void *)plane[0].m.userptr, plane[0].data_offset);
 				if (input_args->session == DECODER_SESSION && filled_len) {
 					int stride = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].bytesperline;
 					int scanlines = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].reserved[0];
@@ -2160,7 +2581,7 @@ static void* poll_func(void *data)
 					unsigned i;
 					int bytes_written = 0;
 					for (i = 0; i < input_args->input_height; i++) {
-						bytes_written = fwrite(temp, input_args->input_width, 1, video_inst.outputfile);
+						bytes_written += fwrite(temp, input_args->input_width, 1, video_inst.outputfile);
 						temp += stride;
 					}
 					temp = (const char *)binfo->vaddr + stride * scanlines;
@@ -2168,7 +2589,8 @@ static void* poll_func(void *data)
 						bytes_written += fwrite(temp, input_args->input_width, 1, video_inst.outputfile);
 						temp += stride;
 					}
-					D("Written %d bytes successfully\n", bytes_written);
+					D("Written %d segments successfully, stride = %d, scan_lines = %d, frame = %d x %d\n",
+						bytes_written, stride, scanlines, (int)input_args->input_width, (int)input_args->input_height);
 				} else if (input_args->session == ENCODER_SESSION) {
 					rc = fwrite((const char *)binfo->vaddr,
 							filled_len,1,video_inst.outputfile);
@@ -2178,6 +2600,13 @@ static void* poll_func(void *data)
 						if (!filled_len)
 							E("Failed to write output\n");
 					}
+				}
+
+				rc = handle_extradata_v4l2(v4l2_buf);
+				if (rc >= 0) {
+					V("Got %d extra data fields\n", rc);
+				} else {
+					E("Error getting extra data\n");
 				}
 				rc = push(&video_inst.buf_queue[CAPTURE_PORT], (void *) binfo);
 				if (rc) {
@@ -2288,7 +2717,6 @@ static void nominal_test()
 	int rc = 0;
 	int i;
 	struct v4l2_decoder_cmd dec;
-	ion_fd = -1;
 	video_inst.cur_test_status = SUCCESS;
 
 	rc = parse_cfg(input_args->config);
@@ -2393,9 +2821,11 @@ err:
 		num_of_test_fail++;
 		I("Test fail\n");
 	}
+
+	for (i = 0; i < MAX_PORTS; i++)
+		free_queue(&video_inst.buf_queue[i]);
 	close(video_inst.fd);
 	free_buffers();
-	close(ion_fd);
 	//De-initialize global variables for repetability test
 	D("Clear Global variables\n");
 	video_inst.ebd_count = 0;
@@ -2404,9 +2834,7 @@ err:
 	video_inst.events_subscribed = 0;
 	video_inst.poll_created = 0;
 	video_inst.cur_test_status = FAILURE;
-	for (i = 0; i < MAX_PORTS; i++)
-		free_queue(&video_inst.buf_queue[i]);
-
+	video_inst.extradata_info.size = 0;
 }
 
 static void adversarial_test()
@@ -2440,6 +2868,7 @@ int main(int argc, char *argv[])
 		return -1;
 	/* Setting defaults */
 	memset(input_args, 0, sizeof(*input_args));
+	memset(&video_inst, 0, sizeof(video_inst));
 	input_args->request_i_frame = -1;
 	input_args->verbosity = 1;
 	strlcpy(input_args->bufsize_filename, "beefbeef", MAX_FILE_PATH_SIZE);
