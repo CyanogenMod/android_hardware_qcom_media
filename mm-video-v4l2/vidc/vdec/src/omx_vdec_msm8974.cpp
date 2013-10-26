@@ -561,7 +561,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     memset(&m_debug,0,sizeof(m_debug));
 #ifdef _ANDROID_
     char property_value[PROPERTY_VALUE_MAX] = {0};
-    property_get("vidc.debug.level", property_value, "0");
+    property_get("vidc.debug.level", property_value, "1");
     debug_level = atoi(property_value);
     property_value[0] = '\0';
 

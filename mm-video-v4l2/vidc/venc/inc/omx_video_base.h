@@ -42,7 +42,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //                             Include Files
 //////////////////////////////////////////////////////////////////////////////
 
-#define LOG_TAG "OMX-VENC-720p"
+#define LOG_TAG "OMX-VENC"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/mman.h>
