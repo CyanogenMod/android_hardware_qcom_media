@@ -2456,6 +2456,9 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
             case OMX_VIDEO_AVCLevel51:
                 requested_level.level = V4L2_MPEG_VIDEO_H264_LEVEL_5_1;
                 break;
+            case OMX_VIDEO_AVCLevel52:
+                requested_level.level = V4L2_MPEG_VIDEO_H264_LEVEL_5_2;
+                break;
             case OMX_VIDEO_AVCLevelMax:
                 requested_level.level = V4L2_MPEG_VIDEO_H264_LEVEL_5_2;
                 break;
@@ -3371,7 +3374,7 @@ bool venc_dev::venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel)
                 *eLevel = OMX_VIDEO_AVCLevel51;
                 break;
             case V4L2_MPEG_VIDEO_H264_LEVEL_5_2:
-                *eLevel = OMX_VIDEO_AVCLevelMax;
+                *eLevel = OMX_VIDEO_AVCLevel52;
                 break;
             default :
                 *eLevel = OMX_VIDEO_AVCLevelMax;
