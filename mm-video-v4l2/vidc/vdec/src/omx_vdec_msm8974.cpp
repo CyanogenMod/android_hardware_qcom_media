@@ -7638,6 +7638,7 @@ OMX_ERRORTYPE omx_vdec::set_buffer_req(vdec_allocatorproperty *buffer_prop)
         if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_INPUT) {
             fmt.type =V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
             fmt.fmt.pix_mp.pixelformat = output_capability;
+            fmt.fmt.pix_mp.plane_fmt[0].sizeimage = buf_size;
         } else if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT) {
             fmt.type =V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
             fmt.fmt.pix_mp.pixelformat = capture_capability;
