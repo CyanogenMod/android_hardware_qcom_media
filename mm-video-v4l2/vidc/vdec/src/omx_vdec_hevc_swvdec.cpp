@@ -3556,7 +3556,12 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         DEBUG_PRINT_ERROR("\n Sync frame setting failed: falied to get buffer i/p requirements");
                         eRet = OMX_ErrorUnsupportedSetting;
                     }
-                    if (get_buffer_req(&drv_ctx.interm_op_buf)) {
+                    if (!m_pSwVdec) { // for full dsp mode
+                        if (get_buffer_req(&drv_ctx.op_buf)) {
+                            DEBUG_PRINT_ERROR("\n Sync frame setting failed: falied to get buffer o/p requirements");
+                            eRet = OMX_ErrorUnsupportedSetting;
+                        }
+                    } else if (get_buffer_req(&drv_ctx.interm_op_buf)) { // for hybrid
                         DEBUG_PRINT_ERROR("\n Sync frame setting failed: falied to get buffer o/p requirements");
                         eRet = OMX_ErrorUnsupportedSetting;
                     }
@@ -7674,7 +7679,7 @@ OMX_ERRORTYPE omx_vdec::set_buffer_req(vdec_allocatorproperty *buffer_prop)
                 " on v4l2 port %d to %d (prefers %d)", bufreq.type,
                 buffer_prop->actualcount, bufreq.count);
             eRet = OMX_ErrorInsufficientResources;
-        } else {
+        } else if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT){
             if (!client_buffers.update_buffer_req()) {
                 DEBUG_PRINT_ERROR("Setting c2D buffer requirements failed");
                 eRet = OMX_ErrorInsufficientResources;
