@@ -7364,7 +7364,6 @@ struct ion_fd_data *fd_data, int flag, int heap_id)
         ion_buf_info.fd_ion_data = *fd_data;
         free_ion_memory(&ion_buf_info);
         fd_data->fd =-1;
-        close(fd);
         fd = -ENOMEM;
     }
 
@@ -9644,8 +9643,11 @@ clean_up:
     {
         for(i=0; i< drv_ctx.interm_op_buf.actualcount; i++)
         {
-            close(drv_ctx.ptr_interm_outputbuffer[i].pmem_fd);
-            drv_ctx.ptr_interm_outputbuffer[i].pmem_fd = 0;
+            if(drv_ctx.ptr_interm_outputbuffer)
+            {
+                close(drv_ctx.ptr_interm_outputbuffer[i].pmem_fd);
+                drv_ctx.ptr_interm_outputbuffer[i].pmem_fd = 0;
+            }
             free_ion_memory(&drv_ctx.interm_op_buf_ion_info[i]);
         }
     }
