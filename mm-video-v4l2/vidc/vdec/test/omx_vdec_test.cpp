@@ -2364,8 +2364,11 @@ int Play_Decoder()
         do_freeHandle_and_clean_up(true);
         return -1;
     } else if (currentStatus == PORT_SETTING_CHANGE_STATE) {
-        if (output_port_reconfig() != 0)
+        if (output_port_reconfig() != 0) {
+            DEBUG_PRINT("output_port_reconfig - ERROR_STATE\n");
+            do_freeHandle_and_clean_up(true);
             return -1;
+        }
     }
 
     if (freeHandle_option == FREE_HANDLE_AT_EXECUTING) {
@@ -2407,6 +2410,9 @@ static OMX_ERRORTYPE Allocate_Buffer ( OMX_COMPONENTTYPE *dec_handle,
     OMX_ERRORTYPE error=OMX_ErrorNone;
     long bufCnt=0;
 
+    if (currentStatus == ERROR_STATE)  {
+        return OMX_ErrorInvalidState;
+    }
     DEBUG_PRINT("pBufHdrs = %x,bufCntMin = %d\n", pBufHdrs, bufCntMin);
     *pBufHdrs= (OMX_BUFFERHEADERTYPE **)
         malloc(sizeof(OMX_BUFFERHEADERTYPE)*bufCntMin);
@@ -2598,8 +2604,13 @@ static void do_freeHandle_and_clean_up(bool isDueToError)
     if (state == OMX_StateExecuting || state == OMX_StatePause) {
         DEBUG_PRINT("Requesting transition to Idle");
         OMX_SendCommand(dec_handle, OMX_CommandStateSet, OMX_StateIdle, 0);
-        wait_for_event();
+        do {
+            wait_for_event();
+            OMX_GetState(dec_handle, &state);
+            DEBUG_PRINT("returned state %d", state);
+        } while ((state != OMX_StateIdle) && (state != OMX_StateInvalid));
     }
+
     OMX_GetState(dec_handle, &state);
     if (state == OMX_StateIdle) {
         DEBUG_PRINT("Requesting transition to Loaded");
@@ -3941,6 +3952,11 @@ int enable_output_port()
     int bufCnt = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     DEBUG_PRINT("ENABLING OP PORT\n");
+
+    if (currentStatus == ERROR_STATE) {
+        DEBUG_PRINT("ENABLING OP PORT in ERROR_STATE not allowed\n");
+        return -1;
+    }
     // Send Enable command
     OMX_SendCommand(dec_handle, OMX_CommandPortEnable, 1, 0);
 #ifndef USE_EGL_IMAGE_TEST_APP
