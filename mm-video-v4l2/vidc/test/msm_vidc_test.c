@@ -492,57 +492,57 @@ int handle_extradata_v4l2(struct v4l2_buffer v4l2_buf)
 	data = (struct msm_vidc_extradata_header *)p_extradata;
 	if (data) {
 		while ((consumed_len < video_inst.extradata_info.buffer_size)
-				&& (data->type != EXTRADATA_NONE)) {
+				&& (data->type != MSM_VIDC_EXTRADATA_NONE)) {
 			if ((consumed_len + data->size) > video_inst.extradata_info.buffer_size) {
 				D("Invalid extra data size\n");
 				break;
 			}
 			rc++;
 			switch (data->type) {
-				case EXTRADATA_INTERLACE_VIDEO:
+				case MSM_VIDC_EXTRADATA_INTERLACE_VIDEO:
 				{
 					struct msm_vidc_interlace_payload *payload;
 					payload = (struct msm_vidc_interlace_payload *)data->data;
 					if (payload) {
 						switch (payload->format) {
-						case INTERLACE_FRAME_PROGRESSIVE:
-							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_FRAME_PROGRESSIVE\n");
+						case MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE:
+							I("MSM_VIDC_EXTRADATA_INTERLACE_VIDEO -> MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE\n");
 							break;
-						case INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST:
-							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST\n");
+						case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST:
+							I("MSM_VIDC_EXTRADATA_INTERLACE_VIDEO -> MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST\n");
 							break;
-						case INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST:
-							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST\n");
+						case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST:
+							I("MSM_VIDC_EXTRADATA_INTERLACE_VIDEO -> MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST\n");
 							break;
-						case INTERLACE_FRAME_TOPFIELDFIRST:
-							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_FRAME_TOPFIELDFIRST\n");
+						case MSM_VIDC_INTERLACE_FRAME_TOPFIELDFIRST:
+							I("MSM_VIDC_EXTRADATA_INTERLACE_VIDEO -> MSM_VIDC_INTERLACE_FRAME_TOPFIELDFIRST\n");
 							break;
-						case INTERLACE_FRAME_BOTTOMFIELDFIRST:
-							I("EXTRADATA_INTERLACE_VIDEO -> INTERLACE_FRAME_BOTTOMFIELDFIRST\n");
+						case MSM_VIDC_INTERLACE_FRAME_BOTTOMFIELDFIRST:
+							I("MSM_VIDC_EXTRADATA_INTERLACE_VIDEO -> MSM_VIDC_INTERLACE_FRAME_BOTTOMFIELDFIRST\n");
 							break;
 						default:
-							E("Not recognized EXTRADATA_INTERLACE_VIDEO: 0x%x\n", payload->format);
+							E("Not recognized MSM_VIDC_EXTRADATA_INTERLACE_VIDEO: 0x%x\n", payload->format);
 							break;
 						}
 					}
 					break;
 				}
-				case EXTRADATA_FRAME_RATE:
+				case MSM_VIDC_EXTRADATA_FRAME_RATE:
 				{
 					struct msm_vidc_framerate_payload *frame_rate_payload;
 					frame_rate_payload = (struct msm_vidc_framerate_payload *)data->data;
-					I("EXTRADATA_FRAME_RATE = %u\n", frame_rate_payload->frame_rate);
+					I("MSM_VIDC_EXTRADATA_FRAME_RATE = %u\n", frame_rate_payload->frame_rate);
 					break;
 				}
-				case EXTRADATA_TIMESTAMP:
+				case MSM_VIDC_EXTRADATA_TIMESTAMP:
 				{
 					struct msm_vidc_ts_payload *time_stamp_payload;
 					time_stamp_payload = (struct msm_vidc_ts_payload *)data->data;
-					I("EXTRADATA_TIMESTAMP = timestamp_hi:timestamp_low = %u:%u\n",
+					I("MSM_VIDC_EXTRADATA_TIMESTAMP = timestamp_hi:timestamp_low = %u:%u\n",
 						time_stamp_payload->timestamp_hi, time_stamp_payload->timestamp_lo);
 					break;
 				}
-				case EXTRADATA_NUM_CONCEALED_MB:
+				case MSM_VIDC_EXTRADATA_NUM_CONCEALED_MB:
 				{
 					struct msm_vidc_concealmb_payload *conceal_mb_payload;
 					unsigned int num_MB_in_frame;
@@ -551,67 +551,67 @@ int handle_extradata_v4l2(struct v4l2_buffer v4l2_buf)
 					num_MB_in_frame = ((video_inst.fmt[port].fmt.pix_mp.width + 15) *
 							(video_inst.fmt[port].fmt.pix_mp.height+ 15)) >> 8;
 					num_conceal_MB = ((num_MB_in_frame > 0)?(conceal_mb_payload->num_mbs * 100 / num_MB_in_frame) : 0);
-					I("EXTRADATA_NUM_CONCEALED_MB -> num_mbs = %u, num_conceal_MB = %u\n",
+					I("MSM_VIDC_EXTRADATA_NUM_CONCEALED_MB -> num_mbs = %u, num_conceal_MB = %u\n",
 						conceal_mb_payload->num_mbs, num_conceal_MB);
 					break;
 				}
-				case EXTRADATA_INDEX:
+				case MSM_VIDC_EXTRADATA_INDEX:
 				{
 					int * p_type;
 					p_type  = (int *)(data->data);
 					if (p_type) {
-						if (*p_type == EXTRADATA_ASPECT_RATIO) {
+						if (*p_type == MSM_VIDC_EXTRADATA_ASPECT_RATIO) {
 							struct msm_vidc_aspect_ratio_payload *aspect_ratio_payload;
 							aspect_ratio_payload = (struct msm_vidc_aspect_ratio_payload *)(++p_type);
 							if (aspect_ratio_payload) {
-								I("EXTRADATA_INDEX->EXTRADATA_ASPECT_RATIO = %u x %u\n",
+								I("MSM_VIDC_EXTRADATA_INDEX->MSM_VIDC_EXTRADATA_ASPECT_RATIO = %u x %u\n",
 									aspect_ratio_payload->aspect_width, aspect_ratio_payload->aspect_height);
 							}
 						} else {
-							E("EXTRADATA_INDEX not recognized by application: %u\n", *p_type);
+							E("MSM_VIDC_EXTRADATA_INDEX not recognized by application: %u\n", *p_type);
 						}
 					} else {
-						E("EXTRADATA_INDEX is NULL\n");
+						E("MSM_VIDC_EXTRADATA_INDEX is NULL\n");
 					}
 					break;
 				}
-				case EXTRADATA_RECOVERY_POINT_SEI:
+				case MSM_VIDC_EXTRADATA_RECOVERY_POINT_SEI:
 				{
 					struct msm_vidc_recoverysei_payload *recovery_sei_payload;
 					unsigned int recovery_sei_flags;
 					recovery_sei_payload = (struct msm_vidc_recoverysei_payload *)data->data;
 					recovery_sei_flags = recovery_sei_payload->flags;
-					I("EXTRADATA_RECOVERY_POINT_SEI = %x\n", recovery_sei_payload->flags);
-					if (recovery_sei_flags != FRAME_RECONSTRUCTION_CORRECT) {
+					I("MSM_VIDC_EXTRADATA_RECOVERY_POINT_SEI = %x\n", recovery_sei_payload->flags);
+					if (recovery_sei_flags != MSM_VIDC_FRAME_RECONSTRUCTION_CORRECT) {
 						I("***************************************************\n");
-						E("EXTRADATA_RECOVERY_POINT_SEI: DATACORRUPT Received\n");
+						E("MSM_VIDC_EXTRADATA_RECOVERY_POINT_SEI: DATACORRUPT Received\n");
 						I("***************************************************\n");
 					}
 					break;
 				}
-				case EXTRADATA_PANSCAN_WINDOW:
+				case MSM_VIDC_EXTRADATA_PANSCAN_WINDOW:
 				{
 					struct msm_vidc_panscan_window_payload *panscan_payload = NULL;
 					panscan_payload = (struct msm_vidc_panscan_window_payload *)data->data;
-					I("EXTRADATA_PANSCAN_WINDOW received\n");
+					I("MSM_VIDC_EXTRADATA_PANSCAN_WINDOW received\n");
 					break;
 				}
-				case EXTRADATA_MPEG2_SEQDISP: //SEQUENCE           : SET_CTRL VIDEO_EXTRADATA MPEG2_SEQDISP
+				case MSM_VIDC_EXTRADATA_MPEG2_SEQDISP: //SEQUENCE           : SET_CTRL VIDEO_EXTRADATA MPEG2_SEQDISP
 				{
 					struct msm_vidc_mpeg2_seqdisp_payload *seqdisp_payload;
 					seqdisp_payload = (struct msm_vidc_mpeg2_seqdisp_payload *)data->data;
 					if (seqdisp_payload) {
-						I("EXTRADATA_MPEG2_SEQDISP: display size = %u x %u\n",
+						I("MSM_VIDC_EXTRADATA_MPEG2_SEQDISP: display size = %u x %u\n",
 							seqdisp_payload->disp_width,
 							seqdisp_payload->disp_height);
 					} else {
-						I("EXTRADATA_MPEG2_SEQDISP: NULL\n");
+						I("MSM_VIDC_EXTRADATA_MPEG2_SEQDISP: NULL\n");
 					}
 					break;
 				}
 				default:
 					rc--;
-					E("EXTRADATA not recognized by application = 0x%x\n", data->type);
+					E("MSM_VIDC_EXTRADATA not recognized by application = 0x%x\n", data->type);
 					goto unrecognized_extradata;
 			}
 			consumed_len += data->size;
