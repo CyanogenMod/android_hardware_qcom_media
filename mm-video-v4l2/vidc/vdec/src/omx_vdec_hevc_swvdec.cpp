@@ -5531,8 +5531,8 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         return OMX_ErrorBadParameter;
     }
 
-    DEBUG_PRINT_LOW("[ETB] BHdr(%p) pBuf(%p) nTS(%lld) nFL(%lu)",
-        buffer, buffer->pBuffer, buffer->nTimeStamp, buffer->nFilledLen);
+    DEBUG_PRINT_LOW("[ETB] BHdr(%p) pBuf(%p) nTS(%lld) nFL(%lu) nFlags(%x)",
+        buffer, buffer->pBuffer, buffer->nTimeStamp, buffer->nFilledLen, buffer->nFlags);
     if (arbitrary_bytes)
     {
         post_event ((unsigned)hComp,(unsigned)buffer,
@@ -5839,9 +5839,10 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorIncorrectStateOperation;
     }
 
-    if (buffer == NULL ||
-        ((buffer - client_buffers.get_il_buf_hdr()) >= (int)drv_ctx.op_buf.actualcount))
+    unsigned int nPortIndex = (unsigned int)(buffer - client_buffers.get_il_buf_hdr());
+    if (buffer == NULL || nPortIndex >= drv_ctx.op_buf.actualcount)
     {
+        DEBUG_PRINT_ERROR("ERROR:FTB invalid bufHdr %p, nPortIndex %u", buffer, nPortIndex);
         return OMX_ErrorBadParameter;
     }
 
@@ -5883,8 +5884,12 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 
     nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
 
-    if (bufferAdd == NULL || nPortIndex > drv_ctx.op_buf.actualcount)
+    if (bufferAdd == NULL || nPortIndex >= drv_ctx.op_buf.actualcount)
+    {
+        DEBUG_PRINT_ERROR("FTBProxy: bufhdr = %p, nPortIndex %u bufCount %u",
+             bufferAdd, nPortIndex, drv_ctx.op_buf.actualcount);
         return OMX_ErrorBadParameter;
+    }
 
     DEBUG_PRINT_LOW("FTBProxy: bufhdr = %p, bufhdr->pBuffer = %p",
         bufferAdd, bufferAdd->pBuffer);
@@ -6096,9 +6101,6 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     }
 #endif
 
-    DEBUG_PRINT_LOW("Calling VDEC_IOCTL_STOP_NEXT_MSG");
-    //(void)ioctl(drv_ctx.video_driver_fd, VDEC_IOCTL_STOP_NEXT_MSG,
-    // NULL);
     DEBUG_PRINT_HIGH("Close the driver instance");
 
 #ifdef INPUT_BUFFER_LOG
@@ -6531,8 +6533,8 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         buffer->nFlags &= ~OMX_BUFFERFLAG_DATACORRUPT;
     }
 
-    DEBUG_PRINT_LOW("fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p idx %d, TS %lld",
-        buffer, buffer->pBuffer, buffer - m_out_mem_ptr, buffer->nTimeStamp );
+    DEBUG_PRINT_LOW("fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p idx %d, TS %lld nFlags %x",
+        buffer, buffer->pBuffer, buffer - m_out_mem_ptr, buffer->nTimeStamp, buffer->nFlags );
     pending_output_buffers --;
 
     if (buffer->nFlags & OMX_BUFFERFLAG_EOS)
@@ -9145,6 +9147,9 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy_swvdec(OMX_IN OMX_HANDLETYPE hC
         ((buffer->nFlags & OMX_BUFFERFLAG_EOS) == 0))
     {
         DEBUG_PRINT_HIGH("return zero legth buffer");
+        pthread_mutex_lock(&m_lock);
+        m_interm_buf_state[nPortIndex] = WITH_SWVDEC;
+        pthread_mutex_unlock(&m_lock);
         post_event ((unsigned int)buffer,VDEC_S_SUCCESS,
             OMX_COMPONENT_GENERATE_EBD_SWVDEC);
         return OMX_ErrorNone;
