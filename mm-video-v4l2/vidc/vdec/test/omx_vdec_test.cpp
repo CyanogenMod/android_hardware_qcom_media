@@ -735,8 +735,9 @@ void* fbd_thread(void* pArg)
                     DEBUG_PRINT_ERROR("Error in enqueueing fbd_data\n");
                 else
                     sem_post(&fbd_sem);
-                pPrevBuff = NULL;
             }
+            pPrevBuff = NULL;
+            pBuffer = NULL;
             if (free_op_buf_cnt == portFmt.nBufferCountActual)
                 free_output_buffers();
             pthread_mutex_unlock(&fbd_lock);
