@@ -6364,6 +6364,11 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     DEBUG_PRINT_LOW("\n In fill Buffer done call address %p ",buffer);
     log_output_buffers(buffer);
 
+    if (!output_flush_progress && (buffer->nFilledLen > 0)) {
+        DEBUG_PRINT_LOW("Processing extradata");
+        handle_extradata(buffer);
+    }
+
     /* For use buffer we need to copy the data */
     if (!output_flush_progress) {
         /* This is the error check for non-recoverable errros */
@@ -6412,7 +6417,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     }
     if (m_cb.FillBufferDone) {
         if (buffer->nFilledLen > 0) {
-            handle_extradata(buffer);
             if (client_extradata & OMX_TIMEINFO_EXTRADATA)
                 set_frame_rate(buffer->nTimeStamp);
             else if (arbitrary_bytes)
@@ -8054,7 +8058,11 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
                     if (payload && (payload->format == INTERLACE_FRAME_PROGRESSIVE)  && !mbaff)
                         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-                    else {
+                    else if (payload && (payload->format == INTERLACE_FRAME_TOPFIELDFIRST ||
+                        payload->format == INTERLACE_FRAME_BOTTOMFIELDFIRST)  && !mbaff) {
+                        drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
+                        enable = 1;
+                    } else {
                         drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
                         enable = 1;
                     }
@@ -8134,6 +8142,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     num_conceal_MB, ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->pic_type, frame_rate,
                     time_stamp, panscan_payload,&((struct vdec_output_frameinfo *)
                         p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info);
+            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
         }
     }
 unrecognized_extradata:
@@ -8322,6 +8331,14 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     if ((interlaced_format_type == INTERLACE_FRAME_PROGRESSIVE)  && !mbaff) {
         interlace_format->bInterlaceFormat = OMX_FALSE;
         interlace_format->nInterlaceFormats = OMX_InterlaceFrameProgressive;
+        drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
+    } else if ((interlaced_format_type == INTERLACE_FRAME_TOPFIELDFIRST)  && !mbaff) {
+        interlace_format->bInterlaceFormat = OMX_TRUE;
+        interlace_format->nInterlaceFormats = OMX_InterlaceFrameTopFieldFirst;
+        drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
+    } else if ((interlaced_format_type == INTERLACE_FRAME_BOTTOMFIELDFIRST)  && !mbaff) {
+        interlace_format->bInterlaceFormat = OMX_TRUE;
+        interlace_format->nInterlaceFormats = OMX_InterlaceFrameBottomFieldFirst;
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
     } else {
         interlace_format->bInterlaceFormat = OMX_TRUE;
