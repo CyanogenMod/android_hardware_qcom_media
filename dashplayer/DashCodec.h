@@ -278,8 +278,6 @@ private:
 
     status_t requestIDRFrame();
 
-    status_t InitSmoothStreaming();
-    bool mSmoothStreaming;
     Vector<OMX_PARAM_PORTDEFINITIONTYPE*> mFormats;
     Vector<OMX_CONFIG_RECTTYPE*> mOutputCrops;
     DISALLOW_EVIL_CONSTRUCTORS(DashCodec);
