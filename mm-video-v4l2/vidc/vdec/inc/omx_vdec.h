@@ -959,6 +959,9 @@ class omx_vdec: public qc_omx_component
         allocate_color_convert_buf client_buffers;
 #endif
         struct video_decoder_capability m_decoder_capability;
+#ifdef _MSM8974_
+        void send_codec_config();
+#endif
 };
 
 #ifdef _MSM8974_
