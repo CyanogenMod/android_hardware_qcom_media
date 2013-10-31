@@ -7065,6 +7065,21 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     return OMX_ErrorBadParameter;
   }
 
+ // update buffer stride so display can interpret the buffer correctly
+ if (m_use_smoothstreaming) {
+    OMX_U32 buf_index = buffer - m_out_mem_ptr;
+    private_handle_t * handle = NULL;
+    BufferDim_t dim;
+    dim.sliceWidth = m_port_def.format.video.nStride;
+    dim.sliceHeight = m_port_def.format.video.nSliceHeight;
+    handle = (private_handle_t *)native_buffer[buf_index].nativehandle;
+    if (handle) {
+        DEBUG_PRINT_LOW("NOTE: set metadata: update buffer geo with "
+                "stride %d slice %d", dim.sliceWidth, dim.sliceHeight);
+        setMetaData(handle, UPDATE_BUFFER_GEOMETRY, (void*)&dim);
+    }
+  }
+
   return OMX_ErrorNone;
 }
 
