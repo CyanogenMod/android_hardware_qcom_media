@@ -23,8 +23,9 @@
 #include <media/stagefright/NativeWindowWrapper.h>
 #include "DashPlayerStats.h"
 #include <media/stagefright/foundation/ABuffer.h>
-#define KEY_DASH_ADAPTION_PROPERTIES 8002
+#define KEY_DASH_ADAPTION_PROPERTIES 8002 // used for Get Adaotionset property
 #define KEY_DASH_MPD_QUERY           8003
+#define KEY_DASH_SET_ADAPTION_PROPERTIES 8004 // used for Set Adaotionset property
 
 namespace android {
 

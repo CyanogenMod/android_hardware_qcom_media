@@ -279,7 +279,39 @@ player_type DashPlayerDriver::playerType() {
 }
 
 status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
-    return INVALID_OPERATION;
+    status_t ret = INVALID_OPERATION;
+    int32_t methodId;
+    ret = request.readInt32(&methodId);
+    if (ret != OK) {
+          ALOGE("Failed to retrieve the requested method to invoke");
+          return ret;
+    }
+
+    switch (methodId) {
+        case KEY_DASH_ADAPTION_PROPERTIES:
+          {
+            ALOGE("calling KEY_DASH_GET_ADAPTION_PROPERTIES");
+            ret = getParameter(methodId,reply);
+           break;
+          }
+        case KEY_DASH_SET_ADAPTION_PROPERTIES:
+          {
+            ALOGE("calling KEY_DASH_SET_ADAPTION_PROPERTIES");
+            int32_t val = 0;
+            ret = setParameter(methodId,request);
+            val = (ret == OK)? 1:0;
+            reply->setDataPosition(0);
+            reply->writeInt32(val);
+            break;
+         }
+        default:
+          {
+            ALOGE("Invoke:unHandled requested method%d",methodId);
+            ret = OK;
+            break;
+          }
+      }
+      return ret;
 }
 
 void DashPlayerDriver::setAudioSink(const sp<AudioSink> &audioSink) {
