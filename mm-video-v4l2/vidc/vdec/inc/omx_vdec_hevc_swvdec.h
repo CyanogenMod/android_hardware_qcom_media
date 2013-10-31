@@ -109,6 +109,12 @@ extern "C"{
 #include "extra_data_handler.h"
 #include "ts_parser.h"
 #include "vidc_color_converter.h"
+#include "vidc_debug.h"
+#ifdef _ANDROID_
+#include <cutils/properties.h>
+#else
+#define PROPERTY_VALUE_MAX 92
+#endif
 extern "C" {
   OMX_API void * get_omx_component_factory_fn(void);
 }
@@ -280,6 +286,26 @@ struct video_driver_context
 class DivXDrmDecrypt;
 #endif //_ANDROID_
 
+struct video_decoder_capability {
+    unsigned int min_width;
+    unsigned int max_width;
+    unsigned int min_height;
+    unsigned int max_height;
+};
+
+struct debug_cap {
+    bool in_buffer_log;
+    bool out_buffer_log;
+    bool im_buffer_log;
+    char infile_name[PROPERTY_VALUE_MAX + 36];
+    char outfile_name[PROPERTY_VALUE_MAX + 36];
+    char imbfile_name[PROPERTY_VALUE_MAX + 36];
+    char log_loc[PROPERTY_VALUE_MAX];
+    FILE *infile;
+    FILE *outfile;
+    FILE *imbfile;
+};
+
 // OMX video decoder class
 class omx_vdec: public qc_omx_component
 {
@@ -409,7 +435,8 @@ public:
 #ifdef _MSM8974_
     OMX_ERRORTYPE allocate_extradata();
     void free_extradata();
-    void update_resolution(int width, int height);
+    int update_resolution(int width, int height, int stride, int scan_lines);
+    OMX_ERRORTYPE is_video_session_supported();
 #endif
     int  m_pipe_in;
     int  m_pipe_out;
@@ -495,7 +522,7 @@ private:
         OMX_COMPONENT_GENERATE_FBD_DSP = 0x1A,
         OMX_COMPONENT_GENERATE_EVENT_OUTPUT_FLUSH_DSP = 0x1C,
         OMX_COMPONENT_GENERATE_STOP_DONE_SWVDEC =  0x1D,
-
+        OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING = 0x1E,
     };
 
     enum vc1_profile_type
@@ -752,6 +779,18 @@ private:
                   OMX_EventError,OMX_ErrorHardware,0,NULL);
         }
     }
+
+    inline void omx_report_unsupported_setting ()
+    {
+        if (m_cb.EventHandler && !m_error_propogated)
+        {
+            DEBUG_PRINT_ERROR(
+                    "ERROR: Sending OMX_ErrorUnsupportedSetting to Client");
+            m_error_propogated = true;
+            m_cb.EventHandler(&m_cmp,m_app_data,
+                    OMX_EventError,OMX_ErrorUnsupportedSetting,0,NULL);
+        }
+    }
 #ifdef _ANDROID_
     OMX_ERRORTYPE createDivxDrmContext();
 #endif //_ANDROID_
@@ -958,6 +997,7 @@ private:
     int output_capability;
     bool streaming[MAX_PORT];
     OMX_CONFIG_RECTTYPE rectangle;
+    int prev_n_filled_len;
 #endif
     bool m_power_hinted;
     OMX_ERRORTYPE power_module_register();
@@ -1016,6 +1056,11 @@ private:
     allocate_color_convert_buf client_buffers;
 #endif
     HEVC_Utils mHEVCutils;
+    struct video_decoder_capability m_decoder_capability;
+    struct debug_cap m_debug;
+    int log_input_buffers(const char *, int);
+    int log_output_buffers(OMX_BUFFERHEADERTYPE *);
+    int log_im_buffer(OMX_BUFFERHEADERTYPE * buffer);
 };
 
 #ifdef _MSM8974_
