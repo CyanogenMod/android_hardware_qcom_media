@@ -611,6 +611,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_vendor_config.pData = NULL;
     pthread_mutex_init(&m_lock, NULL);
     pthread_mutex_init(&c_lock, NULL);
+    pthread_mutex_init(&e_lock, NULL);
     sem_init(&m_cmd_lock,0,0);
     streaming[CAPTURE_PORT] =
         streaming[OUTPUT_PORT] = false;
@@ -729,6 +730,7 @@ omx_vdec::~omx_vdec()
     close(drv_ctx.video_driver_fd);
     pthread_mutex_destroy(&m_lock);
     pthread_mutex_destroy(&c_lock);
+    pthread_mutex_destroy(&e_lock);
     sem_destroy(&m_cmd_lock);
     if (perf_flag) {
         DEBUG_PRINT_HIGH("--> TOTAL PROCESSING TIME");
@@ -3819,11 +3821,13 @@ OMX_ERRORTYPE  omx_vdec::component_tunnel_request(OMX_IN OMX_HANDLETYPE         
 OMX_ERRORTYPE omx_vdec::allocate_extradata()
 {
 #ifdef USE_ION
+    auto_lock extradata_lock(&e_lock);
     if (drv_ctx.extradata_info.buffer_size) {
         if (drv_ctx.extradata_info.ion.ion_alloc_data.handle) {
             munmap((void *)drv_ctx.extradata_info.uaddr, drv_ctx.extradata_info.size);
             close(drv_ctx.extradata_info.ion.fd_ion_data.fd);
             free_ion_memory(&drv_ctx.extradata_info.ion);
+            memset(&drv_ctx.extradata_info, 0, sizeof(drv_ctx.extradata_info));
         }
         drv_ctx.extradata_info.size = (drv_ctx.extradata_info.size + 4095) & (~4095);
         drv_ctx.extradata_info.ion.ion_device_fd = alloc_map_ion_memory(
@@ -3852,6 +3856,7 @@ OMX_ERRORTYPE omx_vdec::allocate_extradata()
 void omx_vdec::free_extradata()
 {
 #ifdef USE_ION
+    auto_lock extradata_lock(&e_lock);
     if (drv_ctx.extradata_info.uaddr) {
         munmap((void *)drv_ctx.extradata_info.uaddr, drv_ctx.extradata_info.size);
         close(drv_ctx.extradata_info.ion.fd_ion_data.fd);
@@ -4324,36 +4329,39 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
         setbuffers.buffer_type = VDEC_BUFFER_TYPE_OUTPUT;
         memcpy (&setbuffers.buffer,&drv_ctx.ptr_outputbuffer[index],
                 sizeof (vdec_bufferpayload));
+
+        if (!dynamic_buf_mode) {
 #ifdef _ANDROID_
-        if (m_enable_android_native_buffers) {
-            if (!secure_mode) {
-                if (drv_ctx.ptr_outputbuffer[index].pmem_fd > 0) {
-                    munmap(drv_ctx.ptr_outputbuffer[index].bufferaddr,
-                            drv_ctx.ptr_outputbuffer[index].mmaped_size);
-                }
-            }
-            drv_ctx.ptr_outputbuffer[index].pmem_fd = -1;
-        } else {
-#endif
-            if (drv_ctx.ptr_outputbuffer[0].pmem_fd > 0 && !ouput_egl_buffers && !m_use_output_pmem) {
+            if (m_enable_android_native_buffers) {
                 if (!secure_mode) {
-                    DEBUG_PRINT_LOW("\n unmap the output buffer fd = %d",
-                            drv_ctx.ptr_outputbuffer[0].pmem_fd);
-                    DEBUG_PRINT_LOW("\n unmap the ouput buffer size=%d  address = %p",
-                            drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
-                            drv_ctx.ptr_outputbuffer[0].bufferaddr);
-                    munmap (drv_ctx.ptr_outputbuffer[0].bufferaddr,
-                            drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount);
+                    if (drv_ctx.ptr_outputbuffer[index].pmem_fd > 0) {
+                        munmap(drv_ctx.ptr_outputbuffer[index].bufferaddr,
+                                drv_ctx.ptr_outputbuffer[index].mmaped_size);
+                    }
                 }
-                close (drv_ctx.ptr_outputbuffer[0].pmem_fd);
-                drv_ctx.ptr_outputbuffer[0].pmem_fd = -1;
+                drv_ctx.ptr_outputbuffer[index].pmem_fd = -1;
+            } else {
+#endif
+                if (drv_ctx.ptr_outputbuffer[0].pmem_fd > 0 && !ouput_egl_buffers && !m_use_output_pmem) {
+                    if (!secure_mode) {
+                        DEBUG_PRINT_LOW("\n unmap the output buffer fd = %d",
+                                drv_ctx.ptr_outputbuffer[0].pmem_fd);
+                        DEBUG_PRINT_LOW("\n unmap the ouput buffer size=%d  address = %p",
+                                drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
+                                drv_ctx.ptr_outputbuffer[0].bufferaddr);
+                        munmap (drv_ctx.ptr_outputbuffer[0].bufferaddr,
+                                drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount);
+                    }
+                    close (drv_ctx.ptr_outputbuffer[0].pmem_fd);
+                    drv_ctx.ptr_outputbuffer[0].pmem_fd = -1;
 #ifdef USE_ION
-                free_ion_memory(&drv_ctx.op_buf_ion_info[0]);
+                    free_ion_memory(&drv_ctx.op_buf_ion_info[0]);
 #endif
-            }
+                }
 #ifdef _ANDROID_
-        }
+            }
 #endif
+        } //!dynamic_buf_mode
         if (release_output_done()) {
             free_extradata();
         }
@@ -7378,6 +7386,12 @@ void omx_vdec::free_input_buffer_header()
         unsigned address, p2, id;
         m_input_free_q.pop_entry(&address, &p2, &id);
     }
+    /* We just freed all the buffer headers, every thing in m_input_pending_q,
+     * is now invalid too*/
+    while (m_input_pending_q.m_size) {
+        unsigned address, p2, id;
+        m_input_pending_q.pop_entry(&address, &p2, &id);
+    }
     pdest_frame = NULL;
     psource_frame = NULL;
     if (drv_ctx.ptr_inputbuffer) {
@@ -7950,9 +7964,17 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     int enable = 0;
     OMX_U32 mbaff = 0;
     int buf_index = p_buf_hdr - m_out_mem_ptr;
+    if (buf_index >= drv_ctx.extradata_info.count) {
+        DEBUG_PRINT_ERROR("handle_extradata: invalid index(%d) max(%d)",
+                buf_index, drv_ctx.extradata_info.count);
+        return;
+    }
     struct msm_vidc_panscan_window_payload *panscan_payload = NULL;
     OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr) +
         p_buf_hdr->nOffset;
+
+    auto_lock extradata_lock(&e_lock);
+
     if (!drv_ctx.extradata_info.uaddr) {
         return;
     }
@@ -8051,6 +8073,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
             }
             consumed_len += data->nSize;
             data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
+            if (data->nSize) {
+                break;
+            }
         }
         if (!secure_mode && (client_extradata & OMX_FRAMEINFO_EXTRADATA)) {
             p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
