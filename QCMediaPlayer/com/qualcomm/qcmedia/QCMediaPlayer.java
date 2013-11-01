@@ -67,17 +67,6 @@ public class QCMediaPlayer extends MediaPlayer
     Log.d(TAG, "QCMediaPlayer::QCMediaPlayer");
   }
 
-  public boolean setParameter(int key, String value) {
-    return false;
-  }
-
-  public String getStringParameter(int key) {
-        Parcel p = Parcel.obtain();
-        //getParameter(key, p);
-        //String ret = p.readString();
-        //p.recycle();
-        return "null";
-   }
   private void callOnPreparedListener()
   {
     Log.d(TAG, "callOnPreparedListener");
@@ -88,9 +77,9 @@ public class QCMediaPlayer extends MediaPlayer
   private void callOnMPDAttributeListener()
   {
     Log.d(TAG, "callOnMPDAttributeListener");
-    String mpdAttributes = getStringParameter(OnMPDAttributeListener.ATTRIBUTES_TYPE_MPD);
+    String mpdAttributes = QCgetStringParameter(OnMPDAttributeListener.ATTRIBUTES_TYPE_MPD);
     if (mOnMPDAttributeListener != null)
-      mOnMPDAttributeListener.onMPDAttribute(OnMPDAttributeListener.ATTRIBUTES_TYPE_MPD, mpdAttributes, this);
+      mOnMPDAttributeListener.onMPDAttribute(OnMPDAttributeListener.INVOKE_ID_SET_ATTRIBUTES_TYPE_MPD, mpdAttributes, this);
   }
   private void callQCTimedTextListener(QCTimedText text)
   {
@@ -152,13 +141,18 @@ public class QCMediaPlayer extends MediaPlayer
   public interface OnMPDAttributeListener
   {
      /**
-     * Key to identify type of MPD attributes
+     *  Key to Get MPD attributes
      */
      public static final int ATTRIBUTES_TYPE_MPD = 8002;
      /**
      * Key to be used to retrieve complete MPD.
      */
      public static final int ATTRIBUTES_WHOLE_MPD = 8003;
+     /**
+          /**
+     * Key to Set MPD attributes
+     */
+     public static final int INVOKE_ID_SET_ATTRIBUTES_TYPE_MPD = 8004;
      /**
      * Called when attributes are available.
      *
@@ -192,11 +186,16 @@ public class QCMediaPlayer extends MediaPlayer
   */
   public boolean processMPDAttribute(int key, String value)
   {
-    return setParameter(key, value);
+    return QCsetStringParameter(key, value);
   }
   public String  QCGetParameter(int key)
   {
-    return getStringParameter(key);
+    return QCgetStringParameter(key);
+  }
+  public boolean QCSetParameter(int key, int value)
+  {
+    Log.d(TAG, "QCMediaPlayer : QCSetParameter");
+    return QCsetParameter(key, value);
   }
   /* Do not change these values without updating their counterparts
   * in include/media/mediaplayer.h!
@@ -276,4 +275,53 @@ public class QCMediaPlayer extends MediaPlayer
            mp.mEventHandler.sendMessage(m);
         }
   }
+
+  private String QCgetStringParameter(int key)
+  {
+    Parcel request = newRequest();
+    Parcel reply = Parcel.obtain();
+	reply.setDataPosition(0);
+    request.writeInt(key);
+    invoke(request, reply);
+    String ret = reply.readString();
+    request.recycle();
+    reply.recycle();
+    return ret;
+  }
+
+  public boolean QCsetStringParameter(int key, String value) {
+        boolean retval = false;
+        Parcel request = newRequest();
+        Parcel reply = Parcel.obtain();
+        request.writeInt(key);
+        request.writeString(value);
+        invoke(request, reply);
+        retval = reply.readInt() > 0 ? true : false;
+        request.recycle();
+        reply.recycle();
+        return retval;
+    }
+
+  public boolean QCsetParameter(int key, int value) {
+        boolean retval = false;
+        Parcel request = newRequest();
+        Parcel reply = Parcel.obtain();
+        request.writeInt(key);
+        request.writeInt(value);
+        invoke(request, reply);
+        retval = reply.readInt() > 0 ? true : false;
+        request.recycle();
+        reply.recycle();
+        return retval;
+    }
+
+  public Parcel QCgetParcelParameter(int key) {
+        boolean retval = false;
+        Parcel request = newRequest();
+        Parcel reply = Parcel.obtain();
+        request.writeInt(key);
+        invoke(request, reply);
+        request.recycle();
+        return reply;
+    }
 }

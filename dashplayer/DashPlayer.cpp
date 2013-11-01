@@ -1561,7 +1561,7 @@ status_t DashPlayer::getParameter(int key, Parcel *reply)
 status_t DashPlayer::setParameter(int key, const Parcel &request)
 {
     status_t err = OK;
-    if (key == 8002) {
+    if (key == 8004) {
 
         size_t len = 0;
         const char16_t* str = request.readString16Inplace(&len);
