@@ -8038,8 +8038,8 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
                     if (payload && (payload->format == MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE)  && !mbaff)
                         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-                    else if (payload && (payload->format == INTERLACE_FRAME_TOPFIELDFIRST ||
-                        payload->format == INTERLACE_FRAME_BOTTOMFIELDFIRST)  && !mbaff) {
+                    else if (payload && (payload->format == MSM_VIDC_INTERLACE_FRAME_TOPFIELDFIRST ||
+                        payload->format == MSM_VIDC_INTERLACE_FRAME_BOTTOMFIELDFIRST)  && !mbaff) {
                         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
                         enable = 1;
                     } else {
@@ -8312,11 +8312,11 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
         interlace_format->bInterlaceFormat = OMX_FALSE;
         interlace_format->nInterlaceFormats = OMX_InterlaceFrameProgressive;
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-    } else if ((interlaced_format_type == INTERLACE_FRAME_TOPFIELDFIRST)  && !mbaff) {
+    } else if ((interlaced_format_type == MSM_VIDC_INTERLACE_FRAME_TOPFIELDFIRST)  && !mbaff) {
         interlace_format->bInterlaceFormat = OMX_TRUE;
         interlace_format->nInterlaceFormats = OMX_InterlaceFrameTopFieldFirst;
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-    } else if ((interlaced_format_type == INTERLACE_FRAME_BOTTOMFIELDFIRST)  && !mbaff) {
+    } else if ((interlaced_format_type == MSM_VIDC_INTERLACE_FRAME_BOTTOMFIELDFIRST)  && !mbaff) {
         interlace_format->bInterlaceFormat = OMX_TRUE;
         interlace_format->nInterlaceFormats = OMX_InterlaceFrameBottomFieldFirst;
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
