@@ -1,6 +1,8 @@
 ifneq ($(BUILD_TINY_ANDROID),true)
 
 ROOT_DIR := $(call my-dir)
+OMX_VIDEO_PATH := $(ROOT_DIR)/../..
+
 
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)

@@ -1,6 +1,7 @@
 ifneq ($(BUILD_TINY_ANDROID),true)
 
 ROOT_DIR := $(call my-dir)
+OMX_VIDEO_PATH := $(ROOT_DIR)/../..
 
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
@@ -138,6 +139,7 @@ LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
+LOCAL_SRC_FILES         += src/hevc_utils.cpp
 ifeq ($(call is-board-platform-in-list,msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze),true)
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
 else
@@ -164,7 +166,7 @@ LOCAL_PATH:= $(ROOT_DIR)
 # libOmxVdecHevc library is not built for OSS builds as QCPATH is null in OSS builds.
 
 ifneq "$(wildcard $(QCPATH) )" ""
-ifeq ($(call is-board-platform-in-list,msm8974 msm8610 apq8084 mpq8092 msm8226 msm_bronze),true)
+ifeq ($(call is-board-platform-in-list,msm8974 msm8610 msm8226 msm_bronze),true)
 
 LOCAL_MODULE                    := libOmxVdecHevc
 LOCAL_MODULE_TAGS               := optional
