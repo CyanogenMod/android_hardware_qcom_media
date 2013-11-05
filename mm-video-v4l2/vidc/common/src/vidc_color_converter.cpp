@@ -45,7 +45,7 @@ bool omx_c2d_conv::init()
     bool status = true;
 
     if (mLibHandle || mConvertOpen || mConvertClose) {
-        DEBUG_PRINT_ERROR("\n omx_c2d_conv::init called twice");
+        DEBUG_PRINT_ERROR("omx_c2d_conv::init called twice");
         status = false;
     }
 
@@ -80,13 +80,13 @@ bool omx_c2d_conv::convert(int src_fd, void *src_base, void *src_viraddr,
     int result;
 
     if (!src_viraddr || !dest_viraddr || !c2dcc || !dest_base || !src_base) {
-        DEBUG_PRINT_ERROR("\n Invalid arguments omx_c2d_conv::convert");
+        DEBUG_PRINT_ERROR("Invalid arguments omx_c2d_conv::convert");
         return false;
     }
 
     result =  c2dcc->convertC2D(src_fd, src_base, src_viraddr,
             dest_fd, dest_base, dest_viraddr);
-    DEBUG_PRINT_LOW("\n Color convert status %d",result);
+    DEBUG_PRINT_LOW("Color convert status %d",result);
     return ((result < 0)?false:true);
 }
 
@@ -103,7 +103,7 @@ bool omx_c2d_conv::open(unsigned int height,unsigned int width,
             src_format = src;
             status = true;
         } else
-            DEBUG_PRINT_ERROR("\n mConvertOpen failed");
+            DEBUG_PRINT_ERROR("mConvertOpen failed");
     }
 
     return status;
@@ -120,7 +120,7 @@ void omx_c2d_conv::close()
 
 void omx_c2d_conv::destroy()
 {
-    DEBUG_PRINT_ERROR("\n Destroy C2D instance");
+    DEBUG_PRINT_ERROR("Destroy C2D instance");
 
     if (mLibHandle) {
         if (mConvertClose && c2dcc)
@@ -159,7 +159,7 @@ bool omx_c2d_conv::get_buffer_size(int port,unsigned int &buf_size)
     if (c2dcc) {
         bufferreq.size = 0;
         cret = c2dcc->getBuffReq(port,&bufferreq);
-        DEBUG_PRINT_LOW("\n Status of getbuffer is %d", cret);
+        DEBUG_PRINT_LOW("Status of getbuffer is %d", cret);
         ret = (cret)?false:true;
         buf_size = bufferreq.size;
     }

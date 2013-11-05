@@ -72,14 +72,7 @@ extern "C" {
 #include <linux/videodev2.h>
 #include <poll.h>
 #define TIMEOUT 5000
-
 #endif // _ANDROID_
-
-#ifdef _MSM8974_
-#define DEBUG_PRINT_LOW
-#define DEBUG_PRINT_HIGH printf
-#define DEBUG_PRINT_ERROR printf
-#endif
 
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
 #include <media/hardware/HardwareAPI.h>

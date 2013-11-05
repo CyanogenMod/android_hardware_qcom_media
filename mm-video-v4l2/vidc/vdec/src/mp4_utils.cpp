@@ -79,7 +79,7 @@ uint32 MP4_Utils::read_bit_field(posInfoType * posPtr, uint32 size)
         }
     }
 
-    DEBUG_PRINT_LOW("Unable to find code 0x%x\n", referenceCode);
+    DEBUG_PRINT_LOW("Unable to find code 0x%x", referenceCode);
     return NULL;
 }
 bool MP4_Utils::parseHeader(mp4StreamType * psBits)
