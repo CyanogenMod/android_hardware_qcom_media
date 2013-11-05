@@ -540,7 +540,7 @@ void SetState(OMX_STATETYPE eState)
                                  break;                                         \
                              }
 
-    switch (eState) {
+    switch ((int)eState) {
         GOTO_STATE(OMX_StateLoaded);
         GOTO_STATE(OMX_StateIdle);
         GOTO_STATE(OMX_StateExecuting);
@@ -793,7 +793,7 @@ OMX_ERRORTYPE ConfigureEncoder()
                 (OMX_INDEXTYPE) QOMX_IndexConfigVideoIntraperiod,
                 (OMX_PTR) &intra);
     } else {
-        E("failed to get state", 0, 0, 0);
+        E("failed to get state %d %d %d", 0, 0, 0);
     }
 
 
@@ -948,7 +948,7 @@ OMX_ERRORTYPE ConfigureEncoder()
         int totalSizeToRead = FRAME_PACK_SIZE * sizeof(OMX_U32);
         char *pFramePack = (char *) &(framePackingArrangement.id);
 
-        while ( ( (fscanf(m_pConfigFile, "%d", pFramePack)) != EOF ) &&
+        while ( ( (fscanf(m_pConfigFile, "%d", (int *)pFramePack)) != EOF ) &&
                 (totalSizeToRead != 0) ) {
             //printf("Addr = %p, Value read = %d, sizeToRead remaining=%d\n",
             //       pFramePack, *pFramePack, totalSizeToRead);
@@ -1090,7 +1090,7 @@ OMX_ERRORTYPE EBD_CB(OMX_IN OMX_HANDLETYPE hComponent,
 {
     D("Got EBD callback ts=%lld", pBuffer->nTimeStamp);
 
-    for (int i = 0; i < num_in_buffers; i++) {
+    for (unsigned i = 0; i < num_in_buffers; i++) {
         // mark this buffer ready for use again
         if (m_pInBuffers[i] == pBuffer) {
 
@@ -1161,7 +1161,7 @@ OMX_ERRORTYPE VencTest_Initialize()
 {
     OMX_ERRORTYPE result = OMX_ErrorNone;
     static OMX_CALLBACKTYPE sCallbacks = {EVT_CB, EBD_CB, FBD_CB};
-    int i;
+    unsigned i;
 
     for (i = 0; i < num_in_buffers; i++) {
         m_pInBuffers[i] = NULL;
@@ -1172,13 +1172,13 @@ OMX_ERRORTYPE VencTest_Initialize()
 
     if (m_sProfile.eCodec == OMX_VIDEO_CodingMPEG4) {
         result = OMX_GetHandle(&m_hHandle,
-                "OMX.qcom.video.encoder.mpeg4",
+                (OMX_STRING)"OMX.qcom.video.encoder.mpeg4",
                 NULL,
                 &sCallbacks);
         // CHK(result);
     } else if (m_sProfile.eCodec == OMX_VIDEO_CodingH263) {
         result = OMX_GetHandle(&m_hHandle,
-                "OMX.qcom.video.encoder.h263",
+                (OMX_STRING)"OMX.qcom.video.encoder.h263",
                 NULL,
                 &sCallbacks);
         CHK(result);
@@ -1187,7 +1187,7 @@ OMX_ERRORTYPE VencTest_Initialize()
 #ifdef _MSM8974_
     else if (m_sProfile.eCodec == OMX_VIDEO_CodingVPX) {
         result = OMX_GetHandle(&m_hHandle,
-                "OMX.qcom.video.encoder.vp8",
+                (OMX_STRING)"OMX.qcom.video.encoder.vp8",
                 NULL,
                 &sCallbacks);
         CHK(result);
@@ -1196,7 +1196,7 @@ OMX_ERRORTYPE VencTest_Initialize()
 #endif
     else {
         result = OMX_GetHandle(&m_hHandle,
-                "OMX.qcom.video.encoder.avc",
+                (OMX_STRING)"OMX.qcom.video.encoder.avc",
                 NULL,
                 &sCallbacks);
         CHK(result);
@@ -1251,10 +1251,10 @@ OMX_ERRORTYPE VencTest_EncodeFrame(void* pYUVBuff,
     OMX_ERRORTYPE result = OMX_ErrorUndefined;
     D("calling OMX empty this buffer");
 
-    for (int i = 0; i < num_in_buffers; i++) {
+    for (unsigned i = 0; i < num_in_buffers; i++) {
         if (pYUVBuff == m_pInBuffers[i]->pBuffer) {
             m_pInBuffers[i]->nTimeStamp = nTimeStamp;
-            D("Sending Buffer - %x", m_pInBuffers[i]->pBuffer);
+            D("Sending Buffer - %x", (unsigned)m_pInBuffers[i]->pBuffer);
             result = OMX_EmptyThisBuffer(m_hHandle,
                     m_pInBuffers[i]);
 
@@ -1272,7 +1272,7 @@ OMX_ERRORTYPE VencTest_EncodeFrame(void* pYUVBuff,
 ////////////////////////////////////////////////////////////////////////////////
 OMX_ERRORTYPE VencTest_Exit(void)
 {
-    int i;
+    unsigned i;
     OMX_ERRORTYPE result = OMX_ErrorNone;
     D("trying to exit venc");
 
@@ -1351,7 +1351,7 @@ void VencTest_ReadDynamicConfigMsg()
         if (dest[cntr] == '\n' || dest[cntr] == '\r')
             end = true;
 
-        dest[cntr] = NULL;
+        dest[cntr] = '\0';
 
         if (dest == frame_n)
             dest = config;
@@ -1402,7 +1402,7 @@ void VencTest_ProcessDynamicConfigurationFile()
 {
     do {
         if (dynamic_config.pending) {
-            if (m_nFrameIn == dynamic_config.frame_num) {
+            if (m_nFrameIn == (int)dynamic_config.frame_num) {
                 if (dynamic_config.config_param == OMX_IndexConfigVideoFramerate) {
                     m_sProfile.nFramerate = dynamic_config.config_data.f_framerate;
                     FractionToQ16(dynamic_config.config_data.framerate.xEncodeFramerate,
@@ -1414,7 +1414,7 @@ void VencTest_ProcessDynamicConfigurationFile()
                     E("ERROR: Setting dynamic config to OMX param[0x%x]", dynamic_config.config_param);
 
                 dynamic_config.pending = false;
-            } else if (m_nFrameIn > dynamic_config.frame_num) {
+            } else if (m_nFrameIn > (int)dynamic_config.frame_num) {
                 E("WARNING: Config change requested in passed frame(%d)", dynamic_config.frame_num);
                 dynamic_config.pending = false;
             }
@@ -1453,7 +1453,7 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
         bytes = read(m_nInFd, yuv, width);
 
         if (bytes != width) {
-            E("read failed: %d != %d\n", read, width);
+            E("read failed: %d != %d\n", bytes, width);
             return OMX_ErrorUndefined;
         }
 
@@ -1467,7 +1467,7 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
         bytes = read(m_nInFd, yuv, width);
 
         if (bytes != width) {
-            E("read failed: %d != %d\n", read, width);
+            E("read failed: %d != %d\n", bytes, width);
             return OMX_ErrorUndefined;
         }
 
@@ -1476,7 +1476,7 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
     }
 
     m_sProfile.nFrameRead = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height);
-    E("\n\nActual read bytes: %d, NV12 buffer size: %d\n\n\n", read_bytes, m_sProfile.nFrameRead);
+    E("\n\nActual read bytes: %d, NV12 buffer size: %lu\n\n\n", read_bytes, m_sProfile.nFrameRead);
 #else
     OMX_U32 bytestoread = m_sProfile.nFrameWidth*m_sProfile.nFrameHeight;
 
@@ -1526,7 +1526,7 @@ OMX_ERRORTYPE VencTest_ReadAndEmpty(OMX_BUFFERHEADERTYPE* pYUVBuffer)
 #else
     pYUVBuffer->nFilledLen = m_sProfile.nFrameBytes;
 #endif
-    D("Called Buffer with Data filled length %d",pYUVBuffer->nFilledLen);
+    D("Called Buffer with Data filled length %lu",pYUVBuffer->nFilledLen);
 
     result = VencTest_EncodeFrame(pYUVBuffer->pBuffer,
             m_nTimeStamp);
@@ -1545,7 +1545,7 @@ void PreviewCallback(int nFD,
 {
 
     D("================= preview frame %d, phys=0x%x, nTimeStamp(millis)=%lld",
-            m_nFrameIn+1, pPhys, (nTimeStamp / 1000));
+            m_nFrameIn+1, (unsigned)pPhys, (nTimeStamp / 1000));
 
     if (m_nFrameIn == m_nFramePlay &&
             m_nFramePlay != 0) {
@@ -1567,7 +1567,7 @@ void PreviewCallback(int nFD,
         OMX_ERRORTYPE result;
 
         // register new camera buffers with encoder
-        int i;
+        unsigned i;
 
         for (i = 0; i < num_in_buffers; i++) {
             if (m_pInBuffers[i] != NULL &&
@@ -1609,7 +1609,7 @@ void usage(char* filename)
 
     fprintf(stderr, "usage: %s LIVE <QCIF|QVGA> <MP4|H263> <FPS> <BITRATE> <NFRAMES> <OUTFILE>\n", fname);
     fprintf(stderr, "usage: %s FILE <QCIF|QVGA> <MP4|H263 <FPS> <BITRATE> <NFRAMES> <INFILE> <OUTFILE> ", fname);
-    fprintf(stderr, "<Dynamic config file - opt> <Rate Control - opt> <AVC Slice Mode - opt>\n", fname);
+    fprintf(stderr, "<Dynamic config file - opt> <Rate Control - opt> <AVC Slice Mode - opt>\n");
     fprintf(stderr, "usage: %s PROFILE <QCIF|QVGA> <MP4|H263 <FPS> <BITRATE> <NFRAMES> <INFILE>\n", fname);
     fprintf(stderr, "usage: %s PREVIEW <QCIF|QVGA> <FPS> <NFRAMES>\n", fname);
     fprintf(stderr, "usage: %s DISPLAY <QCIF|QVGA> <FPS> <NFRAMES> <INFILE>\n", fname);
@@ -1656,7 +1656,7 @@ bool parseWxH(char *str, OMX_U32 *width, OMX_U32 *height)
 
 #endif
                 else
-                    E("\nInvalid dimensions %dx%d",w,h);
+                    E("\nInvalid dimensions %lux%lu",w,h);
             }
         }
     }
@@ -1948,14 +1948,14 @@ int main(int argc, char** argv)
     memset(&m_sProfile, 0, sizeof(m_sProfile));
     parseArgs(argc, argv);
 
-    D("fps=%f, bitrate=%u, width=%u, height=%u, frame bytes=%u",
+    D("fps=%f, bitrate=%lu, width=%lu, height=%lu, frame bytes=%lu",
             m_sProfile.nFramerate,
             m_sProfile.nBitrate,
             m_sProfile.nFrameWidth,
             m_sProfile.nFrameHeight,
             m_sProfile.nFrameBytes);
 #ifdef _MSM8974_
-    D("Frame stride=%u, scanlines=%u, read=%u",
+    D("Frame stride=%lu, scanlines=%lu, read=%lu",
             m_sProfile.nFramestride,
             m_sProfile.nFrameScanlines,
             m_sProfile.nFrameRead);
@@ -1968,7 +1968,7 @@ int main(int argc, char** argv)
     // pthread_create(&wd, NULL, Watchdog, NULL);
     //}
 
-    for (int x = 0; x < num_in_buffers; x++) {
+    for (unsigned x = 0; x < num_in_buffers; x++) {
         // mark all buffers as ready to use
         m_bInFrameFree[x] = OMX_TRUE;
     }
@@ -2007,7 +2007,7 @@ int main(int argc, char** argv)
 
     if (m_eMode == MODE_FILE_ENCODE ||
             m_eMode == MODE_PROFILE) {
-        int i;
+        unsigned i;
 #if T_ARM
         m_nInFd = open(m_sProfile.cInFileName, O_RDONLY);
 #else
@@ -2068,11 +2068,11 @@ int main(int argc, char** argv)
     D("allocating & calling usebuffer for Output port");
     num_out_buffers = portDef.nBufferCountActual;
 
-    for (i = 0; i < portDef.nBufferCountActual; i++) {
+    for (i = 0; i < (int)portDef.nBufferCountActual; i++) {
         void* pBuff;
 
         pBuff = malloc(portDef.nBufferSize);
-        D("portDef.nBufferSize = %d ",portDef.nBufferSize);
+        D("portDef.nBufferSize = %lu ",portDef.nBufferSize);
         result = OMX_UseBuffer(m_hHandle,
                 &m_pOutBuffers[i],
                 (OMX_U32) PORT_INDEX_OUT,
@@ -2096,7 +2096,7 @@ int main(int argc, char** argv)
     D("going to executing state");
     SetState(OMX_StateExecuting);
 
-    for (i = 0; i < num_out_buffers; i++) {
+    for (i = 0; i < (int)num_out_buffers; i++) {
         D("filling buffer %d", i);
         result = OMX_FillThisBuffer(m_hHandle, m_pOutBuffers[i]);
         //sleep(1000);
@@ -2115,8 +2115,8 @@ int main(int argc, char** argv)
         // read several frames into memory
         D("reading frames into memory");
 
-        for (i = 0; i < num_in_buffers; i++) {
-            D("[%d] address 0x%x",i, m_pInBuffers[i]->pBuffer);
+        for (i = 0; i < (int)num_in_buffers; i++) {
+            D("[%d] address 0x%x",i, (unsigned)m_pInBuffers[i]->pBuffer);
 #ifdef MAX_RES_720P
             read(m_nInFd,
                     m_pInBuffers[i]->pBuffer,
@@ -2156,7 +2156,7 @@ int main(int argc, char** argv)
             int idx = i % num_in_buffers;
 
             if (m_bInFrameFree[idx] == OMX_FALSE) {
-                int j;
+                unsigned j;
                 E("the expected buffer is not free, but lets find another");
 
                 idx = -1;
@@ -2172,7 +2172,7 @@ int main(int argc, char** argv)
 
             // if we have a free buffer let's encode it
             if (idx >= 0) {
-                D("encode frame %d...m_pInBuffers[idx]->pBuffer=0x%x", i,m_pInBuffers[idx]->pBuffer);
+                D("encode frame %d...m_pInBuffers[idx]->pBuffer=0x%x", i,(unsigned)m_pInBuffers[idx]->pBuffer);
                 m_bInFrameFree[idx] = OMX_FALSE;
                 VencTest_EncodeFrame(m_pInBuffers[idx]->pBuffer,
                         m_nTimeStamp);
@@ -2185,7 +2185,7 @@ int main(int argc, char** argv)
 
             }
 
-            D("sleep for %d microsec", 1000000/m_sProfile.nFramerate);
+            D("sleep for %f microsec", 1000000/m_sProfile.nFramerate);
             sleep (1000000 / m_sProfile.nFramerate);
         }
 
@@ -2224,7 +2224,7 @@ int main(int argc, char** argv)
 
                 break;
             case MSG_ID_OUTPUT_FRAME_DONE:
-                D("================ writing frame %d = %d bytes to output file",
+                D("================ writing frame %d = %lu bytes to output file",
                         m_nFrameOut+1,
                         msg.data.sBitstreamData.pBuffer->nFilledLen);
                 D("StopEncodeTime=%lld", GetTimeStamp());
@@ -2284,7 +2284,7 @@ int main(int argc, char** argv)
     } else if (m_eMode == MODE_FILE_ENCODE ||
             m_eMode == MODE_PROFILE) {
         // deallocate pmem buffers
-        for (int i = 0; i < num_in_buffers; i++) {
+        for (unsigned i = 0; i < num_in_buffers; i++) {
             PmemFree((OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO*)m_pInBuffers[i]->pAppPrivate,
                     m_pInBuffers[i]->pBuffer,
                     m_sProfile.nFrameBytes);

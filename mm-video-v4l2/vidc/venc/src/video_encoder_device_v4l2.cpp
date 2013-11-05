@@ -550,7 +550,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
         return false;
     }
 
-    DEBUG_PRINT_LOW("\nm_nDriver_fd = %d\n", m_nDriver_fd);
+    DEBUG_PRINT_LOW("\nm_nDriver_fd = %lu\n", m_nDriver_fd);
     // set the basic configuration of the video encoder driver
     m_sVenc_cfg.input_width = OMX_CORE_QCIF_WIDTH;
     m_sVenc_cfg.input_height= OMX_CORE_QCIF_HEIGHT;
@@ -764,7 +764,7 @@ static OMX_ERRORTYPE unsubscribe_to_events(int fd)
 void venc_dev::venc_close()
 {
     struct v4l2_encoder_cmd enc;
-    DEBUG_PRINT_LOW("\nvenc_close: fd = %d", m_nDriver_fd);
+    DEBUG_PRINT_LOW("\nvenc_close: fd = %lu", m_nDriver_fd);
 
     if ((int)m_nDriver_fd >= 0) {
         enc.cmd = V4L2_ENC_CMD_STOP;
@@ -942,7 +942,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
     struct v4l2_requestbuffers bufreq;
     int ret;
 
-    switch (index) {
+    switch ((int)index) {
         case OMX_IndexParamPortDefinition:
             {
                 OMX_PARAM_PORTDEFINITIONTYPE *portDefn;
@@ -990,7 +990,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                             m_sInput_buff_property.actualcount = portDefn->nBufferCountActual;
                     }
 
-                    DEBUG_PRINT_LOW("input: actual: %d, min: %d, count_req: %d\n",
+                    DEBUG_PRINT_LOW("input: actual: %lu, min: %lu, count_req: %u\n",
                             portDefn->nBufferCountActual, m_sInput_buff_property.mincount, bufreq.count);
                 } else if (portDefn->nPortIndex == PORT_INDEX_OUT) {
                     m_sVenc_cfg.dvs_height = portDefn->format.video.nFrameHeight;
@@ -1031,7 +1031,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                         if (num_planes > 1)
                             extradata_info.count = m_sOutput_buff_property.actualcount;
 
-                    DEBUG_PRINT_LOW("Output: actual: %d, min: %d, count_req: %d\n",
+                    DEBUG_PRINT_LOW("Output: actual: %lu, min: %lu, count_req: %u\n",
                             portDefn->nBufferCountActual, m_sOutput_buff_property.mincount, bufreq.count);
                 } else {
                     DEBUG_PRINT_ERROR("\nERROR: Invalid Port Index for OMX_IndexParamPortDefinition");
@@ -1312,7 +1312,7 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                     }
                 } else {
                     DEBUG_PRINT_ERROR("OMX_QcomIndexEnableSliceDeliveryMode "
-                            "called on wrong port(%d)", pParam->nPortIndex);
+                            "called on wrong port(%lu)", pParam->nPortIndex);
                     return OMX_ErrorBadPortIndex;
                 }
 
@@ -1374,7 +1374,7 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
 
     DEBUG_PRINT_LOW("\n Inside venc_set_config");
 
-    switch (index) {
+    switch ((int)index) {
         case OMX_IndexConfigVideoBitrate:
             {
                 OMX_VIDEO_CONFIG_BITRATETYPE *bit_rate = (OMX_VIDEO_CONFIG_BITRATETYPE *)
@@ -1823,7 +1823,7 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
         dev_buffer.sz = pmem_tmp->size;
         dev_buffer.offset = pmem_tmp->offset;
         DEBUG_PRINT_LOW("\n venc_free_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
-                dev_buffer.pbuffer, \
+                (unsigned)dev_buffer.pbuffer, \
                 dev_buffer.fd, \
                 dev_buffer.offset, \
                 dev_buffer.maped_size);
@@ -1836,7 +1836,7 @@ bool venc_dev::venc_free_buf(void *buf_addr, unsigned port)
         dev_buffer.offset = pmem_tmp->offset;
 
         DEBUG_PRINT_LOW("\n venc_free_buf:pbuffer = %x,fd = %x, offset = %d, maped_size = %d", \
-                dev_buffer.pbuffer, \
+                (unsigned)dev_buffer.pbuffer, \
                 dev_buffer.fd, \
                 dev_buffer.offset, \
                 dev_buffer.maped_size);
@@ -1876,8 +1876,8 @@ bool venc_dev::venc_color_align(OMX_BUFFERHEADERTYPE *buffer,
                     width);
         }
     } else {
-        DEBUG_PRINT_ERROR("Failed to align Chroma. from %u to %u : \
-                Insufficient bufferLen=%u v/s Required=%u",
+        DEBUG_PRINT_ERROR("Failed to align Chroma. from %lu to %lu : \
+                Insufficient bufferLen=%lu v/s Required=%u",
                 (width*height), src_chroma_offset, buffer->nAllocLen,
                 VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height));
         return false;
@@ -1906,7 +1906,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 
     bufhdr = (OMX_BUFFERHEADERTYPE *)buffer;
 
-    DEBUG_PRINT_LOW("\n Input buffer length %d",bufhdr->nFilledLen);
+    DEBUG_PRINT_LOW("\n Input buffer length %lu",bufhdr->nFilledLen);
 
     if (pmem_data_buf) {
         DEBUG_PRINT_LOW("\n Internal PMEM addr for i/p Heap UseBuf: %p", pmem_data_buf);
@@ -2175,7 +2175,7 @@ bool venc_dev::venc_set_slice_delivery_mode(OMX_U32 enable)
                 slice_mode.enable = 1;
             }
         } else {
-            DEBUG_PRINT_ERROR("Failed to set slice delivery mode, slice_mode [%d] "
+            DEBUG_PRINT_ERROR("Failed to set slice delivery mode, slice_mode [%lu] "
                     "is not MB BASED or [%lu] is not H264 codec ", multislice.mslice_mode,
                     m_sVenc_cfg.codectype);
         }
@@ -2247,7 +2247,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
     struct venc_profile requested_profile = {0};
     struct ven_profilelevel requested_level = {0};
     unsigned long mb_per_frame = 0;
-    DEBUG_PRINT_LOW("venc_set_profile_level:: eProfile = %d, Level = %d",
+    DEBUG_PRINT_LOW("venc_set_profile_level:: eProfile = %lu, Level = %lu",
             eProfile, eLevel);
     mb_per_frame = ((m_sVenc_cfg.dvs_height + 15) >> 4)*
         ((m_sVenc_cfg.dvs_width + 15) >> 4);
@@ -2265,7 +2265,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
     }
 
     if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_MPEG4) {
-        DEBUG_PRINT_LOW("eProfile = %d, OMX_VIDEO_MPEG4ProfileSimple = %d and "
+        DEBUG_PRINT_LOW("eProfile = %lu, OMX_VIDEO_MPEG4ProfileSimple = %d and "
                 "OMX_VIDEO_MPEG4ProfileAdvancedSimple = %d", eProfile,
                 OMX_VIDEO_MPEG4ProfileSimple, OMX_VIDEO_MPEG4ProfileAdvancedSimple);
 
@@ -2274,12 +2274,12 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
         } else if (eProfile == OMX_VIDEO_MPEG4ProfileAdvancedSimple) {
             requested_profile.profile = V4L2_MPEG_VIDEO_MPEG4_PROFILE_ADVANCED_SIMPLE;
         } else {
-            DEBUG_PRINT_LOW("\nERROR: Unsupported MPEG4 profile = %u",
+            DEBUG_PRINT_LOW("\nERROR: Unsupported MPEG4 profile = %lu",
                     eProfile);
             return false;
         }
 
-        DEBUG_PRINT_LOW("eLevel = %d, OMX_VIDEO_MPEG4Level0 = %d, OMX_VIDEO_MPEG4Level1 = %d,"
+        DEBUG_PRINT_LOW("eLevel = %lu, OMX_VIDEO_MPEG4Level0 = %d, OMX_VIDEO_MPEG4Level1 = %d,"
                 "OMX_VIDEO_MPEG4Level2 = %d, OMX_VIDEO_MPEG4Level3 = %d, OMX_VIDEO_MPEG4Level4 = %d,"
                 "OMX_VIDEO_MPEG4Level5 = %d", eLevel, OMX_VIDEO_MPEG4Level0, OMX_VIDEO_MPEG4Level1,
                 OMX_VIDEO_MPEG4Level2, OMX_VIDEO_MPEG4Level3, OMX_VIDEO_MPEG4Level4, OMX_VIDEO_MPEG4Level5);
@@ -2350,7 +2350,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
                 requested_profile.profile = V4L2_MPEG_VIDC_VIDEO_H263_PROFILE_HIGHLATENCY;
                 break;
             default:
-                DEBUG_PRINT_LOW("\nERROR: Unsupported H.263 profile = %u",
+                DEBUG_PRINT_LOW("\nERROR: Unsupported H.263 profile = %lu",
                         requested_profile.profile);
                 return false;
         }
@@ -2401,7 +2401,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
         } else if (eProfile == OMX_VIDEO_AVCProfileHigh444) {
             requested_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_444_PREDICTIVE;
         } else {
-            DEBUG_PRINT_LOW("\nERROR: Unsupported H.264 profile = %u",
+            DEBUG_PRINT_LOW("\nERROR: Unsupported H.264 profile = %lu",
                     requested_profile.profile);
             return false;
         }
@@ -2470,7 +2470,7 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
         }
     } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_VP8) {
         if (!(eProfile == OMX_VIDEO_VP8ProfileMain)) {
-            DEBUG_PRINT_ERROR("\nERROR: Unsupported VP8 profile = %u",
+            DEBUG_PRINT_ERROR("\nERROR: Unsupported VP8 profile = %lu",
                         eProfile);
             return false;
         }
@@ -2563,7 +2563,7 @@ bool venc_dev::venc_set_voptiming_cfg( OMX_U32 TimeIncRes)
 
     struct venc_voptimingcfg vop_timing_cfg;
 
-    DEBUG_PRINT_LOW("\n venc_set_voptiming_cfg: TimeRes = %u",
+    DEBUG_PRINT_LOW("\n venc_set_voptiming_cfg: TimeRes = %lu",
             TimeIncRes);
 
     vop_timing_cfg.voptime_resolution = TimeIncRes;
@@ -2575,7 +2575,7 @@ bool venc_dev::venc_set_voptiming_cfg( OMX_U32 TimeIncRes)
 bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
 {
 
-    DEBUG_PRINT_LOW("\n venc_set_intra_period: nPFrames = %u",
+    DEBUG_PRINT_LOW("\n venc_set_intra_period: nPFrames = %lu",
             nPFrames);
     int rc;
     struct v4l2_control control;
@@ -2635,7 +2635,7 @@ bool venc_dev::venc_set_idr_period(OMX_U32 nPFrames, OMX_U32 nIDRPeriod)
 {
     int rc = 0;
     struct v4l2_control control;
-    DEBUG_PRINT_LOW("\n venc_set_idr_period: nPFrames = %u, nIDRPeriod: %u\n",
+    DEBUG_PRINT_LOW("\n venc_set_idr_period: nPFrames = %lu, nIDRPeriod: %lu\n",
             nPFrames, nIDRPeriod);
 
     if (m_sVenc_cfg.codectype != V4L2_PIX_FMT_H264) {
@@ -2668,7 +2668,7 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
     int rc = 0;
     struct v4l2_control control;
 
-    DEBUG_PRINT_LOW("\n venc_set_entropy_config: CABAC = %u level: %u", enable, i_cabac_level);
+    DEBUG_PRINT_LOW("\n venc_set_entropy_config: CABAC = %u level: %lu", enable, i_cabac_level);
 
     if (enable &&(codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE)) {
 
@@ -2801,7 +2801,7 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
         return false;
     }
 
-    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%lu, val=%lu\n", control_mode.id, control_mode.value);
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%u, val=%d\n", control_mode.id, control_mode.value);
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control_mode);
 
     if (rc) {
@@ -2877,7 +2877,7 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
         control.value =  V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE;
     }
 
-    DEBUG_PRINT_LOW("\n %s(): mode = %u, size = %u", __func__,
+    DEBUG_PRINT_LOW("\n %s(): mode = %lu, size = %lu", __func__,
             multislice_cfg.mslice_mode, multislice_cfg.mslice_size);
     printf("Calling IOCTL set control for id=%x, val=%d\n", control.id, control.value);
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
@@ -2960,7 +2960,7 @@ bool venc_dev::venc_set_inloop_filter(OMX_VIDEO_AVCLOOPFILTERTYPE loopfilter)
 
 bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
 {
-    DEBUG_PRINT_LOW("\n venc_set_target_bitrate: bitrate = %u",
+    DEBUG_PRINT_LOW("\n venc_set_target_bitrate: bitrate = %lu",
             nTargetBitrate);
     struct v4l2_control control;
     int rc = 0;
@@ -3029,10 +3029,10 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
     struct v4l2_format fmt;
     DEBUG_PRINT_LOW("\n venc_set_color_format: color_format = %u ", color_format);
 
-    if (color_format == OMX_COLOR_FormatYUV420SemiPlanar ||
-            color_format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
+    if ((int)color_format == (int)OMX_COLOR_FormatYUV420SemiPlanar ||
+            (int)color_format == (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
-    } else if (color_format == QOMX_COLOR_FormatYVU420SemiPlanar) {
+    } else if ((int)color_format == (int)QOMX_COLOR_FormatYVU420SemiPlanar) {
         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV21;
     } else {
         DEBUG_PRINT_ERROR("\nWARNING: Unsupported Color format [%d]", color_format);
@@ -3589,7 +3589,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
                     new_level = (int)profile_tbl[3];
                     new_profile = (int)profile_tbl[4];
                     profile_level_found = true;
-                    DEBUG_PRINT_LOW("\n Appropriate profile/level found %d/%d\n", new_profile, new_level);
+                    DEBUG_PRINT_LOW("\n Appropriate profile/level found %lu/%lu\n", new_profile, new_level);
                     break;
                 }
             }
@@ -3627,7 +3627,7 @@ bool venc_dev::venc_is_video_session_supported(unsigned long width,
     if ((width * height < capability.min_width *  capability.min_height) ||
             (width * height > capability.max_width *  capability.max_height)) {
         DEBUG_PRINT_ERROR(
-                "Unsupported video resolution WxH = (%d)x(%d) supported range = min (%d)x(%d) - max (%d)x(%d)\n",
+                "Unsupported video resolution WxH = (%lu)x(%lu) supported range = min (%d)x(%d) - max (%d)x(%d)\n",
                 width, height, capability.min_width, capability.min_height,
                 capability.max_width, capability.max_height);
         return false;

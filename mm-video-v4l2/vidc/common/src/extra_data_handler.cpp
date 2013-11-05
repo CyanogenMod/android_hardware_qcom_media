@@ -50,7 +50,7 @@ OMX_U32 extra_data_handler::d_u(OMX_U32 num_bits)
     OMX_U32 rem_bits = num_bits, bins = 0, shift = 0;
 
     while (rem_bits >= bit_ptr) {
-        DEBUG_PRINT_LOW("\nIn %s() bit_ptr/byte_ptr :%d/%d/%x", __func__, bit_ptr,
+        DEBUG_PRINT_LOW("\nIn %s() bit_ptr/byte_ptr :%lu/%lu/%x", __func__, bit_ptr,
                 byte_ptr, rbsp_buf[byte_ptr]);
         bins <<= shift;
         shift = (8-bit_ptr);
@@ -60,7 +60,7 @@ OMX_U32 extra_data_handler::d_u(OMX_U32 num_bits)
         byte_ptr ++;
     }
 
-    DEBUG_PRINT_LOW("\nIn %s() bit_ptr/byte_ptr :%d/%d/%x", __func__, bit_ptr,
+    DEBUG_PRINT_LOW("\nIn %s() bit_ptr/byte_ptr :%lu/%lu/%x", __func__, bit_ptr,
             byte_ptr, rbsp_buf[byte_ptr]);
 
     if (rem_bits) {
@@ -74,10 +74,10 @@ OMX_U32 extra_data_handler::d_u(OMX_U32 num_bits)
         }
     }
 
-    DEBUG_PRINT_LOW("\nIn %s() bit_ptr/byte_ptr :%d/%d/%x", __func__, bit_ptr,
+    DEBUG_PRINT_LOW("\nIn %s() bit_ptr/byte_ptr :%lu/%lu/%x", __func__, bit_ptr,
             byte_ptr, rbsp_buf[byte_ptr]);
 
-    DEBUG_PRINT_LOW("\nIn %s() bin/num_bits : %x/%d", __func__, bins, num_bits);
+    DEBUG_PRINT_LOW("\nIn %s() bin/num_bits : %x/%lu", __func__, (unsigned)bins, num_bits);
     return bins;
 }
 
@@ -93,7 +93,7 @@ OMX_U32 extra_data_handler::d_ue()
 
     symbol = ((1 << lead_zeros) - 1) + d_u(lead_zeros);
 
-    DEBUG_PRINT_LOW("\nIn %s() symbol : %d", __func__,symbol);
+    DEBUG_PRINT_LOW("\nIn %s() symbol : %lu", __func__,symbol);
     return symbol;
 }
 
@@ -157,7 +157,7 @@ OMX_S32 extra_data_handler::parse_rbsp(OMX_U8 *buf, OMX_U32 len)
     }
 
     nal_ref_idc = (buf[i] & 0x60) >>5;
-    DEBUG_PRINT_LOW("\nIn %s() nal_ref_idc ; %d", __func__, nal_ref_idc);
+    DEBUG_PRINT_LOW("\nIn %s() nal_ref_idc ; %lu", __func__, nal_ref_idc);
 
     nal_unit_type = (buf[i++] & 0x1F);
 
@@ -190,14 +190,14 @@ OMX_S32 extra_data_handler::parse_sei(OMX_U8 *buffer, OMX_U32 buffer_length)
 
         payload_type += rbsp_buf[byte_ptr++];
 
-        DEBUG_PRINT_LOW("\nIn %s() payload_type : %u", __func__, payload_type);
+        DEBUG_PRINT_LOW("\nIn %s() payload_type : %lu", __func__, payload_type);
 
         while (rbsp_buf[byte_ptr] == 0xFF)
             payload_size += rbsp_buf[byte_ptr++];
 
         payload_size += rbsp_buf[byte_ptr++];
 
-        DEBUG_PRINT_LOW("\nIn %s() payload_size : %u", __func__, payload_size);
+        DEBUG_PRINT_LOW("\nIn %s() payload_size : %lu", __func__, payload_size);
 
         switch (payload_type) {
             case SEI_PAYLOAD_FRAME_PACKING_ARRANGEMENT:
@@ -230,7 +230,7 @@ OMX_S32 extra_data_handler::parse_sei(OMX_U8 *buffer, OMX_U32 buffer_length)
         }
     }
 
-    DEBUG_PRINT_LOW("\nIn %s() payload_size : %u/%u", __func__,
+    DEBUG_PRINT_LOW("\nIn %s() payload_size : %lu/%lu", __func__,
             payload_size, byte_ptr);
     return 1;
 }
@@ -241,7 +241,7 @@ OMX_S32 extra_data_handler::parse_ltrinfo(
     OMX_U32 *pLTR;
     pExtra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataVideoLTRInfo;
     pLTR = (OMX_U32* )pExtra + 5;
-    DEBUG_PRINT_HIGH("ExtraData LTR ID %d", *pLTR, 0, 0);
+    DEBUG_PRINT_HIGH("ExtraData LTR ID %lu", *pLTR);
     return 0;
 }
 /*======================================================================
@@ -260,22 +260,22 @@ OMX_S32 extra_data_handler::parse_sliceinfo(
     OMX_U8 *pBuffer = (OMX_U8 *)pBufHdr->pBuffer;
     OMX_U32 *data = (OMX_U32 *)pExtra->data;
     OMX_U32 num_slices = *data;
-    DEBUG_PRINT_LOW("number of slices = %d", num_slices);
+    DEBUG_PRINT_LOW("number of slices = %lu", num_slices);
 
     if ((4 + num_slices * 8) != (OMX_U32)pExtra->nDataSize) {
         DEBUG_PRINT_ERROR("unknown error in slice info extradata");
         return -1;
     }
 
-    for (int i = 0; i < num_slices; i++) {
+    for (unsigned i = 0; i < num_slices; i++) {
         slice_offset = (OMX_U32)(*(data + (i*2 + 1)));
 
         if ((*(pBuffer + slice_offset + 0) != 0x00) ||
                 (*(pBuffer + slice_offset + 1) != 0x00) ||
                 (*(pBuffer + slice_offset + 2) != 0x00) ||
                 (*(pBuffer + slice_offset + 3) != H264_START_CODE)) {
-            DEBUG_PRINT_ERROR("found 0x%x instead of start code at offset[%d] "
-                    "for slice[%d]", (OMX_U32)(*(OMX_U32 *)(pBuffer + slice_offset)),
+            DEBUG_PRINT_ERROR("found 0x%x instead of start code at offset[%lu] "
+                    "for slice[%u]", (unsigned)(*(OMX_U32 *)(pBuffer + slice_offset)),
                     slice_offset, i);
             return -1;
         }
@@ -288,13 +288,13 @@ OMX_S32 extra_data_handler::parse_sliceinfo(
 
         slice_size = (OMX_U32)(*(data + (i*2 + 2)));
         total_size += slice_size;
-        DEBUG_PRINT_LOW("slice number %d offset/size = %d/%d",
+        DEBUG_PRINT_LOW("slice number %d offset/size = %lu/%lu",
                 i, slice_offset, slice_size);
     }
 
     if (pBufHdr->nFilledLen != total_size) {
-        DEBUG_PRINT_ERROR("frame_size[%d] is not equal to "
-                "total slices size[%d]", pBufHdr->nFilledLen, total_size);
+        DEBUG_PRINT_ERROR("frame_size[%lu] is not equal to "
+                "total slices size[%lu]", pBufHdr->nFilledLen, total_size);
         return -1;
     }
 
@@ -303,7 +303,7 @@ OMX_S32 extra_data_handler::parse_sliceinfo(
 
 OMX_U32 extra_data_handler::parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr)
 {
-    DEBUG_PRINT_LOW("In %s() flags: 0x%x", __func__,buf_hdr->nFlags);
+    DEBUG_PRINT_LOW("In %s() flags: 0x%x", __func__, (unsigned)buf_hdr->nFlags);
 
     if (buf_hdr->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
 
@@ -316,8 +316,8 @@ OMX_U32 extra_data_handler::parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr)
                 ((OMX_U32)extra_data < (OMX_U32)buf_hdr->pBuffer + buf_hdr->nAllocLen)) {
 
             DEBUG_PRINT_LOW("extradata(0x%x): nSize = 0x%x, eType = 0x%x,"
-                    " nDataSize = 0x%x", (unsigned)extra_data, extra_data->nSize,
-                    extra_data->eType, extra_data->nDataSize);
+                    " nDataSize = 0x%x", (unsigned)extra_data, (unsigned)extra_data->nSize,
+                    extra_data->eType, (unsigned)extra_data->nDataSize);
 
             if ((extra_data->eType == VDEC_EXTRADATA_NONE) ||
                     (extra_data->eType == VEN_EXTRADATA_NONE)) {
@@ -325,14 +325,14 @@ OMX_U32 extra_data_handler::parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr)
                 extra_data->eType = OMX_ExtraDataNone;
                 break;
             } else if (extra_data->eType == VDEC_EXTRADATA_SEI) {
-                DEBUG_PRINT_LOW("Extradata SEI of size %d found, "
+                DEBUG_PRINT_LOW("Extradata SEI of size %lu found, "
                         "parsing it", extra_data->nDataSize);
                 parse_sei(extra_data->data, extra_data->nDataSize);
             } else if (extra_data->eType == VEN_EXTRADATA_QCOMFILLER) {
-                DEBUG_PRINT_LOW("Extradata Qcom Filler found, skip %d bytes",
+                DEBUG_PRINT_LOW("Extradata Qcom Filler found, skip %lu bytes",
                         extra_data->nSize);
             } else if (extra_data->eType == VEN_EXTRADATA_SLICEINFO) {
-                DEBUG_PRINT_LOW("Extradata SliceInfo of size %d found, "
+                DEBUG_PRINT_LOW("Extradata SliceInfo of size %lu found, "
                         "parsing it", extra_data->nDataSize);
                 parse_sliceinfo(buf_hdr, extra_data);
             }
@@ -348,7 +348,7 @@ OMX_U32 extra_data_handler::parse_extra_data(OMX_BUFFERHEADERTYPE *buf_hdr)
             else {
                 DEBUG_PRINT_ERROR("Unknown extradata(0x%x) found, nSize = 0x%x, "
                         "eType = 0x%x, nDataSize = 0x%x", (unsigned)extra_data,
-                        extra_data->nSize, extra_data->eType, extra_data->nDataSize);
+                        (unsigned)extra_data->nSize, extra_data->eType, (unsigned)extra_data->nDataSize);
                 buf_hdr->nFlags &= ~(OMX_BUFFERFLAG_EXTRADATA);
                 break;
             }
@@ -385,15 +385,15 @@ OMX_U32 extra_data_handler::e_u(OMX_U32 symbol, OMX_U32 num_bits)
 {
     OMX_U32 rem_bits = num_bits, shift;
 
-    DEBUG_PRINT_LOW("\n%s bin  : %x/%d", __func__, symbol, num_bits);
+    DEBUG_PRINT_LOW("\n%s bin  : %x/%lu", __func__, (unsigned)symbol, num_bits);
 
     while (rem_bits >= bit_ptr) {
         shift = rem_bits - bit_ptr;
         rbsp_buf[byte_ptr] |= (symbol >> shift);
         symbol = (symbol << (32 - shift)) >> (32 - shift);
         rem_bits -= bit_ptr;
-        DEBUG_PRINT_LOW("\n%sstream byte/rem_bits %x/%d", __func__,
-                rbsp_buf[byte_ptr], rem_bits);
+        DEBUG_PRINT_LOW("\n%sstream byte/rem_bits %x/%lu", __func__,
+                (unsigned)rbsp_buf[byte_ptr], rem_bits);
         byte_ptr ++;
         bit_ptr = 8;
     }
@@ -402,8 +402,8 @@ OMX_U32 extra_data_handler::e_u(OMX_U32 symbol, OMX_U32 num_bits)
         shift = bit_ptr - rem_bits;
         rbsp_buf[byte_ptr] |= (symbol << shift);
         bit_ptr -= rem_bits;
-        DEBUG_PRINT_LOW("\n%s 2 stream byte/rem_bits %x", __func__,
-                rbsp_buf[byte_ptr], rem_bits);
+        DEBUG_PRINT_LOW("\n%s 2 stream byte/rem_bits %x/%lu", __func__,
+                (unsigned)rbsp_buf[byte_ptr], rem_bits);
 
         if (bit_ptr == 0) {
             bit_ptr = 8;
@@ -419,7 +419,7 @@ OMX_U32 extra_data_handler::e_ue(OMX_U32 symbol)
     OMX_U32 i, sym_len, sufix_len, info;
     OMX_U32 nn =(symbol + 1) >> 1;
 
-    DEBUG_PRINT_LOW("\n%s bin  : %x", __func__, symbol);
+    DEBUG_PRINT_LOW("\n%s bin  : %x", __func__, (unsigned)symbol);
 
     for (i=0; i < 33 && nn != 0; i++)
         nn >>= 1;
@@ -492,7 +492,7 @@ OMX_S32 extra_data_handler::create_rbsp(OMX_U8 *buf, OMX_U32 nalu_type)
         }
     }
 
-    DEBUG_PRINT_LOW("\n%s rbsp length %d", __func__, j);
+    DEBUG_PRINT_LOW("\n%s rbsp length %lu", __func__, j);
     return j;
 }
 
