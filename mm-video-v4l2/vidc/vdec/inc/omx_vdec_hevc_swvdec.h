@@ -773,7 +773,7 @@ private:
     {
         if (m_cb.EventHandler && !m_error_propogated)
         {
-            ALOGE("\nERROR: Sending OMX_EventError to Client");
+            DEBUG_PRINT_ERROR("\nERROR: Sending OMX_EventError to Client");
             m_error_propogated = true;
             m_cb.EventHandler(&m_cmp,m_app_data,
                   OMX_EventError,OMX_ErrorHardware,0,NULL);
@@ -784,8 +784,7 @@ private:
     {
         if (m_cb.EventHandler && !m_error_propogated)
         {
-            DEBUG_PRINT_ERROR(
-                    "ERROR: Sending OMX_ErrorUnsupportedSetting to Client");
+            DEBUG_PRINT_ERROR("ERROR: Sending OMX_ErrorUnsupportedSetting to Client");
             m_error_propogated = true;
             m_cb.EventHandler(&m_cmp,m_app_data,
                     OMX_EventError,OMX_ErrorUnsupportedSetting,0,NULL);
