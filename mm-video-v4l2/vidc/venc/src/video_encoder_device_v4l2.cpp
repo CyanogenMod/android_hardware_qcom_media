@@ -2833,6 +2833,7 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
     struct venc_headerextension hec_cfg;
     struct venc_multiclicecfg multislice_cfg;
     int rc;
+	OMX_U32 resynchMarkerSpacingBytes = 0;
     struct v4l2_control control;
 
     memset(&control, 0, sizeof(control));
@@ -2858,16 +2859,20 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
         return false;
     }
 
+	if (error_resilience->nResynchMarkerSpacing) {
+		resynchMarkerSpacingBytes = error_resilience->nResynchMarkerSpacing;
+		resynchMarkerSpacingBytes = ((resynchMarkerSpacingBytes + 7) & ~7) >> 3;
+	}
     if (( m_sVenc_cfg.codectype != V4L2_PIX_FMT_H263) &&
             (error_resilience->nResynchMarkerSpacing)) {
         multislice_cfg.mslice_mode = VEN_MSLICE_CNT_BYTE;
-        multislice_cfg.mslice_size = error_resilience->nResynchMarkerSpacing;
+		multislice_cfg.mslice_size = resynchMarkerSpacingBytes;
         control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
         control.value = V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_BYTES;
     } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263 &&
             error_resilience->bEnableDataPartitioning) {
         multislice_cfg.mslice_mode = VEN_MSLICE_GOB;
-        multislice_cfg.mslice_size = error_resilience->nResynchMarkerSpacing;
+		multislice_cfg.mslice_size = resynchMarkerSpacingBytes;
         control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
         control.value = V4L2_MPEG_VIDEO_MULTI_SLICE_GOB;
     } else {
@@ -2879,7 +2884,7 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
 
     DEBUG_PRINT_LOW("%s(): mode = %lu, size = %lu", __func__,
             multislice_cfg.mslice_mode, multislice_cfg.mslice_size);
-   DEBUG_PRINT_ERROR("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
+    DEBUG_PRINT_ERROR("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 
     if (rc) {
@@ -2887,12 +2892,12 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
         return false;
     }
 
-   DEBUG_PRINT_ERROR("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
+    DEBUG_PRINT_ERROR("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
     multislice.mslice_mode=control.value;
 
     control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_BYTES;
-    control.value = error_resilience->nResynchMarkerSpacing;
-   DEBUG_PRINT_ERROR("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
+    control.value = resynchMarkerSpacingBytes;
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x, val=%d\n", control.id, control.value);
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 
     if (rc) {
@@ -2900,7 +2905,7 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
         return false;
     }
 
-   DEBUG_PRINT_ERROR("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
+    DEBUG_PRINT_ERROR("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
     multislice.mslice_mode = multislice_cfg.mslice_mode;
     multislice.mslice_size = multislice_cfg.mslice_size;
     return status;
