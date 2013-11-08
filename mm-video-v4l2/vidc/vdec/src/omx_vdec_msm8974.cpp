@@ -6650,13 +6650,12 @@ int omx_vdec::async_message_process (void *context, void* message)
                     if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) {
                         omxhdr->nFlags |= OMX_BUFFERFLAG_DECODEONLY;
                     }
-#ifdef META_DATA_MODE_SUPPORTED
                     if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_READONLY) {
                          omxhdr->nFlags |= OMX_BUFFERFLAG_READONLY;
                          DEBUG_PRINT_LOW("F_B_D: READONLY BUFFER - REFERENCE WITH F/W fd = %d",
                                     omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].pmem_fd);
                     }
-
+#ifdef META_DATA_MODE_SUPPORTED
                     if (omx->dynamic_buf_mode && !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_READONLY)) {
                         omx->buf_ref_remove(omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].pmem_fd,
                             omxhdr->nOffset);
