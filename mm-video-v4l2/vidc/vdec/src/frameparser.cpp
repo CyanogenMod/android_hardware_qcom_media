@@ -490,10 +490,24 @@ int frame_parse::parse_h264_nallength (OMX_BUFFERHEADERTYPE *source,
     dest_len = dest->nAllocLen - (dest->nFilledLen + dest->nOffset);
     source_len = source->nFilledLen;
 
-    if (dest_len < 4 || source_len == 0 || nal_length == 0) {
+    if (dest_len < 4 || nal_length == 0) {
         DEBUG_PRINT_LOW("FrameParser: NAL Parsing Error! dest_len %lu "
-                "source_len %lu nal_length %u", dest_len, source_len, nal_length);
+                "nal_length %u", dest_len, nal_length);
         return -1;
+    }
+
+    if (source_len == 0 ) {
+        if (source->nFlags & OMX_BUFFERFLAG_EOS) {
+            DEBUG_PRINT_LOW("FrameParser: EOS rxd for nallength!!"
+                " Notify it as a complete frame");
+            *partialframe = 0;
+            return 1;
+        } else {
+            DEBUG_PRINT_ERROR("FrameParser: NAL Parsing Error!"
+                "Buffer recieved with source_len = %lu and with"
+                "flags %u", source_len, source->nFlags);
+            return -1;
+        }
     }
 
     *partialframe = 1;
