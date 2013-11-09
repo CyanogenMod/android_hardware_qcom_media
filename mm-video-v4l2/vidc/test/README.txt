@@ -86,6 +86,13 @@ marker_flag    # Set marker flag to be propagated by FW in input buffer ETB
                # 2 - V4L2_QCOM_BUF_TS_ERROR
                # 3 - V4L2_QCOM_BUF_TS_CONTINUITY | V4L2_QCOM_BUF_TS_ERROR
 
+errors_before_stop  # Set the number of continue empty buffer done (EBD)
+               # errors without consuming data before taking the decision
+               # of closing the session. The errors received are consider
+               # as helpers for the decision of doing a codec switch, in
+               # this case the application doesn't do a codec switch it
+               # just close the session when the number of continue errors
+               # are reach.
 
 
 SEQUENCE commands at configuration file, this commands are run in order from
@@ -140,6 +147,9 @@ SET_CTRL
     #       val: 0 | 1
     #   VIDEO_EXTRADATA STREAM_USERDATA
     #       id: V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA
+    #   SCS_THRESHOLD
+    #       id: V4L2_CID_MPEG_VIDC_VIDEO_SCS_THRESHOLD
+    #       val: 1 -> INT_MAX
 
 PREPARE_BUFS CAPTURE
     # Prepare buffers for selected port

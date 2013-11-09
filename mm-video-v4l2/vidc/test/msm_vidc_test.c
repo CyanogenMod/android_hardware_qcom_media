@@ -228,6 +228,9 @@ struct arguments {
 	char sequence[300][MAX_FILE_PATH_SIZE];
 	int verbosity;
 	int repeat;
+	unsigned int is_scs_threshold_set,
+		errors_before_stop,
+		ebd_error_counter;
 };
 
 typedef struct inputparam {
@@ -389,6 +392,7 @@ int parse_cfg(const char *filename)
 		{"ring_buf_size",      INT32,        &input_args->output_buf_size,MAX_FILE_PATH_SIZE},
 		{"output_buf_size",    INT32,        &input_args->output_buf_size,MAX_FILE_PATH_SIZE},
 		{"marker_flag",        INT32,        &input_args->marker_flag,MAX_FILE_PATH_SIZE},
+		{"errors_before_stop", INT32,        &input_args->errors_before_stop,MAX_FILE_PATH_SIZE},
 		{"eot",                FLAG,          NULL,0}
 	};
 	rc = parse_param_file(filename, param_table, sizeof(param_table)/sizeof(param_table[0]));
@@ -1078,6 +1082,8 @@ int configure_session (void)
 		I("Number of headers to use for OUTPUT port: %ld\n", input_args->ring_num_hdrs);
 	if (input_args->output_buf_size)
 		I("Output port/Ring buffer size: %ld\n", input_args->output_buf_size);
+	if (input_args->errors_before_stop)
+		I("Number of EBD errors before closing codec: %d\n", input_args->errors_before_stop);
 
 	return 0;
 }
@@ -1587,6 +1593,18 @@ int commands_controls(void)
 					rc = set_control(fd, &control);
 					V("VIDEO_EXTRADATA Set Control Done\n");
 				}
+			} else if(!(strncmp(param_name,"SCS_THRESHOLD",pos2))) {
+				rc = 0;
+				V("SCS_THRESHOLD control\n");
+				pos3 = strcspn(input_args->sequence[i]+pos1+1+pos2+1," ");
+				strlcpy(param_name,input_args->sequence[i]+pos1+1+pos2+1,pos3+1);
+				control.id = V4L2_CID_MPEG_VIDC_VIDEO_SCS_THRESHOLD;
+				control.value = atoi(param_name);
+				rc = set_control(fd, &control);
+				input_args->is_scs_threshold_set = 1;
+				input_args->errors_before_stop =
+					input_args->errors_before_stop?:2;
+				V("SCS_THRESHOLD Set Control Done\n");
 			} else {
 				E("ERROR .... Wrong Control \n");
 				rc = -EINVAL;
@@ -2626,6 +2644,10 @@ static void* poll_func(void *data)
 					video_inst.stop_feeding = 1;
 					video_inst.cur_test_status = SUCCESS;
 				}
+				if (v4l2_buf.flags & V4L2_QCOM_BUF_DATA_CORRUPT) {
+					I("Got V4L2_QCOM_BUF_DATA_CORRUPT\n");
+				}
+
 				filled_len = plane[0].bytesused;
 				D("FBD COUNT: %d, filled length = %d, userptr = %p, offset = %d, flags = 0x%x\n",
 					video_inst.fbd_count, filled_len, (void *)plane[0].m.userptr, plane[0].data_offset, v4l2_buf.flags);
@@ -2690,12 +2712,58 @@ static void* poll_func(void *data)
 				pthread_mutex_lock(&video_inst.q_lock[OUTPUT_PORT]);
 				++video_inst.ebd_count;
 				D("EBD COUNT: %d\n", video_inst.ebd_count);
+
 				if (input_args->alloc_type == V4L2_MPEG_VIDC_VIDEO_RING) {
 					D("Getting offset... port (0)\n");
 					nOffset = v4l2_buf.m.planes[0].data_offset;
 					D("port(0): new ring buf offset: %d\n", nOffset);
 					D("port(0): v4l2 index: %d, binfo index: %d\n",
 						v4l2_buf.index, binfo->index);
+					/* Verify codec switch threshold */
+					if (v4l2_buf.flags &  V4L2_MSM_VIDC_BUF_START_CODE_NOT_FOUND) {
+						E("Got V4L2_MSM_VIDC_BUF_START_CODE_NOT_FOUND\n");
+						I("Start code search threashold reached\n");
+					}
+					if (v4l2_buf.flags & V4L2_QCOM_BUF_INPUT_UNSUPPORTED) {
+						E("Got V4L2_QCOM_BUF_INPUT_UNSUPPORTED\n");
+					}
+
+					/* Condition to reset the error counter:
+					*  No error flags and driver has consume some data */
+					if ((!(v4l2_buf.flags &
+						(V4L2_QCOM_BUF_INPUT_UNSUPPORTED |
+						V4L2_MSM_VIDC_BUF_START_CODE_NOT_FOUND))) &&
+						(nOffset != video_inst.ring_info.ring_read_idx)){
+						D("Reseting error counter, prev value = %d\n",
+							input_args->ebd_error_counter);
+						input_args->ebd_error_counter = 0;
+					}
+
+					/* Error is consider any error flag */
+					if (v4l2_buf.flags &
+						(V4L2_QCOM_BUF_INPUT_UNSUPPORTED |
+						V4L2_MSM_VIDC_BUF_START_CODE_NOT_FOUND)){
+						input_args->ebd_error_counter++;
+						D("Error counter = %d\n",
+							input_args->ebd_error_counter);
+					}
+
+					if (input_args->is_scs_threshold_set &&
+						input_args->ebd_error_counter >= input_args->errors_before_stop) {
+						I("App as consider this is not a:\n");
+						if (!strcmp(input_args->codec_type, "H.264")) {
+							I("H.264\n");
+						} else if (!strcmp(input_args->codec_type, "MPEG2")) {
+							I("MPEG2\n");
+						} else {
+							I("Proper CODEC \n");
+						}
+
+						I("Stop session, number unpupported input errors = %d\n",
+							input_args->ebd_error_counter);
+						video_inst.stop_feeding = 1;
+						video_inst.cur_test_status = SUCCESS;
+					}
 					rc = ring_buf_read(&video_inst.ring_info, NULL, nOffset);
 					if (rc)
 						E("Error reading ring buffer\n");
@@ -2787,6 +2855,7 @@ static void nominal_test()
 	video_inst.inputfile = fopen(input_args->input,"rb");
 	if (!video_inst.inputfile) {
 		E("Failed to open input file %s\n", input_args->input);
+		video_inst.cur_test_status = FAILURE;
 		goto err;
 	}
 	video_inst.outputfile = fopen(input_args->output,"wb");
