@@ -19,7 +19,7 @@ libOmxVdec-def += -DCDECL
 libOmxVdec-def += -DT_ARM
 libOmxVdec-def += -DNO_ARM_CLZ
 libOmxVdec-def += -UENABLE_DEBUG_LOW
-libOmxVdec-def += -DENABLE_DEBUG_HIGH
+libOmxVdec-def += -UENABLE_DEBUG_HIGH
 libOmxVdec-def += -DENABLE_DEBUG_ERROR
 libOmxVdec-def += -UINPUT_BUFFER_LOG
 libOmxVdec-def += -UOUTPUT_BUFFER_LOG
@@ -51,8 +51,6 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libOmxVdec-def += -DSMOOTH_STREAMING_DISABLED
-libOmxVdec-def += -DH264_PROFILE_LEVEL_CHECK
 libOmxVdec-def += -D_MSM8974_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
@@ -67,17 +65,14 @@ libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_MSM8974_
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),mpq8092)
-libOmxVdec-def += -DMAX_RES_1080P
-libOmxVdec-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libOmxVdec-def += -D_MSM8974_
-endif
+
 libOmxVdec-def += -D_ANDROID_ICS_
 
 ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
 endif
+
+vdec-inc          = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
@@ -86,21 +81,27 @@ endif
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
+ifneq ($(TARGET_QCOM_DISPLAY_VARIANT),)
+DISPLAY := display-$(TARGET_QCOM_DISPLAY_VARIANT)
+else
+DISPLAY := display
+endif
+
 libmm-vdec-inc          := bionic/libc/include
 libmm-vdec-inc          += bionic/libstdc++/include
 libmm-vdec-inc          += $(LOCAL_PATH)/inc
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
-libmm-vdec-inc          += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
-libmm-vdec-inc          += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libgralloc
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libgenlock
 libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
 libmm-vdec-inc          += $(vdec-inc)
-libmm-vdec-inc          += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libqdutils
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqdutils
 libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
-libmm-vdec-inc      += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libcopybit
+libmm-vdec-inc      += hardware/qcom/$(DISPLAY)/libcopybit
 libmm-vdec-inc      += frameworks/av/include/media/stagefright
 
 
@@ -112,6 +113,7 @@ LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
 LOCAL_PRELINK_MODULE    := false
 LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
 
+LOCAL_SHARED_LIBRARIES += libgenlock
 LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
 LOCAL_SHARED_LIBRARIES  += libqdMetaData
 
@@ -123,13 +125,14 @@ ifneq ($(filter msm8974 msm8610 msm8226 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
 else
 LOCAL_SHARED_LIBRARIES  += libhardware
-libmm-vdec-inc          += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libhwcomposer
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libhwcomposer
 LOCAL_SRC_FILES         += src/power_module.cpp
 LOCAL_SRC_FILES         += src/omx_vdec.cpp
 endif
 
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -151,6 +154,7 @@ LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
 LOCAL_PRELINK_MODULE    := false
 LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
 
+LOCAL_SHARED_LIBRARIES += libgenlock
 LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
 LOCAL_SHARED_LIBRARIES  += libqdMetaData
 
@@ -164,6 +168,7 @@ LOCAL_SRC_FILES         += src/hevc_utils.cpp
 
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -188,6 +193,7 @@ LOCAL_SHARED_LIBRARIES    := libutils libOmxCore libOmxVdec libbinder libcutils
 
 LOCAL_SRC_FILES           := src/queue.c
 LOCAL_SRC_FILES           += test/omx_vdec_test.cpp
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_EXECUTABLE)
 
@@ -208,6 +214,7 @@ LOCAL_PRELINK_MODULE            := false
 
 LOCAL_SRC_FILES                 := src/message_queue.c
 LOCAL_SRC_FILES                 += test/decoder_driver_test.c
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_EXECUTABLE)
 

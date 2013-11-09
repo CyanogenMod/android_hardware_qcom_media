@@ -16,7 +16,7 @@ libmm-venc-def += -DT_ARM
 libmm-venc-def += -Dinline=__inline
 libmm-venc-def += -D_ANDROID_
 libmm-venc-def += -UENABLE_DEBUG_LOW
-libmm-venc-def += -DENABLE_DEBUG_HIGH
+libmm-venc-def += -UENABLE_DEBUG_HIGH
 libmm-venc-def += -DENABLE_DEBUG_ERROR
 libmm-venc-def += -UINPUT_BUFFER_LOG
 libmm-venc-def += -UOUTPUT_BUFFER_LOG
@@ -56,16 +56,12 @@ libmm-venc-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libmm-venc-def += -D_MSM8974_
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),mpq8092)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libmm-venc-def += -D_MSM8974_
-endif
 
 ifeq ($(TARGET_USES_ION),true)
 libmm-venc-def += -DUSE_ION
 endif
+
+venc-inc       = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 libmm-venc-def += -D_ANDROID_ICS_
 # ---------------------------------------------------------------------------------
@@ -74,20 +70,24 @@ libmm-venc-def += -D_ANDROID_ICS_
 
 include $(CLEAR_VARS)
 
+ifneq ($(TARGET_QCOM_DISPLAY_VARIANT),)
+DISPLAY := display-$(TARGET_QCOM_DISPLAY_VARIANT)
+else
+DISPLAY := display
+endif
+
 libmm-venc-inc      := bionic/libc/include
 libmm-venc-inc      += bionic/libstdc++/include
 libmm-venc-inc      += $(LOCAL_PATH)/inc
-libmm-venc-inc      += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-venc-inc      += hardware/qcom/media/mm-core/inc
 libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
-libmm-venc-inc      += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
+libmm-venc-inc      += hardware/qcom/$(DISPLAY)/libgralloc
 libmm-venc-inc      += frameworks/native/include/media/hardware
 libmm-venc-inc      += frameworks/native/include/media/openmax
 libmm-venc-inc      += hardware/qcom/media/libc2dcolorconvert
-libmm-venc-inc      += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libcopybit
+libmm-venc-inc      += hardware/qcom/$(DISPLAY)/libcopybit
 libmm-venc-inc      += frameworks/av/include/media/stagefright
-libmm-venc-inc      += frameworks/av/include/media/hardware
 libmm-venc-inc      += $(venc-inc)
 
 LOCAL_MODULE                    := libOmxVenc
@@ -107,6 +107,8 @@ else
 LOCAL_SRC_FILES   += src/video_encoder_device.cpp
 endif
 
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
 LOCAL_SRC_FILES   += ../common/src/extra_data_handler.cpp
 
 include $(BUILD_SHARED_LIBRARY)
@@ -117,18 +119,24 @@ include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
+ifneq ($(TARGET_QCOM_DISPLAY_VARIANT),)
+DISPLAY := display-$(TARGET_QCOM_DISPLAY_VARIANT)
+else
+DISPLAY := display
+endif
+
 mm-venc-test720p-inc            := $(TARGET_OUT_HEADERS)/mm-core
 mm-venc-test720p-inc            += $(LOCAL_PATH)/inc
 mm-venc-test720p-inc            += $(OMX_VIDEO_PATH)/vidc/common/inc
 mm-venc-test720p-inc            += hardware/qcom/media/mm-core/inc
-mm-venc-test720p-inc            += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
-mm-venc-test720p-inc            += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
+mm-venc-test720p-inc            += hardware/qcom/$(DISPLAY)/libgralloc
 mm-venc-test720p-inc            += $(venc-inc)
 
 LOCAL_MODULE                    := mm-venc-omx-test720p
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(mm-venc-test720p-inc)
+LOCAL_ADDITIONAL_DEPENDENCIES   := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 LOCAL_PRELINK_MODULE            := false
 LOCAL_SHARED_LIBRARIES          := libmm-omxcore libOmxVenc libbinder liblog
 
@@ -145,9 +153,14 @@ include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
 
+ifneq ($(TARGET_QCOM_DISPLAY_VARIANT),)
+DISPLAY := display-$(TARGET_QCOM_DISPLAY_VARIANT)
+else
+DISPLAY := display
+endif
+
 venc-test-inc                   += $(LOCAL_PATH)/inc
-venc-test-inc                   += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
-venc-test-inc                   += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
+venc-test-inc                   += hardware/qcom/$(DISPLAY)/libgralloc
 venc-test-inc                   += $(venc-inc)
 
 LOCAL_MODULE                    := mm-video-encdrv-test
@@ -155,6 +168,7 @@ LOCAL_MODULE_TAGS               := optional
 LOCAL_C_INCLUDES                := $(venc-test-inc)
 LOCAL_C_INCLUDES                += hardware/qcom/media/mm-core/inc
 
+LOCAL_ADDITIONAL_DEPENDENCIES   := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 LOCAL_PRELINK_MODULE            := false
 
 LOCAL_SRC_FILES                 := test/video_encoder_test.c
