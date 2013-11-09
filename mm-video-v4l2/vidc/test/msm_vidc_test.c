@@ -421,10 +421,6 @@ int get_extradata_value(const char * param_name)
 		val = V4L2_MPEG_VIDC_EXTRADATA_PANSCAN_WINDOW;
 	} else if ((v4l2_name = "RECOVERY_POINT_SEI") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
 		val = V4L2_MPEG_VIDC_EXTRADATA_RECOVERY_POINT_SEI;
-	} else if ((v4l2_name = "CLOSED_CAPTION_UD") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
-		val = V4L2_MPEG_VIDC_EXTRADATA_CLOSED_CAPTION_UD;
-	} else if ((v4l2_name = "AFD_UD") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
-		val = V4L2_MPEG_VIDC_EXTRADATA_AFD_UD;
 	} else if ((v4l2_name = "MULTISLICE_INFO") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
 		val = V4L2_MPEG_VIDC_EXTRADATA_MULTISLICE_INFO;
 	} else if ((v4l2_name = "NUM_CONCEALED_MB") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
@@ -439,6 +435,8 @@ int get_extradata_value(const char * param_name)
 		val = V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO;
 	} else if ((v4l2_name = "MPEG2_SEQDISP") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
 		val = V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
+	} else if ((v4l2_name = "STREAM_USERDATA") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA;
 	} else {
 		E("Not found %s \n", param_name);
 		val = -1;
@@ -606,6 +604,26 @@ int handle_extradata_v4l2(struct v4l2_buffer v4l2_buf)
 							seqdisp_payload->disp_height);
 					} else {
 						I("MSM_VIDC_EXTRADATA_MPEG2_SEQDISP: NULL\n");
+					}
+					break;
+				}
+				case MSM_VIDC_EXTRADATA_STREAM_USERDATA:
+				{
+					int i = 0;
+					int userdata_size = 0;
+					unsigned char *data_ptr;
+					struct msm_vidc_stream_userdata_payload *stream_userdata_payload;
+					stream_userdata_payload =
+						(struct msm_vidc_stream_userdata_payload *)data->data;
+					userdata_size = data->data_size - sizeof(unsigned int*);
+					V("stream_userdata_payload->type:%d\n",
+						stream_userdata_payload->type);
+					V("userdata_size:%d\n", userdata_size);
+					V("STREAM_USERDATA :\n");
+					data_ptr = (unsigned char*)(data->data+(sizeof(unsigned int*)));
+					for (i = 0; i < userdata_size; i+=4) {
+						V("%x %x %x %x\n", data_ptr[i], data_ptr[i+1],
+							data_ptr[i+2], data_ptr[i+3]);
 					}
 					break;
 				}
@@ -1522,7 +1540,7 @@ int commands_controls(void)
 				control.value = input_args->continue_data_transfer;
 				rc = set_control(fd, &control);
 				V("CONTINUE_DATA_TRANSFER (smooth streaming) Set Control Done\n");
-			} else if(!(strncmp(param_name,"ALLOC_TYPE",pos2))) {
+			} else if(!(strncmp(param_name,"ALLOC_INPUT_TYPE",pos2))) {
 				V("ALLOC_TYPE Control\n");
 				pos3 = strcspn(input_args->sequence[i]+pos1+1+pos2+1," ");
 				strlcpy(param_name,input_args->sequence[i]+pos1+1+pos2+1,pos3+1);
