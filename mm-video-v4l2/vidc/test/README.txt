@@ -80,6 +80,12 @@ ring_buf_size  # Set the size of the ring buffer, shall be at least the
 
 random_seed    # Set the seed for the rand() function used internally.
 
+marker_flag    # Set marker flag to be propagated by FW in input buffer ETB
+               # to output buffer FBD
+               # 1 - V4L2_QCOM_BUF_TS_CONTINUITY
+               # 2 - V4L2_QCOM_BUF_TS_ERROR
+               # 3 - V4L2_QCOM_BUF_TS_CONTINUITY | V4L2_QCOM_BUF_TS_ERROR
+
 
 
 SEQUENCE commands at configuration file, this commands are run in order from
