@@ -730,8 +730,8 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 ALOGV("newSeekTime %lld", newSeekTime);
             }
             else if (mSourceType == kHttpDashSource) {
-                mTimeDiscontinuityPending = true;
                 if (nRet == OK) { // if seek success then flush the audio,video decoder and renderer
+                  mTimeDiscontinuityPending = true;
                   bool audPresence = false;
                   bool vidPresence = false;
                   bool textPresence = false;
