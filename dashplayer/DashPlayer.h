@@ -29,7 +29,9 @@
 #define KEY_DASH_MPD_QUERY           8003
 #define KEY_DASH_QOE_EVENT           8004
 #define KEY_DASH_QOE_PERIODIC_EVENT  8008
-#define KEY_DASH_SET_ADAPTION_PROPERTIES 8006 // used for Set Adaptionset property (NonJB)
+
+#define KEY_DASH_GET_ADAPTION_PROPERTIES 8010
+#define KEY_DASH_SET_ADAPTION_PROPERTIES 8011
 
 namespace android {
 
@@ -59,11 +61,7 @@ struct DashPlayer : public AHandler {
 
     void setDataSource(int fd, int64_t offset, int64_t length);
 
-#ifdef ANDROID_JB_MR2
     void setVideoSurfaceTexture(const sp<IGraphicBufferProducer> &bufferProducer);
-#else
-    void setVideoSurfaceTexture(const sp<ISurfaceTexture> &surfaceTexture);
-#endif
 
     void setAudioSink(const sp<MediaPlayerBase::AudioSink> &sink);
     void start();

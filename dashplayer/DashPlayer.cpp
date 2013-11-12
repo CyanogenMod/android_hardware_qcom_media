@@ -50,11 +50,7 @@
 #include <media/stagefright/MetaData.h>
 #include <TextDescriptions.h>
 
-#ifdef ANDROID_JB_MR2
 #include <gui/IGraphicBufferProducer.h>
-#else
-#include <gui/ISurfaceTexture.h>
-#endif
 
 #include <cutils/properties.h>
 #include "avc_utils.h"
@@ -152,7 +148,6 @@ void DashPlayer::setDataSource(int fd, int64_t offset, int64_t length) {
    ALOGE("DashPlayer::setDataSource not Implemented...");
 }
 
-#ifdef ANDROID_JB_MR2
 void DashPlayer::setVideoSurfaceTexture(const sp<IGraphicBufferProducer> &bufferProducer) {
     sp<AMessage> msg = new AMessage(kWhatSetVideoNativeWindow, id());
     sp<Surface> surface(bufferProducer != NULL ?
@@ -160,16 +155,6 @@ void DashPlayer::setVideoSurfaceTexture(const sp<IGraphicBufferProducer> &buffer
     msg->setObject("native-window", new NativeWindowWrapper(surface));
     msg->post();
 }
-#else
-void DashPlayer::setVideoSurfaceTexture(const sp<ISurfaceTexture> &surfaceTexture) {
-    mSetVideoSize = true;
-    sp<AMessage> msg = new AMessage(kWhatSetVideoNativeWindow, id());
-    sp<SurfaceTextureClient> surfaceTextureClient(surfaceTexture != NULL ?
-                new SurfaceTextureClient(surfaceTexture) : NULL);
-    msg->setObject("native-window", new NativeWindowWrapper(surfaceTextureClient));
-    msg->post();
-}
-#endif
 
 void DashPlayer::setAudioSink(const sp<MediaPlayerBase::AudioSink> &sink) {
     sp<AMessage> msg = new AMessage(kWhatSetAudioSink, id());
@@ -1201,11 +1186,13 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
         }
 
         //TO-DO:: Similarly set here for Decode order
+#ifdef ANDROID_JB_MR2
         if (mVideoIsAVC &&
            ((mSourceType == kHttpLiveSource) || (mSourceType == kHttpDashSource) ||(mSourceType == kWfdSource))) {
             ALOGV("Set Enable smooth streaming in meta data ");
             meta->setInt32(kKeySmoothStreaming, 1);
         }
+#endif
 
         int32_t isDRMSecBuf = 0;
         meta->findInt32(kKeyRequiresSecureBuffers, &isDRMSecBuf);
@@ -1689,8 +1676,9 @@ status_t DashPlayer::getParameter(int key, Parcel *reply)
 status_t DashPlayer::setParameter(int key, const Parcel &request)
 {
     status_t err = OK;
-    if (key == 8002 || key == 8006){
-
+    if (KEY_DASH_ADAPTION_PROPERTIES == key ||
+        KEY_DASH_SET_ADAPTION_PROPERTIES == key)
+    {
         size_t len = 0;
         const char16_t* str = request.readString16Inplace(&len);
         void * data = malloc(len + 1);
