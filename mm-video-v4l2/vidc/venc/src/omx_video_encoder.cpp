@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1528,7 +1528,19 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 memcpy(&m_sConfigLTRPeriod, pParam, sizeof(m_sConfigLTRPeriod));
                 break;
             }
-        case QOMX_IndexConfigVideoLTRUse:
+
+       case OMX_IndexConfigVideoVp8ReferenceFrame:
+           {
+               OMX_VIDEO_VP8REFERENCEFRAMETYPE* pParam = (OMX_VIDEO_VP8REFERENCEFRAMETYPE*) configData;
+               if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE) OMX_IndexConfigVideoVp8ReferenceFrame)) {
+                   DEBUG_PRINT_ERROR("ERROR: Setting VP8 reference frame");
+                   return OMX_ErrorUnsupportedSetting;
+               }
+               memcpy(&m_sConfigVp8ReferenceFrame, pParam, sizeof(m_sConfigVp8ReferenceFrame));
+               break;
+           }
+
+       case QOMX_IndexConfigVideoLTRUse:
             {
                 QOMX_VIDEO_CONFIG_LTRUSE_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRUSE_TYPE*)configData;
                 if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRUse)) {

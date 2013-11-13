@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -583,6 +583,7 @@ class omx_video: public qc_omx_component
         QOMX_VIDEO_CONFIG_LTRUSE_TYPE m_sConfigLTRUse;
         OMX_VIDEO_CONFIG_AVCINTRAPERIOD m_sConfigAVCIDRPeriod;
         OMX_VIDEO_CONFIG_DEINTERLACE m_sConfigDeinterlace;
+        OMX_VIDEO_VP8REFERENCEFRAMETYPE m_sConfigVp8ReferenceFrame;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
 
