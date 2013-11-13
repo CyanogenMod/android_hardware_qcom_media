@@ -116,6 +116,11 @@ libOmxVdec-def += -DMETA_DATA_MODE_SUPPORTED
 libmm-vdec-inc += hardware/qcom/media/libstagefrighthw
 endif
 
+ifneq ($(call is-platform-sdk-version-at-least,19),true)
+libOmxVdec-def += -DMETADATA_FOR_DYNAMIC_MODE
+libmm-vdec-inc += hardware/qcom/media/libstagefrighthw
+endif
+
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libOmxVdec-def)
