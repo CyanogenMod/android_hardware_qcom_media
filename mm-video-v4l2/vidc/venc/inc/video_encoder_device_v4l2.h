@@ -310,6 +310,9 @@ class venc_dev
         bool venc_set_extradata(OMX_U32 extra_data);
         bool venc_set_idr_period(OMX_U32 nPFrames, OMX_U32 nIDRPeriod);
         bool venc_reconfig_reqbufs();
+        bool venc_set_ltrmode(OMX_U32 enable, OMX_U32 count);
+        bool venc_set_useltr();
+        bool venc_set_markltr();
         bool venc_set_inband_video_header(OMX_BOOL enable);
         bool venc_set_au_delimiter(OMX_BOOL enable);
         bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
