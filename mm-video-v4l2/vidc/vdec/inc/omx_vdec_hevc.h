@@ -846,6 +846,7 @@ class omx_vdec: public qc_omx_component
         bool external_meta_buffer;
         bool external_meta_buffer_iommu;
         OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
+        OMX_OTHER_EXTRADATATYPE *m_other_extradata;
         bool codec_config_flag;
 #ifdef _MSM8974_
         int capture_capability;

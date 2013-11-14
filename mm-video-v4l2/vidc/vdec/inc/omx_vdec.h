@@ -658,6 +658,8 @@ class omx_vdec: public qc_omx_component
         void append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra);
         void append_extn_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_extn);
         void append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_user);
+        void append_concealmb_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+                OMX_OTHER_EXTRADATATYPE *p_concealmb, OMX_U8 *conceal_mb_data);
         void insert_demux_addr_offset(OMX_U32 address_offset);
         void extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr);
         OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
@@ -893,6 +895,7 @@ class omx_vdec: public qc_omx_component
         bool external_meta_buffer;
         bool external_meta_buffer_iommu;
         OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
+        OMX_OTHER_EXTRADATATYPE *m_other_extradata;
         bool codec_config_flag;
 #ifdef _MSM8974_
         int capture_capability;
