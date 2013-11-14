@@ -7391,7 +7391,6 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
         ion_buf_info.fd_ion_data = *fd_data;
         free_ion_memory(&ion_buf_info);
         fd_data->fd =-1;
-        close(fd);
         fd = -ENOMEM;
     }
 
