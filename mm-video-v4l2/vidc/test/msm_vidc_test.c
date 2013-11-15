@@ -450,6 +450,8 @@ int get_extradata_value(const char * param_name)
 		val = V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA;
 	} else if ((v4l2_name = "FRAME_QP") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
 		val = V4L2_MPEG_VIDC_EXTRADATA_FRAME_QP;
+	} else if ((v4l2_name = "FRAME_BITS_INFO") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
+		val = V4L2_MPEG_VIDC_EXTRADATA_FRAME_BITS_INFO;
 	} else {
 		E("Not found %s \n", param_name);
 		val = -1;
@@ -647,6 +649,17 @@ int handle_extradata_v4l2(struct v4l2_buffer v4l2_buf)
 					frame_qp_payload = (struct msm_vidc_frame_qp_payoad *)data->data;
 					frame_QP = frame_qp_payload->frame_qp;
 					I("Frame base QP = %d\n", frame_QP);
+					break;
+				}
+				case MSM_VIDC_EXTRADATA_FRAME_BITS_INFO:
+				{
+					struct msm_vidc_frame_bits_info_payload *info_payload;
+					unsigned int frame_bits, header_bits;
+					info_payload = (struct msm_vidc_frame_bits_info_payload*)data->data;
+					frame_bits = info_payload->frame_bits;
+					header_bits = info_payload->header_bits;
+					I("Frame bits info: header = %d, frame = %d\n",
+						header_bits, frame_bits);
 					break;
 				}
 				default:
