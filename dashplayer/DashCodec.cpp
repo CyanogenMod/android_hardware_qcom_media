@@ -617,11 +617,12 @@ status_t DashCodec::allocateOutputBuffersFromNativeWindow() {
     if (def.nBufferCountActual < def.nBufferCountMin + minUndequeuedBufs) {
         OMX_U32 newBufferCount = def.nBufferCountMin + minUndequeuedBufs;
         def.nBufferCountActual = newBufferCount;
-
+#ifdef ANDROID_JB_MR2
         //Keep an extra buffer for smooth streaming
         if (mSmoothStreaming) {
             def.nBufferCountActual += 1;
         }
+#endif
 
         err = mOMX->setParameter(
                 mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
@@ -960,7 +961,66 @@ status_t DashCodec::configureCodec(
         }
     }
 
-    if (!strncasecmp(mime, "video/", 6)) {
+    // Always try to enable dynamic output buffers on native surface
+    int32_t video = !strncasecmp(mime, "video/", 6);
+#ifndef ANDROID_JB_MR2
+      sp<RefBase> obj;
+      int32_t haveNativeWindow = msg->findObject("native-window", &obj) &&
+            obj != NULL;
+      if (!encoder && video && haveNativeWindow) {
+        err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexOutput, OMX_TRUE);
+        if (err != OK) {
+
+            ALOGE("[%s] storeMetaDataInBuffers failed w/ err %d",
+                  mComponentName.c_str(), err);
+
+            // if adaptive playback has been requested, try JB fallback
+            // NOTE: THIS FALLBACK MECHANISM WILL BE REMOVED DUE TO ITS
+            // LARGE MEMORY REQUIREMENT
+
+            // we will not do adaptive playback on software accessed
+            // surfaces as they never had to respond to changes in the
+            // crop window, and we don't trust that they will be able to.
+            int usageBits = 0;
+            bool canDoAdaptivePlayback;
+
+            sp<NativeWindowWrapper> windowWrapper(
+                    static_cast<NativeWindowWrapper *>(obj.get()));
+            sp<ANativeWindow> nativeWindow = windowWrapper->getNativeWindow();
+
+            if (nativeWindow->query(
+                    nativeWindow.get(),
+                    NATIVE_WINDOW_CONSUMER_USAGE_BITS,
+                    &usageBits) != OK) {
+                canDoAdaptivePlayback = false;
+            } else {
+                canDoAdaptivePlayback =
+                    (usageBits &
+                            (GRALLOC_USAGE_SW_READ_MASK |
+                             GRALLOC_USAGE_SW_WRITE_MASK)) == 0;
+            }
+
+            int32_t maxWidth = 0, maxHeight = 0;
+            if (canDoAdaptivePlayback &&
+                msg->findInt32("max-width", &maxWidth) &&
+                msg->findInt32("max-height", &maxHeight)) {
+                ALOGV("[%s] prepareForAdaptivePlayback(%ldx%ld)",
+                      mComponentName.c_str(), maxWidth, maxHeight);
+
+                err = mOMX->prepareForAdaptivePlayback(
+                        mNode, kPortIndexOutput, OMX_TRUE, maxWidth, maxHeight);
+                ALOGW_IF(err != OK,
+                        "[%s] prepareForAdaptivePlayback failed w/ err %d",
+                        mComponentName.c_str(), err);
+            }
+            // allow failure
+            err = OK;
+        } else {
+            ALOGV("[%s] storeMetaDataInBuffers succeeded", mComponentName.c_str());
+        }
+      }
+#endif
+    if (video) {
         if (encoder) {
             err = setupVideoEncoder(mime, msg);
         } else {
@@ -970,10 +1030,12 @@ status_t DashCodec::configureCodec(
                 err = INVALID_OPERATION;
             } else {
                 //override height & width with max for smooth streaming
+#ifdef ANDROID_JB_MR2
                 if (mSmoothStreaming) {
                     width = MAX_WIDTH;
                     height = MAX_HEIGHT;
                 }
+#endif
                 err = setupVideoDecoder(mime, width, height);
             }
         }
@@ -2963,8 +3025,11 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
                 mCodec->mPortEOS[kPortIndexOutput] = true;
                 break;
             }
-
+#ifdef ANDROID_JB_MR2
             if (!mCodec->mIsEncoder && !mCodec->mSentFormat && !mCodec->mSmoothStreaming) {
+#else
+            if (!mCodec->mIsEncoder && !mCodec->mSentFormat) {
+#endif
                 mCodec->sendFormatChange();
             }
 
@@ -2990,12 +3055,13 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
             notify->setInt32("flags", flags);
             sp<AMessage> reply =
                 new AMessage(kWhatOutputBufferDrained, mCodec->id());
-
+#ifdef ANDROID_JB_MR2
            if (!mCodec->mPostFormat && mCodec->mSmoothStreaming){
                    ALOGV("Resolution will change from this buffer, set a flag");
                    reply->setInt32("resChange", 1);
                    mCodec->mPostFormat = true;
             }
+#endif
 
             reply->setPointer("buffer-id", info->mBufferID);
 
@@ -3029,6 +3095,7 @@ void DashCodec::BaseState::onOutputBufferDrained(const sp<AMessage> &msg) {
     BufferInfo *info =
         mCodec->findBufferByID(kPortIndexOutput, bufferID, &index);
     CHECK_EQ((int)info->mStatus, (int)BufferInfo::OWNED_BY_DOWNSTREAM);
+#ifdef ANDROID_JB_MR2
     if (mCodec->mSmoothStreaming) {
         int32_t resChange = 0;
         if (msg->findInt32("resChange", &resChange) && resChange == 1) {
@@ -3037,6 +3104,7 @@ void DashCodec::BaseState::onOutputBufferDrained(const sp<AMessage> &msg) {
             msg->setInt32("resChange", 0);
         }
     }
+#endif
     int32_t render;
     if (mCodec->mNativeWindow != NULL
             && msg->findInt32("render", &render) && render != 0) {
@@ -3351,6 +3419,7 @@ bool DashCodec::LoadedState::onConfigureComponent(
     CHECK(mCodec->mNode != NULL);
 
     int32_t value;
+#ifdef ANDROID_JB_MR2
     if (msg->findInt32("smooth-streaming", &value) && (value == 1) &&
        !strcmp("OMX.qcom.video.decoder.avc", mCodec->mComponentName.c_str())) {
 
@@ -3370,6 +3439,7 @@ bool DashCodec::LoadedState::onConfigureComponent(
             }
         }
     }
+#endif
 
     if (msg->findInt32("secure-op", &value) && (value == 1)) {
         mCodec->mFlags |= kFlagIsSecureOPOnly;
