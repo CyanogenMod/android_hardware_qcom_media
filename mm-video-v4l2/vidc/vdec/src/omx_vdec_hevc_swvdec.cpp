@@ -6252,15 +6252,15 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
 #endif
 
     if (m_debug.infile) {
-       fclose(m_debug.infile);
-       m_debug.infile = NULL;
+        fclose(m_debug.infile);
+        m_debug.infile = NULL;
     }
     if (m_debug.outfile) {
-       fclose(m_debug.outfile);
-       m_debug.outfile = NULL;
+        fclose(m_debug.outfile);
+        m_debug.outfile = NULL;
     }
     if (m_debug.imbfile) {
-       fclose(m_debug.imbfile);
+        fclose(m_debug.imbfile);
         m_debug.imbfile = NULL;
     }
 
@@ -7837,8 +7837,8 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
         drv_ctx.extradata_info.buffer_size = extra_data_size;
         buf_size += client_extra_data_size;
         buf_size = (buf_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
-        DEBUG_PRINT_HIGH("GetBufReq UPDATE: ActCnt(%d) Size(%d) BufSize(%d) BufType(%d)",
-            buffer_prop->actualcount, buffer_prop->buffer_size, buf_size, buffer_prop->buffer_type);
+        DEBUG_PRINT_HIGH("GetBufReq UPDATE: ActCnt(%d) Size(%d) BufSize(%d) BufType(%d), extradata size %d",
+            buffer_prop->actualcount, buffer_prop->buffer_size, buf_size, buffer_prop->buffer_type, client_extra_data_size);
         if (in_reconfig) // BufReq will be set to driver when port is disabled
             buffer_prop->buffer_size = buf_size;
         else if (buf_size != buffer_prop->buffer_size)
@@ -8294,8 +8294,10 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     }
     p_extra = (OMX_OTHER_EXTRADATATYPE *)
         ((unsigned)(pBuffer + p_buf_hdr->nOffset + p_buf_hdr->nFilledLen + 3)&(~3));
+    if (!client_extradata)
+        p_extra = NULL;
     char *p_extradata = drv_ctx.extradata_info.uaddr + buf_index * drv_ctx.extradata_info.buffer_size;
-    if ((OMX_U8*)p_extra > (pBuffer + p_buf_hdr->nAllocLen))
+    if ((OMX_U8*)p_extra >= (pBuffer + p_buf_hdr->nAllocLen))
         p_extra = NULL;
     OMX_OTHER_EXTRADATATYPE *data = (struct OMX_OTHER_EXTRADATATYPE *)p_extradata;
     if (data) {
@@ -8393,7 +8395,7 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
         DEBUG_PRINT_ERROR("ERROR: enable extradata allowed in Loaded state only");
         return OMX_ErrorIncorrectStateOperation;
     }
-    DEBUG_PRINT_ERROR("NOTE: enable_extradata: actual[%lu] requested[%lu] enable[%d], is_internal: %d swvdec mode %d",
+    DEBUG_PRINT_ERROR("NOTE: enable_extradata: actual[%x] requested[%x] enable[%d], is_internal: %d swvdec mode %d",
         client_extradata, requested_extradata, enable, is_internal, m_swvdec_mode);
 
     if (!is_internal) {
@@ -8404,7 +8406,7 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
     }
 
     if (enable) {
-        if (m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY) {
+        if (m_pSwVdec == NULL || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY) {
             if (requested_extradata & OMX_INTERLACE_EXTRADATA) {
                 control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
                 control.value = V4L2_MPEG_VIDC_EXTRADATA_INTERLACE_VIDEO;
@@ -8551,7 +8553,7 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 {
     OMX_STREAMINTERLACEFORMAT *interlace_format;
     OMX_U32 mbaff = 0;
-    if (!(client_extradata & OMX_INTERLACE_EXTRADATA)) {
+    if (!(client_extradata & OMX_INTERLACE_EXTRADATA) || !extra) {
         return;
     }
     extra->nSize = OMX_INTERLACE_EXTRADATA_SIZE;
@@ -8597,7 +8599,7 @@ struct vdec_aspectratioinfo *aspect_ratio_info)
 {
     OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info = NULL;
     struct msm_vidc_panscan_window *panscan_window;
-    if (!(client_extradata & OMX_FRAMEINFO_EXTRADATA)) {
+    if (!(client_extradata & OMX_FRAMEINFO_EXTRADATA) || !extra) {
         return;
     }
     extra->nSize = OMX_FRAMEINFO_EXTRADATA_SIZE;
@@ -8648,6 +8650,10 @@ struct vdec_aspectratioinfo *aspect_ratio_info)
 
 void omx_vdec::append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 {
+    if (!client_extradata || !extra) {
+        return;
+    }
+
     OMX_PARAM_PORTDEFINITIONTYPE *portDefn = NULL;
     extra->nSize = OMX_PORTDEF_EXTRADATA_SIZE;
     extra->nVersion.nVersion = OMX_SPEC_VERSION;
@@ -8665,7 +8671,7 @@ void omx_vdec::append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 
 void omx_vdec::append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 {
-    if (!client_extradata) {
+    if (!client_extradata || !extra) {
         return;
     }
     extra->nSize = sizeof(OMX_OTHER_EXTRADATATYPE);
@@ -9252,10 +9258,33 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req_swvdec()
     }
     else
     {
-        drv_ctx.op_buf.buffer_size = property.uProperty.sOpBuffReq.nSize;
+        int client_extra_data_size = 0;
+        if (client_extradata & OMX_FRAMEINFO_EXTRADATA)
+        {
+            DEBUG_PRINT_HIGH("Frame info extra data enabled!");
+            client_extra_data_size += OMX_FRAMEINFO_EXTRADATA_SIZE;
+        }
+        if (client_extradata & OMX_INTERLACE_EXTRADATA)
+        {
+            DEBUG_PRINT_HIGH("OMX_INTERLACE_EXTRADATA!");
+            client_extra_data_size += OMX_INTERLACE_EXTRADATA_SIZE;
+        }
+        if (client_extradata & OMX_PORTDEF_EXTRADATA)
+        {
+            client_extra_data_size += OMX_PORTDEF_EXTRADATA_SIZE;
+            DEBUG_PRINT_HIGH("Smooth streaming enabled extra_data_size=%d",
+                client_extra_data_size);
+        }
+        if (client_extra_data_size)
+        {
+            client_extra_data_size += sizeof(OMX_OTHER_EXTRADATATYPE); //Space for terminator
+        }
+        drv_ctx.op_buf.buffer_size = property.uProperty.sOpBuffReq.nSize + client_extra_data_size;
         drv_ctx.op_buf.mincount = property.uProperty.sOpBuffReq.nMinCount;
         drv_ctx.op_buf.actualcount = property.uProperty.sOpBuffReq.nMinCount;
-        DEBUG_PRINT_ERROR("swvdec output buf size %d count %d",drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.actualcount);
+        DEBUG_PRINT_HIGH("swvdec opbuf size %d extradata size %d total size %d count %d",
+            property.uProperty.sOpBuffReq.nSize, client_extra_data_size,
+            drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.actualcount);
     }
 
     if (m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
