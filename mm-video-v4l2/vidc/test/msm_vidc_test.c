@@ -1643,6 +1643,53 @@ int commands_controls(void)
 				control.id = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_FORMAT;
 				rc = get_control(fd, &control);
 				V("STREAM_FORMAT Get Control Done\n");
+			} else if(!(strncmp(param_name,"CURRENT_PROFILE\r",pos2))) {
+				if (!strcmp(input_args->codec_type, "H.264")) {
+					control.id = V4L2_CID_MPEG_VIDEO_H264_PROFILE;
+					rc = get_control(fd, &control);
+					V("PROFILE_CURRENT H264 PROFILE Get Control Done" \
+						"control.value:%d\n", control.value);
+					control.id = V4L2_CID_MPEG_VIDEO_H264_LEVEL;
+					rc = get_control(fd, &control);
+					V("PROFILE_CURRENT H264 LEVEL Get Control Done" \
+						"control.value:%d\n", control.value);
+				} else if (!strcmp(input_args->codec_type, "MPEG4")) {
+					control.id = V4L2_CID_MPEG_VIDEO_MPEG4_PROFILE;
+					rc = get_control(fd, &control);
+					V("PROFILE_CURRENT MPEG4 PROFILE Get Control Done" \
+						"control.value:%d\n", control.value);
+					control.id = V4L2_CID_MPEG_VIDEO_MPEG4_LEVEL;
+					rc = get_control(fd, &control);
+					V("PROFILE_CURRENT MPEG4 LEVEL Get Control Done"
+						"control.value:%d\n", control.value);
+				} else if (!strcmp(input_args->codec_type, "MPEG2")) {
+					control.id = V4L2_CID_MPEG_VIDC_VIDEO_MPEG2_PROFILE;
+					rc = get_control(fd, &control);
+					V("PROFILE_CURRENT MPEG2 PROFILE Get Control Done" \
+						"control.value:%d\n", control.value);
+					control.id = V4L2_CID_MPEG_VIDC_VIDEO_MPEG2_LEVEL;
+					rc = get_control(fd, &control);
+					V("PROFILE_CURRENT MPEG2 LEVEL Get Control Done" \
+						"control.value:%d\n", control.value);
+				} else if (!strcmp(input_args->codec_type, "H.263")) {
+					control.id = V4L2_CID_MPEG_VIDC_VIDEO_H263_PROFILE;
+					rc = get_control(fd, &control);
+					V("PROFILE_CURRENT H263 PROFILE Get Control Done" \
+						"control.value:%d\n", control.value);
+					control.id = V4L2_CID_MPEG_VIDC_VIDEO_H263_LEVEL;
+					rc = get_control(fd, &control);
+					V("PROFILE_CURRENT H264 LEVEL Get Control Done" \
+						"control.value:%d\n", control.value);
+				} else if (!strcmp(input_args->codec_type, "VP8")) {
+					control.id = V4L2_CID_MPEG_VIDC_VIDEO_VP8_PROFILE_LEVEL;
+					rc = get_control(fd, &control);
+					V("PROFILE_CURRENT VP8 Get Control Done control.value:%d\n",
+						control.value);
+				} else {
+					E("ERROR .... Unsupported codec\n");
+					rc = -EINVAL;
+					goto close_fd;
+				}
 			} else {
 				E("ERROR .... Wrong Control \n");
 				rc = -EINVAL;
