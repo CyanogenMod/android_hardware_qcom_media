@@ -96,22 +96,12 @@ status_t DashPlayerDriver::setDataSource(const sp<IStreamSource> &source) {
     return OK;
 }
 
-#ifdef ANDROID_JB_MR2
 status_t DashPlayerDriver::setVideoSurfaceTexture(
         const sp<IGraphicBufferProducer> &bufferProducer) {
   mPlayer->setVideoSurfaceTexture(bufferProducer);
 
   return OK;
 }
-#else
-
-status_t DashPlayerDriver::setVideoSurfaceTexture(
-        const sp<ISurfaceTexture> &surfaceTexture) {
-    mPlayer->setVideoSurfaceTexture(surfaceTexture);
-
-    return OK;
-}
-#endif
 
 status_t DashPlayerDriver::prepare() {
     sendEvent(MEDIA_SET_VIDEO_SIZE, 0, 0);
@@ -281,7 +271,7 @@ player_type DashPlayerDriver::playerType() {
 
 status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
    status_t ret = INVALID_OPERATION;
-#ifndef ANDROID_JB_MR2
+
    if (reply == NULL) {
        ALOGE("reply is a NULL pointer");
        return BAD_VALUE;
@@ -295,9 +285,9 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
     }
 
     switch (methodId) {
-       case KEY_DASH_ADAPTION_PROPERTIES:
+       case KEY_DASH_GET_ADAPTION_PROPERTIES:
         {
-          ALOGE("calling KEY_DASH_ADAPTION_PROPERTIES");
+          ALOGE("calling KEY_DASH_GET_ADAPTION_PROPERTIES");
           ret = getParameter(methodId,reply);
           break;
         }
@@ -318,7 +308,7 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
          break;
        }
      }
-#endif
+
     return ret;
 }
 

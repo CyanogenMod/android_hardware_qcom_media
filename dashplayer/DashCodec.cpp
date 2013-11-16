@@ -848,8 +848,6 @@ status_t DashCodec::setComponentRole(
             "video_decoder.mpeg4", "video_encoder.mpeg4" },
         { MEDIA_MIMETYPE_VIDEO_H263,
             "video_decoder.h263", "video_encoder.h263" },
-        { MEDIA_MIMETYPE_VIDEO_VPX,
-            "video_decoder.vpx", "video_encoder.vpx" },
         { MEDIA_MIMETYPE_AUDIO_RAW,
             "audio_decoder.raw", "audio_encoder.raw" },
         { MEDIA_MIMETYPE_AUDIO_FLAC,
@@ -1544,8 +1542,6 @@ static status_t GetVideoCodingTypeFromMime(
         *codingType = OMX_VIDEO_CodingH263;
     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_MPEG2, mime)) {
         *codingType = OMX_VIDEO_CodingMPEG2;
-    } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_VPX, mime)) {
-        *codingType = OMX_VIDEO_CodingVPX;
     } else {
         *codingType = OMX_VIDEO_CodingUnused;
         return ERROR_UNSUPPORTED;
@@ -2293,6 +2289,7 @@ void DashCodec::sendFormatChange() {
             CHECK_LE(rect->nLeft + rect->nWidth - 1, videoDef->nFrameWidth);
             CHECK_LE(rect->nTop + rect->nHeight - 1, videoDef->nFrameHeight);
 
+#ifdef ANDROID_JB_MR2
             if( mSmoothStreaming ) {
                //call Update buffer geometry here
                 ALOGE("Calling native window update buffer geometry");
@@ -2304,6 +2301,7 @@ void DashCodec::sendFormatChange() {
                }
 
            }
+#endif
 
             notify->setRect(
                     "crop",
