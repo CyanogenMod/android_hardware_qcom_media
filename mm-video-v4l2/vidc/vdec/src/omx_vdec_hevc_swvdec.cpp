@@ -1805,6 +1805,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             DEBUG_PRINT_ERROR("Failed to create async_message_thread");
             return OMX_ErrorInsufficientResources;
         }
+        async_thread_created = true;
 
         capture_capability= V4L2_PIX_FMT_NV12;
         ret = subscribe_to_events(drv_ctx.video_driver_fd);
@@ -1950,8 +1951,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         if(r < 0)
         {
             DEBUG_PRINT_ERROR("component_init(): message_thread creation failed");
-            eRet = OMX_ErrorInsufficientResources;
+            return OMX_ErrorInsufficientResources;
         }
+        msg_thread_created = true;
     }
 
     if (eRet != OMX_ErrorNone && ( (!m_pSwVdec) || (m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY) ))
