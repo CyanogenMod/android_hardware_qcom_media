@@ -223,7 +223,9 @@ struct arguments {
 		ring_num_hdrs,
 		output_buf_size,
 		marker_flag,
-		random_seed;
+		random_seed,
+		trick_mode,
+		perf_level;
 	char codec_type[20], read_mode[20];
 	char sequence[300][MAX_FILE_PATH_SIZE];
 	int verbosity;
@@ -263,6 +265,10 @@ static int unsubscribe_event(int fd, struct v4l2_event_subscription *sub);
 static int decoder_cmd(int fd, struct v4l2_decoder_cmd *dec);
 static void* poll_func(void *data);
 int read_annexb_nalu(FILE * bits, unsigned char * pBuf);
+int read_annexb_nalu_key_frame(FILE * bits, unsigned char * pBuf);
+int parse_annexb_nalu_key_frame(FILE * bits, unsigned char * pBuf);
+int read_mpeg2_chunk(FILE * bits, unsigned char * pBuf);
+int read_mpeg2_chunk_parse_key_frame(FILE * bits, unsigned char * pBuf);
 int read_one_frame(FILE * bits, unsigned char * pBuf);
 int read_n_bytes(FILE * file, unsigned char * pBuf, int n);
 int get_bytes_to_read(void);
@@ -1217,6 +1223,33 @@ int commands_controls(void)
 		} else if(!(strncmp(param_name,"RESUME\r",pos1))) {
 			V("RESUME Command\n");
 		} else if(!(strncmp(param_name,"FLUSH\r",pos1))) {
+			struct v4l2_decoder_cmd dec;
+			pos2 = strcspn(input_args->sequence[i]+pos1+1," ");
+			if (pos2 == 0) {
+				if (pos1+1 == str_len) {
+					D("No Port Specified \n");
+					rc = -EINVAL;
+					goto close_fd;
+				}
+				do {
+					pos2 = strcspn(input_args->sequence[i]+pos1+1," ");
+					pos1++;
+				} while(pos1+1 < str_len && pos2 == 0);
+				pos1--;
+			}
+			strlcpy(param_name,input_args->sequence[i]+pos1+1,pos2+1);
+			if(!(strncmp(param_name,"OUTPUT",pos2))) {
+				dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT;
+			} else if(!(strncmp(param_name,"CAPTURE",pos2))) {
+				dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
+			} else if(!(strncmp(param_name,"ALL",pos2))) {
+				dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE |
+						V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT;
+			}
+			dec.cmd = V4L2_DEC_QCOM_CMD_FLUSH;
+			rc = decoder_cmd(video_inst.fd, &dec);
+			if (rc)
+				D("Failed to flush port\n");
 			V("FLUSH Command\n");
 		} else if(!(strncmp(param_name,"POLL\r",pos1))) {
 			V("POLL Command\n");
@@ -1514,6 +1547,11 @@ int commands_controls(void)
 				V("OUTPUT_ORDER = %ld\n",input_args->output_order);
 				control.id = V4L2_CID_MPEG_VIDC_VIDEO_OUTPUT_ORDER;
 				control.value = input_args->output_order;
+				if (control.value == 1) {
+					input_args->trick_mode=1;
+				} else {
+					input_args->trick_mode = 0;
+				}
 				rc = set_control(fd, &control);
 				V("OUTPUT_ORDER Set Control Done\n");
 			} else if(!(strncmp(param_name,"ENABLE_PIC_TYPE",pos2))) {
@@ -1628,6 +1666,17 @@ int commands_controls(void)
 				input_args->errors_before_stop =
 					input_args->errors_before_stop?:2;
 				V("SCS_THRESHOLD Set Control Done\n");
+			} else if(!(strncmp(param_name,"PERF_LEVEL",pos2))) {
+				struct v4l2_control control;
+				V("PERF_LEVEL Control\n");
+				pos3 = strcspn(input_args->sequence[i]+pos1+1+pos2+1," ");
+				strlcpy(param_name,input_args->sequence[i]+pos1+1+pos2+1,pos3+1);
+				input_args->perf_level =atoi(param_name);
+				D("PERF_LEVEL = %ld\n",input_args->perf_level);
+				control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+				control.value = input_args->perf_level;
+				rc = set_control(fd, &control);
+				V("PERF_LEVEL set Control Done\n");
 			} else {
 				E("ERROR .... Wrong Control \n");
 				rc = -EINVAL;
@@ -3069,6 +3118,8 @@ int main(int argc, char *argv[])
 	memset(&video_inst, 0, sizeof(video_inst));
 	input_args->request_i_frame = -1;
 	input_args->verbosity = 1;
+	input_args->trick_mode = 0;
+	input_args->perf_level = 0;
 	strlcpy(input_args->bufsize_filename, "beefbeef", MAX_FILE_PATH_SIZE);
 	test_mask = parse_args(argc, argv);
 	if (test_mask < 0) {
@@ -3217,6 +3268,128 @@ int read_mpeg2_chunk(FILE * bits, unsigned char * pBuf)
 	return length;
 }
 
+int read_mpeg2_chunk_parse_key_frame(FILE * bits, unsigned char * pBuf)
+{
+	const unsigned int mp2StartCode = 0x00000100;
+	const unsigned int mp2GrpStartCode = 0x000001B8;
+	const unsigned int mp2SeqHdrCode = 0x000001B3;
+	const unsigned int mp2SeqEndCode = 0x000001B7;
+	const unsigned int read_max = 10000;
+	static unsigned int word = 0x0;
+	unsigned char temp_buf[read_max];
+	unsigned int length = 0;
+	unsigned int seqFound = 0;
+	unsigned int picFound = 0;
+	unsigned int seqEndFound = 0;
+	unsigned int read_size = 0;
+	unsigned int curr_ptr = 0;
+	unsigned int next_ptr = 0;
+	unsigned int keyFrame_ptr = 0;
+	static unsigned int keyFrame = 0;
+	int is_full_frame_found = 0;
+
+	if (word == mp2SeqHdrCode) {
+		D("mpeg2: Previous word is mp2SeqHdrCode 0x%x\n", word);
+		seqFound = 1;
+	} else if (word == mp2StartCode) {
+		D("mpeg2: Previous word is mp2StartCode 0x%x\n", word);
+		picFound = 1;
+	} else if (word == mp2SeqEndCode) {
+		D("mpeg2: Previous word is mp2SeqEndCode 0x%x\n", word);
+		seqEndFound = 1;
+	} else {
+		D("mpeg2: Previous word is 0x%x \n", word);
+	}
+
+	while (!feof(bits)) {
+		read_size = fread(temp_buf, 1, read_max, bits);
+		if (read_size == 0) {
+			E("\n EOF reached \n");
+			break;
+		}
+		curr_ptr = 0;
+		keyFrame_ptr = 0;
+		D("mpeg2: read_size = %d\n", read_size);
+		do {
+			word = (word << 8) | temp_buf[curr_ptr++];
+			if (word == mp2StartCode) {
+				if (picFound) {
+					if (seqFound && (keyFrame == 1)) {
+						is_full_frame_found = 1;
+						length++;
+						picFound = 0;
+						break;
+					} else {
+						keyFrame = (temp_buf[curr_ptr+1] >> 3) & 7;
+						if (keyFrame == 1) {
+							picFound = 1;
+							length++;
+						} else {
+							picFound = 0;
+							is_full_frame_found = 0;
+							length = 0;
+							keyFrame_ptr = 0;
+							keyFrame = 0;
+							seqFound = 0;
+						}
+					}
+				} else {
+					picFound = 1;
+					length++;
+					keyFrame = (temp_buf[curr_ptr+1] >> 3) & 7;
+					if (keyFrame == 1) {
+						D("%s pic Found I Frame\n", __func__);
+					} else {
+						D("%s I Frame not found\n", __func__);
+					}
+				}
+			} else if (word == mp2SeqHdrCode) {
+					if (picFound && (keyFrame == 1)) {
+						is_full_frame_found = 1;
+						length++;
+						D("mpeg2:mp2SeqHdrCode found length:%d keyFrame:%d\n",
+								length, keyFrame);
+						break;
+					} else {
+						seqFound = 1;
+						length = 4;
+						keyFrame_ptr = curr_ptr - 4;
+						next_ptr = 0;
+					}
+			} else if (word == mp2SeqEndCode) {
+					length++;
+					is_full_frame_found = 1;
+					if (!((keyFrame == 1) && (seqFound == 1))) {
+						length = 0;
+					}
+					D("mpeg2: mp2SeqEndCode found ,length:%d\n" ,length);
+					break;
+			} else {
+					length++;
+			}
+		} while(curr_ptr < read_size);
+
+		if ((keyFrame == 1) && (seqFound == 1)) {
+			memcpy(pBuf + next_ptr, temp_buf+keyFrame_ptr, curr_ptr-keyFrame_ptr);
+			next_ptr += (curr_ptr-keyFrame_ptr);
+		}
+		fseek (bits, (int)(curr_ptr - read_size), SEEK_CUR);
+		if (is_full_frame_found) {
+			D("mpeg2: Found something: pic = %u, seq = %u\n", picFound, seqFound);
+			if (word != mp2SeqEndCode)
+				length-=4; // Not consider last word to avoid repetition
+			break;
+		}
+	}
+	D("mpeg2: last word: 0x%x\n", word);
+	if (!is_full_frame_found && (read_size == 0)) {
+		E("mpeg2: no full frame found\n");
+		length = 0;
+	}
+
+	return length;
+}
+
 int read_mpeg4_chunk(FILE * bits, unsigned char * pBuf)
 {
 	unsigned char temp_buf[2048];
@@ -3293,6 +3466,96 @@ int read_vp8_chunk(FILE * bits, unsigned char * pBuf)
 	D("\n Time Stamp =%lld \n",time_stamp);
 	fread (pBuf, 1, read_length, bits);
 	return read_length;
+}
+
+int read_annexb_nalu_key_frame(FILE *bits, unsigned char *pBuf)
+{
+	int rc = 0;
+	while (input_args->trick_mode) {
+		rc = parse_annexb_nalu_key_frame(bits, pBuf);
+		if (rc == -2) {
+			D("%s Key Frame not found read next" \
+				"start code rc:%d\n", __func__, rc);
+		} else {
+			D("%s Found Key frame rc:%d\n", __func__,rc);
+			break;
+		}
+	}
+	return rc;
+}
+
+int parse_annexb_nalu_key_frame(FILE * bits, unsigned char * pBuf)
+{
+	int info2, info3, pos = 0, i=0;
+	int StartCodeFound, rewind;
+	static int first_time = 0;
+	info2 = 0;
+	info3 = 0;
+	int rc = 0;
+	unsigned char temp, naluType;
+	if (3 != fread (pBuf, 1, 3, bits)) {
+		return 0;
+	}
+	info2 = find_start_code(pBuf, 2);
+	if (info2 != 1) {
+		if(1 != fread(pBuf+3, 1, 1, bits)) {
+			return 0;
+		}
+		info3 = find_start_code(pBuf, 3);
+	}
+	if (info2 != 1 && info3 != 1) {
+		E ("get_annexb_nalu: no Start Code at the begin of the NALU, return -1\n");
+		return -1;
+	}
+	if( info2 == 1) {
+		pos = 3;
+	} else if(info3 ==1 ) {
+		pos = 4;
+	} else {
+		E( " Panic: Error \n");
+		return -1;
+	}
+	temp = pBuf[pos++] = fgetc(bits);
+	naluType = temp & 0x1F;
+	if ((naluType == 5)) {
+		D("%x %x %x %x %x\n", pBuf[0], pBuf[1], pBuf[2], pBuf[3], pBuf[4]);
+		D("%s Found IDR Frame\n", __func__);
+	}else {
+		rc = -2;
+	}
+	StartCodeFound = 0;
+	info2 = 0;
+	info3 = 0;
+	while (!StartCodeFound) {
+		if (feof (bits)) {
+			return pos-1;
+		}
+		pBuf[pos++] = fgetc (bits);
+		info3 = find_start_code(pBuf+pos-4, 3);
+		if(info3 != 1)
+			info2 = find_start_code(pBuf+pos-3, 2);
+		StartCodeFound = (info2 == 1 || info3 == 1);
+		if (StartCodeFound && first_time < 2) {
+			++first_time;
+			StartCodeFound = 0;
+		}
+	}
+	// Here, we have found another start code (and read length of startcode bytes more than we should
+	// have.  Hence, go back in the file
+	rewind = 0;
+	if(info3 == 1)
+		rewind = -4;
+	else if (info2 == 1)
+		rewind = -3;
+	else
+		D(" Panic: Error in next start code search \n");
+	if (0 != fseek (bits, rewind, SEEK_CUR)) {
+		fprintf(stderr,"GetAnnexbNALU: Cannot fseek %d in the bit stream file", rewind);
+	}
+	if (rc == -2) {
+		return rc;
+	}
+	return (pos+rewind);
 }
 
 int read_annexb_nalu(FILE * bits, unsigned char * pBuf)
@@ -3376,13 +3639,21 @@ int read_one_frame(FILE * bits, unsigned char * pBuf)
 {
 	int read_length;
 	if (!strcmp(input_args->codec_type, "H.264")) {
-		read_length = read_annexb_nalu(bits,pBuf);
+		if (input_args->trick_mode) {
+			read_length = read_annexb_nalu_key_frame(bits, pBuf);
+		} else {
+			read_length = read_annexb_nalu(bits, pBuf);
+		}
 	} else if (!strcmp(input_args->codec_type, "MPEG4")) {
 		read_length = read_mpeg4_chunk(bits,pBuf);
 	} else if (!strcmp(input_args->codec_type, "VP8")) {
 		read_length = read_vp8_chunk(bits,pBuf);
 	} else if (!strcmp(input_args->codec_type, "MPEG2")) {
-		read_length = read_mpeg2_chunk(bits,pBuf);
+		if (input_args->trick_mode) {
+			read_length = read_mpeg2_chunk_parse_key_frame(bits, pBuf);
+		} else {
+			read_length = read_mpeg2_chunk(bits, pBuf);
+		}
 		D("mpeg2: chunk starts w/ 0x%x\n", pBuf[0]);
 		D("mpeg2: chunk starts w/ 0x%x\n", pBuf[1]);
 		D("mpeg2: chunk starts w/ 0x%x\n", pBuf[2]);
