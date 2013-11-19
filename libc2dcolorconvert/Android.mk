@@ -8,7 +8,10 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
     $(TOP)/frameworks/av/include/media/stagefright \
     $(TOP)/frameworks/native/include/media/openmax \
-    $(TOP)/hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libcopybit
+    $(TOP)/hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libcopybit \
+    $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+
+LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 LOCAL_SHARED_LIBRARIES := liblog libdl
 
