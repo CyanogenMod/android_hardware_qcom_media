@@ -2895,12 +2895,23 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             GetAndroidNativeBufferUsageParams* nativeBuffersUsage = (GetAndroidNativeBufferUsageParams *) paramData;
             if(nativeBuffersUsage->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
 #ifdef USE_ION
+#ifdef DISPLAYCAF
+                if(secure_mode) {
+                        nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PROTECTED |
+                                                      GRALLOC_USAGE_PRIVATE_UNCACHED);
+                        DEBUG_PRINT_HIGH("ION:secure_mode: nUsage 0x%x",nativeBuffersUsage->nUsage);
+                } else {
+                        nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP |
+                                                         GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+                }
+#else
                 if(secure_mode) {
                         nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PROTECTED |
                                                       GRALLOC_USAGE_PRIVATE_CP_BUFFER | GRALLOC_USAGE_PRIVATE_UNCACHED);
                 } else {
                         nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
                 }
+#endif
 #else
 #if defined (MAX_RES_720P) ||  defined (MAX_RES_1080P_EBI)
                 nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_ADSP_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED);
