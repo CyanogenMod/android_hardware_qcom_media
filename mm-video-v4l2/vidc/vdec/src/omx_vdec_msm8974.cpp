@@ -1431,6 +1431,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
 #endif
 
+#ifdef _ANDROID_
+    /*
+     * turn off frame parsing for Android by default.
+     * Clients may configure OMX_QCOM_FramePacking_Arbitrary to enable this mode
+     */
+    arbitrary_bytes = false;
+#endif
+
     if (!strncmp(role, "OMX.qcom.video.decoder.avc.secure",OMX_MAX_STRINGNAME_SIZE)) {
         struct v4l2_control control;
         secure_mode = true;
