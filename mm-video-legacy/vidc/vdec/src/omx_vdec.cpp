@@ -8362,7 +8362,11 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
   {
     p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
     append_interlace_extradata(p_extra,
+#ifdef DISPLAYCAF
+         ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format, index);
+#else
          ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->interlaced_format);
+#endif
     p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
   }
   if (client_extradata & OMX_FRAMEINFO_EXTRADATA && p_extra &&
@@ -8570,7 +8574,11 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 }
 
 void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+#ifdef DISPLAYCAF
+                                          OMX_U32 interlaced_format_type, OMX_U32 buf_index)
+#else
                                           OMX_U32 interlaced_format_type)
+#endif
 {
   OMX_STREAMINTERLACEFORMAT *interlace_format;
   OMX_U32 mbaff = 0;
