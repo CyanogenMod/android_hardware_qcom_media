@@ -86,20 +86,28 @@ endif
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
+ifneq ($(TARGET_QCOM_DISPLAY_VARIANT),)
+DISPLAY := display-$(TARGET_QCOM_DISPLAY_VARIANT)
+libOmxVdec-def += -DDISPLAYCAF
+else
+DISPLAY := display/$(TARGET_BOARD_PLATFORM)
+endif
+
 libmm-vdec-inc          := bionic/libc/include
 libmm-vdec-inc          += bionic/libstdc++/include
 libmm-vdec-inc          += $(LOCAL_PATH)/inc
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
+libmm-vdec-inc          += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
-libmm-vdec-inc          += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libgralloc
 libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
 libmm-vdec-inc          += $(vdec-inc)
-libmm-vdec-inc          += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libqdutils
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqdutils
 libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
-libmm-vdec-inc      += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libcopybit
+libmm-vdec-inc      += hardware/qcom/$(DISPLAY)/libcopybit
 libmm-vdec-inc      += frameworks/av/include/media/stagefright
 
 
@@ -122,13 +130,15 @@ ifneq ($(filter msm8974 msm8610 msm8226 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
 else
 LOCAL_SHARED_LIBRARIES  += libhardware
-libmm-vdec-inc          += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libhwcomposer
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libhwcomposer
 LOCAL_SRC_FILES         += src/power_module.cpp
 LOCAL_SRC_FILES         += src/omx_vdec.cpp
 endif
 
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
+
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -175,6 +185,7 @@ include $(CLEAR_VARS)
 
 mm-vdec-test-inc    := hardware/qcom/media/mm-core/inc
 mm-vdec-test-inc    += $(LOCAL_PATH)/inc
+mm-vdec-test-inc    += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 mm-vdec-test-inc    += $(vdec-inc)
 
 LOCAL_MODULE                    := mm-vdec-omx-test
@@ -188,6 +199,8 @@ LOCAL_SHARED_LIBRARIES    := libutils libOmxCore libOmxVdec libbinder libcutils
 LOCAL_SRC_FILES           := src/queue.c
 LOCAL_SRC_FILES           += test/omx_vdec_test.cpp
 
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
 include $(BUILD_EXECUTABLE)
 
 # ---------------------------------------------------------------------------------
@@ -197,6 +210,7 @@ include $(CLEAR_VARS)
 
 mm-vdec-drv-test-inc    := hardware/qcom/media/mm-core/inc
 mm-vdec-drv-test-inc    += $(LOCAL_PATH)/inc
+mm-vdec-drv-test-inc    += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 mm-vdec-drv-test-inc    += $(vdec-inc)
 
 LOCAL_MODULE                    := mm-video-driver-test
@@ -207,6 +221,8 @@ LOCAL_PRELINK_MODULE            := false
 
 LOCAL_SRC_FILES                 := src/message_queue.c
 LOCAL_SRC_FILES                 += test/decoder_driver_test.c
+
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_EXECUTABLE)
 
