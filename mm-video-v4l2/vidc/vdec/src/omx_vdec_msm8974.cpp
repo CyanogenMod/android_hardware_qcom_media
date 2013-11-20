@@ -3289,6 +3289,16 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    }
                                    break;
                                }
+        case OMX_ExtraDataFrameDimension: {
+            if (!secure_mode)
+                eRet = enable_extradata(OMX_FRAMEDIMENSION_EXTRADATA, false,
+                    ((QOMX_ENABLETYPE *)paramData)->bEnable);
+            else {
+                DEBUG_PRINT_ERROR("OMX_ExtraDataFrameDimension not supported in secure mode");
+                eRet = OMX_ErrorUnsupportedSetting;
+            }
+            break;
+        }
         case OMX_QcomIndexParamInterlaceExtraData:
                                if (!secure_mode)
                                    eRet = enable_extradata(OMX_INTERLACE_EXTRADATA, false,
@@ -7765,6 +7775,12 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
             DEBUG_PRINT_HIGH("Smooth streaming enabled extra_data_size=%d",
                     client_extra_data_size);
         }
+        if ((client_extradata & OMX_FRAMEDIMENSION_EXTRADATA)) {
+            client_extra_data_size += OMX_FRAMEDIMENSION_EXTRADATA_SIZE;
+            DEBUG_PRINT_HIGH("Frame dimension enabled extra_data_size = %d\n",
+                    client_extra_data_size);
+        }
+
         if (client_extra_data_size) {
             client_extra_data_size += sizeof(OMX_OTHER_EXTRADATATYPE); //Space for terminator
             buf_size = ((buf_size + 3)&(~3)); //Align extradata start address to 64Bit
@@ -8286,6 +8302,12 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     break;
                 case MSM_VIDC_EXTRADATA_PANSCAN_WINDOW:
                     panscan_payload = (struct msm_vidc_panscan_window_payload *)data->data;
+                    if (panscan_payload->num_panscan_windows > MAX_PAN_SCAN_WINDOWS) {
+                        DEBUG_PRINT_ERROR("Panscan windows are more than supported\n");
+                        DEBUG_PRINT_ERROR("Max supported = %d FW returned = %d\n",
+                            MAX_PAN_SCAN_WINDOWS, panscan_payload->num_panscan_windows);
+                        return;
+                    }
                     break;
                 case MSM_VIDC_EXTRADATA_MPEG2_SEQDISP:
                     struct msm_vidc_mpeg2_seqdisp_payload *seqdisp_payload;
@@ -8309,10 +8331,16 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info);
             p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
         }
+        if (!secure_mode && (client_extradata & OMX_FRAMEDIMENSION_EXTRADATA)) {
+            append_frame_dimension_extradata(p_extra);
+            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+        }
     }
 unrecognized_extradata:
-    if (!secure_mode && client_extradata)
+    if (!secure_mode && client_extradata) {
+        p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
         append_terminator_extradata(p_extra);
+    }
     return;
 }
 
@@ -8511,6 +8539,24 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
         drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
     }
     print_debug_extradata(extra);
+}
+
+void omx_vdec::append_frame_dimension_extradata(OMX_OTHER_EXTRADATATYPE *extra)
+{
+    OMX_QCOM_EXTRADATA_FRAMEDIMENSION *frame_dimension;
+    if (!(client_extradata & OMX_FRAMEDIMENSION_EXTRADATA)) {
+        return;
+    }
+    extra->nSize = OMX_FRAMEDIMENSION_EXTRADATA_SIZE;
+    extra->nVersion.nVersion = OMX_SPEC_VERSION;
+    extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
+    extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataFrameDimension;
+    extra->nDataSize = sizeof(OMX_QCOM_EXTRADATA_FRAMEDIMENSION);
+    frame_dimension = (OMX_QCOM_EXTRADATA_FRAMEDIMENSION *)extra->data;
+    frame_dimension->nDecWidth = rectangle.nLeft;
+    frame_dimension->nDecHeight = rectangle.nTop;
+    frame_dimension->nActualWidth = rectangle.nWidth;
+    frame_dimension->nActualHeight = rectangle.nHeight;
 }
 
 void omx_vdec::fill_aspect_ratio_info(

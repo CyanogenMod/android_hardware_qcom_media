@@ -186,6 +186,7 @@ class VideoHeap : public MemoryHeapBase
 #define OMX_TIMEINFO_EXTRADATA  0x00040000
 #define OMX_PORTDEF_EXTRADATA   0x00080000
 #define OMX_EXTNUSER_EXTRADATA  0x00100000
+#define OMX_FRAMEDIMENSION_EXTRADATA  0x00200000
 #define DRIVER_EXTRADATA_MASK   0x0000FFFF
 
 #define OMX_INTERLACE_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
@@ -194,6 +195,8 @@ class VideoHeap : public MemoryHeapBase
             sizeof(OMX_QCOM_EXTRADATA_FRAMEINFO) + 3)&(~3))
 #define OMX_PORTDEF_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
             sizeof(OMX_PARAM_PORTDEFINITIONTYPE) + 3)&(~3))
+#define OMX_FRAMEDIMENSION_EXTRADATA_SIZE (sizeof(OMX_OTHER_EXTRADATATYPE) +\
+            sizeof(OMX_QCOM_EXTRADATA_FRAMEDIMENSION) + 3)&(~3)
 
 //  Define next macro with required values to enable default extradata,
 //    VDEC_EXTRADATA_MB_ERROR_MAP
@@ -654,6 +657,7 @@ class omx_vdec: public qc_omx_component
         void append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra);
         OMX_ERRORTYPE update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn);
         void append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra);
+        void append_frame_dimension_extradata(OMX_OTHER_EXTRADATATYPE *extra);
         void append_extn_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_extn);
         void append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_user);
         void insert_demux_addr_offset(OMX_U32 address_offset);
