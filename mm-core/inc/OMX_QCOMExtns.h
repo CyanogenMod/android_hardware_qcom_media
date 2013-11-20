@@ -407,7 +407,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     OMX_QcomIndexParamEnableVUIStreamRestrictFlag = 0x7F00002B,
 
+#ifndef NO_ADAPTIVE_PLAYBACK
     OMX_GoogleAndroidIndexPrepareForAdaptivePlayback = 0x7F00002C,
+#endif
 };
 
 /**

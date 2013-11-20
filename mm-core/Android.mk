@@ -7,6 +7,9 @@ OMXCORE_CFLAGS := -g -O3 -DVERBOSE
 OMXCORE_CFLAGS += -O0 -fno-inline -fno-short-enums
 OMXCORE_CFLAGS += -D_ANDROID_
 OMXCORE_CFLAGS += -U_ENABLE_QC_MSG_LOG_
+ifeq ($(strip $(TARGET_NO_ADAPTIVE_PLAYBACK)),true)
+OMXCORE_CFLAGS += -DNO_ADAPTIVE_PLAYBACK
+endif
 
 #===============================================================================
 #             Figure out the targets

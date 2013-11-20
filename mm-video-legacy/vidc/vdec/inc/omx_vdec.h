@@ -823,8 +823,10 @@ private:
     // added for smooth streaming
     private_handle_t * native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
     bool m_use_smoothstreaming;
+#ifndef NO_ADAPTIVE_PLAYBACK
     OMX_U32 m_smoothstreaming_height;
     OMX_U32 m_smoothstreaming_width;
+#endif
 
     unsigned int m_fill_output_msg;
     class allocate_color_convert_buf {
