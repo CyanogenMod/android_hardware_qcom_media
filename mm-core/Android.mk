@@ -5,6 +5,9 @@ include $(CLEAR_VARS)
 
 OMXCORE_CFLAGS += -D_ANDROID_
 OMXCORE_CFLAGS += -U_ENABLE_QC_MSG_LOG_
+ifeq ($(strip $(TARGET_NO_ADAPTIVE_PLAYBACK)),true)
+OMXCORE_CFLAGS += -DNO_ADAPTIVE_PLAYBACK
+endif
 
 #===============================================================================
 #             Figure out the targets

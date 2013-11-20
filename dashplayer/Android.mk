@@ -48,6 +48,10 @@ ifeq (1,$(filter 1,$(shell echo "$$(( $(PLATFORM_SDK_VERSION) >= 18 ))" )))
   LOCAL_CFLAGS += -DANDROID_JB_MR2
 endif
 
+ifeq ($(strip $(TARGET_NO_ADAPTIVE_PLAYBACK)),true)
+  LOCAL_CFLAGS += -DNO_ADAPTIVE_PLAYBACK
+endif
+
 LOCAL_MODULE:= libdashplayer
 
 LOCAL_MODULE_TAGS := eng

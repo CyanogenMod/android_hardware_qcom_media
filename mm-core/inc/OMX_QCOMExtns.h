@@ -415,7 +415,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /*"OMX.QCOM.index.config.video.LTRMark"*/
     QOMX_IndexConfigVideoLTRMark = 0x7F00002C,
 
+#ifndef NO_ADAPTIVE_PLAYBACK
     OMX_GoogleAndroidIndexPrepareForAdaptivePlayback = 0x7F00002D,
+#endif
 };
 
 /**
