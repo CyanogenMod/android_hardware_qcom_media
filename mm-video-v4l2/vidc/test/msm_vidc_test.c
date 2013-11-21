@@ -225,7 +225,8 @@ struct arguments {
 		marker_flag,
 		random_seed,
 		trick_mode,
-		perf_level;
+		perf_level,
+		buffer_layout;
 	char codec_type[20], read_mode[20];
 	char sequence[300][MAX_FILE_PATH_SIZE];
 	int verbosity;
@@ -412,6 +413,50 @@ int parse_cfg(const char *filename)
 	}
 err:
 	return rc;
+}
+
+int write_to_yuv_file(const char * userptr, struct bufinfo * binfo)
+{
+	int written = 0;
+	int stride = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].bytesperline;
+	int scanlines = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].reserved[0];
+	const char *temp = (const char *)userptr;
+	int yuv_width = input_args->input_width;
+	unsigned i;
+
+	for (i = 0; i < input_args->input_height; i++) {
+		written += fwrite(temp, 1, yuv_width, video_inst.outputfile);
+		temp += stride;
+	}
+	if (input_args->buffer_layout == V4L2_MPEG_VIDC_VIDEO_MVC_TOP_BOTTOM) {
+		/* Write Y plane for bottom view */
+		temp = (const char *)binfo->vaddr +
+			(stride * (scanlines + input_args->input_height/2));
+		for (i = 0; i < input_args->input_height; i++) {
+			written += fwrite(temp, 1, yuv_width, video_inst.outputfile);
+			temp += stride;
+		}
+	}
+	temp = (const char *)binfo->vaddr + stride * scanlines;
+	for(i = 0; i < input_args->input_height/2; i++) {
+		written += fwrite(temp, 1, yuv_width, video_inst.outputfile);
+		temp += stride;
+	}
+	if (input_args->buffer_layout == V4L2_MPEG_VIDC_VIDEO_MVC_TOP_BOTTOM) {
+		/* Write UV plane for bottom view */
+		temp = (const char *)binfo->vaddr + stride * scanlines +
+			(stride * (scanlines + input_args->input_height/2));
+		for (i = 0; i < input_args->input_height/2; i++) {
+			written += fwrite(temp, 1, yuv_width, video_inst.outputfile);
+			temp += stride;
+		}
+	}
+	D("Written %d bytes successfully, stride = %d, scan_lines = %d, "
+		"frame = %d x %d, layout = %lu\n",
+		written, stride, scanlines,
+		(int)input_args->input_width, (int)input_args->input_height,
+		input_args->buffer_layout);
+	return written;
 }
 
 int get_extradata_value(const char * param_name)
@@ -1677,6 +1722,27 @@ int commands_controls(void)
 				control.value = input_args->perf_level;
 				rc = set_control(fd, &control);
 				V("PERF_LEVEL set Control Done\n");
+			} else if(!(strncmp(param_name,"BUFFER_LAYOUT",pos2))) {
+				V("BUFFER_LAYOUT Control\n");
+				pos3 = strcspn(input_args->sequence[i]+pos1+1+pos2+1," ");
+				strlcpy(param_name,input_args->sequence[i]+pos1+1+pos2+1,pos3+1);
+				control.id = V4L2_CID_MPEG_VIDC_VIDEO_MVC_BUFFER_LAYOUT;
+				control.value = atoi(param_name);
+				if(control.value == 0) {
+					control.value = V4L2_MPEG_VIDC_VIDEO_MVC_SEQUENTIAL;
+					V("Buffer layout: sequential/temporal)\n");
+				}
+				else if(control.value == 1) {
+					control.value = V4L2_MPEG_VIDC_VIDEO_MVC_TOP_BOTTOM;
+					V("Buffer layout: Top-bottom\n");
+				} else {
+					E("Incorrect buffer layout option\n");
+					rc = -EINVAL;
+					goto close_fd;
+				}
+				input_args->buffer_layout = control.value;
+				rc = set_control(fd, &control);
+				V("BUFFER_LAYOUT Set Control Done\n");
 			} else {
 				E("ERROR .... Wrong Control \n");
 				rc = -EINVAL;
@@ -1693,7 +1759,8 @@ int commands_controls(void)
 				rc = get_control(fd, &control);
 				V("STREAM_FORMAT Get Control Done\n");
 			} else if(!(strncmp(param_name,"CURRENT_PROFILE\r",pos2))) {
-				if (!strcmp(input_args->codec_type, "H.264")) {
+				if (!strcmp(input_args->codec_type, "H.264") ||
+					!strcmp(input_args->codec_type, "MVC")) {
 					control.id = V4L2_CID_MPEG_VIDEO_H264_PROFILE;
 					rc = get_control(fd, &control);
 					V("PROFILE_CURRENT H264 PROFILE Get Control Done" \
@@ -2288,13 +2355,19 @@ static int get_v4l2_format(char *fmt_str)
 	}
 	if (!strcmp(fmt_str, "H.264")) {
 		fmt = V4L2_PIX_FMT_H264;
+		V("\n H.264 Selected \n");
+	} else if (!strcmp(fmt_str, "MVC")) {
+		fmt = V4L2_PIX_FMT_H264_MVC;
+		V("\n MVC Selected \n");
 	} else if (!strcmp(fmt_str, "MPEG4")) {
 		fmt = V4L2_PIX_FMT_MPEG4;
 		V("\n MPEG4 Selected \n ");
 	} else if (!strcmp(fmt_str, "VP8")) {
 		fmt = V4L2_PIX_FMT_VP8;
+		V("\n VP8 Selected \n");
 	} else if (!strcmp(fmt_str, "MPEG2")) {
 		fmt = V4L2_PIX_FMT_MPEG2;
+		V("\n MPEG2 Selected \n");
 	} else {
 		E("Unrecognized format string.\n");
 		fmt = -1;
@@ -2526,7 +2599,7 @@ static int q_single_buf(struct bufinfo *binfo)
 				}
 			} else {
 				if (input_args->n_read_mode) {
-					bytes_to_read = input_args->read_bytes;
+					bytes_to_read = get_bytes_to_read();
 					V("Reading bytes = %d\n", bytes_to_read);
 					rc = read_n_bytes(video_inst.inputfile,
 								binfo->vaddr,
@@ -2771,22 +2844,10 @@ static void* poll_func(void *data)
 				D("FBD COUNT: %d, filled length = %d, userptr = %p, offset = %d, flags = 0x%x\n",
 					video_inst.fbd_count, filled_len, (void *)plane[0].m.userptr, plane[0].data_offset, v4l2_buf.flags);
 				if (input_args->session == DECODER_SESSION && filled_len) {
-					int stride = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].bytesperline;
-					int scanlines = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].reserved[0];
-					const char *temp = (const char *)plane[0].m.userptr;
-					unsigned i;
-					int bytes_written = 0;
-					for (i = 0; i < input_args->input_height; i++) {
-						bytes_written += fwrite(temp, input_args->input_width, 1, video_inst.outputfile);
-						temp += stride;
+					rc = write_to_yuv_file((const char *)plane[0].m.userptr, binfo);
+					if (rc < 0) {
+						E("Failed to write yuv\n");
 					}
-					temp = (const char *)binfo->vaddr + stride * scanlines;
-					for(i = 0; i < input_args->input_height/2; i++) {
-						bytes_written += fwrite(temp, input_args->input_width, 1, video_inst.outputfile);
-						temp += stride;
-					}
-					D("Written %d segments successfully, stride = %d, scan_lines = %d, frame = %d x %d\n",
-						bytes_written, stride, scanlines, (int)input_args->input_width, (int)input_args->input_height);
 					if (v4l2_buf.flags & V4L2_QCOM_BUF_TS_DISCONTINUITY)
 						V("FBD: Received Marker Flag TS_DISCONTINUITY\n");
 					if (v4l2_buf.flags & V4L2_QCOM_BUF_TS_ERROR)
@@ -3638,7 +3699,8 @@ static int find_start_code(const unsigned char * pBuf, unsigned int zeros_in_sta
 int read_one_frame(FILE * bits, unsigned char * pBuf)
 {
 	int read_length;
-	if (!strcmp(input_args->codec_type, "H.264")) {
+	if (!strcmp(input_args->codec_type, "H.264") ||
+		!strcmp(input_args->codec_type, "MVC")) {
 		if (input_args->trick_mode) {
 			read_length = read_annexb_nalu_key_frame(bits, pBuf);
 		} else {
