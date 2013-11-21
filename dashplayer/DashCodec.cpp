@@ -966,7 +966,8 @@ status_t DashCodec::configureCodec(
       int32_t haveNativeWindow = msg->findObject("native-window", &obj) &&
             obj != NULL;
       if (!encoder && video && haveNativeWindow) {
-        err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexOutput, OMX_TRUE);
+        //err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexOutput, OMX_TRUE);
+        err = INVALID_OPERATION;
         if (err != OK) {
 
             ALOGE("[%s] storeMetaDataInBuffers failed w/ err %d",
