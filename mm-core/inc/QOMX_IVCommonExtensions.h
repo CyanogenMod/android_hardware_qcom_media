@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2011 Code Aurora Forum. All rights reserved.
+Copyright (c) 2011 The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -161,7 +161,8 @@ typedef enum QOMX_COLOR_FORMATTYPE
     QOMX_COLOR_FormatYVU420PackedSemiPlanar       = 0x7F000001,
     QOMX_COLOR_FormatYVU420PackedSemiPlanar32m4ka,
     QOMX_COLOR_FormatYUV420PackedSemiPlanar16m2ka,
-    QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka
+    QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka,
+    QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
 } QOMX_COLOR_FORMATTYPE;
 
 typedef enum QOMX_MEDIAINFOTAGTYPE {

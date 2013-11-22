@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009, 2011, Code Aurora Forum. All rights reserved.
+Copyright (c) 2009, 2011, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -61,7 +61,7 @@ extern "C"
 #define OMX_QCOM_INDEX_PARAM_SESSIONID       "OMX.Qualcomm.index.audio.sessionId"
 #define OMX_QCOM_INDEX_PARAM_VOICERECORDTYPE "OMX.Qualcomm.index.audio.VoiceRecord"
 #define OMX_QCOM_INDEX_PARAM_AC3TYPE	     "OMX.Qualcomm.index.audio.ac3"
-#define OMX_QCOM_INDEX_PARAM_AC3PP	     "OMX.Qualcomm.index.audio.ac3.postproc"
+#define OMX_QCOM_INDEX_PARAM_AC3PP	     "OMX.Qualcomm.index.audio.postproc.ac3"
 #define OMX_QCOM_INDEX_PARAM_DAK_BUNDLE      "OMX.Qualcomm.index.audio.dakbundle"
 #define OMX_QCOM_INDEX_PARAM_DAK_M2S         "OMX.Qualcomm.index.audio.dak_m2s"
 #define OMX_QCOM_INDEX_PARAM_DAK_SSE         "OMX.Qualcomm.index.audio.dak_sse"

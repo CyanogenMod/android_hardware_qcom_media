@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009, Code Aurora Forum. All rights reserved.
+Copyright (c) 2009, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8,7 +8,7 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Code Aurora nor
+    * Neither the name of The Linux Foundation nor
       the names of its contributors may be used to endorse or promote
       products derived from this software without specific prior written
       permission.
@@ -67,7 +67,9 @@ typedef enum QOMX_AUDIO_EXTENSIONS_INDEXTYPE
     QOMX_IndexParamAudioWma10Pro        = 0x7F200001, /**< "OMX.Qualcomm.index.audio.wma10pro" */
     QOMX_IndexParamAudioSessionId       = 0x7F200002, /**< "OMX.Qualcomm.index.audio.sessionId" */
     QOMX_IndexParamAudioVoiceRecord     = 0x7F200003, /**< "OMX.Qualcomm.index.audio.VoiceRecord" */
-	QOMX_IndexConfigAudioDualMono       = 0x7F200004, /**< "OMX.Qualcomm.index.audio.dualmono" */
+    QOMX_IndexConfigAudioDualMono       = 0x7F200004, /**< "OMX.Qualcomm.index.audio.dualmono" */
+    QOMX_IndexParamAudioAc3             = 0x7F200005, /**< "OMX.Qualcomm.index.audio.ac3" */
+    QOMX_IndexParamAudioAc3PostProc     = 0x7F200006, /**< "OMX.Qualcomm.index.audio.postproc.ac3" */
     QOMX_IndexParamAudioUnused          = 0x7F2FFFFF
 } QOMX_AUDIO_EXTENSIONS_INDEXTYPE;
 
