@@ -94,6 +94,7 @@ char ouputextradatafilename [] = "/data/extradata";
 #define MAX_NUM_PPS 256
 #define MAX_INPUT_ERROR (MAX_NUM_SPS + MAX_NUM_PPS)
 #define MAX_SUPPORTED_FPS 120
+#define MAX_INPUT_BUF_SIZE (4 * 1024 * 1024)
 
 #define VC1_SP_MP_START_CODE        0xC5000000
 #define VC1_SP_MP_START_CODE_MASK   0xFF000000
@@ -1713,40 +1714,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
     if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
     {
-      if (m_frame_parser.mutils == NULL)
-      {
-        m_frame_parser.mutils = new H264_Utils();
-
-        if (m_frame_parser.mutils == NULL)
-        {
-           DEBUG_PRINT_ERROR("\n parser utils Allocation failed ");
-           eRet = OMX_ErrorInsufficientResources;
-        }
-        else
-        {
-         h264_scratch.nAllocLen = drv_ctx.ip_buf.buffer_size - DEVICE_SCRATCH;
-         h264_scratch.pBuffer = (OMX_U8 *)malloc (h264_scratch.nAllocLen);
-         h264_scratch.nFilledLen = 0;
-         h264_scratch.nOffset = 0;
-
-         if (h264_scratch.pBuffer == NULL)
-         {
-           DEBUG_PRINT_ERROR("\n h264_scratch.pBuffer Allocation failed ");
-           return OMX_ErrorInsufficientResources;
-         }
-         m_frame_parser.mutils->initialize_frame_checking_environment();
-         m_frame_parser.mutils->allocate_rbsp_buffer (drv_ctx.ip_buf.buffer_size);
-       }
-      }
-
-      h264_parser = new h264_stream_parser();
-      if (!h264_parser)
-      {
-        DEBUG_PRINT_ERROR("ERROR: H264 parser allocation failed!");
-        eRet = OMX_ErrorInsufficientResources;
-      }
+       eRet = allocate_scratch_buffers();
     }
-
     if(pipe(fds))
     {
       DEBUG_PRINT_ERROR("\n pipe creation failed.");
@@ -3363,6 +3332,15 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                else
                    eRet = get_buffer_req(&drv_ctx.op_buf);
              }
+         }
+         else if (portDefn->nBufferSize > (drv_ctx.ip_buf.buffer_size - DEVICE_SCRATCH))
+         {
+             drv_ctx.ip_buf.buffer_size = MAX_INPUT_BUF_SIZE;
+             eRet = set_buffer_req(&drv_ctx.ip_buf);
+             if (eRet != OMX_ErrorNone)
+                 return eRet;
+             deallocate_scratch_buffers();
+             eRet = allocate_scratch_buffers();
          }
          else if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
                   && portDefn->nBufferSize == (drv_ctx.ip_buf.buffer_size - DEVICE_SCRATCH))
@@ -10435,6 +10413,70 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::allocate_buffers_color_conve
 bool omx_vdec::is_component_secure()
 {
   return secure_mode;
+}
+
+OMX_ERRORTYPE omx_vdec::allocate_scratch_buffers()
+{
+    OMX_ERRORTYPE eRet = OMX_ErrorNone;
+    DEBUG_PRINT_LOW("H264 scratch buffers allocation");
+    if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264)
+    {
+      if (m_frame_parser.mutils == NULL)
+      {
+        m_frame_parser.mutils = new H264_Utils();
+
+        if (m_frame_parser.mutils == NULL)
+        {
+           DEBUG_PRINT_ERROR("\n parser utils Allocation failed ");
+           eRet = OMX_ErrorInsufficientResources;
+        }
+        else
+        {
+         h264_scratch.nAllocLen = drv_ctx.ip_buf.buffer_size - DEVICE_SCRATCH;
+         h264_scratch.pBuffer = (OMX_U8 *)malloc (h264_scratch.nAllocLen);
+         h264_scratch.nFilledLen = 0;
+         h264_scratch.nOffset = 0;
+
+         if (h264_scratch.pBuffer == NULL)
+         {
+           DEBUG_PRINT_ERROR("\n h264_scratch.pBuffer Allocation failed ");
+           return OMX_ErrorInsufficientResources;
+         }
+         m_frame_parser.mutils->initialize_frame_checking_environment();
+         m_frame_parser.mutils->allocate_rbsp_buffer (drv_ctx.ip_buf.buffer_size);
+       }
+      }
+
+      h264_parser = new h264_stream_parser();
+      if (!h264_parser)
+      {
+        DEBUG_PRINT_ERROR("ERROR: H264 parser allocation failed!");
+        eRet = OMX_ErrorInsufficientResources;
+      }
+    }
+    return eRet;
+}
+
+void omx_vdec::deallocate_scratch_buffers()
+{
+    DEBUG_PRINT_LOW("H264 scratch buffers deallocation");
+    if (m_frame_parser.mutils)
+    {
+        m_frame_parser.mutils->deallocate_rbsp_buffer();
+        DEBUG_PRINT_LOW("\n Free utils parser");
+        delete (m_frame_parser.mutils);
+        m_frame_parser.mutils = NULL;
+    }
+    if(h264_scratch.pBuffer)
+    {
+        free(h264_scratch.pBuffer);
+        h264_scratch.pBuffer = NULL;
+    }
+    if (h264_parser)
+    {
+        delete h264_parser;
+        h264_parser = NULL;
+    }
 }
 
 bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE &dest_color_format)

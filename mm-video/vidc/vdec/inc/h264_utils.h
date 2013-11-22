@@ -187,6 +187,7 @@ public:
     ~H264_Utils();
     void initialize_frame_checking_environment();
     void allocate_rbsp_buffer(uint32 inputBufferSize);
+    void deallocate_rbsp_buffer(void);
     bool isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
                     OMX_IN OMX_U32 size_of_nal_length_field,
                     OMX_OUT OMX_BOOL &isNewFrame);
