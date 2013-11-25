@@ -271,6 +271,7 @@ enum OMX_QCOM_COLOR_FORMATTYPE
     QOMX_COLOR_FormatYUV420PackedSemiPlanar16m2ka,
     QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka,
     QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
+    QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
     QOMX_COLOR_FormatAndroidOpaque = (OMX_COLOR_FORMATTYPE) OMX_COLOR_FormatVendorStartUnused  + 0x789,
 };
 
@@ -285,7 +286,8 @@ enum OMX_QCOM_VIDEO_CODINGTYPE
     QOMX_VIDEO_CodingSpark = 0x7FA30C03,     /**< Value when coding is Sorenson Spark */
     QOMX_VIDEO_CodingVp = 0x7FA30C04,
     QOMX_VIDEO_CodingVp8 = 0x7FA30C05,
-    QOMX_VIDEO_CodingHevc = 0x7FA30C06
+    QOMX_VIDEO_CodingHevc = 0x7FA30C06,
+    QOMX_VIDEO_CodingMVC = 0x7FA30C07,
 };
 
 enum OMX_QCOM_EXTN_INDEXTYPE
@@ -431,6 +433,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* google smooth-streaming support */
     OMX_QcomIndexParamVideoAdaptivePlaybackMode = 0x7F000033,
+
+    /* H.264 MVC codec index */
+    QOMX_IndexParamVideoMvc = 0x7F000034,
 };
 
 /**
@@ -944,6 +949,43 @@ typedef enum QOMX_VIDEO_AVCPROFILETYPE {
     /* QCom specific profile indexes */
     QOMX_VIDEO_AVCProfileConstrainedBaseline   = OMX_VIDEO_AVCProfileVendorStartUnused + 1,
 } QOMX_VIDEO_AVCPROFILETYPE;
+
+
+/**
+ * H.264 MVC Profiles
+  */
+typedef enum QOMX_VIDEO_MVCPROFILETYPE {
+    QOMX_VIDEO_MVCProfileStereoHigh = 0x1,
+    QOMX_VIDEO_MVCProfileMultiViewHigh = 0x2,
+    QOMX_VIDEO_MVCProfileKhronosExtensions = 0x6F000000,
+    QOMX_VIDEO_MVCProfileVendorStartUnused = 0x7F000000,
+    QOMX_VIDEO_MVCProfileMax = 0x7FFFFFFF
+} QOMX_VIDEO_MVCPROFILETYPE;
+
+/**
+ * H.264 MVC Levels
+  */
+typedef enum QOMX_VIDEO_MVCLEVELTYPE {
+    QOMX_VIDEO_MVCLevel1   = 0x01,     /**< Level 1 */
+    QOMX_VIDEO_MVCLevel1b  = 0x02,     /**< Level 1b */
+    QOMX_VIDEO_MVCLevel11  = 0x04,     /**< Level 1.1 */
+    QOMX_VIDEO_MVCLevel12  = 0x08,     /**< Level 1.2 */
+    QOMX_VIDEO_MVCLevel13  = 0x10,     /**< Level 1.3 */
+    QOMX_VIDEO_MVCLevel2   = 0x20,     /**< Level 2 */
+    QOMX_VIDEO_MVCLevel21  = 0x40,     /**< Level 2.1 */
+    QOMX_VIDEO_MVCLevel22  = 0x80,     /**< Level 2.2 */
+    QOMX_VIDEO_MVCLevel3   = 0x100,    /**< Level 3 */
+    QOMX_VIDEO_MVCLevel31  = 0x200,    /**< Level 3.1 */
+    QOMX_VIDEO_MVCLevel32  = 0x400,    /**< Level 3.2 */
+    QOMX_VIDEO_MVCLevel4   = 0x800,    /**< Level 4 */
+    QOMX_VIDEO_MVCLevel41  = 0x1000,   /**< Level 4.1 */
+    QOMX_VIDEO_MVCLevel42  = 0x2000,   /**< Level 4.2 */
+    QOMX_VIDEO_MVCLevel5   = 0x4000,   /**< Level 5 */
+    QOMX_VIDEO_MVCLevel51  = 0x8000,   /**< Level 5.1 */
+    QOMX_VIDEO_MVCLevelKhronosExtensions = 0x6F000000,
+    QOMX_VIDEO_MVCLevelVendorStartUnused = 0x7F000000,
+    QOMX_VIDEO_MVCLevelMax = 0x7FFFFFFF
+} QOMX_VIDEO_MVCLEVELTYPE;
 
 /**
  * DivX Versions
