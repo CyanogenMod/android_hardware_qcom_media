@@ -550,6 +550,22 @@ omx_core_cb_type core[] =
     {
       "container_muxer.mp2"
     }
+  },
+  {
+    "OMX.qcom.video.postprocessing",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVdpp.so",
+    {
+      "videopostprocessing"
+    }
   }
 };
 

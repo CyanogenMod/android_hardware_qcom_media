@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2011 The Linux Foundation. All rights reserved.
+Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -110,6 +110,12 @@ extern "C"
  *  in Q16 format. */
 #define OMX_QCOM_INDEX_PARAM_DIGITALZOOMHEIGHTRANGESUPPORTED    "OMX.QCOM.index.param.DigitalZoomHeightRangeSupported"
 
+    // new externsions for vidpp
+#define OMX_QCOM_INDEX_CONFIG_ACTIVE_REGION_DETECTION           "OMX.QCOM.index.config.activeregiondetection"
+#define OMX_QCOM_INDEX_CONFIG_ACTIVE_REGION_DETECTION_STATUS    "OMX.QCOM.index.config.activeregiondetectionstatus"
+#define OMX_QCOM_INDEX_CONFIG_SCALING_MODE                      "OMX.QCOM.index.config.scalingmode"
+#define OMX_QCOM_INDEX_CONFIG_NOISEREDUCTION                    "OMX.QCOM.index.config.noisereduction"
+#define OMX_QCOM_INDEX_CONFIG_IMAGEENHANCEMENT                  "OMX.QCOM.index.config.imageenhancement"
 /**
  * Enumeration defining the extended uncompressed image/video
  * formats.
@@ -393,6 +399,86 @@ typedef struct QOMX_CONFIG_PAUSEPORTTYPE {
   OMX_BOOL bPausePort;               /**< Specifies if port need to PAUSE or RESUME */
 } QOMX_CONFIG_PAUSEPORTTYPE;
 
+
+typedef struct QOMX_RECTTYPE {
+    OMX_S32 nLeft;
+    OMX_S32 nTop;
+    OMX_U32 nWidth;
+    OMX_U32 nHeight;
+} QOMX_RECTTYPE;
+
+typedef struct QOMX_ACTIVEREGIONDETECTIONTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bEnable;
+    QOMX_RECTTYPE sROI;
+    OMX_U32 nNumExclusionRegions;
+    QOMX_RECTTYPE sExclusionRegions[1];
+} QOMX_ACTIVEREGIONDETECTIONTYPE;
+
+typedef struct QOMX_ACTIVEREGIONDETECTION_STATUSTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bDetected;
+    QOMX_RECTTYPE sDetectedRegion;
+} QOMX_ACTIVEREGIONDETECTION_STATUSTYPE;
+
+typedef enum QOMX_SCALE_MODETYPE {
+    QOMX_SCALE_MODE_Normal,
+    QOMX_SCALE_MODE_Anamorphic,
+    QOMX_SCALE_MODE_Max = 0x7FFFFFFF
+} QOMX_SCALE_MODETYPE;
+
+typedef struct QOMX_SCALINGMODETYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    QOMX_SCALE_MODETYPE  eScaleMode;
+} QOMX_SCALINGMODETYPE;
+
+typedef struct QOMX_NOISEREDUCTIONTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bEnable;
+    OMX_BOOL bAutoMode;
+    OMX_S32 nNoiseReduction;
+} QOMX_NOISEREDUCTIONTYPE;
+
+typedef struct QOMX_IMAGEENHANCEMENTTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bEnable;
+    OMX_BOOL bAutoMode;
+    OMX_S32 nImageEnhancement;
+} QOMX_IMAGEENHANCEMENTTYPE;
+
+/*
+ * these are part of OMX1.2 but JB MR2 branch doesn't have them defined
+ * OMX_IndexParamInterlaceFormat
+ * OMX_INTERLACEFORMATTYPE
+ */
+#ifndef OMX_IndexParamInterlaceFormat
+#define OMX_IndexParamInterlaceFormat (0x7FF00000)
+typedef enum OMX_INTERLACETYPE
+{
+   OMX_InterlaceFrameProgressive,
+   OMX_InterlaceInterleaveFrameTopFieldFirst,
+   OMX_InterlaceInterleaveFrameBottomFieldFirst,
+   OMX_InterlaceFrameTopFieldFirst,
+   OMX_InterlaceFrameBottomFieldFirst
+}OMX_INTERLACEs;
+
+typedef struct OMX_INTERLACEFORMATTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nFormat;
+    OMX_TICKS nTimeStamp;
+} OMX_INTERLACEFORMATTYPE;
+#endif
 #if defined( __cplusplus )
 }
 #endif /* end of macro __cplusplus */
