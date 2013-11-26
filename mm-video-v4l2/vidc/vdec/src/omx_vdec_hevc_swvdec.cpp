@@ -1693,9 +1693,40 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     m_decoder_capability.max_width = 1920;
     m_decoder_capability.max_height = 1080;
 
+    OMX_STRING device_name = (OMX_STRING)"/dev/video/q6_dec";
+    drv_ctx.video_driver_fd = open(device_name, O_RDWR);
+    if(drv_ctx.video_driver_fd == 0){
+        drv_ctx.video_driver_fd = open(device_name, O_RDWR);
+    }
+    if(drv_ctx.video_driver_fd < 0)
+    {
+        DEBUG_PRINT_ERROR("Omx_vdec::Comp Init Returning failure, errno %d", errno);
+        return OMX_ErrorInsufficientResources;
+    }
+    DEBUG_PRINT_HIGH("omx_vdec::component_init(%s): Open device %s returned fd %d",
+        role, device_name, drv_ctx.video_driver_fd);
+
     // Copy the role information which provides the decoder kind
     strlcpy(drv_ctx.kind,role,128);
     strlcpy((char *)m_cRole, "video_decoder.hevc",OMX_MAX_STRINGNAME_SIZE);
+    if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevchybrid",
+        OMX_MAX_STRINGNAME_SIZE))
+    {
+        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+        fmt.fmt.pix_mp.width = 320;
+        fmt.fmt.pix_mp.height = 240;
+        fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_HEVC_HYBRID;
+        ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+        if (ret) {
+            DEBUG_PRINT_HIGH("Failed to set format(V4L2_PIX_FMT_HEVC_HYBRID)");
+            DEBUG_PRINT_HIGH("Switch to HEVC fullDSP as HYBRID is not supported");
+            strlcpy(drv_ctx.kind, "OMX.qcom.video.decoder.hevc", 128);
+        }
+        else {
+            DEBUG_PRINT_HIGH("HEVC HYBRID is supported");
+        }
+    }
+
     if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevchybrid",
         OMX_MAX_STRINGNAME_SIZE))
     {
@@ -1783,22 +1814,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
     if (!m_pSwVdec || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
     {
-        OMX_STRING device_name = (OMX_STRING)"/dev/video/q6_dec";
-        drv_ctx.video_driver_fd = open(device_name, O_RDWR);
-
-        DEBUG_PRINT_HIGH("omx_vdec::component_init(): Open device %s returned fd %d, errno %d",
-            device_name, drv_ctx.video_driver_fd, errno);
-
-        if(drv_ctx.video_driver_fd == 0){
-            drv_ctx.video_driver_fd = open(device_name, O_RDWR);
-        }
-
-        if(drv_ctx.video_driver_fd < 0)
-        {
-            DEBUG_PRINT_ERROR("Omx_vdec::Comp Init Returning failure, errno %d", errno);
-            return OMX_ErrorInsufficientResources;
-        }
-
         ret = pthread_create(&async_thread_id,0,async_message_thread,this);
         if(ret < 0) {
             close(drv_ctx.video_driver_fd);
