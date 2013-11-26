@@ -87,6 +87,8 @@ class omx_venc: public omx_video
         bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height);
         bool dev_color_align(OMX_BUFFERHEADERTYPE *buffer, OMX_U32 width,
                         OMX_U32 height);
+        bool dev_get_output_log_flag();
+        int dev_output_log_buffers(const char *buffer_addr, int buffer_len);
 };
 
 #endif //__OMX_VENC__H

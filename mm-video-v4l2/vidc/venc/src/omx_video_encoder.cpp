@@ -1879,3 +1879,13 @@ bool omx_venc::is_secure_session()
 {
     return secure_session;
 }
+
+bool omx_venc::dev_get_output_log_flag()
+{
+    return handle->venc_get_output_log_flag();
+}
+
+int omx_venc::dev_output_log_buffers(const char *buffer, int bufferlen)
+{
+    return handle->venc_output_log_buffers(buffer, bufferlen);
+}
