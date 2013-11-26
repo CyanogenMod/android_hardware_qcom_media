@@ -1176,7 +1176,8 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                                 pParam->eProfile, pParam->eLevel);
                         return false;
                     } else {
-                        if (pParam->eProfile != OMX_VIDEO_AVCProfileBaseline) {
+                        if ((pParam->eProfile != OMX_VIDEO_AVCProfileBaseline) &&
+                            (pParam->eProfile != QOMX_VIDEO_AVCProfileConstrainedBaseline)) {
                             if (pParam->nBFrames) {
                                 DEBUG_PRINT_HIGH("INFO: Only 1 Bframe is supported");
                                 bFrames = 1;
@@ -2388,6 +2389,8 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
     } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
         if (eProfile == OMX_VIDEO_AVCProfileBaseline) {
             requested_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE;
+        } else if(eProfile == QOMX_VIDEO_AVCProfileConstrainedBaseline) {
+            requested_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_BASELINE;
         } else if (eProfile == OMX_VIDEO_AVCProfileMain) {
             requested_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_MAIN;
         } else if (eProfile == OMX_VIDEO_AVCProfileExtended) {
@@ -2670,7 +2673,8 @@ bool venc_dev::venc_set_entropy_config(OMX_BOOL enable, OMX_U32 i_cabac_level)
 
     DEBUG_PRINT_LOW("venc_set_entropy_config: CABAC = %u level: %lu", enable, i_cabac_level);
 
-    if (enable &&(codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE)) {
+    if (enable && (codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE) &&
+            (codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_BASELINE)) {
 
         control.value = V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CABAC;
         control.id = V4L2_CID_MPEG_VIDEO_H264_ENTROPY_MODE;
@@ -3301,6 +3305,9 @@ bool venc_dev::venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel)
             case V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE:
                 *eProfile = OMX_VIDEO_AVCProfileBaseline;
                 break;
+            case V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_BASELINE:
+                *eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
+                break;
             case V4L2_MPEG_VIDEO_H264_PROFILE_MAIN:
                 *eProfile = OMX_VIDEO_AVCProfileMain;
                 break;
@@ -3469,6 +3476,9 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
                     case V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE:
                         *eProfile = OMX_VIDEO_AVCProfileBaseline;
                         break;
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_BASELINE:
+                        *eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
+                        break;
                     case V4L2_MPEG_VIDEO_H264_PROFILE_MAIN:
                         *eProfile = OMX_VIDEO_AVCProfileMain;
                         break;
@@ -3498,7 +3508,8 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
             *eLevel = OMX_VIDEO_AVCLevelMax;
         }
 
-        if (*eProfile == OMX_VIDEO_AVCProfileBaseline) {
+        if ((*eProfile == OMX_VIDEO_AVCProfileBaseline) ||
+            (*eProfile == QOMX_VIDEO_AVCProfileConstrainedBaseline)) {
             profile_tbl = (unsigned int const *)h264_profile_level_table;
         } else if (*eProfile == OMX_VIDEO_AVCProfileHigh) {
             profile_tbl = (unsigned int const *)
