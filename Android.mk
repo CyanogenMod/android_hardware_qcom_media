@@ -13,7 +13,7 @@ include $(QCOM_MEDIA_ROOT)/libc2dcolorconvert/Android.mk
 endif
 
 ifneq ($(filter msm8974 msm8960 msm8226 apq8084 mpq8092 msm8610 msm_bronze,$(TARGET_BOARD_PLATFORM)),)
-ifneq ($(call is-platform-sdk-version-at-least, 19),true)
+ifneq (1,$(filter 1,$(shell echo "$$(( $(PLATFORM_SDK_VERSION) >=  19 ))" )))
 include $(QCOM_MEDIA_ROOT)/QCMediaPlayer/Android.mk
 include $(QCOM_MEDIA_ROOT)/dashplayer/Android.mk
 endif

@@ -89,7 +89,7 @@ ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
 endif
 
-ifneq ($(call is-platform-sdk-version-at-least,18),true)
+ifneq (1,$(filter 1,$(shell echo "$$(( $(PLATFORM_SDK_VERSION) >= 18 ))" )))
 libOmxVdec-def += -DANDROID_JELLYBEAN_MR1=1
 endif
 
@@ -140,7 +140,7 @@ LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
 LOCAL_SRC_FILES         += src/hevc_utils.cpp
-ifeq ($(call is-board-platform-in-list,msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze),true)
+ifneq (,$(filter msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
 else
 LOCAL_SHARED_LIBRARIES  += libhardware
@@ -166,7 +166,7 @@ LOCAL_PATH:= $(ROOT_DIR)
 # libOmxVdecHevc library is not built for OSS builds as QCPATH is null in OSS builds.
 
 ifneq "$(wildcard $(QCPATH) )" ""
-ifeq ($(call is-board-platform-in-list,msm8974 msm8610 msm8226 msm_bronze),true)
+ifneq (,$(filter msm8974 msm8610 msm8226 msm_bronze,$(TARGET_BOARD_PLATFORM)))
 
 LOCAL_MODULE                    := libOmxVdecHevc
 LOCAL_MODULE_TAGS               := optional
@@ -184,7 +184,7 @@ LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
 
-ifeq ($(call is-board-platform-in-list,msm8974 msm8226),true)
+ifneq (,$(filter msm8974 msm8226,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SHARED_LIBRARIES  += libHevcSwDecoder
 LOCAL_SRC_FILES         += src/omx_vdec_hevc_swvdec.cpp
 else
