@@ -33,7 +33,7 @@ Required parameters in configuration file:
 input_file     # Valid input file that shall match the codec_type or yuv format
 input_height   # Height
 input_width    # Width
-codec_type     # H.264 | MPEG4 | VP8
+codec_type     # H.264 | MPEG4 | VP8 | MVC
 output_file    # output file name
 device_mode    # DECODE | ENCODE
 frame_count    # Minimum number of output frames to be generated.
@@ -189,6 +189,15 @@ SET_CTRL
     #       V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DISPLAY      0
     #       V4L2_MPEG_VIDC_VIDEO_OUTPUT_ORDER_DECODE       1
     #
+    #   BUFFER_LAYOUT
+    #       id: V4L2_CID_MPEG_VIDC_VIDEO_MVC_BUFFER_LAYOUT
+    #       val: 0 | 1
+    #       0: V4L2_MPEG_VIDC_VIDEO_MVC_SEQUENTIAL
+    #       1: V4L2_MPEG_VIDC_VIDEO_MVC_TOP_BOTTOM
+    #       In case of top-bottom to view the YUV output you must select:
+    #       width = input_width
+    #       height = 2*input_height
+    #       ex. For MVC VGA top-bottom layout, output YUV is 640x960
 
 GET_CTRL
     # Get Controls
