@@ -42,7 +42,7 @@ struct DashPlayer : public AHandler {
 
     void setDataSource(const sp<IStreamSource> &source);
 
-    void setDataSource(
+    status_t  setDataSource(
             const char *url, const KeyedVector<String8, String8> *headers);
 
     void setDataSource(int fd, int64_t offset, int64_t length);
