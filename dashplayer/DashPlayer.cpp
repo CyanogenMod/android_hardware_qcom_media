@@ -926,8 +926,16 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     if (what == kWhatBufferingStart) {
                       ALOGE("Source Notified Buffering Start for %s ",mTrackName);
                       if (mBufferingNotification == false) {
-                         mBufferingNotification = true;
-                         notifyListener(MEDIA_INFO, MEDIA_INFO_BUFFERING_START, 0);
+                          if (track == kVideo && mNativeWindow == NULL)
+                          {
+                               ALOGE("video decoder not instantiated, no buffering for video",
+                                     mBufferingNotification);
+                          }
+                          else
+                          {
+                              mBufferingNotification = true;
+                              notifyListener(MEDIA_INFO, MEDIA_INFO_BUFFERING_START, 0);
+                          }
                       }
                       else {
                          ALOGE("Buffering Start Event Already Notified mBufferingNotification(%d)",
