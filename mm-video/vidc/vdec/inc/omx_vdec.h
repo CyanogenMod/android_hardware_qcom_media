@@ -906,6 +906,8 @@ private:
     int secureDisplay(int mode);
     int unsecureDisplay(int mode);
     int set_turbo_mode(bool mode);
+    OMX_ERRORTYPE allocate_scratch_buffers(void);
+    void deallocate_scratch_buffers(void);
     bool msg_thread_created;
     bool async_thread_created;
     bool m_turbo_mode;
