@@ -168,6 +168,16 @@ void H264_Utils::allocate_rbsp_buffer(uint32 inputBufferSize)
     m_prv_nalu.nalu_type = NALU_TYPE_UNSPECIFIED;
 }
 
+void H264_Utils::deallocate_rbsp_buffer()
+{
+  if (m_rbspBytes)
+  {
+    free(m_rbspBytes);
+    m_rbspBytes = NULL;
+  }
+}
+
+
 H264_Utils::H264_Utils(): m_height(0),
                           m_width(0),
                           m_rbspBytes(NULL),
