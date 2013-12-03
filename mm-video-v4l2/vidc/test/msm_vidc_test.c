@@ -34,6 +34,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <media/msm_vidc.h>
+#include <media/msm_media_info.h>
 #include <linux/videodev2.h>
 #include <linux/ion.h>
 #include <linux/msm_ion.h>
@@ -228,7 +229,7 @@ struct arguments {
 		trick_mode,
 		perf_level,
 		buffer_layout;
-	char codec_type[20], read_mode[20];
+	char codec_type[20], read_mode[20], yuv_write_mode[20];
 	char sequence[300][MAX_FILE_PATH_SIZE];
 	int verbosity;
 	int repeat;
@@ -403,6 +404,7 @@ int parse_cfg(const char *filename)
 		{"output_buf_size",    INT32,        &input_args->output_buf_size,MAX_FILE_PATH_SIZE},
 		{"marker_flag",        INT32,        &input_args->marker_flag,MAX_FILE_PATH_SIZE},
 		{"errors_before_stop", INT32,        &input_args->errors_before_stop,MAX_FILE_PATH_SIZE},
+		{"write_NV12",         STRING,       input_args->yuv_write_mode,MAX_FILE_PATH_SIZE},
 		{"eot",                FLAG,          NULL,0}
 	};
 	rc = parse_param_file(filename, param_table, sizeof(param_table)/sizeof(param_table[0]));
@@ -418,7 +420,7 @@ err:
 	return rc;
 }
 
-int write_to_yuv_file(const char * userptr, struct bufinfo * binfo)
+int write_to_YCbCr420_file(const char * userptr, struct bufinfo * binfo)
 {
 	int written = 0;
 	int stride = video_inst.fmt[CAPTURE_PORT].fmt.pix_mp.plane_fmt[0].bytesperline;
@@ -434,7 +436,8 @@ int write_to_yuv_file(const char * userptr, struct bufinfo * binfo)
 	if (input_args->buffer_layout == V4L2_MPEG_VIDC_VIDEO_MVC_TOP_BOTTOM) {
 		/* Write Y plane for bottom view */
 		temp = (const char *)binfo->vaddr +
-			(stride * (scanlines + input_args->input_height/2));
+			VENUS_VIEW2_OFFSET(COLOR_FMT_NV12_MVTB,
+				input_args->input_width, input_args->input_height);
 		for (i = 0; i < input_args->input_height; i++) {
 			written += fwrite(temp, 1, yuv_width, video_inst.outputfile);
 			temp += stride;
@@ -447,8 +450,10 @@ int write_to_yuv_file(const char * userptr, struct bufinfo * binfo)
 	}
 	if (input_args->buffer_layout == V4L2_MPEG_VIDC_VIDEO_MVC_TOP_BOTTOM) {
 		/* Write UV plane for bottom view */
-		temp = (const char *)binfo->vaddr + stride * scanlines +
-			(stride * (scanlines + input_args->input_height/2));
+		temp = (const char *)binfo->vaddr +
+			VENUS_VIEW2_OFFSET(COLOR_FMT_NV12_MVTB,
+				input_args->input_width, input_args->input_height) +
+			stride * scanlines;
 		for (i = 0; i < input_args->input_height/2; i++) {
 			written += fwrite(temp, 1, yuv_width, video_inst.outputfile);
 			temp += stride;
@@ -2852,7 +2857,10 @@ static void* poll_func(void *data)
 				D("FBD COUNT: %d, filled length = %d, userptr = %p, offset = %d, flags = 0x%x\n",
 					video_inst.fbd_count, filled_len, (void *)plane[0].m.userptr, plane[0].data_offset, v4l2_buf.flags);
 				if (input_args->session == DECODER_SESSION && filled_len) {
-					rc = write_to_yuv_file((const char *)plane[0].m.userptr, binfo);
+					if (!strcmp(input_args->yuv_write_mode, "TRUE")) {
+						rc = fwrite((char *)plane[0].m.userptr, 1, filled_len, video_inst.outputfile);
+					} else
+						rc = write_to_YCbCr420_file((const char *)plane[0].m.userptr, binfo);
 					if (rc < 0) {
 						E("Failed to write yuv\n");
 					}

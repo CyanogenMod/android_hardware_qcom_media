@@ -100,6 +100,13 @@ errors_before_stop  # Set the number of continue empty buffer done (EBD)
                # just close the session when the number of continue errors
                # are reach.
 
+write_NV12     # TRUE | FALSE
+               # TRUE::
+               #  Write the FBD buffer data to a file without formatting.
+               # FALSE::
+               #  This is the default value, it writes to output into a
+               #  YCbCr 4:2:0 format which is supported by must YUV players.
+
 
 SEQUENCE commands at configuration file, this commands are run in order from
 top to bottom:
@@ -265,6 +272,7 @@ codec_type         : H.264
 output_file        : /mnt/sdcard/test/output.yuv
 device_mode        : DECODE
 frame_count        : 100
+write_NV12         : FALSE
 
 SEQUENCE           : OPEN
 SEQUENCE           : SUBSCRIBE_EVENT
