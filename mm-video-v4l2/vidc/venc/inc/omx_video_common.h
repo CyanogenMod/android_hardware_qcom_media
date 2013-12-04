@@ -74,12 +74,6 @@ struct pmem {
     unsigned offset;
     unsigned size;
 };
-#ifdef USE_ION
-struct venc_ion {
-    int ion_device_fd;
-    struct ion_fd_data fd_ion_data;
-    struct ion_allocation_data ion_alloc_data;
-};
 
 struct venc_debug_cap {
     bool in_buffer_log;
@@ -90,6 +84,13 @@ struct venc_debug_cap {
     FILE *infile;
     FILE *outfile;
 };
+#ifdef USE_ION
+struct venc_ion {
+    int ion_device_fd;
+    struct ion_fd_data fd_ion_data;
+    struct ion_allocation_data ion_alloc_data;
+};
+
 #endif
 #endif // __OMX_VIDEO_COMMON_H__
 
