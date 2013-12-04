@@ -69,11 +69,11 @@ status_t DashPlayerDriver::setDataSource(
         const char *url, const KeyedVector<String8, String8> *headers) {
     CHECK_EQ((int)mState, (int)UNINITIALIZED);
 
-    mPlayer->setDataSource(url, headers);
+    status_t ret = mPlayer->setDataSource(url, headers);
 
     mState = STOPPED;
 
-    return OK;
+    return ret;
 }
 
 status_t DashPlayerDriver::setDataSource(int fd, int64_t offset, int64_t length) {
