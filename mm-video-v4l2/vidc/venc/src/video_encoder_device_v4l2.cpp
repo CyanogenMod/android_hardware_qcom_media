@@ -1728,6 +1728,8 @@ unsigned venc_dev::venc_start(void)
 {
     enum v4l2_buf_type buf_type;
     int ret,r;
+    struct v4l2_control control = {0};
+
     DEBUG_PRINT_HIGH("%s(): Check Profile/Level set in driver before start",
             __func__);
 
@@ -1764,6 +1766,15 @@ unsigned venc_dev::venc_start(void)
         return 1;
 
     streaming[CAPTURE_PORT] = true;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_REQUEST_SEQ_HEADER;
+    control.value = 1;
+    ret = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (ret) {
+        DEBUG_PRINT_ERROR("failed to request seq header");
+        return 1;
+    }
+
     stopped = 0;
     return 0;
 }
