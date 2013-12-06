@@ -74,6 +74,8 @@ libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libcopybit
 libmm-vdec-inc          += frameworks/av/include/media/stagefright
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqservice
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqdutils
+libmm-vdec-inc          += frameworks/av/media/libmediaplayerservice
+libmm-vdec-inc          += frameworks/native/include/binder
 
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
@@ -114,7 +116,7 @@ LOCAL_CFLAGS                    := $(libOmxVdec-def)
 LOCAL_C_INCLUDES                := $(mm-vdec-test-inc)
 
 LOCAL_PRELINK_MODULE      := false
-LOCAL_SHARED_LIBRARIES    := libutils liblog libOmxCore libOmxVdec libbinder
+LOCAL_SHARED_LIBRARIES    := libutils liblog libOmxCore libOmxVdec libbinder libcutils
 
 LOCAL_SRC_FILES           := src/queue.c
 LOCAL_SRC_FILES           += test/omx_vdec_test.cpp
