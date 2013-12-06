@@ -611,6 +611,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_vendor_config.pData = NULL;
     pthread_mutex_init(&m_lock, NULL);
     pthread_mutex_init(&c_lock, NULL);
+    pthread_mutex_init(&e_lock, NULL);
     sem_init(&m_cmd_lock,0,0);
     streaming[CAPTURE_PORT] =
         streaming[OUTPUT_PORT] = false;
@@ -729,6 +730,7 @@ omx_vdec::~omx_vdec()
     close(drv_ctx.video_driver_fd);
     pthread_mutex_destroy(&m_lock);
     pthread_mutex_destroy(&c_lock);
+    pthread_mutex_destroy(&e_lock);
     sem_destroy(&m_cmd_lock);
     if (perf_flag) {
         DEBUG_PRINT_HIGH("--> TOTAL PROCESSING TIME");
@@ -2156,6 +2158,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
     } else if (cmd == OMX_CommandFlush) {
         DEBUG_PRINT_HIGH("\n send_command_proxy(): OMX_CommandFlush issued"
                 "with param1: %lu", param1);
+        send_codec_config();
         if (OMX_CORE_INPUT_PORT_INDEX == param1 || OMX_ALL == param1) {
             BITMASK_SET(&m_flags, OMX_COMPONENT_INPUT_FLUSH_PENDING);
         }
@@ -2208,6 +2211,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         DEBUG_PRINT_HIGH("\n send_command_proxy(): OMX_CommandPortDisable issued"
                 "with param1: %lu", param1);
         if (param1 == OMX_CORE_INPUT_PORT_INDEX || param1 == OMX_ALL) {
+            codec_config_flag = false;
             m_inp_bEnabled = OMX_FALSE;
             if ((m_state == OMX_StateLoaded || m_state == OMX_StateIdle)
                     && release_input_done()) {
@@ -3817,11 +3821,13 @@ OMX_ERRORTYPE  omx_vdec::component_tunnel_request(OMX_IN OMX_HANDLETYPE         
 OMX_ERRORTYPE omx_vdec::allocate_extradata()
 {
 #ifdef USE_ION
+    auto_lock extradata_lock(&e_lock);
     if (drv_ctx.extradata_info.buffer_size) {
         if (drv_ctx.extradata_info.ion.ion_alloc_data.handle) {
             munmap((void *)drv_ctx.extradata_info.uaddr, drv_ctx.extradata_info.size);
             close(drv_ctx.extradata_info.ion.fd_ion_data.fd);
             free_ion_memory(&drv_ctx.extradata_info.ion);
+            memset(&drv_ctx.extradata_info, 0, sizeof(drv_ctx.extradata_info));
         }
         drv_ctx.extradata_info.size = (drv_ctx.extradata_info.size + 4095) & (~4095);
         drv_ctx.extradata_info.ion.ion_device_fd = alloc_map_ion_memory(
@@ -3850,6 +3856,7 @@ OMX_ERRORTYPE omx_vdec::allocate_extradata()
 void omx_vdec::free_extradata()
 {
 #ifdef USE_ION
+    auto_lock extradata_lock(&e_lock);
     if (drv_ctx.extradata_info.uaddr) {
         munmap((void *)drv_ctx.extradata_info.uaddr, drv_ctx.extradata_info.size);
         close(drv_ctx.extradata_info.ion.fd_ion_data.fd);
@@ -4322,36 +4329,39 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
         setbuffers.buffer_type = VDEC_BUFFER_TYPE_OUTPUT;
         memcpy (&setbuffers.buffer,&drv_ctx.ptr_outputbuffer[index],
                 sizeof (vdec_bufferpayload));
+
+        if (!dynamic_buf_mode) {
 #ifdef _ANDROID_
-        if (m_enable_android_native_buffers) {
-            if (!secure_mode) {
-                if (drv_ctx.ptr_outputbuffer[index].pmem_fd > 0) {
-                    munmap(drv_ctx.ptr_outputbuffer[index].bufferaddr,
-                            drv_ctx.ptr_outputbuffer[index].mmaped_size);
-                }
-            }
-            drv_ctx.ptr_outputbuffer[index].pmem_fd = -1;
-        } else {
-#endif
-            if (drv_ctx.ptr_outputbuffer[0].pmem_fd > 0 && !ouput_egl_buffers && !m_use_output_pmem) {
+            if (m_enable_android_native_buffers) {
                 if (!secure_mode) {
-                    DEBUG_PRINT_LOW("\n unmap the output buffer fd = %d",
-                            drv_ctx.ptr_outputbuffer[0].pmem_fd);
-                    DEBUG_PRINT_LOW("\n unmap the ouput buffer size=%d  address = %p",
-                            drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
-                            drv_ctx.ptr_outputbuffer[0].bufferaddr);
-                    munmap (drv_ctx.ptr_outputbuffer[0].bufferaddr,
-                            drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount);
+                    if (drv_ctx.ptr_outputbuffer[index].pmem_fd > 0) {
+                        munmap(drv_ctx.ptr_outputbuffer[index].bufferaddr,
+                                drv_ctx.ptr_outputbuffer[index].mmaped_size);
+                    }
                 }
-                close (drv_ctx.ptr_outputbuffer[0].pmem_fd);
-                drv_ctx.ptr_outputbuffer[0].pmem_fd = -1;
+                drv_ctx.ptr_outputbuffer[index].pmem_fd = -1;
+            } else {
+#endif
+                if (drv_ctx.ptr_outputbuffer[0].pmem_fd > 0 && !ouput_egl_buffers && !m_use_output_pmem) {
+                    if (!secure_mode) {
+                        DEBUG_PRINT_LOW("\n unmap the output buffer fd = %d",
+                                drv_ctx.ptr_outputbuffer[0].pmem_fd);
+                        DEBUG_PRINT_LOW("\n unmap the ouput buffer size=%d  address = %p",
+                                drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
+                                drv_ctx.ptr_outputbuffer[0].bufferaddr);
+                        munmap (drv_ctx.ptr_outputbuffer[0].bufferaddr,
+                                drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount);
+                    }
+                    close (drv_ctx.ptr_outputbuffer[0].pmem_fd);
+                    drv_ctx.ptr_outputbuffer[0].pmem_fd = -1;
 #ifdef USE_ION
-                free_ion_memory(&drv_ctx.op_buf_ion_info[0]);
+                    free_ion_memory(&drv_ctx.op_buf_ion_info[0]);
 #endif
-            }
+                }
 #ifdef _ANDROID_
-        }
+            }
 #endif
+        } //!dynamic_buf_mode
         if (release_output_done()) {
             free_extradata();
         }
@@ -5178,13 +5188,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     OMX_ERRORTYPE ret1 = OMX_ErrorNone;
     unsigned int nBufferIndex = drv_ctx.ip_buf.actualcount;
 
-    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-        codec_config_flag = true;
-        DEBUG_PRINT_LOW("%s: codec_config buffer", __FUNCTION__);
-    } else {
-        codec_config_flag = false;
-    }
-
     if (m_state == OMX_StateInvalid) {
         DEBUG_PRINT_ERROR("Empty this buffer in Invalid State\n");
         return OMX_ErrorInvalidState;
@@ -5241,6 +5244,11 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     if (nBufferIndex > drv_ctx.ip_buf.actualcount ) {
         DEBUG_PRINT_ERROR("\nERROR:ETB nBufferIndex is invalid");
         return OMX_ErrorBadParameter;
+    }
+
+    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+        codec_config_flag = true;
+        DEBUG_PRINT_LOW("%s: codec_config buffer", __FUNCTION__);
     }
 
     DEBUG_PRINT_LOW("[ETB] BHdr(%p) pBuf(%p) nTS(%lld) nFL(%lu)",
@@ -5499,6 +5507,9 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     if (rc) {
         DEBUG_PRINT_ERROR("Failed to qbuf Input buffer to driver\n");
         return OMX_ErrorHardware;
+    }
+    if (codec_config_flag && !(buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG)) {
+        codec_config_flag = false;
     }
     if (!streaming[OUTPUT_PORT]) {
         enum v4l2_buf_type buf_type;
@@ -7369,12 +7380,20 @@ void omx_vdec::free_input_buffer_header()
         free (m_inp_mem_ptr);
         m_inp_mem_ptr = NULL;
     }
-    /* We just freed all the buffer headers, every thing in m_input_free_q
-     * is now invalid */
+    /* We just freed all the buffer headers, every thing in m_input_free_q,
+     * pdest_frame, and psource_frame is now invalid */
     while (m_input_free_q.m_size) {
         unsigned address, p2, id;
         m_input_free_q.pop_entry(&address, &p2, &id);
     }
+    /* We just freed all the buffer headers, every thing in m_input_pending_q,
+     * is now invalid too*/
+    while (m_input_pending_q.m_size) {
+        unsigned address, p2, id;
+        m_input_pending_q.pop_entry(&address, &p2, &id);
+    }
+    pdest_frame = NULL;
+    psource_frame = NULL;
     if (drv_ctx.ptr_inputbuffer) {
         DEBUG_PRINT_LOW("\n Free Driver Context pointer");
         free (drv_ctx.ptr_inputbuffer);
@@ -7945,9 +7964,17 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     int enable = 0;
     OMX_U32 mbaff = 0;
     int buf_index = p_buf_hdr - m_out_mem_ptr;
+    if (buf_index >= drv_ctx.extradata_info.count) {
+        DEBUG_PRINT_ERROR("handle_extradata: invalid index(%d) max(%d)",
+                buf_index, drv_ctx.extradata_info.count);
+        return;
+    }
     struct msm_vidc_panscan_window_payload *panscan_payload = NULL;
     OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr) +
         p_buf_hdr->nOffset;
+
+    auto_lock extradata_lock(&e_lock);
+
     if (!drv_ctx.extradata_info.uaddr) {
         return;
     }
@@ -8046,6 +8073,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
             }
             consumed_len += data->nSize;
             data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
+            if (data->nSize) {
+                break;
+            }
         }
         if (!secure_mode && (client_extradata & OMX_FRAMEINFO_EXTRADATA)) {
             p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
@@ -8928,4 +8958,47 @@ void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
         DEBUG_PRINT_ERROR("Error - could not remove ref, no match with any entry in list\n");
     }
     pthread_mutex_unlock(&m_lock);
+}
+
+void omx_vdec::send_codec_config() {
+    if (codec_config_flag) {
+        unsigned      p1 = 0; // Parameter - 1
+        unsigned      p2 = 0; // Parameter - 2
+        unsigned      ident = 0;
+        pthread_mutex_lock(&m_lock);
+        DEBUG_PRINT_LOW("\n Check Queue for codec_config buffer \n");
+        while (m_etb_q.m_size) {
+            m_etb_q.pop_entry(&p1,&p2,&ident);
+            if (ident == OMX_COMPONENT_GENERATE_ETB_ARBITRARY) {
+                if (((OMX_BUFFERHEADERTYPE *)p2)->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+                    if (empty_this_buffer_proxy_arbitrary((OMX_HANDLETYPE)p1,\
+                                (OMX_BUFFERHEADERTYPE *)p2) != OMX_ErrorNone) {
+                        DEBUG_PRINT_ERROR("\n empty_this_buffer_proxy_arbitrary failure");
+                        omx_report_error();
+                    }
+                } else {
+                    DEBUG_PRINT_LOW("\n Flush Input Heap Buffer %p",(OMX_BUFFERHEADERTYPE *)p2);
+                    m_cb.EmptyBufferDone(&m_cmp ,m_app_data, (OMX_BUFFERHEADERTYPE *)p2);
+                }
+            } else if (ident == OMX_COMPONENT_GENERATE_ETB) {
+                if (((OMX_BUFFERHEADERTYPE *)p2)->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+                    if (empty_this_buffer_proxy((OMX_HANDLETYPE)p1,\
+                                (OMX_BUFFERHEADERTYPE *)p2) != OMX_ErrorNone) {
+                        DEBUG_PRINT_ERROR("\n empty_this_buffer_proxy failure");
+                        omx_report_error ();
+                    }
+                } else {
+                    pending_input_buffers++;
+                    DEBUG_PRINT_LOW("\n Flush Input OMX_COMPONENT_GENERATE_ETB %p, pending_input_buffers %d",
+                            (OMX_BUFFERHEADERTYPE *)p2, pending_input_buffers);
+                    empty_buffer_done(&m_cmp,(OMX_BUFFERHEADERTYPE *)p2);
+                }
+            } else if (ident == OMX_COMPONENT_GENERATE_EBD) {
+                DEBUG_PRINT_LOW("\n Flush Input OMX_COMPONENT_GENERATE_EBD %p",
+                        (OMX_BUFFERHEADERTYPE *)p1);
+                empty_buffer_done(&m_cmp,(OMX_BUFFERHEADERTYPE *)p1);
+            }
+        }
+        pthread_mutex_unlock(&m_lock);
+    }
 }
