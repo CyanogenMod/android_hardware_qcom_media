@@ -85,12 +85,10 @@ struct DashPlayer::Source : public RefBase {
     }
 
     virtual void pause() {
-        ALOGE("Pause called on Wrong DataSource.. Please check !!!");
         //CHECK(false);
     }
 
     virtual void resume() {
-        ALOGE("Resume called on Wrong DataSource.. Please check !!!");
         //CHECK(false);
     }
 

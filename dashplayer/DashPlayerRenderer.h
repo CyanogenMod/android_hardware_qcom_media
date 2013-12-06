@@ -155,6 +155,7 @@ private:
 #endif /* QCOM_WFD_SINK */
   private:
     sp<DashPlayerStats> mStats;
+    int mLogLevel;
 
     DISALLOW_EVIL_CONSTRUCTORS(Renderer);
 };

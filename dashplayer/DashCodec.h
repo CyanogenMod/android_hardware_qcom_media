@@ -63,10 +63,6 @@ struct DashCodec : public AHierarchicalStateMachine {
     void initiateStart();
 
     void signalRequestIDRFrame();
-
-    //Signal the ResourceManager about pause/resume
-    void signalConcurrencyParam(bool streamPaused);
-
     void queueNextFormat();
     void clearCachedFormats();
     struct PortDescription : public RefBase {
@@ -115,7 +111,6 @@ private:
         kWhatConfigureComponent      = 'conf',
         kWhatStart                   = 'star',
         kWhatRequestIDRFrame         = 'ridr',
-        kWhatConcurrencyParam        = 'conP',
     };
 
     enum {
@@ -197,10 +192,6 @@ private:
 
     bool mChannelMaskPresent;
     int32_t mChannelMask;
-
-    //Variables for DashCodec to maintain the usecase and its state.
-    String8 mUseCase;
-    bool mUseCaseFlag;
 
     status_t allocateBuffersOnPort(OMX_U32 portIndex);
     status_t freeBuffersOnPort(OMX_U32 portIndex);

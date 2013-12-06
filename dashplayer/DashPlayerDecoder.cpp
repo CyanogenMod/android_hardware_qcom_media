@@ -29,6 +29,12 @@
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/MetaData.h>
 #include <media/stagefright/Utils.h>
+#include <cutils/properties.h>
+
+#define DPD_MSG_ERROR(...) ALOGE(__VA_ARGS__)
+#define DPD_MSG_HIGH(...) if(mLogLevel >= 1){ALOGE(__VA_ARGS__);}
+#define DPD_MSG_MEDIUM(...) if(mLogLevel >= 2){ALOGE(__VA_ARGS__);}
+#define DPD_MSG_LOW(...) if(mLogLevel >= 3){ALOGE(__VA_ARGS__);}
 
 namespace android {
 
@@ -36,8 +42,16 @@ DashPlayer::Decoder::Decoder(
         const sp<AMessage> &notify,
         const sp<NativeWindowWrapper> &nativeWindow)
     : mNotify(notify),
-      mNativeWindow(nativeWindow) {
+      mNativeWindow(nativeWindow),
+      mLogLevel(0){
       mAudioSink = NULL;
+
+      char property_value[PROPERTY_VALUE_MAX] = {0};
+      property_get("persist.dash.debug.level", property_value, NULL);
+
+      if(*property_value) {
+          mLogLevel = atoi(property_value);
+      }
 }
 
 DashPlayer::Decoder::~Decoder() {
@@ -60,7 +74,7 @@ void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
     const char *mime;
     CHECK(meta->findCString(kKeyMIMEType, &mime));
 
-    ALOGV("@@@@:: Decoder::configure :: mime is --- %s ---",mime);
+    DPD_MSG_LOW("@@@@:: Decoder::configure :: mime is --- %s ---",mime);
 
     sp<AMessage> notifyMsg =
         new AMessage(kWhatCodecNotify, id());
@@ -82,7 +96,7 @@ void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
         CHECK(meta->findCString(kKeyMIMEType, &mime));
     }
 
-    ALOGV("@@@@:: DashCodec created ");
+    DPD_MSG_LOW("@@@@:: DashCodec created ");
     mCodec = new DashCodec;
 
     bool needDedicatedLooper = false;
@@ -90,7 +104,7 @@ void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
     if (isVideo){
         needDedicatedLooper = true;
         if(mCodecLooper == NULL) {
-            ALOGV("@@@@:: Creating Looper for %s",(isVideo?"Video":"Audio"));
+            DPD_MSG_LOW("@@@@:: Creating Looper for %s",(isVideo?"Video":"Audio"));
             mCodecLooper = new ALooper;
             mCodecLooper->setName("DashPlayerDecoder");
             mCodecLooper->start(false, false, ANDROID_PRIORITY_AUDIO);
@@ -168,11 +182,11 @@ sp<AMessage> DashPlayer::Decoder::makeFormat(const sp<MetaData> &meta) {
                 msg->setBuffer("csd-0", buffer);
               }
               else {
-                ALOGE("kKeyAacCodecSpecificData ABuffer Allocation failed");
+                DPD_MSG_ERROR("kKeyAacCodecSpecificData ABuffer Allocation failed");
               }
           }
           else {
-              ALOGE("Not a valid data pointer or size == 0");
+              DPD_MSG_ERROR("Not a valid data pointer or size == 0");
           }
     }
 
@@ -231,12 +245,6 @@ void DashPlayer::Decoder::initiateShutdown() {
     if (mCodec != NULL) {
         mCodec->initiateShutdown();
    }
-}
-
-void DashPlayer::Decoder::signalConcurrencyParam(bool streamPaused) {
-    if (mCodec != NULL) {
-        mCodec->signalConcurrencyParam(streamPaused);
-    }
 }
 
 }  // namespace android

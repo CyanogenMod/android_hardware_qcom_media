@@ -25,6 +25,12 @@
 #include <media/stagefright/foundation/ADebug.h>
 #include <media/stagefright/foundation/ALooper.h>
 
+
+#define DPD_MSG_ERROR(...) ALOGE(__VA_ARGS__)
+#define DPD_MSG_HIGH(...) if(mLogLevel >= 1){ALOGE(__VA_ARGS__);}
+#define DPD_MSG_MEDIUM(...) if(mLogLevel >= 2){ALOGE(__VA_ARGS__);}
+#define DPD_MSG_LOW(...) if(mLogLevel >= 3){ALOGE(__VA_ARGS__);}
+
 namespace android {
 
 DashPlayerDriver::DashPlayerDriver()
@@ -36,7 +42,8 @@ DashPlayerDriver::DashPlayerDriver()
       mLooper(new ALooper),
       mState(UNINITIALIZED),
       mAtEOS(false),
-      mStartupSeekTimeUs(-1) {
+      mStartupSeekTimeUs(-1),
+      mLogLevel(0){
     mLooper->setName("DashPlayerDriver Looper");
 
     mLooper->start(
@@ -48,6 +55,14 @@ DashPlayerDriver::DashPlayerDriver()
     mLooper->registerHandler(mPlayer);
 
     mPlayer->setDriver(this);
+
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("persist.dash.debug.level", property_value, NULL);
+
+    if(*property_value) {
+        mLogLevel = atoi(property_value);
+    }
+
 }
 
 DashPlayerDriver::~DashPlayerDriver() {
@@ -69,11 +84,11 @@ status_t DashPlayerDriver::setDataSource(
         const char *url, const KeyedVector<String8, String8> *headers) {
     CHECK_EQ((int)mState, (int)UNINITIALIZED);
 
-    status_t ret = mPlayer->setDataSource(url, headers);
+    mPlayer->setDataSource(url, headers);
 
     mState = STOPPED;
 
-    return ret;
+    return OK;
 }
 
 status_t DashPlayerDriver::setDataSource(int fd, int64_t offset, int64_t length) {
@@ -96,22 +111,12 @@ status_t DashPlayerDriver::setDataSource(const sp<IStreamSource> &source) {
     return OK;
 }
 
-#ifdef ANDROID_JB_MR2
 status_t DashPlayerDriver::setVideoSurfaceTexture(
         const sp<IGraphicBufferProducer> &bufferProducer) {
   mPlayer->setVideoSurfaceTexture(bufferProducer);
 
   return OK;
 }
-#else
-
-status_t DashPlayerDriver::setVideoSurfaceTexture(
-        const sp<ISurfaceTexture> &surfaceTexture) {
-    mPlayer->setVideoSurfaceTexture(surfaceTexture);
-
-    return OK;
-}
-#endif
 
 status_t DashPlayerDriver::prepare() {
     sendEvent(MEDIA_SET_VIDEO_SIZE, 0, 0);
@@ -280,7 +285,46 @@ player_type DashPlayerDriver::playerType() {
 }
 
 status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
-    return INVALID_OPERATION;
+   status_t ret = INVALID_OPERATION;
+
+   if (reply == NULL) {
+       DPD_MSG_ERROR("reply is a NULL pointer");
+       return BAD_VALUE;
+    }
+
+    int32_t methodId;
+    ret = request.readInt32(&methodId);
+    if (ret != OK) {
+        DPD_MSG_ERROR("Failed to retrieve the requested method to invoke");
+        return ret;
+    }
+
+    switch (methodId) {
+       case KEY_DASH_GET_ADAPTION_PROPERTIES:
+        {
+          DPD_MSG_ERROR("calling KEY_DASH_GET_ADAPTION_PROPERTIES");
+          ret = getParameter(methodId,reply);
+          break;
+        }
+        case KEY_DASH_SET_ADAPTION_PROPERTIES:
+        {
+          DPD_MSG_ERROR("calling KEY_DASH_SET_ADAPTION_PROPERTIES");
+          int32_t val = 0;
+          ret = setParameter(methodId,request);
+          val = (ret == OK)? 1:0;
+          reply->setDataPosition(0);
+          reply->writeInt32(val);
+          break;
+       }
+       default:
+       {
+         DPD_MSG_ERROR("Invoke:unHandled requested method%d",methodId);
+         ret = OK;
+         break;
+       }
+     }
+
+    return ret;
 }
 
 void DashPlayerDriver::setAudioSink(const sp<AudioSink> &audioSink) {

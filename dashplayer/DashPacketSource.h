@@ -83,6 +83,7 @@ private:
     unsigned mStreamPID;
     unsigned mProgramPID;
     uint64_t mFirstPTS;
+    int mLogLevel;
 
     bool wasFormatChange(int32_t discontinuityType) const;
 
