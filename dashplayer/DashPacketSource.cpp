@@ -28,6 +28,12 @@
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/MetaData.h>
 #include <utils/Vector.h>
+#include <cutils/properties.h>
+
+#define DPS_MSG_ERROR(...) ALOGE(__VA_ARGS__)
+#define DPS_MSG_HIGH(...) if(mLogLevel >= 1){ALOGE(__VA_ARGS__);}
+#define DPS_MSG_MEDIUM(...) if(mLogLevel >= 2){ALOGE(__VA_ARGS__);}
+#define DPS_MSG_LOW(...) if(mLogLevel >= 3){ALOGE(__VA_ARGS__);}
 
 namespace android {
 
@@ -37,7 +43,15 @@ DashPacketSource::DashPacketSource(const sp<MetaData> &meta)
       mEOSResult(OK),
       mStreamPID(0),
       mProgramPID(0),
-      mFirstPTS(0) {
+      mFirstPTS(0),
+      mLogLevel(0) {
+
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("persist.dash.debug.level", property_value, NULL);
+    if(*property_value) {
+      mLogLevel = atoi(property_value);
+    }
+
     const char *mime;
     CHECK(meta->findCString(kKeyMIMEType, &mime));
 
@@ -167,11 +181,11 @@ void DashPacketSource::queueAccessUnit(const sp<ABuffer> &buffer) {
 
     int64_t timeUs;
     CHECK(buffer->meta()->findInt64("timeUs", &timeUs));
-    ALOGV("queueAccessUnit timeUs=%lld us (%.2f secs)", timeUs, timeUs / 1E6);
+    DPS_MSG_LOW("queueAccessUnit timeUs=%lld us (%.2f secs)", timeUs, timeUs / 1E6);
 
     Mutex::Autolock autoLock(mLock);
     mBuffers.push_back(buffer);
-    ALOGV("@@@@:: DashPacketSource --> size is %d ",mBuffers.size() );
+    DPS_MSG_LOW("@@@@:: DashPacketSource --> size is %d ",mBuffers.size() );
     mCondition.signal();
 }
 
@@ -186,26 +200,11 @@ void DashPacketSource::queueDiscontinuity(
 
     if (type == ATSParser::DISCONTINUITY_SEEK ||
         type == ATSParser::DISCONTINUITY_SEEK) {
-        ALOGI("Flushing all Access units for seek");
+        DPS_MSG_HIGH("Flushing all Access units for seek");
         mBuffers.clear();
         mEOSResult = OK;
         mCondition.signal();
         return;
-    }
-
-    // Leave only discontinuities in the queue.
-    List<sp<ABuffer> >::iterator it = mBuffers.begin();
-    while (it != mBuffers.end()) {
-        sp<ABuffer> oldBuffer = *it;
-
-        int32_t oldDiscontinuityType;
-        if (!oldBuffer->meta()->findInt32(
-                    "discontinuity", &oldDiscontinuityType)) {
-            it = mBuffers.erase(it);
-            continue;
-        }
-
-        ++it;
     }
 
     mEOSResult = OK;

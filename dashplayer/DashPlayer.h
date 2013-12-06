@@ -23,10 +23,17 @@
 #include <media/stagefright/NativeWindowWrapper.h>
 #include "DashPlayerStats.h"
 #include <media/stagefright/foundation/ABuffer.h>
+#include <cutils/properties.h>
+// used for Get Adaptionset property (NonJB)and for both Get and set for JB
+#include <utils/Log.h>
+
 #define KEY_DASH_ADAPTION_PROPERTIES 8002
 #define KEY_DASH_MPD_QUERY           8003
 #define KEY_DASH_QOE_EVENT           8004
 #define KEY_DASH_QOE_PERIODIC_EVENT  8008
+
+#define KEY_DASH_GET_ADAPTION_PROPERTIES 8010
+#define KEY_DASH_SET_ADAPTION_PROPERTIES 8011
 
 namespace android {
 
@@ -51,16 +58,12 @@ struct DashPlayer : public AHandler {
 
     void setDataSource(const sp<IStreamSource> &source);
 
-    status_t  setDataSource(
+    void setDataSource(
             const char *url, const KeyedVector<String8, String8> *headers);
 
     void setDataSource(int fd, int64_t offset, int64_t length);
 
-#ifdef ANDROID_JB_MR2
     void setVideoSurfaceTexture(const sp<IGraphicBufferProducer> &bufferProducer);
-#else
-    void setVideoSurfaceTexture(const sp<ISurfaceTexture> &surfaceTexture);
-#endif
 
     void setAudioSink(const sp<MediaPlayerBase::AudioSink> &sink);
     void start();
@@ -269,6 +272,8 @@ private:
     };
 
     List<QueueEntry> mDecoderMessageQueue;
+
+    int mLogLevel;
 
 
     DISALLOW_EVIL_CONSTRUCTORS(DashPlayer);

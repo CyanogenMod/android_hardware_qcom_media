@@ -36,7 +36,6 @@ struct DashPlayer::Decoder : public AHandler {
     void signalResume();
     void initiateShutdown();
     void setSink(const sp<MediaPlayerBase::AudioSink> &sink, sp<Renderer> Renderer);
-    void signalConcurrencyParam(bool streamPaused);
 
 protected:
     virtual ~Decoder();
@@ -58,6 +57,7 @@ private:
 
     Vector<sp<ABuffer> > mCSD;
     size_t mCSDIndex;
+    int mLogLevel;
 
     sp<AMessage> makeFormat(const sp<MetaData> &meta);
 
