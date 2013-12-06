@@ -162,7 +162,7 @@ struct v4l2testappval {
 	ring_buf_header ring_info;
 	pthread_mutex_t q_lock[MAX_PORTS];
 	pthread_cond_t cond[MAX_PORTS];
-	FILE *inputfile,*outputfile,*buf_file;
+	FILE *inputfile,*outputfile,*buf_file, *pts_fd;
 	pthread_t thread_id[MAX_PORTS];
 	pthread_t poll_tid;
 	unsigned int ebd_count;
@@ -182,6 +182,7 @@ struct arguments {
 	char output[MAX_FILE_PATH_SIZE];
 	char config[MAX_FILE_PATH_SIZE];
 	char bufsize_filename[MAX_FILE_PATH_SIZE];
+	char pts_filename[MAX_FILE_PATH_SIZE];
 	char device_mode[20];
 	int session;
 	unsigned long input_height,
@@ -273,6 +274,7 @@ int read_mpeg2_chunk_parse_key_frame(FILE * bits, unsigned char * pBuf);
 int read_one_frame(FILE * bits, unsigned char * pBuf);
 int read_n_bytes(FILE * file, unsigned char * pBuf, int n);
 int get_bytes_to_read(void);
+struct timeval get_pts(void);
 static int find_start_code(const unsigned char * pBuf, unsigned int zeros_in_startcode);
 static void nominal_test();
 static void adversarial_test();
@@ -395,6 +397,7 @@ int parse_cfg(const char *filename)
 		{"read_bytes",         INT32,        &input_args->read_bytes,MAX_FILE_PATH_SIZE},
 		{"random_seed",        INT32,        &input_args->random_seed,MAX_FILE_PATH_SIZE},
 		{"fix_buf_size_file",  STRING,       input_args->bufsize_filename,MAX_FILE_PATH_SIZE},
+		{"pts_file",           STRING,       input_args->pts_filename,MAX_FILE_PATH_SIZE},
 		{"ring_num_headers",   INT32,        &input_args->ring_num_hdrs,MAX_FILE_PATH_SIZE},
 		{"ring_buf_size",      INT32,        &input_args->output_buf_size,MAX_FILE_PATH_SIZE},
 		{"output_buf_size",    INT32,        &input_args->output_buf_size,MAX_FILE_PATH_SIZE},
@@ -1152,6 +1155,8 @@ int configure_session (void)
 	I("Output file: %s\n", input_args->output);
 	if (strncmp(input_args->bufsize_filename, "beefbeef", 8))
 		I("fix_buf_size_file: %s\n", input_args->bufsize_filename);
+	if (strncmp(input_args->pts_filename, "beefbeef", 8))
+		I("pts_file: %s\n", input_args->pts_filename);
 	if (input_args->ring_num_hdrs)
 		I("Number of headers to use for OUTPUT port: %ld\n", input_args->ring_num_hdrs);
 	if (input_args->output_buf_size)
@@ -2666,6 +2671,7 @@ static int q_single_buf(struct bufinfo *binfo)
 		} else
 			buf.length = 1;
 	} else {
+		buf.timestamp = get_pts();
 		buf.length = 1;
 	}
 	buf.m.planes = plane;
@@ -2678,11 +2684,13 @@ static int q_single_buf(struct bufinfo *binfo)
 		V("ETB: Marker Flag TS_ERROR\n");
 	}
 	D("Queueing:%d, port:(%d) fd = %d, userptr = %p,"
-		" offset = %d, flags=0x%x, bytesused= %d, length= %d\n",
+		" offset = %d, flags=0x%x, bytesused= %d, length= %d,"
+		" ts= %ld-%ld\n",
 		video_inst.fd, port,
 		plane[0].reserved[0], (void *)plane[0].m.userptr,
 		plane[0].data_offset, buf.flags,
-		plane[0].bytesused, plane[0].length);
+		plane[0].bytesused, plane[0].length,
+		buf.timestamp.tv_sec, buf.timestamp.tv_usec);
 	rc = ioctl(video_inst.fd, VIDIOC_QBUF, &buf);
 	if (rc) {
 		rc = -errno;
@@ -3051,6 +3059,14 @@ static void nominal_test()
 			goto fail_buf_file;
 		}
 	}
+	if ((strncmp(input_args->pts_filename, "beefbeef", 8))) {
+		video_inst.pts_fd = fopen(input_args->pts_filename, "rb");
+		if (!video_inst.pts_fd) {
+			E("Failed to open pts file %s\n", input_args->pts_filename);
+			goto fail_pts_file;
+		}
+	}
+
 
 	V("Setting seed: srand(%lu) \n", input_args->random_seed);
 	srand(input_args->random_seed);
@@ -3116,6 +3132,10 @@ fail_config_session:
 	}
 	if (video_inst.buf_file)
 		fclose(video_inst.buf_file);
+	if (video_inst.pts_fd)
+		fclose(video_inst.pts_fd);
+fail_pts_file:
+	fclose(video_inst.buf_file);
 fail_buf_file:
 	fclose(video_inst.outputfile);
 fail_op_file:
@@ -3182,6 +3202,7 @@ int main(int argc, char *argv[])
 	input_args->trick_mode = 0;
 	input_args->perf_level = 0;
 	strlcpy(input_args->bufsize_filename, "beefbeef", MAX_FILE_PATH_SIZE);
+	strlcpy(input_args->pts_filename, "beefbeef", MAX_FILE_PATH_SIZE);
 	test_mask = parse_args(argc, argv);
 	if (test_mask < 0) {
 		E("Failed to parse args\n");
@@ -3779,4 +3800,51 @@ int get_bytes_to_read(void)
 		}
 	}
 	return bytes;
+}
+
+struct timeval get_pts(void)
+{
+	struct timeval pts;
+	static int index = 0;
+	int i, j, pos_usec;
+	time_t sec = 0;
+	suseconds_t usec = 0;
+	char line[MAX_LINE];
+	char num[MAX_LINE];
+	pts.tv_sec = 0;
+	pts.tv_usec = 0;
+
+	if (strncmp(input_args->pts_filename, "beefbeef", 8)) {
+		if(fgets(line, MAX_LINE-1, video_inst.pts_fd)){
+			num[0] = '\0';
+			for (i = 0; i < MAX_LINE; i++) {
+				num[i] = line[i];
+				if (line[i+1] == '-' || line[i+1] == ' ') {
+					num[++i] = '\0';
+					pos_usec = ++i;
+					break;
+				}
+			}
+			if (i == MAX_LINE || pos_usec >= MAX_LINE) {
+				E("Bad formated file: %s\n", input_args->pts_filename);
+				return pts;
+			}
+			sec = (time_t)atoi(num);
+			num[0] = '\0';
+			for (i = pos_usec, j = 0; i < (MAX_LINE - pos_usec); i++, j++) {
+				num[j] = line[i];
+				if (num[j] == '\r' || num[j] == '\n')
+					break;
+			}
+			num[j] = '\0';
+			usec = (suseconds_t)atoi(num);
+			index++;
+		} else {
+			D("No more pts values in file: %s, total of values %d\n",
+				input_args->pts_filename, index);
+		}
+		pts.tv_sec = sec;
+		pts.tv_usec = usec;
+	}
+	return pts;
 }
