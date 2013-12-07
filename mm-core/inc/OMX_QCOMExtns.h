@@ -416,6 +416,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* "OMX.QCOM.index.param.video.FramePackingExtradata" */
     OMX_QcomIndexParamVideoFramePackingExtradata = 0x7F00002D,
+
+    /* google smooth-streaming support */
+    OMX_QcomIndexParamVideoAdaptivePlaybackMode = 0x7F00002E,
 };
 
 /**
