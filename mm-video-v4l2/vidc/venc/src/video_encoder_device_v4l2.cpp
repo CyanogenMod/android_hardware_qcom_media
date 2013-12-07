@@ -821,6 +821,13 @@ bool venc_dev::venc_open(OMX_U32 codec)
         capability.min_height = frmsize.stepwise.min_height;
         capability.max_height = frmsize.stepwise.max_height;
     }
+    //Initialize non-default parameters
+    if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_VP8) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
+        control.value = 0x7fffffff;
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control))
+            DEBUG_PRINT_ERROR("Failed to set V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAME\n");
+    }
 
     return true;
 }
