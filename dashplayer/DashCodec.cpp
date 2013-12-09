@@ -22,6 +22,7 @@
 #define LOG_TAG "DashCodec"
 
 #include "DashCodec.h"
+#include "QCMediaDefs.h"
 
 #include <binder/MemoryDealer.h>
 
@@ -866,6 +867,8 @@ status_t DashCodec::setComponentRole(
             "audio_decoder.raw", "audio_encoder.raw" },
         { MEDIA_MIMETYPE_AUDIO_FLAC,
             "audio_decoder.flac", "audio_encoder.flac" },
+        { MEDIA_MIMETYPE_VIDEO_HEVC,
+            "video_decoder.hevc", "video_encoder.hevc" },
     };
 
     static const size_t kNumMimeToRole =
@@ -1558,6 +1561,8 @@ static status_t GetVideoCodingTypeFromMime(
         *codingType = OMX_VIDEO_CodingH263;
     } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_MPEG2, mime)) {
         *codingType = OMX_VIDEO_CodingMPEG2;
+    } else if (!strcasecmp(MEDIA_MIMETYPE_VIDEO_HEVC, mime)) {
+        *codingType = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingHevc;
     } else {
         *codingType = OMX_VIDEO_CodingUnused;
         return ERROR_UNSUPPORTED;
