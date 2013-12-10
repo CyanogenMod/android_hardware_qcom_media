@@ -558,7 +558,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_desc_buffer_ptr(NULL),
     secure_mode(false),
     m_profile(0),
-    client_set_fps(false)
+    client_set_fps(false),
+    m_last_rendered_TS(-1)
 {
     /* Assumption is that , to begin with , we have all the frames with decoder */
     DEBUG_PRINT_HIGH("In OMX vdec Constructor");
@@ -2423,6 +2424,9 @@ bool omx_vdec::execute_output_flush()
     /*Generate FBD for all Buffers in the FTBq*/
     pthread_mutex_lock(&m_lock);
     DEBUG_PRINT_LOW("Initiate Output Flush");
+    //reset last render flag
+    m_last_rendered_TS = -1;
+
     while (m_ftb_q.m_size) {
         DEBUG_PRINT_LOW("Buffer queue size %d pending buf cnt %d",
                 m_ftb_q.m_size,pending_output_buffers);
@@ -6686,6 +6690,24 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         DEBUG_PRINT_LOW("Before FBD callback Accessed Pmeminfo %lu",pPMEMInfo->pmem_fd);
         OMX_BUFFERHEADERTYPE *il_buffer;
         il_buffer = client_buffers.get_il_buf_hdr(buffer);
+
+        //First frame after start \ pause \ seek
+        if(il_buffer && m_last_rendered_TS < 0){
+           DEBUG_PRINT_LOW("--- First Frame (%lld) -- render it", il_buffer->nTimeStamp);
+           m_last_rendered_TS = il_buffer->nTimeStamp;
+        } else if (il_buffer) {
+           int ts_delta = (int)llabs(il_buffer->nTimeStamp - m_last_rendered_TS);
+           if(il_buffer->nTimeStamp ==  0 || ts_delta >= 16000) {
+               //mark for rendering
+               DEBUG_PRINT_LOW("-- rendering frame with TS %lld gap is %d ", il_buffer->nTimeStamp,ts_delta);
+               m_last_rendered_TS = il_buffer->nTimeStamp;
+           } else {
+               //mark for droping
+               DEBUG_PRINT_LOW("-- dropping frame with TS %lld gap is %d ", il_buffer->nTimeStamp,ts_delta);
+               buffer->nFilledLen = 0;
+           }
+        }
+
         if (il_buffer)
             m_cb.FillBufferDone (hComp,m_app_data,il_buffer);
         else {
