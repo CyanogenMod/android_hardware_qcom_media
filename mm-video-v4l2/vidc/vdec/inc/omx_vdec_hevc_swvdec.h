@@ -126,11 +126,11 @@ extern "C" {
     class VideoHeap : public MemoryHeapBase
     {
     public:
-        VideoHeap(int devicefd, size_t size, void* base,struct ion_handle *handle,int mapfd);
+        VideoHeap(int devicefd, size_t size, void* base,ion_user_handle_t handle,int mapfd);
         virtual ~VideoHeap() {}
     private:
        int m_ion_device_fd;
-       struct ion_handle *m_ion_handle;
+       ion_user_handle_t m_ion_handle;
     };
 #else
     // local pmem heap object
