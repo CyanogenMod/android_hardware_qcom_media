@@ -49,8 +49,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sys/time.h>
 #include <cutils/properties.h>
 
-#include <linux/android_pmem.h>
-
 #ifdef _ANDROID_
 #include <binder/MemoryHeapBase.h>
 

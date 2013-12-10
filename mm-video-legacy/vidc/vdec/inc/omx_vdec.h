@@ -52,8 +52,6 @@ static ptrdiff_t x;
 #ifdef _ANDROID_
 #ifdef USE_ION
 #include <linux/msm_ion.h>
-#else
-#include <linux/android_pmem.h>
 #endif
 #include <binder/MemoryHeapBase.h>
 #include <ui/ANativeObjectBase.h>
