@@ -429,6 +429,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /* "OMX.QCOM.index.config.imageenhancement" */
     OMX_QcomIndexConfigImageEnhancement = 0x7F000032,
 
+    /* google smooth-streaming support */
+    OMX_QcomIndexParamVideoAdaptivePlaybackMode = 0x7F000033,
 };
 
 /**

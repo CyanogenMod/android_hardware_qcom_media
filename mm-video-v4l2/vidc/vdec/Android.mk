@@ -124,6 +124,11 @@ libOmxVdec-def += -DANDROID_JELLYBEAN_MR2=1
 libmm-vdec-inc += hardware/qcom/media/libstagefrighthw
 endif
 
+ifeq ($(call is-platform-sdk-version-at-least, 19),true)
+# This feature is enabled for Android KK+
+libOmxVdec-def += -DADAPTIVE_PLAYBACK_SUPPORTED
+endif
+
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libOmxVdec-def)
