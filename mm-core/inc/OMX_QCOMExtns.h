@@ -343,6 +343,7 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     OMX_QcomIndexParamVideoDecoderPictureOrder = 0x7F000010,
 
+    /* "OMX.QCOM.index.config.video.FramePackingInfo" */
     OMX_QcomIndexConfigVideoFramePackingArrangement = 0x7F000011,
 
     OMX_QcomIndexParamConcealMBMapExtraData = 0x7F000012,
@@ -412,6 +413,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexParamH264AUDelimiter = 0x7F00002B,
 
     OMX_QcomIndexParamVideoDownScalar = 0x7F00002C,
+
+    /* "OMX.QCOM.index.param.video.FramePackingExtradata" */
+    OMX_QcomIndexParamVideoFramePackingExtradata = 0x7F00002D,
 };
 
 /**
@@ -887,6 +891,7 @@ typedef enum OMX_QCOM_EXTRADATATYPE
    OMX_ExtraDataMP2ExtnData = 0x7F000009,
    OMX_ExtraDataMP2UserData = 0x7F00000a,
    OMX_ExtraDataVideoLTRInfo = 0x7F00000b,
+   OMX_ExtraDataFramePackingArrangement = 0x7F00000c,
 } OMX_QCOM_EXTRADATATYPE;
 
 typedef struct  OMX_STREAMINTERLACEFORMATTYPE {
@@ -1103,6 +1108,8 @@ typedef struct QOMX_INDEXDOWNSCALAR {
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SYNCFRAMEDECODINGMODE "OMX.QCOM.index.param.video.SyncFrameDecodingMode"
 #define OMX_QCOM_INDEX_PARAM_INDEXEXTRADATA "OMX.QCOM.index.param.IndexExtraData"
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SLICEDELIVERYMODE "OMX.QCOM.index.param.SliceDeliveryMode"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_FRAMEPACKING_EXTRADATA "OMX.QCOM.index.param.video.FramePackingExtradata"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_FRAMEPACKING_INFO "OMX.QCOM.index.config.video.FramePackingInfo"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,
