@@ -78,13 +78,21 @@ public class QCMediaPlayer extends MediaPlayer
     Log.d(TAG, "callOnMPDAttributeListener");
       String mpdAttributes = QCgetStringParameter(OnMPDAttributeListener.INVOKE_ID_GET_ATTRIBUTES_TYPE_MPD);
     if (mOnMPDAttributeListener != null)
-        mOnMPDAttributeListener.onMPDAttribute(OnMPDAttributeListener.INVOKE_ID_SET_ATTRIBUTES_TYPE_MPD, mpdAttributes, this);
-  }
+        mOnMPDAttributeListener.onMPDAttribute(OnMPDAttributeListener.ATTRIBUTES_TYPE_MPD, mpdAttributes, this);
+      }
   private void callQCTimedTextListener(QCTimedText text)
   {
     if(mOnQCTimedTextListener != null)
     {
-      mOnQCTimedTextListener.onQCTimedText(this, text);
+       mOnQCTimedTextListener.onQCTimedText(this, text);
+    }
+  }
+  private void callOnQOEEventListener(int key,Parcel parcel)
+  {
+    Log.d(TAG, "callOnQOEEventListener");
+    if (mOnQOEEventListener != null)
+    {
+      mOnQOEEventListener.onQOEAttribute(key,parcel,this);
     }
   }
 
@@ -139,7 +147,7 @@ public class QCMediaPlayer extends MediaPlayer
   */
   public interface OnMPDAttributeListener
   {
-     /**
+    /**
      * Key to identify type of MPD attributes
      */
      public static final int ATTRIBUTES_TYPE_MPD = 8002;
@@ -150,12 +158,13 @@ public class QCMediaPlayer extends MediaPlayer
      /**
      * Key to Get MPD attributes
      */
-     public static final int INVOKE_ID_GET_ATTRIBUTES_TYPE_MPD = 8004;
+     public static final int INVOKE_ID_GET_ATTRIBUTES_TYPE_MPD = 8010;
 
      /**
      * Key to Set MPD attributes
      */
-     public static final int INVOKE_ID_SET_ATTRIBUTES_TYPE_MPD = 8005;
+     public static final int INVOKE_ID_SET_ATTRIBUTES_TYPE_MPD = 8011;
+
      /**
      * Called when attributes are available.
      *
@@ -189,17 +198,67 @@ public class QCMediaPlayer extends MediaPlayer
   */
   public boolean processMPDAttribute(int key, String value)
   {
+    boolean retval = false;
+    if(key == OnMPDAttributeListener.ATTRIBUTES_TYPE_MPD)
+    {
+      key = OnMPDAttributeListener.INVOKE_ID_SET_ATTRIBUTES_TYPE_MPD;
+    }
     return QCsetStringParameter(key, value);
   }
   public String  QCGetParameter(int key)
   {
     return QCgetStringParameter(key);
+    }
+  public Parcel QCPeriodicParameter(int key)
+  {
+      if(key == mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_PERIODIC)
+      {
+        return QCgetParcelParameter(key);
+      }
+    return null;
   }
   public boolean QCSetParameter(int key, int value)
   {
     Log.d(TAG, "QCMediaPlayer : QCSetParameter");
     return QCsetParameter(key, value);
   }
+
+  /**
+  * Interface definition for a callback to be invoked when the media
+  * source is ready for QOE data retrieval.
+  */
+  public interface OnQOEEventListener
+  {
+     /**
+     * Key to identify type of QOE Event
+     */
+     public static final int ATTRIBUTES_QOE_EVENT_REG       = 8004;
+     public static final int ATTRIBUTES_QOE_EVENT_PLAY      = 8005;
+     public static final int ATTRIBUTES_QOE_EVENT_STOP      = 8006;
+     public static final int ATTRIBUTES_QOE_EVENT_SWITCH    = 8007;
+     public static final int ATTRIBUTES_QOE_EVENT_PERIODIC  = 8008;
+
+     /**
+     * Called when attributes are available.
+     *
+     * @param attributekey   the key identifying the type of attributes available
+     * @param value          the value for the attribute
+     * @param mp             the MediaPlayer to which QOE event is
+     *                       applicable
+     *
+     */
+     public void onQOEAttribute(int key, Parcel value,QCMediaPlayer mp);
+  }
+  /**
+  * Register a callback to be invoked when QOE event happens
+  * @param listener          the callback that will be run
+  */
+  public void setOnQOEEventListener(OnQOEEventListener listener)
+  {
+    mOnQOEEventListener = listener;
+  }
+
+  private OnQOEEventListener mOnQOEEventListener;
   /* Do not change these values without updating their counterparts
   * in include/media/mediaplayer.h!
   */
@@ -212,6 +271,21 @@ public class QCMediaPlayer extends MediaPlayer
   private static final int MEDIA_TIMED_TEXT = 99;
   private static final int MEDIA_ERROR = 100;
   private static final int MEDIA_INFO = 200;
+  private static final int MEDIA_QOE = 300;
+
+/* This sequence needs to be same as defined in NuPlayer.h*/
+  private static final int QOEPlay = 1;
+  private static final int QOEStop = 2;
+  private static final int QOESwitch = 3;
+  private static final int QOEPeriodic =4;
+
+  /*enum QOEEvent{
+        QOE,
+        QOEPlay,
+        QOEStop,
+        QOESwitch,
+        QOEPeriodic
+  };*/
 
   private class QCMediaEventHandler extends Handler
   {
@@ -243,6 +317,32 @@ public class QCMediaPlayer extends MediaPlayer
                       Parcel parcel = (Parcel)msg.obj;
                       QCTimedText text = new QCTimedText(parcel);
                       callQCTimedTextListener(text);
+                  }
+                }
+                return;
+
+            case MEDIA_QOE:
+                Log.d(TAG, "QCMediaEventHandler::handleMessage::MEDIA_QOE Received " + msg.arg2);
+                if(mOnQOEEventListener != null)
+                {
+                  if (msg.obj instanceof Parcel)
+                  {
+                    int key = 0;
+                    Parcel parcel = (Parcel)msg.obj;
+                    if(msg.arg2 == /*(int)QOEEvent.*/QOEPlay)
+                    {
+                      key = mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_PLAY;
+                    }else if(msg.arg2 == /*(int)QOEEvent.*/QOEPeriodic)
+                    {
+                      key = mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_PERIODIC;
+                    }else if(msg.arg2 == /*(int)QOEEvent.*/QOESwitch)
+                    {
+                      key = mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_SWITCH;
+                    }else if(msg.arg2 == /*(int)QOEEvent.*/QOEStop)
+                    {
+                      key = mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_STOP;
+                    }
+                    callOnQOEEventListener(key,parcel);
                   }
                 }
                 return;
