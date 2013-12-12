@@ -5775,10 +5775,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         codec_config_flag = true;
         DEBUG_PRINT_LOW("%s: codec_config buffer", __FUNCTION__);
     }
-    else
-    {
-        codec_config_flag = false;
-    }
 
 #ifdef _ANDROID_
     if(iDivXDrmDecrypt)
@@ -6062,6 +6058,8 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
             DEBUG_PRINT_ERROR("Failed to qbuf Input buffer to driver");
             return OMX_ErrorHardware;
         }
+        codec_config_flag = false;
+        DEBUG_PRINT_LOW("%s: codec_config cleared", __FUNCTION__);
         if(!streaming[OUTPUT_PORT])
         {
             enum v4l2_buf_type buf_type;
