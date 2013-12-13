@@ -643,6 +643,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     client_buffers.set_vdec_client(this);
     dynamic_buf_mode = false;
     out_dynamic_list = NULL;
+    is_down_scalar_enabled = false;
 }
 
 static const int event_type[] = {
@@ -2899,7 +2900,11 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port");
                                    m_display_id = portDefn->format.video.pNativeWindow;
                                    unsigned int buffer_size;
-                                      DEBUG_PRINT_LOW("\n SetParam OP: WxH(%lu x %lu)\n",
+                                   /* update output port resolution with client supplied dimensions
+                                      in case scaling is enabled, else it follows input resolution set
+                                   */
+                                   if (is_down_scalar_enabled) {
+                                       DEBUG_PRINT_LOW("\n SetParam OP: WxH(%lu x %lu)\n",
                                                portDefn->format.video.nFrameWidth,
                                                portDefn->format.video.nFrameHeight);
                                        if (portDefn->format.video.nFrameHeight != 0x0 &&
@@ -2923,7 +2928,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            } else
                                                eRet = get_buffer_req(&drv_ctx.op_buf);
                                        }
-
+                                   }
                                    if (!client_buffers.get_buffer_req(buffer_size)) {
                                        DEBUG_PRINT_ERROR("Error in getting buffer requirements");
                                        eRet = OMX_ErrorBadParameter;
