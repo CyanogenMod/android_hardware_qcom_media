@@ -102,7 +102,6 @@ extern "C" {
 #ifdef MAX_RES_1080P
 #include "mp4_utils.h"
 #endif
-#include <linux/android_pmem.h>
 #include "extra_data_handler.h"
 #include "ts_parser.h"
 #include "vidc_color_converter.h"

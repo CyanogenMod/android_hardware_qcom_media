@@ -44,10 +44,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "OMX_QCOMExtns.h"
 #include <sys/time.h>
 
-#ifndef USE_ION
-#include <linux/android_pmem.h>
-#endif
-
 #ifdef _ANDROID_
 #include <binder/MemoryHeapBase.h>
 
