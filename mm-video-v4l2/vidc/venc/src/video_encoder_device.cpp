@@ -32,7 +32,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include "video_encoder_device.h"
 #include "omx_video_encoder.h"
-#include <linux/android_pmem.h>
 #ifdef USE_ION
 #include <linux/msm_ion.h>
 #endif
