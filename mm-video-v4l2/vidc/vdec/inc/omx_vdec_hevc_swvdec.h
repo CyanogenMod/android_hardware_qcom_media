@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -1016,6 +1016,11 @@ private:
 
     bool dynamic_buf_mode;
     struct dynamic_buf_list *out_dynamic_list;
+
+    bool m_smoothstreaming_mode;
+    OMX_U32 m_smoothstreaming_width;
+    OMX_U32 m_smoothstreaming_height;
+    OMX_ERRORTYPE enable_smoothstreaming();
 
     unsigned int m_fill_output_msg;
     class allocate_color_convert_buf {
