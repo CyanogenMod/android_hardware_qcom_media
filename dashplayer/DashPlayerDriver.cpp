@@ -287,13 +287,13 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
     switch (methodId) {
        case KEY_DASH_GET_ADAPTION_PROPERTIES:
         {
-          ALOGE("calling KEY_DASH_GET_ADAPTION_PROPERTIES");
+          ALOGV("calling KEY_DASH_GET_ADAPTION_PROPERTIES");
           ret = getParameter(methodId,reply);
           break;
         }
         case KEY_DASH_SET_ADAPTION_PROPERTIES:
         {
-          ALOGE("calling KEY_DASH_SET_ADAPTION_PROPERTIES");
+          ALOGV("calling KEY_DASH_SET_ADAPTION_PROPERTIES");
           int32_t val = 0;
           ret = setParameter(methodId,request);
           val = (ret == OK)? 1:0;
@@ -301,10 +301,35 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
           reply->writeInt32(val);
           break;
        }
+       case KEY_DASH_MPD_QUERY:
+       {
+         ALOGV("calling KEY_DASH_MPD_QUERY");
+         ret = getParameter(methodId,reply);
+         break;
+       }
+       case KEY_DASH_QOE_EVENT:
+           ALOGV("calling KEY_DASH_QOE_EVENT");
+           ret = setParameter(methodId,request);
+           break;
+
+       case KEY_DASH_QOE_PERIODIC_EVENT:
+           ALOGV("calling KEY_DASH_QOE_PERIODIC_EVENT");
+           ret = getParameter(methodId,reply);
+           break;
+
+       case INVOKE_ID_GET_TRACK_INFO:
+       {
+         // Ignore the invoke call for INVOKE_ID_GET_TRACK_INFO with success return code
+         // to avoid mediaplayer java exception
+         ALOGE("Ignore requested method INVOKE_ID_GET_TRACK_INFO to invoke");
+         ret = OK;
+         break;
+       }
+
        default:
        {
          ALOGE("Invoke:unHandled requested method%d",methodId);
-         ret = OK;
+         ret = INVALID_OPERATION;
          break;
        }
      }
