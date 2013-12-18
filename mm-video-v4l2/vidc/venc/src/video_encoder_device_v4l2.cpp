@@ -2065,11 +2065,13 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
             if (!color_format) {
                 plane.m.userptr = index;
                 if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
+                    if (meta_buf->meta_handle->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
+                        buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
                     plane.data_offset = meta_buf->meta_handle->data[1];
                     plane.length = meta_buf->meta_handle->data[2];
                     plane.bytesused = meta_buf->meta_handle->data[2];
-                    DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d",
-                            fd, plane.bytesused, plane.length);
+                    DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x",
+                            fd, plane.bytesused, plane.length, buf.flags);
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
                     private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
                     fd = handle->fd;
@@ -2106,7 +2108,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
     buf.length = 1;
 
     if (bufhdr->nFlags & OMX_BUFFERFLAG_EOS)
-        buf.flags = V4L2_QCOM_BUF_FLAG_EOS;
+        buf.flags |= V4L2_QCOM_BUF_FLAG_EOS;
 
     buf.timestamp.tv_sec = bufhdr->nTimeStamp / 1000000;
     buf.timestamp.tv_usec = (bufhdr->nTimeStamp % 1000000);
