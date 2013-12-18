@@ -8368,14 +8368,29 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     struct msm_vidc_interlace_payload *payload;
                     payload = (struct msm_vidc_interlace_payload *)data->data;
                     mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
-                    if (payload && (payload->format == MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE)  && !mbaff)
-                        drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-                    else if (payload && (payload->format == MSM_VIDC_INTERLACE_FRAME_TOPFIELDFIRST ||
-                        payload->format == MSM_VIDC_INTERLACE_FRAME_BOTTOMFIELDFIRST)  && !mbaff) {
-                        drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-                        enable = 1;
-                    } else {
-                        drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
+                    if (payload && !mbaff) {
+                        switch (payload->format) {
+                            case MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE:
+                            case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST:
+                            case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST:
+                                drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
+                                enable = 1;
+                                break;
+                           default:
+                               DEBUG_PRINT_LOW("unsupported interlace type");
+                        }
+                    } else if (payload && mbaff) {
+                        switch (payload->format) {
+                            case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST:
+                                drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
+                                break;
+                            case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST:
+                                drv_ctx.interlace = VDEC_InterlaceInterleaveFrameBottomFieldFirst;
+                                break;
+                            default:
+                                DEBUG_PRINT_LOW("default case - set interlace to topfield");
+                                drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
+                        }
                         enable = 1;
                     }
                     if (m_enable_android_native_buffers)
@@ -8715,17 +8730,17 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     interlace_format->nVersion.nVersion = OMX_SPEC_VERSION;
     interlace_format->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
     mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
-    if ((interlaced_format_type == MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE)  && !mbaff) {
+    if ((interlaced_format_type == MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE) && !mbaff) {
         interlace_format->bInterlaceFormat = OMX_FALSE;
         interlace_format->nInterlaceFormats = OMX_InterlaceFrameProgressive;
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-    } else if ((interlaced_format_type == MSM_VIDC_INTERLACE_FRAME_TOPFIELDFIRST)  && !mbaff) {
+    } else if ((interlaced_format_type == MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST) && !mbaff) {
         interlace_format->bInterlaceFormat = OMX_TRUE;
-        interlace_format->nInterlaceFormats = OMX_InterlaceFrameTopFieldFirst;
+        interlace_format->nInterlaceFormats =  OMX_InterlaceInterleaveFrameTopFieldFirst;
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-    } else if ((interlaced_format_type == MSM_VIDC_INTERLACE_FRAME_BOTTOMFIELDFIRST)  && !mbaff) {
+    } else if ((interlaced_format_type == MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST) && !mbaff) {
         interlace_format->bInterlaceFormat = OMX_TRUE;
-        interlace_format->nInterlaceFormats = OMX_InterlaceFrameBottomFieldFirst;
+        interlace_format->nInterlaceFormats = OMX_InterlaceInterleaveFrameBottomFieldFirst;
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
     } else {
         interlace_format->bInterlaceFormat = OMX_TRUE;
