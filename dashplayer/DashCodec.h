@@ -134,6 +134,7 @@ private:
 
         IOMX::buffer_id mBufferID;
         Status mStatus;
+        unsigned mDequeuedAt;
 
         sp<ABuffer> mData;
         sp<GraphicBuffer> mGraphicBuffer;
@@ -192,11 +193,19 @@ private:
 
     bool mChannelMaskPresent;
     int32_t mChannelMask;
+    unsigned mDequeueCounter;
+    bool mStoreMetaDataInOutputBuffers;
+    int32_t mMetaDataBuffersToSubmit;
 
     status_t allocateBuffersOnPort(OMX_U32 portIndex);
     status_t freeBuffersOnPort(OMX_U32 portIndex);
     status_t freeBuffer(OMX_U32 portIndex, size_t i);
 
+    status_t configureOutputBuffersFromNativeWindow(
+            OMX_U32 *nBufferCount, OMX_U32 *nBufferSize,
+            OMX_U32 *nMinUndequeuedBuffers);
+    status_t allocateOutputMetaDataBuffers();
+    status_t submitOutputMetaDataBuffer();
     status_t allocateOutputBuffersFromNativeWindow();
     status_t cancelBufferToNativeWindow(BufferInfo *info);
     status_t freeOutputBuffersNotOwnedByComponent();
@@ -266,7 +275,10 @@ private:
 
     bool allYourBuffersAreBelongToUs();
 
+    void waitUntilAllPossibleNativeWindowBuffersAreReturnedToUs();
+
     size_t countBuffersOwnedByComponent(OMX_U32 portIndex) const;
+    size_t countBuffersOwnedByNativeWindow() const;
 
     void deferMessage(const sp<AMessage> &msg);
     void processDeferredMessages();
@@ -278,9 +290,6 @@ private:
             status_t internalError = UNKNOWN_ERROR);
 
     status_t requestIDRFrame();
-
-    status_t InitSmoothStreaming();
-    bool mSmoothStreaming;
     Vector<OMX_PARAM_PORTDEFINITIONTYPE*> mFormats;
     Vector<OMX_CONFIG_RECTTYPE*> mOutputCrops;
     DISALLOW_EVIL_CONSTRUCTORS(DashCodec);
