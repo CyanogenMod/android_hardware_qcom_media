@@ -4424,6 +4424,12 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         return OMX_ErrorBadParameter;
     }
     media_buffer = (encoder_media_buffer_type *)buffer->pBuffer;
+    if (!media_buffer || !media_buffer->meta_handle) {
+        DEBUG_PRINT_ERROR("Incorrect Buffer queued media buffer = %p meta handle = %p",
+            media_buffer, media_buffer->meta_handle);
+        m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
+        return OMX_ErrorBadParameter;
+    }
     private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
     /*Enable following code once private handle color format is
       updated correctly*/
