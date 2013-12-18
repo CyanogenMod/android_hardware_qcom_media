@@ -3172,63 +3172,70 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                           comp_role->cRole);
 
                                   if ((m_state == OMX_StateLoaded)&&
-                                          !BITMASK_PRESENT(&m_flags,OMX_COMPONENT_IDLE_PENDING)) {
+                                          !BITMASK_PRESENT(&m_flags, OMX_COMPONENT_IDLE_PENDING)) {
                                       DEBUG_PRINT_LOW("Set Parameter called in valid state");
                                   } else {
                                       DEBUG_PRINT_ERROR("Set Parameter called in Invalid State");
                                       return OMX_ErrorIncorrectStateOperation;
                                   }
 
-                                  if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",OMX_MAX_STRINGNAME_SIZE)) {
-                                      if (!strncmp((char*)comp_role->cRole,"video_decoder.avc",OMX_MAX_STRINGNAME_SIZE)) {
-                                          strlcpy((char*)m_cRole,"video_decoder.avc",OMX_MAX_STRINGNAME_SIZE);
+                                  if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc", OMX_MAX_STRINGNAME_SIZE)) {
+                                      if (!strncmp((char*)comp_role->cRole, "video_decoder.avc", OMX_MAX_STRINGNAME_SIZE)) {
+                                          strlcpy((char*)m_cRole, "video_decoder.avc", OMX_MAX_STRINGNAME_SIZE);
                                       } else {
                                           DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
                                           eRet =OMX_ErrorUnsupportedSetting;
                                       }
-                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.mpeg4",OMX_MAX_STRINGNAME_SIZE)) {
-                                      if (!strncmp((const char*)comp_role->cRole,"video_decoder.mpeg4",OMX_MAX_STRINGNAME_SIZE)) {
-                                          strlcpy((char*)m_cRole,"video_decoder.mpeg4",OMX_MAX_STRINGNAME_SIZE);
+                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.mpeg4", OMX_MAX_STRINGNAME_SIZE)) {
+                                      if (!strncmp((const char*)comp_role->cRole, "video_decoder.mpeg4", OMX_MAX_STRINGNAME_SIZE)) {
+                                          strlcpy((char*)m_cRole, "video_decoder.mpeg4", OMX_MAX_STRINGNAME_SIZE);
                                       } else {
                                           DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
                                           eRet = OMX_ErrorUnsupportedSetting;
                                       }
-                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.h263",OMX_MAX_STRINGNAME_SIZE)) {
-                                      if (!strncmp((const char*)comp_role->cRole,"video_decoder.h263",OMX_MAX_STRINGNAME_SIZE)) {
-                                          strlcpy((char*)m_cRole,"video_decoder.h263",OMX_MAX_STRINGNAME_SIZE);
+                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.h263", OMX_MAX_STRINGNAME_SIZE)) {
+                                      if (!strncmp((const char*)comp_role->cRole, "video_decoder.h263", OMX_MAX_STRINGNAME_SIZE)) {
+                                          strlcpy((char*)m_cRole, "video_decoder.h263", OMX_MAX_STRINGNAME_SIZE);
                                       } else {
                                           DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
                                           eRet =OMX_ErrorUnsupportedSetting;
                                       }
-                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.mpeg2",OMX_MAX_STRINGNAME_SIZE)) {
-                                      if (!strncmp((const char*)comp_role->cRole,"video_decoder.mpeg2",OMX_MAX_STRINGNAME_SIZE)) {
-                                          strlcpy((char*)m_cRole,"video_decoder.mpeg2",OMX_MAX_STRINGNAME_SIZE);
+                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.mpeg2", OMX_MAX_STRINGNAME_SIZE)) {
+                                      if (!strncmp((const char*)comp_role->cRole, "video_decoder.mpeg2", OMX_MAX_STRINGNAME_SIZE)) {
+                                          strlcpy((char*)m_cRole, "video_decoder.mpeg2", OMX_MAX_STRINGNAME_SIZE);
                                       } else {
                                           DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
                                           eRet = OMX_ErrorUnsupportedSetting;
                                       }
-                                  } else if ((!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx",OMX_MAX_STRINGNAME_SIZE)) ||
-                                          (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx311",OMX_MAX_STRINGNAME_SIZE))
+                                  } else if ((!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx", OMX_MAX_STRINGNAME_SIZE)) ||
+                                          (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx311", OMX_MAX_STRINGNAME_SIZE))
                                         ) {
-                                      if (!strncmp((const char*)comp_role->cRole,"video_decoder.divx",OMX_MAX_STRINGNAME_SIZE)) {
-                                          strlcpy((char*)m_cRole,"video_decoder.divx",OMX_MAX_STRINGNAME_SIZE);
+                                      if (!strncmp((const char*)comp_role->cRole, "video_decoder.divx", OMX_MAX_STRINGNAME_SIZE)) {
+                                          strlcpy((char*)m_cRole, "video_decoder.divx", OMX_MAX_STRINGNAME_SIZE);
                                       } else {
                                           DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
                                           eRet =OMX_ErrorUnsupportedSetting;
                                       }
-                                  } else if ( (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vc1",OMX_MAX_STRINGNAME_SIZE)) ||
-                                          (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.wmv",OMX_MAX_STRINGNAME_SIZE))
+                                  } else if ( (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vc1", OMX_MAX_STRINGNAME_SIZE)) ||
+                                          (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.wmv", OMX_MAX_STRINGNAME_SIZE))
                                         ) {
-                                      if (!strncmp((const char*)comp_role->cRole,"video_decoder.vc1",OMX_MAX_STRINGNAME_SIZE)) {
-                                          strlcpy((char*)m_cRole,"video_decoder.vc1",OMX_MAX_STRINGNAME_SIZE);
+                                      if (!strncmp((const char*)comp_role->cRole, "video_decoder.vc1", OMX_MAX_STRINGNAME_SIZE)) {
+                                          strlcpy((char*)m_cRole, "video_decoder.vc1", OMX_MAX_STRINGNAME_SIZE);
                                       } else {
                                           DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
                                           eRet =OMX_ErrorUnsupportedSetting;
                                       }
-                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE)) {
-                                      if (!strncmp((const char*)comp_role->cRole,"video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE) ||
-                                              (!strncmp((const char*)comp_role->cRole,"video_decoder.vpx",OMX_MAX_STRINGNAME_SIZE))) {
-                                          strlcpy((char*)m_cRole,"video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
+                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
+                                      if (!strncmp((const char*)comp_role->cRole, "video_decoder.vp8", OMX_MAX_STRINGNAME_SIZE) ||
+                                              (!strncmp((const char*)comp_role->cRole, "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE))) {
+                                          strlcpy((char*)m_cRole, "video_decoder.vp8", OMX_MAX_STRINGNAME_SIZE);
+                                      } else {
+                                          DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
+                                          eRet = OMX_ErrorUnsupportedSetting;
+                                      }
+                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevc", OMX_MAX_STRINGNAME_SIZE)) {
+                                      if (!strncmp((const char*)comp_role->cRole, "video_decoder.hevc", OMX_MAX_STRINGNAME_SIZE)) {
+                                          strlcpy((char*)m_cRole, "video_decoder.hevc", OMX_MAX_STRINGNAME_SIZE);
                                       } else {
                                           DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
                                           eRet = OMX_ErrorUnsupportedSetting;
