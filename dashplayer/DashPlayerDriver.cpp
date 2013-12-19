@@ -316,10 +316,35 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
           reply->writeInt32(val);
           break;
        }
+       case KEY_DASH_MPD_QUERY:
+       {
+         DPD_MSG_ERROR("calling KEY_DASH_MPD_QUERY");
+         ret = getParameter(methodId,reply);
+         break;
+       }
+       case KEY_DASH_QOE_EVENT:
+           DPD_MSG_ERROR("calling KEY_DASH_QOE_EVENT");
+           ret = setParameter(methodId,request);
+           break;
+
+       case KEY_DASH_QOE_PERIODIC_EVENT:
+           DPD_MSG_ERROR("calling KEY_DASH_QOE_PERIODIC_EVENT");
+           ret = getParameter(methodId,reply);
+           break;
+
+       case INVOKE_ID_GET_TRACK_INFO:
+       {
+         // Ignore the invoke call for INVOKE_ID_GET_TRACK_INFO with success return code
+         // to avoid mediaplayer java exception
+         DPD_MSG_ERROR("Ignore requested method INVOKE_ID_GET_TRACK_INFO to invoke");
+         ret = OK;
+         break;
+       }
+
        default:
        {
          DPD_MSG_ERROR("Invoke:unHandled requested method%d",methodId);
-         ret = OK;
+         ret = INVALID_OPERATION;
          break;
        }
      }
