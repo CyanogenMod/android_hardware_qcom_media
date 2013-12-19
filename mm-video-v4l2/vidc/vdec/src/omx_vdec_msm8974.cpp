@@ -124,6 +124,7 @@ extern "C" {
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
+#define DEFAULT_CONCEAL_COLOR "32896" //0x8080, black by default
 
 int debug_level = PRIO_ERROR;
 
@@ -1421,6 +1422,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     int r,ret=0;
     bool codec_ambiguous = false;
     OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_dec";
+    char property_value[PROPERTY_VALUE_MAX] = {0};
 
 #ifdef _ANDROID_
     char platform_name[PROPERTY_VALUE_MAX];
@@ -1663,6 +1665,16 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             } else {
                 DEBUG_PRINT_ERROR("Codec should not be ambiguous");
             }
+        }
+
+        property_get("persist.vidc.dec.conceal_color", property_value, DEFAULT_CONCEAL_COLOR);
+        m_conceal_color= atoi(property_value);
+        DEBUG_PRINT_HIGH("trying to set 0x%x as conceal color\n",m_conceal_color);
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONCEAL_COLOR;
+        control.value = m_conceal_color;
+        ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+        if (ret) {
+            DEBUG_PRINT_ERROR("Failed to set conceal color %d\n", ret);
         }
 
         //Get the hardware capabilities
