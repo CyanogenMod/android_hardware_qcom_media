@@ -22,6 +22,7 @@ libmm-venc-def += -UOUTPUT_BUFFER_LOG
 libmm-venc-def += -USINGLE_ENCODER_INSTANCE
 ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
 libmm-venc-def += -DMAX_RES_1080P
+libmm-venc-def += -DNO_IOMMU
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
 libmm-venc-def += -DMAX_RES_1080P

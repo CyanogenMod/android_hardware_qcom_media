@@ -25,6 +25,7 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -DTEST_TS_FROM_SEI
+libOmxVdec-def += -DNO_IOMMU
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
 libOmxVdec-def += -DMAX_RES_1080P
