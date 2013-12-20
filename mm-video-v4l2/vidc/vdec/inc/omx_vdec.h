@@ -988,6 +988,26 @@ class omx_vdec: public qc_omx_component
         void send_codec_config();
 #endif
         OMX_TICKS m_last_rendered_TS;
+
+        class perf_control {
+            // 2 cores will be requested if framerate is beyond 45 fps
+            static const int MIN_FRAME_DURATION_FOR_PERF_REQUEST_US = (1e6 / 45);
+            typedef int (*perf_lock_acquire_t)(int, int, int*, int);
+            typedef int (*perf_lock_release_t)(int);
+
+            public:
+                perf_control();
+                ~perf_control();
+                void request_cores(int frame_duration_us);
+            private:
+                void *m_perf_lib;
+                int m_perf_handle;
+                perf_lock_acquire_t m_perf_lock_acquire;
+                perf_lock_release_t m_perf_lock_release;
+                //void (*perf_cpu_boost)(int ntasks);
+                void load_lib();
+        };
+        perf_control m_perf_control;
 };
 
 #ifdef _MSM8974_
