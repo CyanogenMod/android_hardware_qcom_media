@@ -76,10 +76,12 @@ public class QCMediaPlayer extends MediaPlayer
   private void callOnMPDAttributeListener()
   {
     Log.d(TAG, "callOnMPDAttributeListener");
-      String mpdAttributes = QCgetStringParameter(OnMPDAttributeListener.INVOKE_ID_GET_ATTRIBUTES_TYPE_MPD);
     if (mOnMPDAttributeListener != null)
+    {
+        String mpdAttributes = QCgetStringParameter(OnMPDAttributeListener.INVOKE_ID_GET_ATTRIBUTES_TYPE_MPD);
         mOnMPDAttributeListener.onMPDAttribute(OnMPDAttributeListener.ATTRIBUTES_TYPE_MPD, mpdAttributes, this);
-      }
+    }
+  }
   private void callQCTimedTextListener(QCTimedText text)
   {
     if(mOnQCTimedTextListener != null)
@@ -207,8 +209,13 @@ public class QCMediaPlayer extends MediaPlayer
   }
   public String  QCGetParameter(int key)
   {
-    return QCgetStringParameter(key);
+    if(key == OnMPDAttributeListener.ATTRIBUTES_TYPE_MPD)
+    {
+      key = OnMPDAttributeListener.INVOKE_ID_GET_ATTRIBUTES_TYPE_MPD;
     }
+
+    return QCgetStringParameter(key);
+  }
   public Parcel QCPeriodicParameter(int key)
   {
       if(key == mOnQOEEventListener.ATTRIBUTES_QOE_EVENT_PERIODIC)
