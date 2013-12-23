@@ -49,6 +49,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include <limits.h>
 #include <qdMetaData.h>
+#ifdef DISPLAYCAF
+#include <QServiceUtils.h>
+#endif
 
 #ifndef _ANDROID_
 #include <sys/ioctl.h>
@@ -148,6 +151,9 @@ char ouputextradatafilename [] = "/data/extradata";
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
 
 bool omx_vdec::m_secure_display = false;
+#ifdef DISPLAYCAF
+pthread_mutex_t omx_vdec::m_secure_display_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 #ifdef MAX_RES_1080P
 static const OMX_U32 kMaxSmoothStreamingWidth = 1920;
@@ -9374,6 +9380,7 @@ int omx_vdec::secureDisplay(int mode) {
         return 0;
     }
 
+#ifndef DISPLAYCAF
     sp<IServiceManager> sm = defaultServiceManager();
     sp<qService::IQService> displayBinder =
         interface_cast<qService::IQService>(sm->getService(String16("display.qservice")));
@@ -9387,6 +9394,17 @@ int omx_vdec::secureDisplay(int mode) {
     else {
         DEBUG_PRINT_ERROR("secureDisplay(%d) display.qservice unavailable", mode);
     }
+#else
+    pthread_mutex_lock(&m_secure_display_lock);
+    securing(mode);
+    DEBUG_PRINT_HIGH("secureDisplay: %s",
+            (mode == qService::IQService::END)?"END":"START");
+    if (mode == qService::IQService::END) {
+        m_secure_display = true;
+    }
+    pthread_mutex_unlock(&m_secure_display_lock);
+
+#endif
     return 0;
 }
 
@@ -9400,6 +9418,7 @@ int omx_vdec::unsecureDisplay(int mode) {
     }
 
     sp<IServiceManager> sm = defaultServiceManager();
+#ifndef DISPLAYCAF
     sp<qService::IQService> displayBinder =
         interface_cast<qService::IQService>(sm->getService(String16("display.qservice")));
 
@@ -9407,6 +9426,13 @@ int omx_vdec::unsecureDisplay(int mode) {
         displayBinder->unsecuring(mode);
     else
         DEBUG_PRINT_ERROR("unsecureDisplay(%d) display.qservice unavailable", mode);
+#else
+    pthread_mutex_lock(&m_secure_display_lock);
+    unsecuring(mode);
+    DEBUG_PRINT_HIGH("unsecureDisplay: %s",
+            (mode == qService::IQService::END)?"END":"START");
+    pthread_mutex_unlock(&m_secure_display_lock);
+#endif
     return 0;
 }
 

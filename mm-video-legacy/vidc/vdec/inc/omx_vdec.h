@@ -886,6 +886,9 @@ private:
     };
     allocate_color_convert_buf client_buffers;
     static bool m_secure_display; //For qservice
+#ifdef DISPLAYCAF
+    static pthread_mutex_t m_secure_display_lock;
+#endif
     int secureDisplay(int mode);
     int unsecureDisplay(int mode);
 };
