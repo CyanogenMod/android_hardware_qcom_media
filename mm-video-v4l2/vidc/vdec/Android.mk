@@ -75,6 +75,7 @@ libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_MSM8974_
+libOmxVdec-def += -DVENUS_HEVC
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm_bronze)
 libOmxVdec-def += -DMAX_RES_1080P
