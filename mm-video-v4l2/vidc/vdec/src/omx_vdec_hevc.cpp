@@ -7806,11 +7806,11 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
         return;
 
     DEBUG_PRINT_HIGH(
-            "============== Extra Data =============="
-            "           Size: %lu"
-            "        Version: %lu"
-            "      PortIndex: %lu"
-            "           Type: %x"
+            "============== Extra Data ==============\n"
+            "           Size: %lu\n"
+            "        Version: %lu\n"
+            "      PortIndex: %lu\n"
+            "           Type: %x\n"
             "       DataSize: %lu",
             extra->nSize, extra->nVersion.nVersion,
             extra->nPortIndex, extra->eType, extra->nDataSize);
@@ -7818,12 +7818,12 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
     if (extra->eType == (OMX_EXTRADATATYPE)OMX_ExtraDataInterlaceFormat) {
         OMX_STREAMINTERLACEFORMAT *intfmt = (OMX_STREAMINTERLACEFORMAT *)extra->data;
         DEBUG_PRINT_HIGH(
-                "------ Interlace Format ------"
-                "                Size: %lu"
-                "             Version: %lu"
-                "           PortIndex: %lu"
-                " Is Interlace Format: %d"
-                "   Interlace Formats: %lu"
+                "------ Interlace Format ------\n"
+                "                Size: %lu\n"
+                "             Version: %lu\n"
+                "           PortIndex: %lu\n"
+                " Is Interlace Format: %d\n"
+                "   Interlace Formats: %lu\n"
                 "=========== End of Interlace ===========",
                 intfmt->nSize, intfmt->nVersion.nVersion, intfmt->nPortIndex,
                 intfmt->bInterlaceFormat, intfmt->nInterlaceFormats);
@@ -7831,13 +7831,13 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
         OMX_QCOM_EXTRADATA_FRAMEINFO *fminfo = (OMX_QCOM_EXTRADATA_FRAMEINFO *)extra->data;
 
         DEBUG_PRINT_HIGH(
-                "-------- Frame Format --------"
-                "             Picture Type: %d"
-                "           Interlace Type: %d"
-                " Pan Scan Total Frame Num: %lu"
-                "   Concealed Macro Blocks: %lu"
-                "               frame rate: %lu"
-                "           Aspect Ratio X: %lu"
+                "-------- Frame Format --------\n"
+                "             Picture Type: %d\n"
+                "           Interlace Type: %d\n"
+                " Pan Scan Total Frame Num: %lu\n"
+                "   Concealed Macro Blocks: %lu\n"
+                "               frame rate: %lu\n"
+                "           Aspect Ratio X: %lu\n"
                 "           Aspect Ratio Y: %lu",
                 fminfo->ePicType,
                 fminfo->interlaceType,
@@ -7849,11 +7849,11 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 
         for (OMX_U32 i = 0; i < fminfo->panScan.numWindows; i++) {
             DEBUG_PRINT_HIGH(
-                    "------------------------------"
-                    "     Pan Scan Frame Num: %lu"
-                    "            Rectangle x: %ld"
-                    "            Rectangle y: %ld"
-                    "           Rectangle dx: %ld"
+                    "------------------------------\n"
+                    "     Pan Scan Frame Num: %lu\n"
+                    "            Rectangle x: %ld\n"
+                    "            Rectangle y: %ld\n"
+                    "           Rectangle dx: %ld\n"
                     "           Rectangle dy: %ld",
                     i, fminfo->panScan.window[i].x, fminfo->panScan.window[i].y,
                     fminfo->panScan.window[i].dx, fminfo->panScan.window[i].dy);
