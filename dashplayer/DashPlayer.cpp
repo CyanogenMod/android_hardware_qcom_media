@@ -750,6 +750,9 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                      mFlushingVideo = SHUT_DOWN;
                  }
                }
+               else if (nRet != PERMISSION_DENIED) {
+                      mTimeDiscontinuityPending = true;
+                }
                // get the new seeked position
                newSeekTime = seekTimeUs;
                ALOGV("newSeekTime %lld", newSeekTime);
