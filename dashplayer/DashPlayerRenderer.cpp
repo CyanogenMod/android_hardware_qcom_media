@@ -139,6 +139,10 @@ void DashPlayer::Renderer::signalTimeDiscontinuity() {
     mWasPaused = false;
     mSeekTimeUs = 0;
     mSyncQueues = mHasAudio && mHasVideo;
+    mIsFirstVideoframeReceived = false;
+    mPendingPostAudioDrains = false;
+    mHasAudio = false;
+    mHasVideo = false;
     DPR_MSG_HIGH("signalTimeDiscontinuity mHasAudio %d mHasVideo %d mSyncQueues %d",mHasAudio,mHasVideo,mSyncQueues);
 }
 
@@ -486,9 +490,30 @@ void DashPlayer::Renderer::onQueueBuffer(const sp<AMessage> &msg) {
 
     if (audio) {
         mAudioQueue.push_back(entry);
+        int64_t audioTimeUs;
+        (buffer->meta())->findInt64("timeUs", &audioTimeUs);
+        if ((mHasVideo && mIsFirstVideoframeReceived)
+            || !mHasVideo){
         postDrainAudioQueue();
+            return;
+        }
+        else
+        {
+          mPendingPostAudioDrains = true;
+          DPR_MSG_HIGH("Not rendering Audio Sample with TS: %lld  as Video frame is not decoded", audioTimeUs);
+        }
     } else {
         mVideoQueue.push_back(entry);
+        int64_t videoTimeUs;
+        (buffer->meta())->findInt64("timeUs", &videoTimeUs);
+        if (!mIsFirstVideoframeReceived) {
+            mIsFirstVideoframeReceived = true;
+            DPR_MSG_HIGH("Received first video Sample with TS: %lld", videoTimeUs);
+            if (mPendingPostAudioDrains) {
+                mPendingPostAudioDrains = false;
+                postDrainAudioQueue();
+            }
+        }
         postDrainVideoQueue();
     }
 

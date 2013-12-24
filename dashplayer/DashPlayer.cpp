@@ -1234,10 +1234,16 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
         *decoder = new Decoder(notify);
         DP_MSG_LOW("@@@@:: setting Sink/Renderer pointer to decoder");
         (*decoder)->setSink(mAudioSink, mRenderer);
+         if (mRenderer != NULL) {
+            mRenderer->setMediaPresence(true,true);
+        }
     } else if (track == kVideo) {
         notify = new AMessage(kWhatVideoNotify ,id());
         *decoder = new Decoder(notify, mNativeWindow);
         DP_MSG_HIGH("Creating Video Decoder ");
+        if (mRenderer != NULL) {
+            mRenderer->setMediaPresence(false,true);
+        }
     } else if (track == kText) {
         mTextNotify = new AMessage(kWhatTextNotify ,id());
         *decoder = new Decoder(mTextNotify);
