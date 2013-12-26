@@ -60,7 +60,7 @@ struct DashPlayer::Source : public RefBase {
         return INVALID_OPERATION;
     }
 
-    virtual bool isPrepareDone() {
+    virtual status_t isPrepareDone() {
         return INVALID_OPERATION;
     }
 
@@ -84,14 +84,20 @@ struct DashPlayer::Source : public RefBase {
        return INVALID_OPERATION;
     }
 
-    virtual void pause() {
+    virtual status_t pause() {
         ALOGE("Pause called on Wrong DataSource.. Please check !!!");
+        return INVALID_OPERATION;
         //CHECK(false);
     }
 
-    virtual void resume() {
+    virtual status_t resume() {
         ALOGE("Resume called on Wrong DataSource.. Please check !!!");
+        return INVALID_OPERATION;
         //CHECK(false);
+    }
+
+    virtual status_t getRepositionRange(uint64_t* pMin, uint64_t* pMax, uint64_t* pMaxDepth) {
+      return INVALID_OPERATION;
     }
 
 protected:

@@ -294,6 +294,18 @@ public class QCMediaPlayer extends MediaPlayer
         QOEPeriodic
   };*/
 
+
+  /**
+   * Key to query reposition range. Value needs to be same as defined in DashPlayer.h
+   */
+  public static final int KEY_DASH_REPOSITION_RANGE = 9000;
+
+  /**
+   * Keys for dash playback modes. Value needs to be same as defined in DashPlayer.h
+   */
+  public static final int KEY_DASH_SEEK_EVENT = 7001;
+  public static final int KEY_DASH_PAUSE_EVENT = 7002;
+
   private class QCMediaEventHandler extends Handler
   {
         private QCMediaPlayer mQCMediaPlayer;
