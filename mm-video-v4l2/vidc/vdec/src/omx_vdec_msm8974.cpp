@@ -5757,7 +5757,12 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         //get the buffer type and fd info
         meta = (struct VideoDecoderOutputMetaData *)buffer->pBuffer;
         handle = (private_handle_t *)meta->pHandle;
-        DEBUG_PRINT_LOW("FTB: buftype: %d bufhndl: %p", meta->eType, meta->pHandle);
+        DEBUG_PRINT_LOW("FTB: metabuf: %p buftype: %d bufhndl: %p ", meta, meta->eType, meta->pHandle);
+
+        if (!handle) {
+            DEBUG_PRINT_ERROR("FTB: Error: IL client passed an invalid buf handle - %p", handle);
+            return OMX_ErrorBadParameter;
+        }
 
         //map the buffer handle based on the size set on output port definition.
         if (!secure_mode) {
