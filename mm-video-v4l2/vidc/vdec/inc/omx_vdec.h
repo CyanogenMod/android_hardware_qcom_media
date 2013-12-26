@@ -925,6 +925,7 @@ class omx_vdec: public qc_omx_component
         bool is_down_scalar_enabled;
 #endif
         bool m_power_hinted;
+        bool is_q6_platform;
         OMX_ERRORTYPE power_module_register();
         OMX_ERRORTYPE power_module_deregister();
         bool msg_thread_created;
