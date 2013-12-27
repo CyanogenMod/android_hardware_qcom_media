@@ -5761,6 +5761,10 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size = drv_ctx.op_buf.buffer_size;
         buf_ref_add(drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd,
                     drv_ctx.ptr_outputbuffer[nPortIndex].offset);
+
+        //Store private handle from GraphicBuffer
+        native_buffer[nPortIndex].privatehandle = handle;
+        native_buffer[nPortIndex].nativehandle = handle;
     }
 
     if (m_state == OMX_StateInvalid) {
@@ -6440,11 +6444,18 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             buffer, buffer->pBuffer);
     pending_output_buffers --;
 
-    if (dynamic_buf_mode && !secure_mode) {
+    if (dynamic_buf_mode) {
         unsigned int nPortIndex = 0;
         nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
-        munmap(drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr,
-                        drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size);
+
+        if (!secure_mode) {
+            munmap(drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr,
+                            drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size);
+        }
+
+        //Clear graphic buffer handles in dynamic mode
+        native_buffer[nPortIndex].privatehandle = NULL;
+        native_buffer[nPortIndex].nativehandle = NULL;
     }
     if (buffer->nFlags & OMX_BUFFERFLAG_EOS) {
         DEBUG_PRINT_HIGH("Output EOS has been reached");
