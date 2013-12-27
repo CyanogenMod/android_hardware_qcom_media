@@ -734,7 +734,6 @@ class omx_vdec: public qc_omx_component
         nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
 
-
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
