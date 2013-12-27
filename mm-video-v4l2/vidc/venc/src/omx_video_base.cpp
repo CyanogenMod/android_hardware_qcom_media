@@ -2433,6 +2433,8 @@ OMX_ERRORTYPE omx_video::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
             DEBUG_PRINT_LOW("FreeBuffer:: i/p AllocateBuffer case");
             if(!secure_session) {
                 munmap (m_pInput_pmem[index].buffer,m_pInput_pmem[index].size);
+            } else {
+                free(m_pInput_pmem[index].buffer);
             }
             close (m_pInput_pmem[index].fd);
 #ifdef USE_ION
@@ -2483,6 +2485,11 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
             if(!secure_session) {
                 munmap (m_pOutput_pmem[index].buffer,
                         m_pOutput_pmem[index].size);
+            } else {
+                char *data = (char*) m_pOutput_pmem[index].buffer;
+                native_handle_t *handle = (native_handle_t*) data + 4;
+                native_handle_delete(handle);
+                free(m_pOutput_pmem[index].buffer);
             }
             close (m_pOutput_pmem[index].fd);
 #ifdef USE_ION
@@ -2684,6 +2691,10 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
 #endif
                 return OMX_ErrorInsufficientResources;
             }
+        } else {
+            //This should only be used for passing reference to source type and
+            //secure handle fd struct native_handle_t*
+            m_pInput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
         }
 
         (*bufferHdr)->pBuffer           = (OMX_U8 *)m_pInput_pmem[i].buffer;
@@ -2846,6 +2857,17 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
 #endif
                     return OMX_ErrorInsufficientResources;
                 }
+            }
+            else {
+                //This should only be used for passing reference to source type and
+                //secure handle fd struct native_handle_t*
+                m_pOutput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
+                native_handle_t *handle = native_handle_create(1, 0);
+                handle->data[0] = m_pOutput_pmem[i].fd;
+                char *data = (char*) m_pOutput_pmem[i].buffer;
+                OMX_U32 type = 1;
+                memcpy(data, &type, 4);
+                memcpy(data + 4, &handle, sizeof(native_handle_t*));
             }
 
             *bufferHdr = (m_out_mem_ptr + i );
