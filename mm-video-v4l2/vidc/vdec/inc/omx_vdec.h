@@ -984,6 +984,9 @@ class omx_vdec: public qc_omx_component
         struct debug_cap m_debug;
         int log_input_buffers(const char *, int);
         int log_output_buffers(OMX_BUFFERHEADERTYPE *);
+#ifdef _MSM8974_
+        void send_codec_config();
+#endif
 };
 
 #ifdef _MSM8974_
