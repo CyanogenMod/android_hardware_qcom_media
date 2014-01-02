@@ -5449,8 +5449,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         post_event ((unsigned)hComp,(unsigned)buffer,
                 OMX_COMPONENT_GENERATE_ETB_ARBITRARY);
     } else {
-        if (!(client_extradata & OMX_TIMEINFO_EXTRADATA))
-            set_frame_rate(buffer->nTimeStamp);
         post_event ((unsigned)hComp,(unsigned)buffer,OMX_COMPONENT_GENERATE_ETB);
     }
     return OMX_ErrorNone;
@@ -5579,6 +5577,9 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
         }
 
     }
+
+    if (!(client_extradata & OMX_TIMEINFO_EXTRADATA))
+        set_frame_rate(buffer->nTimeStamp);
 
     frameinfo.bufferaddr = temp_buffer->bufferaddr;
     frameinfo.client_data = (void *) buffer;
