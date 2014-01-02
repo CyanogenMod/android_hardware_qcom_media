@@ -1771,8 +1771,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
-        if (eRet == OMX_ErrorNone && !secure_mode)
-            enable_extradata(DEFAULT_EXTRADATA, true, true);
+        if (strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
+                OMX_MAX_STRINGNAME_SIZE)
+                && (eRet == OMX_ErrorNone)
+                && (!secure_mode))
+                enable_extradata(DEFAULT_EXTRADATA, true, true);
 #endif
         eRet = get_buffer_req(&drv_ctx.ip_buf);
         DEBUG_PRINT_HIGH("Input Buffer Size =%d",drv_ctx.ip_buf.buffer_size);
