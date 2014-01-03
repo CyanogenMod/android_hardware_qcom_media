@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -8163,13 +8163,22 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
     portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
     portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
     portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
-    DEBUG_PRINT_HIGH("update_portdef Width = %lu Height = %lu Stride = %ld"
-            " SliceHeight = %lu", portDefn->format.video.nFrameWidth,
+    if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) {
+        portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
+        portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
+    }
+    DEBUG_PRINT_HIGH("update_portdef(%lu): Width = %lu Height = %lu Stride = %ld "
+            "SliceHeight = %lu eColorFormat = %lu nBufSize %lu nBufCnt %lu",
+            portDefn->nPortIndex,
+            portDefn->format.video.nFrameWidth,
             portDefn->format.video.nFrameHeight,
             portDefn->format.video.nStride,
-            portDefn->format.video.nSliceHeight);
-    return eRet;
+            portDefn->format.video.nSliceHeight,
+            portDefn->format.video.eColorFormat,
+            portDefn->nBufferSize,
+            portDefn->nBufferCountActual);
 
+    return eRet;
 }
 
 OMX_ERRORTYPE omx_vdec::allocate_output_headers()
