@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -419,6 +419,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* google smooth-streaming support */
     OMX_QcomIndexParamVideoAdaptivePlaybackMode = 0x7F00002E,
+
+    /* "OMX.QCOM.index.param.video.QPExtradata" */
+    OMX_QcomIndexParamVideoQPExtraData = 0x7F00002F,
 };
 
 /**
@@ -840,6 +843,11 @@ typedef struct OMX_QCOM_FRAME_PACK_ARRANGEMENT
   OMX_U32 extension_flag;
 } OMX_QCOM_FRAME_PACK_ARRANGEMENT;
 
+typedef struct OMX_QCOM_EXTRADATA_QP
+{
+   OMX_U32        nQP;
+} OMX_QCOM_EXTRADATA_QP;
+
 typedef struct OMX_QCOM_EXTRADATA_FRAMEINFO
 {
    // common frame meta data. interlace related info removed
@@ -883,18 +891,19 @@ typedef union OMX_QCOM_EXTRADATA_CODEC_DATA
 
 typedef enum OMX_QCOM_EXTRADATATYPE
 {
-   OMX_ExtraDataFrameInfo = 0x7F000001,
-   OMX_ExtraDataH264 = 0x7F000002,
-   OMX_ExtraDataVC1 = 0x7F000003,
-   OMX_ExtraDataFrameDimension = 0x7F000004,
-   OMX_ExtraDataVideoEncoderSliceInfo = 0x7F000005,
-   OMX_ExtraDataConcealMB = 0x7F000006,
-   OMX_ExtraDataInterlaceFormat = 0x7F000007,
-   OMX_ExtraDataPortDef = 0x7F000008,
-   OMX_ExtraDataMP2ExtnData = 0x7F000009,
-   OMX_ExtraDataMP2UserData = 0x7F00000a,
-   OMX_ExtraDataVideoLTRInfo = 0x7F00000b,
-   OMX_ExtraDataFramePackingArrangement = 0x7F00000c,
+    OMX_ExtraDataFrameInfo =               0x7F000001,
+    OMX_ExtraDataH264 =                    0x7F000002,
+    OMX_ExtraDataVC1 =                     0x7F000003,
+    OMX_ExtraDataFrameDimension =          0x7F000004,
+    OMX_ExtraDataVideoEncoderSliceInfo =   0x7F000005,
+    OMX_ExtraDataConcealMB =               0x7F000006,
+    OMX_ExtraDataInterlaceFormat =         0x7F000007,
+    OMX_ExtraDataPortDef =                 0x7F000008,
+    OMX_ExtraDataMP2ExtnData =             0x7F000009,
+    OMX_ExtraDataMP2UserData =             0x7F00000a,
+    OMX_ExtraDataVideoLTRInfo =            0x7F00000b,
+    OMX_ExtraDataFramePackingArrangement = 0x7F00000c,
+    OMX_ExtraDataQP =                      0x7F00000d,
 } OMX_QCOM_EXTRADATATYPE;
 
 typedef struct  OMX_STREAMINTERLACEFORMATTYPE {
@@ -1112,6 +1121,7 @@ typedef struct QOMX_INDEXDOWNSCALAR {
 #define OMX_QCOM_INDEX_PARAM_INDEXEXTRADATA "OMX.QCOM.index.param.IndexExtraData"
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SLICEDELIVERYMODE "OMX.QCOM.index.param.SliceDeliveryMode"
 #define OMX_QCOM_INDEX_PARAM_VIDEO_FRAMEPACKING_EXTRADATA "OMX.QCOM.index.param.video.FramePackingExtradata"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_QP_EXTRADATA "OMX.QCOM.index.param.video.QPExtradata"
 #define OMX_QCOM_INDEX_CONFIG_VIDEO_FRAMEPACKING_INFO "OMX.QCOM.index.config.video.FramePackingInfo"
 
 typedef enum {
