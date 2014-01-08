@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -962,6 +962,13 @@ void* fbd_thread(void* pArg)
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
+                            }
+                            break;
+                        case OMX_ExtraDataQP:
+                            {
+                                DEBUG_PRINT("\nOMX_ExtraDataQP\n");
+                                OMX_QCOM_EXTRADATA_QP *qp_info = (OMX_QCOM_EXTRADATA_QP *)pExtra->data;
+                                DEBUG_PRINT("Input frame QP = %lu\n", qp_info->nQP);
                             }
                             break;
                         default:
@@ -1997,6 +2004,8 @@ int Play_Decoder()
 #endif
 #if 1
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
+            (OMX_PTR)&extra_data);
+    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoQPExtraData,
             (OMX_PTR)&extra_data);
 #endif
 #ifdef TEST_TS_FROM_SEI
