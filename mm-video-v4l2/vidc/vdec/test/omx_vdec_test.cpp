@@ -971,6 +971,14 @@ void* fbd_thread(void* pArg)
                                 DEBUG_PRINT("Input frame QP = %lu\n", qp_info->nQP);
                             }
                             break;
+                        case OMX_ExtraDataInputBitsInfo:
+                            {
+                                DEBUG_PRINT("\nOMX_ExtraDataInputBitsInfo\n");
+                                OMX_QCOM_EXTRADATA_BITS_INFO *bits_info = (OMX_QCOM_EXTRADATA_BITS_INFO *)pExtra->data;
+                                DEBUG_PRINT("Input header bits size = %lu\n", bits_info->header_bits);
+                                DEBUG_PRINT("Input frame bits size = %lu\n", bits_info->frame_bits);
+                            }
+                            break;
                         default:
                             DEBUG_PRINT_ERROR("Unknown Extrata!");
                     }
@@ -2006,6 +2014,8 @@ int Play_Decoder()
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
             (OMX_PTR)&extra_data);
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoQPExtraData,
+            (OMX_PTR)&extra_data);
+    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoInputBitsInfoExtraData,
             (OMX_PTR)&extra_data);
 #endif
 #ifdef TEST_TS_FROM_SEI
