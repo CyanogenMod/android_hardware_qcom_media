@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -940,6 +940,13 @@ void* fbd_thread(void* pArg)
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
+                            }
+                            break;
+                        case OMX_ExtraDataQP:
+                            {
+                                DEBUG_PRINT("\nOMX_ExtraDataQP\n");
+                                OMX_QCOM_EXTRADATA_QP *qp_info = (OMX_QCOM_EXTRADATA_QP *)pExtra->data;
+                                DEBUG_PRINT("Input frame QP = %lu\n", qp_info->nQP);
                             }
                             break;
                         default:
@@ -1969,7 +1976,8 @@ int Play_Decoder()
     char frameinfo_value[PROPERTY_VALUE_MAX] = {0};
     char interlace_value[PROPERTY_VALUE_MAX] = {0};
     char h264info_value[PROPERTY_VALUE_MAX] = {0};
-    OMX_U32 frameinfo = 0,interlace = 0,h264info =0;
+    char QP_value[PROPERTY_VALUE_MAX] = {0};
+    OMX_U32 frameinfo = 0, interlace = 0, h264info = 0, QPdata = 0;
     property_get("vidc.vdec.debug.frameinfo", frameinfo_value, "0");
     frameinfo = atoi(frameinfo_value);
     if (frameinfo) {
@@ -1987,6 +1995,12 @@ int Play_Decoder()
     if (h264info) {
         OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamH264TimeInfo,
             (OMX_PTR)&extra_data);
+    }
+    property_get("vidc.vdec.debug.QP", QP_value, "0");
+    QPdata = atoi(QP_value);
+    if (QPdata) {
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoQPExtraData,
+                            (OMX_PTR)&extra_data);
     }
 
     /* Query the decoder outport's min buf requirements */
