@@ -1,5 +1,5 @@
 ﻿/*---------------------------------------------------------------------------------------
-Copyright (c) 2013 The Linux Foundation. All rights reserved.
+Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -315,7 +315,7 @@ void* async_message_thread (void *input)
       unsigned ident = 0;
       v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
       v4l2_buf.memory = V4L2_MEMORY_USERPTR;
-      omx->m_index_q.pop_entry(&p1,&p2,&ident);
+      omx->m_index_q_ftb.pop_entry(&p1,&p2,&ident);
       v4l2_buf.index = ident;
       v4l2_buf.bytesused = omx->drv_ctx.etb_ftb_info.ftb_len;
       omx->drv_ctx.etb_ftb_info.ftb_cnt--;
@@ -338,10 +338,14 @@ void* async_message_thread (void *input)
     }
     if(omx->drv_ctx.etb_ftb_info.etb_cnt > 0) {
       struct vdpp_msginfo vdpp_msg;
+      unsigned p1 = 0;
+      unsigned p2 = 0;
+      unsigned ident = 0;
       v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
       v4l2_buf.memory = V4L2_MEMORY_USERPTR;
 
-      v4l2_buf.index = omx->drv_ctx.etb_ftb_info.etb_index;
+      omx->m_index_q_etb.pop_entry(&p1,&p2,&ident);
+      v4l2_buf.index = ident;
       DEBUG_PRINT_LOW("async_message_thread 3 omx->drv_ctx.etb_ftb_info.etb_cnt = %d\n", omx->drv_ctx.etb_ftb_info.etb_cnt);
       omx->drv_ctx.etb_ftb_info.etb_cnt--;
       DEBUG_PRINT_LOW("async_message_thread 4 omx->drv_ctx.etb_ftb_info.etb_cnt = %d\n", omx->drv_ctx.etb_ftb_info.etb_cnt);
@@ -849,7 +853,7 @@ void omx_vdpp::process_event_cb(void *ctxt, unsigned char id)
       if (qsize)
       {
         pThis->m_ftb_q.pop_entry((unsigned *)&p1, (unsigned *)&p2, &ident);
-        DEBUG_PRINT_HIGH("process_event_cb, p1 = 0x%08x, p2 = 0x%08x", p1, p2);
+        DEBUG_PRINT_HIGH("process_event_cb, p1 = 0x%08x, p2 = 0x%08x, ident = 0x%08x", p1, p2, ident);
       }
     }
 
@@ -1639,8 +1643,8 @@ OMX_ERRORTYPE omx_vdpp::component_init(OMX_STRING role)
         setFormatParams(output_capability, drv_ctx.input_bytesperpixel, &(fmt.fmt.pix_mp.num_planes));
         for( i=0; i<fmt.fmt.pix_mp.num_planes; i++ )
         {
-            fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[i] * fmt.fmt.pix_mp.height);
-            fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[0]); // NV12 UV plane has the same width as Y, but 1/2 YH
+            fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[i] * fmt.fmt.pix_mp.height);
+            fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[0]); // NV12 UV plane has the same width as Y, but 1/2 YH
             DEBUG_PRINT_HIGH(" fmt.fmt.pix_mp.plane_fmt[%d].sizeimage = %d \n ", i, fmt.fmt.pix_mp.plane_fmt[i].sizeimage);
         }
 #ifndef STUB_VPU
@@ -1667,10 +1671,10 @@ OMX_ERRORTYPE omx_vdpp::component_init(OMX_STRING role)
         setFormatParams(capture_capability, drv_ctx.output_bytesperpixel, &(fmt.fmt.pix_mp.num_planes));
         for( i=0; i<fmt.fmt.pix_mp.num_planes; i++ )
         {
-            fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth(fmt.fmt.pix_mp.width *
+            fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth128(fmt.fmt.pix_mp.width *
                                                                         drv_ctx.output_bytesperpixel[i] *
                                                                         fmt.fmt.pix_mp.height);
-            fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]);
+            fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]);
             DEBUG_PRINT_HIGH(" fmt.fmt.pix_mp.plane_fmt[%d].sizeimage = %d \n ", i, fmt.fmt.pix_mp.plane_fmt[i].sizeimage);
         }
 #ifndef STUB_VPU
@@ -2209,6 +2213,7 @@ OMX_ERRORTYPE  omx_vdpp::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
         "with param1: 0x%x", param1);
     if(OMX_CORE_INPUT_PORT_INDEX == param1 || OMX_ALL == param1)
     {   // do not call flush ioctl if there is no buffer queued. Just return callback
+#ifndef STUB_VPU // VPU stub doesn't set any streaming flag
         if(!streaming[OUTPUT_PORT])
         {
             m_cb.EventHandler(&m_cmp, m_app_data, OMX_EventCmdComplete,OMX_CommandFlush,
@@ -2217,6 +2222,7 @@ OMX_ERRORTYPE  omx_vdpp::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
             sem_post (&m_cmd_lock);
         }
         else
+#endif
         {
             BITMASK_SET(&m_flags, OMX_COMPONENT_INPUT_FLUSH_PENDING);
         }
@@ -2412,18 +2418,6 @@ bool omx_vdpp::execute_omx_flush(OMX_U32 flushType)
     // dq output
     if(output_flush_progress)
     {
-      //bufreq.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-      //bufreq.memory = V4L2_MEMORY_USERPTR;
-      //bufreq.count = 0;
-      //if(ioctl(drv_ctx.video_vpu_fd,VIDIOC_REQBUFS, &bufreq))
-      //{
-      //  DEBUG_PRINT_ERROR("VDPP output Flush ERROR VIDIOC_REQBUFS to 0\n");
-      //}
-      //else
-      //{
-      //  DEBUG_PRINT_LOW("VDPP output Flush set VIDIOC_REQBUFS to 0\n");
-      //}
-
 	  vdpp_msg.msgcode=VDPP_MSG_RESP_FLUSH_OUTPUT_DONE;
 	  vdpp_msg.status_code=VDPP_S_SUCCESS;
 	  DEBUG_PRINT_HIGH("Simulate VDPP Output Flush Done Recieved From Driver\n");
@@ -2435,18 +2429,6 @@ bool omx_vdpp::execute_omx_flush(OMX_U32 flushType)
     // dq input
     if(input_flush_progress)
     {
-      //bufreq.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE; //input buffer DQ
-      //bufreq.memory = V4L2_MEMORY_USERPTR;
-      //bufreq.count = 0;
-      //if(ioctl(drv_ctx.video_vpu_fd,VIDIOC_REQBUFS, &bufreq))
-      //{
-      //  DEBUG_PRINT_ERROR("VDPP input Flush error VIDIOC_REQBUFS to 0\n");
-      //}
-      //else
-      //{
-      //  DEBUG_PRINT_LOW("VDPP input Flush set VIDIOC_REQBUFS to 0\n");
-      //}
-
 	  vdpp_msg.msgcode=VDPP_MSG_RESP_FLUSH_INPUT_DONE;
 	  vdpp_msg.status_code=VDPP_S_SUCCESS;
 	  DEBUG_PRINT_HIGH("Simulate VDPP Input Flush Done Recieved From Driver \n");
@@ -2981,10 +2963,9 @@ OMX_ERRORTYPE  omx_vdpp::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
           unsigned int buffer_size;
           memset(&fmt, 0, sizeof(fmt));
-          if(drv_ctx.video_resolution_output.frame_height !=
-               portDefn->format.video.nFrameHeight ||
-             drv_ctx.video_resolution_output.frame_width  !=
-               portDefn->format.video.nFrameWidth)
+
+          // set output resolution based on port definition. scan_lines and stride settings need
+          //  to match format setting requirement (QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m)
           {
              DEBUG_PRINT_LOW(" SetParam OP: WxH(%lu x %lu)\n",
                            portDefn->format.video.nFrameWidth,
@@ -2994,23 +2975,23 @@ OMX_ERRORTYPE  omx_vdpp::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
              {
                 drv_ctx.video_resolution_output.frame_height = portDefn->format.video.nFrameHeight;
                 drv_ctx.video_resolution_output.frame_width = portDefn->format.video.nFrameWidth;
-                drv_ctx.video_resolution_output.scan_lines = portDefn->format.video.nFrameHeight;
-                drv_ctx.video_resolution_output.stride = portDefn->format.video.nFrameWidth;  // paddedFrameWidth(portDefn->format.video.nFrameWidth)
+                drv_ctx.video_resolution_output.scan_lines = paddedFrameWidth32(portDefn->format.video.nFrameHeight);
+                drv_ctx.video_resolution_output.stride = paddedFrameWidth128(portDefn->format.video.nFrameWidth);
 
 		        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		        fmt.fmt.pix_mp.height = drv_ctx.video_resolution_output.frame_height;
 		        fmt.fmt.pix_mp.width = drv_ctx.video_resolution_output.frame_width;
 		        fmt.fmt.pix_mp.field = V4L2_FIELD_NONE;
 		        fmt.fmt.pix_mp.pixelformat = capture_capability;
-                DEBUG_PRINT_HIGH("VP output frame width = %d, height = %d, drv_ctx.video_resolution_output.stride = %d", fmt.fmt.pix_mp.width,
-                        fmt.fmt.pix_mp.height, drv_ctx.video_resolution_output.stride);
+                DEBUG_PRINT_HIGH("VP output frame width = %d, height = %d, drv_ctx.video_resolution_output.stride = %d, drv_ctx.video_resolution_output.scan_lines = %d", fmt.fmt.pix_mp.width,
+                        fmt.fmt.pix_mp.height, drv_ctx.video_resolution_output.stride, drv_ctx.video_resolution_output.scan_lines);
                 // NV12 has 2 planes.
                 /* Set format for each plane. */
                 setFormatParams(capture_capability, drv_ctx.output_bytesperpixel, &(fmt.fmt.pix_mp.num_planes));
                 for( i=0; i<fmt.fmt.pix_mp.num_planes; i++ )
                 {
-                    fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[i] * fmt.fmt.pix_mp.height);
-                    fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]); // both plane have the same plane stride
+                    fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[i] * fmt.fmt.pix_mp.height);
+                    fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]); // both plane have the same plane stride
 			    DEBUG_PRINT_HIGH("before VIDIOC_S_FMT (op) fmt.fmt.pix_mp.plane_fmt[%d].sizeimage = %d \n",i,fmt.fmt.pix_mp.plane_fmt[i].sizeimage);
 
                 }
@@ -3140,8 +3121,8 @@ OMX_ERRORTYPE  omx_vdpp::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 setFormatParams(output_capability, drv_ctx.input_bytesperpixel, &(fmt.fmt.pix_mp.num_planes));
                 for( i=0; i<fmt.fmt.pix_mp.num_planes; i++ )
                 {
-                    fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[i] * fmt.fmt.pix_mp.height);
-                    fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[0]); // both plane have the same plane stride
+                    fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[i] * fmt.fmt.pix_mp.height);
+                    fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[0]); // both plane have the same plane stride
 			    DEBUG_PRINT_HIGH("before VIDIOC_S_FMT (ip) fmt.fmt.pix_mp.plane_fmt[%d].sizeimage = %d \n",i,fmt.fmt.pix_mp.plane_fmt[i].sizeimage);
                 }
 
@@ -3163,8 +3144,8 @@ OMX_ERRORTYPE  omx_vdpp::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     // set output resolution the same as input
                     drv_ctx.video_resolution_output.frame_height = portDefn->format.video.nFrameHeight;
                     drv_ctx.video_resolution_output.frame_width = portDefn->format.video.nFrameWidth;
-                    drv_ctx.video_resolution_output.scan_lines = portDefn->format.video.nSliceHeight;
-                    drv_ctx.video_resolution_output.stride = portDefn->format.video.nStride;
+                    drv_ctx.video_resolution_output.scan_lines = paddedFrameWidth32(portDefn->format.video.nSliceHeight);
+                    drv_ctx.video_resolution_output.stride = paddedFrameWidth128(portDefn->format.video.nStride);
 
 		            fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
 		            fmt.fmt.pix_mp.height = drv_ctx.video_resolution_output.frame_height;
@@ -3178,8 +3159,8 @@ OMX_ERRORTYPE  omx_vdpp::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     setFormatParams(capture_capability, drv_ctx.output_bytesperpixel, &(fmt.fmt.pix_mp.num_planes));
                     for( i=0; i<fmt.fmt.pix_mp.num_planes; i++ )
                     {
-                        fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[i] * fmt.fmt.pix_mp.height);
-                        fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]); // both plane have the same plane stride
+                        fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[i] * fmt.fmt.pix_mp.height);
+                        fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]); // both plane have the same plane stride
 				    DEBUG_PRINT_HIGH("before VIDIOC_S_FMT op fmt.fmt.pix_mp.plane_fmt[%d].sizeimage = %d \n",i,fmt.fmt.pix_mp.plane_fmt[i].sizeimage);
                     }
 
@@ -3282,10 +3263,10 @@ OMX_ERRORTYPE  omx_vdpp::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
               setFormatParams(capture_capability, drv_ctx.output_bytesperpixel, &(fmt.fmt.pix_mp.num_planes));
               for( i=0; i<fmt.fmt.pix_mp.num_planes; i++ )
               {
-                  fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth(fmt.fmt.pix_mp.width *
+                  fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth128(fmt.fmt.pix_mp.width *
                                                                            drv_ctx.output_bytesperpixel[i]  *
                                                                            fmt.fmt.pix_mp.height);
-                  fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]);
+                  fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]);
               }
 #ifndef STUB_VPU
               ret = ioctl(drv_ctx.video_vpu_fd, VIDIOC_S_FMT, &fmt);
@@ -3969,9 +3950,12 @@ OMX_ERRORTYPE  omx_vdpp::use_output_buffer(
         drv_ctx.ptr_outputbuffer[i].pmem_fd = handle->fd;
         drv_ctx.ptr_outputbuffer[i].offset = 0;
         drv_ctx.ptr_outputbuffer[i].bufferaddr = buff;
-        drv_ctx.ptr_outputbuffer[i].mmaped_size =
-            drv_ctx.ptr_outputbuffer[i].buffer_len = drv_ctx.op_buf.buffer_size;
-        DEBUG_PRINT_HIGH("Use_op_buf:m_enable_android_native_buffers 5 drv_ctx.ptr_outputbuffer[i].bufferaddr = %p\n", drv_ctx.ptr_outputbuffer[i].bufferaddr);
+        drv_ctx.ptr_outputbuffer[i].buffer_len = drv_ctx.op_buf.buffer_size;
+        drv_ctx.ptr_outputbuffer[i].mmaped_size = handle->size;
+        DEBUG_PRINT_HIGH("Use_op_buf:m_enable_android_native_buffers 5 drv_ctx.ptr_outputbuffer[i].bufferaddr = %p, size1=%d, size2=%d\n",
+                drv_ctx.ptr_outputbuffer[i].bufferaddr,
+                drv_ctx.op_buf.buffer_size,
+                handle->size);
     } else
 #endif
 
@@ -4317,7 +4301,10 @@ OMX_ERRORTYPE  omx_vdpp::use_input_buffers(
         if (!m_use_android_native_buffers) {
                 buff =  (OMX_U8*)mmap(0, handle->size,
                                       PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd, 0);
-                DEBUG_PRINT_LOW("omx_vdpp::use_input_heap_buffers 4 buff = %p\n", buff);
+                DEBUG_PRINT_LOW("omx_vdpp::use_input_heap_buffers 4 buff = %p, size1=%d, size2=%d\n", buff,
+
+                        drv_ctx.ip_buf.buffer_size,
+                                     handle->size);
                 if (buff == MAP_FAILED) {
                   DEBUG_PRINT_ERROR("Failed to mmap pmem with fd = %d, size = %d", handle->fd, handle->size);
                   return OMX_ErrorInsufficientResources;
@@ -4384,7 +4371,7 @@ OMX_ERRORTYPE  omx_vdpp::use_input_buffers(
     drv_ctx.ptr_inputbuffer [i].bufferaddr = buff;
     drv_ctx.ptr_inputbuffer [i].pmem_fd = handle->fd;
     drv_ctx.ptr_inputbuffer [i].buffer_len = drv_ctx.ip_buf.buffer_size;
-    drv_ctx.ptr_inputbuffer [i].mmaped_size = drv_ctx.ip_buf.buffer_size;
+    drv_ctx.ptr_inputbuffer [i].mmaped_size = handle->size;
     drv_ctx.ptr_inputbuffer [i].offset = 0;
 
     input = m_phdr_pmem_ptr[m_in_alloc_cnt];
@@ -4500,6 +4487,7 @@ OMX_ERRORTYPE  omx_vdpp::use_buffer(
                  OMX_COMPONENT_GENERATE_EVENT);
     }
   }
+  DEBUG_PRINT_LOW("Use Buffer error = %d", error);
   return error;
 }
 
@@ -4561,12 +4549,12 @@ OMX_ERRORTYPE omx_vdpp::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
   }
 
   index = bufferHdr - m_out_mem_ptr;
-  DEBUG_PRINT_LOW(" Free ouput Buffer index = %d",index);
+  DEBUG_PRINT_LOW(" Free output Buffer index = %d",index);
 
   if (index < drv_ctx.op_buf.actualcount
       && drv_ctx.ptr_outputbuffer)
   {
-    DEBUG_PRINT_LOW(" Free ouput Buffer index = %d addr = %p", index,
+    DEBUG_PRINT_LOW(" Free output Buffer index = %d addr = %p", index,
                     drv_ctx.ptr_outputbuffer[index].bufferaddr);
 
     struct vdpp_setbuffer_cmd setbuffers;
@@ -4575,7 +4563,12 @@ OMX_ERRORTYPE omx_vdpp::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
         sizeof (vdpp_bufferpayload));
 #ifdef _ANDROID_
     if(m_enable_android_native_buffers) {
+        DEBUG_PRINT_LOW(" Free output Buffer android pmem_fd=%d", drv_ctx.ptr_outputbuffer[index].pmem_fd);
         if(drv_ctx.ptr_outputbuffer[index].pmem_fd > 0) {
+            DEBUG_PRINT_LOW(" Free output Buffer android 2 bufferaddr=%p, mmaped_size=%d",
+                    drv_ctx.ptr_outputbuffer[index].bufferaddr,
+                    drv_ctx.ptr_outputbuffer[index].mmaped_size);
+
             munmap(drv_ctx.ptr_outputbuffer[index].bufferaddr,
                     drv_ctx.ptr_outputbuffer[index].mmaped_size);
         }
@@ -5393,6 +5386,8 @@ OMX_ERRORTYPE  omx_vdpp::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
   unsigned nPortIndex = 0;
   OMX_ERRORTYPE ret = OMX_ErrorNone;
   struct vdpp_bufferpayload *temp_buffer;
+  unsigned p1 = 0;
+  unsigned p2 = 0;
 
   //DEBUG_PRINT_LOW("omx_vdpp::empty_this_buffer_proxy 1\n");
   /*Should we generate a Aync error event*/
@@ -5538,7 +5533,7 @@ OMX_ERRORTYPE  omx_vdpp::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     {
         int stride = drv_ctx.video_resolution_input.stride; //w
         int scanlines = drv_ctx.video_resolution_input.scan_lines; //h
-        DEBUG_PRINT_HIGH("omx_vdpp::empty_buffer_done 2.5 stride = %d, scanlines = %d", stride, scanlines);
+        DEBUG_PRINT_HIGH("omx_vdpp::empty_buffer_done 2.5 stride = %d, scanlines = %d , frame_height = %d", stride, scanlines, drv_ctx.video_resolution_input.frame_height);
         char *temp = (char *)temp_buffer->bufferaddr;
 	    unsigned i;
 	    int bytes_written = 0;
@@ -5599,7 +5594,7 @@ OMX_ERRORTYPE  omx_vdpp::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     plane[0].bytesused = drv_ctx.video_resolution_input.frame_width *
                          drv_ctx.video_resolution_input.frame_height *
                          drv_ctx.input_bytesperpixel[0];//buffer->nFilledLen = 0 at this stage
-    plane[0].length = paddedFrameWidth(drv_ctx.video_resolution_input.frame_width) *
+    plane[0].length = paddedFrameWidth128(drv_ctx.video_resolution_input.frame_width) *
                       drv_ctx.video_resolution_input.frame_height *
                       drv_ctx.input_bytesperpixel[0];
     plane[0].m.userptr = temp_buffer->pmem_fd;
@@ -5609,7 +5604,7 @@ OMX_ERRORTYPE  omx_vdpp::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     plane[extra_idx].bytesused = drv_ctx.video_resolution_input.frame_width *
                                  drv_ctx.video_resolution_input.frame_height *
                                  drv_ctx.input_bytesperpixel[extra_idx];
-    plane[extra_idx].length = paddedFrameWidth(drv_ctx.video_resolution_input.frame_width) *
+    plane[extra_idx].length = paddedFrameWidth128(drv_ctx.video_resolution_input.frame_width) *
                               drv_ctx.video_resolution_input.frame_height *
                               drv_ctx.input_bytesperpixel[extra_idx];
 
@@ -5666,8 +5661,8 @@ OMX_ERRORTYPE  omx_vdpp::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 #ifdef STUB_VPU
   drv_ctx.etb_ftb_info.etb_cnt++;
   DEBUG_PRINT_LOW("omx_vdpp::empty_this_buffer_proxy 15 drv_ctx.etb_ftb_info.etb_cnt = %d\n", drv_ctx.etb_ftb_info.etb_cnt);
-
-  drv_ctx.etb_ftb_info.etb_index = nPortIndex;
+  m_index_q_etb.insert_entry(p1,p2,nPortIndex);
+  //drv_ctx.etb_ftb_info.etb_index = nPortIndex;
   drv_ctx.etb_ftb_info.etb_len = buf.length;
   sem_post (&(drv_ctx.async_lock));
 #endif
@@ -5800,7 +5795,7 @@ OMX_ERRORTYPE  omx_vdpp::fill_this_buffer_proxy(
   plane[0].bytesused = drv_ctx.video_resolution_output.frame_width *
                        drv_ctx.video_resolution_output.frame_height *
                        drv_ctx.output_bytesperpixel[0];
-  plane[0].length = paddedFrameWidth(drv_ctx.video_resolution_output.frame_width) *
+  plane[0].length = paddedFrameWidth128(drv_ctx.video_resolution_output.frame_width) *
                        drv_ctx.video_resolution_output.frame_height *
                        drv_ctx.output_bytesperpixel[0];
 
@@ -5811,7 +5806,7 @@ OMX_ERRORTYPE  omx_vdpp::fill_this_buffer_proxy(
     plane[extra_idx].bytesused = drv_ctx.video_resolution_output.frame_width *
                                     drv_ctx.video_resolution_output.frame_height *
                                     drv_ctx.output_bytesperpixel[extra_idx];
-    plane[extra_idx].length = paddedFrameWidth(drv_ctx.video_resolution_output.frame_width) *
+    plane[extra_idx].length = paddedFrameWidth128(drv_ctx.video_resolution_output.frame_width) *
                                 drv_ctx.video_resolution_output.frame_height *
                                 drv_ctx.output_bytesperpixel[extra_idx];
     plane[extra_idx].m.userptr = drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd;
@@ -5821,9 +5816,9 @@ OMX_ERRORTYPE  omx_vdpp::fill_this_buffer_proxy(
     return OMX_ErrorBadParameter;
     }
   buf.m.planes = plane;
-  //DEBUG_PRINT_LOW("omx_vdpp::fill_this_buffer_proxy: buffer->nFilledLen = %lu, plane[0].bytesused = %d  plane[0].length = %d, \
-  //                  plane[extra_idx].bytesused = %d, plane[extra_idx].length = %d\n", \
-  //                 buffer->nFilledLen, plane[0].bytesused, plane[0].length, plane[extra_idx].bytesused, plane[extra_idx].length);
+  // DEBUG_PRINT_LOW("omx_vdpp::fill_this_buffer_proxy: buffer->nFilledLen = %lu, plane[0].bytesused = %d  plane[0].length = %d, \
+                    // plane[extra_idx].bytesused = %d, plane[extra_idx].reserved[0] = 0x%x\n", \
+                   // buffer->nFilledLen, plane[0].bytesused, plane[0].length, plane[extra_idx].bytesused, plane[extra_idx].reserved[0]);
   //
   //DEBUG_PRINT_LOW("omx_vdpp::fill_this_buffer_proxy 2 drv_ctx.ptr_outputbuffer[%d].bufferaddr = %p\n", nPortIndex,drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr);
   //DEBUG_PRINT_LOW("omx_vdpp::fill_this_buffer_proxy 2 drv_ctx.ptr_outputbuffer[%d].offset = %d", nPortIndex,drv_ctx.ptr_outputbuffer[nPortIndex].offset);
@@ -5843,7 +5838,7 @@ OMX_ERRORTYPE  omx_vdpp::fill_this_buffer_proxy(
 #ifdef STUB_VPU
 {
   drv_ctx.etb_ftb_info.ftb_cnt++;
-  m_index_q.insert_entry(p1,p2,nPortIndex);
+  m_index_q_ftb.insert_entry(p1,p2,nPortIndex);
   drv_ctx.etb_ftb_info.ftb_len = drv_ctx.op_buf.buffer_size;
   sem_post (&(drv_ctx.async_lock));
   DEBUG_PRINT_HIGH("omx_vdpp::fill_this_buffer_proxy 4 nPortIndex = %d, drv_ctx.etb_ftb_info.ftb_cnt = %d, drv_ctx.etb_ftb_info.ftb_len = %d\n",
@@ -5936,11 +5931,13 @@ OMX_ERRORTYPE  omx_vdpp::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     m_ftb_q.m_size=0;
     m_cmd_q.m_size=0;
     m_etb_q.m_size=0;
-    m_index_q.m_size=0;
+    m_index_q_ftb.m_size=0;
+    m_index_q_etb.m_size=0;
     m_ftb_q.m_read = m_ftb_q.m_write =0;
     m_cmd_q.m_read = m_cmd_q.m_write =0;
     m_etb_q.m_read = m_etb_q.m_write =0;
-    m_index_q.m_read = m_index_q.m_write =0;
+    m_index_q_ftb.m_read = m_index_q_ftb.m_write =0;
+    m_index_q_etb.m_read = m_index_q_etb.m_write =0;
 #ifdef _ANDROID_
     if (m_debug_timestamp)
     {
@@ -6798,7 +6795,7 @@ OMX_ERRORTYPE omx_vdpp::get_buffer_req(vdpp_allocatorproperty *buffer_prop)
     buffer_prop->actualcount, buffer_prop->buffer_size);
     {
         buffer_prop->buffer_size = drv_ctx.video_resolution_input.frame_height *
-                                   paddedFrameWidth(drv_ctx.video_resolution_input.frame_width) *
+                                   paddedFrameWidth128(drv_ctx.video_resolution_input.frame_width) *
                                    3 / 2; // hardcoded size for stub NV12
     }
     buf_size = buffer_prop->buffer_size;
@@ -6850,6 +6847,8 @@ OMX_ERRORTYPE omx_vdpp::get_buffer_req(vdpp_allocatorproperty *buffer_prop)
   unsigned int buf_size = 0, extra_data_size = 0, client_extra_data_size = 0;
   struct v4l2_format fmt;
   int ret = 0;
+
+    memset((void *)&fmt, 0, sizeof(v4l2_format));
     DEBUG_PRINT_HIGH("GetBufReq IN: ActCnt(%d) Size(%d) buffer_prop->buffer_type (%d), streaming[OUTPUT_PORT] (%d), streaming[CAPTURE_PORT] (%d)",
     buffer_prop->actualcount, buffer_prop->buffer_size, buffer_prop->buffer_type, streaming[OUTPUT_PORT], streaming[CAPTURE_PORT]);
 	bufreq.memory = V4L2_MEMORY_USERPTR;
@@ -6879,8 +6878,8 @@ OMX_ERRORTYPE omx_vdpp::get_buffer_req(vdpp_allocatorproperty *buffer_prop)
     buffer_prop->mincount = bufreq.count;
     DEBUG_PRINT_HIGH("Count = %d \n ",bufreq.count);
   }
-  DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d), buffer_prop->buffer_type(%d)",
-    buffer_prop->actualcount, buffer_prop->buffer_size, buffer_prop->buffer_type);
+  DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d), buffer_prop->buffer_type(%d) fmt.fmt.pix_mp.pixelformat (0x%08x)",
+    buffer_prop->actualcount, buffer_prop->buffer_size, buffer_prop->buffer_type, fmt.fmt.pix_mp.pixelformat);
 
   if(buffer_prop->buffer_type == VDPP_BUFFER_TYPE_INPUT)
   {
@@ -7042,10 +7041,10 @@ OMX_ERRORTYPE omx_vdpp::set_buffer_req(vdpp_allocatorproperty *buffer_prop)
         setFormatParams(output_capability, drv_ctx.input_bytesperpixel, &(fmt.fmt.pix_mp.num_planes));
         for( i=0; i<fmt.fmt.pix_mp.num_planes; i++ )
         {
-            fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth(fmt.fmt.pix_mp.width *
+            fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth128(fmt.fmt.pix_mp.width *
                                                                      drv_ctx.input_bytesperpixel[i] *
                                                                      fmt.fmt.pix_mp.height);
-            fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[0]); // both plane have the same plane stride
+            fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.input_bytesperpixel[0]); // both plane have the same plane stride
         }
 	} else if (buffer_prop->buffer_type == VDPP_BUFFER_TYPE_OUTPUT) {
 		fmt.type =V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -7057,10 +7056,10 @@ OMX_ERRORTYPE omx_vdpp::set_buffer_req(vdpp_allocatorproperty *buffer_prop)
         setFormatParams(capture_capability, drv_ctx.output_bytesperpixel, &(fmt.fmt.pix_mp.num_planes));
         for( i=0; i<fmt.fmt.pix_mp.num_planes; i++ )
         {
-            fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth(fmt.fmt.pix_mp.width *
+            fmt.fmt.pix_mp.plane_fmt[i].sizeimage = paddedFrameWidth128(fmt.fmt.pix_mp.width *
                                                                      drv_ctx.output_bytesperpixel[i] *
                                                                      fmt.fmt.pix_mp.height);
-            fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]);
+            fmt.fmt.pix_mp.plane_fmt[i].bytesperline = paddedFrameWidth128(fmt.fmt.pix_mp.width * drv_ctx.output_bytesperpixel[0]);
             DEBUG_PRINT_HIGH("set_buffer_req fmt.fmt.pix_mp.plane_fmt[%d].sizeimage = %d \n ", i, fmt.fmt.pix_mp.plane_fmt[i].sizeimage);
         }
 	} else {eRet = OMX_ErrorBadParameter;}

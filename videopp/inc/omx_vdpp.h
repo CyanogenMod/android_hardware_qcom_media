@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2013 The Linux Foundation. All rights reserved.
+Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -64,9 +64,14 @@ extern "C"{
 #include <poll.h>
 #define TIMEOUT 5000
 
+
 #define DEBUG_PRINT_LOW(x, ...) ALOGV("[Entry] "x, ##__VA_ARGS__)
 #define DEBUG_PRINT_HIGH(x, ...) ALOGV("[Step] "x, ##__VA_ARGS__)
 #define DEBUG_PRINT_ERROR(x, ...) ALOGE("[Error] "x, ##__VA_ARGS__)
+
+/*#define DEBUG_PRINT_LOW(x, ...)
+#define DEBUG_PRINT_HIGH(x, ...)
+#define DEBUG_PRINT_ERROR(x, ...) */
 
 #else //_ANDROID_
 #define DEBUG_PRINT_LOW printf
@@ -109,8 +114,8 @@ extern "C" {
 //////////////////////////////////////////////////////////////////////////////
 #define OMX_SPEC_VERSION  0x00000101
 
-//#define OUTPUT_BUFFER_LOG 1
-//#define INPUT_BUFFER_LOG  1
+// #define OUTPUT_BUFFER_LOG 1
+// #define INPUT_BUFFER_LOG  1
 //////////////////////////////////////////////////////////////////////////////
 //               Macros
 //////////////////////////////////////////////////////////////////////////////
@@ -557,7 +562,8 @@ public:
 
     pthread_t msg_thread_id;
     pthread_t async_thread_id;
-    omx_cmd_queue m_index_q;
+    omx_cmd_queue m_index_q_ftb;
+    omx_cmd_queue m_index_q_etb;
     bool m_ar_callback_setup;
 private:
     // Bit Positions
@@ -757,18 +763,19 @@ private:
       *
       * @width - the original frame width.
       */
-    inline int paddedFrameWidth(int width)
+    inline int paddedFrameWidth128(int width)
     {
-        int i = 0;
-        while(1)
-        {
-            if(width <= 128*i)
-            {
-		    //LOGE("paddedFrameWidth: padded width is %d", 128*i);
-                return 128*i; /* return width in closest multiple of 128. */
-            }
-            i++;
-        }
+        return  (((width + 127) / 128 )* 128);
+    }
+
+    /**
+      * int paddedFrameWidth32 - return frame width in a multiple of 32 (rounded up).
+      *
+      * @width - the original frame width.
+      */
+    inline int paddedFrameWidth32(int width)
+    {
+        return  (((width + 31) / 32 )* 32);
     }
 
     /**
