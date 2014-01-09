@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -987,6 +987,7 @@ class omx_vdec: public qc_omx_component
 #ifdef _MSM8974_
         void send_codec_config();
 #endif
+        OMX_TICKS m_last_rendered_TS;
 };
 
 #ifdef _MSM8974_
