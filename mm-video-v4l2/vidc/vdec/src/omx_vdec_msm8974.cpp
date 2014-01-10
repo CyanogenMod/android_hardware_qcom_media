@@ -2989,6 +2989,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                        }
                                    }
                                } else if (OMX_DirInput == portDefn->eDir) {
+                                   DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition IP port");
                                    bool port_format_changed = false;
                                    if ((portDefn->format.video.xFramerate >> 16) > 0 &&
                                            (portDefn->format.video.xFramerate >> 16) <= MAX_SUPPORTED_FPS) {
@@ -3012,8 +3013,23 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                        DEBUG_PRINT_LOW("set_parameter: frm_int(%lu) fps(%.2f)",
                                                frm_int, drv_ctx.frame_rate.fps_numerator /
                                                (float)drv_ctx.frame_rate.fps_denominator);
+
+                                       struct v4l2_outputparm oparm;
+                                       /*XXX: we're providing timing info as seconds per frame rather than frames
+                                        * per second.*/
+                                       oparm.timeperframe.numerator = drv_ctx.frame_rate.fps_denominator;
+                                       oparm.timeperframe.denominator = drv_ctx.frame_rate.fps_numerator;
+
+                                       struct v4l2_streamparm sparm;
+                                       sparm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+                                       sparm.parm.output = oparm;
+                                       if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_PARM, &sparm)) {
+                                           DEBUG_PRINT_ERROR("Unable to convey fps info to driver, performance might be affected");
+                                           eRet = OMX_ErrorHardware;
+                                           break;
+                                       }
                                    }
-                                   DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition IP port");
+
                                    if (drv_ctx.video_resolution.frame_height !=
                                            portDefn->format.video.nFrameHeight ||
                                            drv_ctx.video_resolution.frame_width  !=
@@ -5591,9 +5607,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 
     }
 
-    if (!(client_extradata & OMX_TIMEINFO_EXTRADATA))
-        set_frame_rate(buffer->nTimeStamp);
-
     frameinfo.bufferaddr = temp_buffer->bufferaddr;
     frameinfo.client_data = (void *) buffer;
     frameinfo.datalen = temp_buffer->buffer_len;
@@ -6543,12 +6556,14 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
 
 
     }
+
     if (m_cb.FillBufferDone) {
         if (buffer->nFilledLen > 0) {
-            if (client_extradata & OMX_TIMEINFO_EXTRADATA)
-                set_frame_rate(buffer->nTimeStamp);
-            else if (arbitrary_bytes)
+            if (arbitrary_bytes)
                 adjust_timestamp(buffer->nTimeStamp);
+            else
+                set_frame_rate(buffer->nTimeStamp);
+
             if (perf_flag) {
                 if (!proc_frms) {
                     dec_time.stop();
@@ -7852,8 +7867,8 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
     portDefn->nSize = sizeof(portDefn);
     portDefn->eDomain    = OMX_PortDomainVideo;
     if (drv_ctx.frame_rate.fps_denominator > 0)
-        portDefn->format.video.xFramerate = drv_ctx.frame_rate.fps_numerator /
-            drv_ctx.frame_rate.fps_denominator;
+        portDefn->format.video.xFramerate = (drv_ctx.frame_rate.fps_numerator /
+            drv_ctx.frame_rate.fps_denominator) << 16; //Q16 format
     else {
         DEBUG_PRINT_ERROR("Error: Divide by zero");
         return OMX_ErrorBadParameter;
