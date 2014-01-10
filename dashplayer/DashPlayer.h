@@ -24,14 +24,21 @@
 #include "DashPlayerStats.h"
 #include <media/stagefright/foundation/ABuffer.h>
 #include <cutils/properties.h>
+
+//Keys for playback modes
+#define KEY_DASH_SEEK_EVENT 7001
+#define KEY_DASH_PAUSE_EVENT 7002
+
 // used for Get Adaptionset property (NonJB)and for both Get and set for JB
 #define KEY_DASH_ADAPTION_PROPERTIES 8002
 #define KEY_DASH_MPD_QUERY           8003
 #define KEY_DASH_QOE_EVENT           8004
 #define KEY_DASH_QOE_PERIODIC_EVENT  8008
-
 #define KEY_DASH_GET_ADAPTION_PROPERTIES 8010
 #define KEY_DASH_SET_ADAPTION_PROPERTIES 8011
+
+//Key to query reposition range
+#define KEY_DASH_REPOSITION_RANGE    9000
 
 namespace android {
 
@@ -152,6 +159,7 @@ private:
     enum {
         kWhatBufferingStart             = 'bfst',
         kWhatBufferingEnd               = 'bfen',
+        kWhatSourceResumeStatus         = 'srsm',
     };
 
     wp<DashPlayerDriver> mDriver;

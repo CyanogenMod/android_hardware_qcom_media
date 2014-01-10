@@ -150,9 +150,6 @@ status_t DashPlayerDriver::start() {
         default:
         {
             CHECK_EQ((int)mState, (int)PAUSED);
-            if (mAtEOS){
-                seekTo(0);
-            }
             mPlayer->resume();
             break;
         }
@@ -317,6 +314,40 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
            ret = getParameter(methodId,reply);
            break;
 
+       case KEY_DASH_REPOSITION_RANGE:
+           ALOGV("calling KEY_DASH_REPOSITION_RANGE");
+           ret = getParameter(methodId,reply);
+           break;
+
+       case KEY_DASH_SEEK_EVENT:
+       {
+          ALOGV("calling KEY_DASH_SEEK_EVENT seekTo()");
+          int32_t msec;
+          ret = request.readInt32(&msec);
+          if (ret != OK)
+          {
+            ALOGE("Invoke: invalid seek value");
+          }
+          else
+          {
+            ret = seekTo(msec);
+            int32_t val = (ret == OK)? 1:0;
+            reply->setDataPosition(0);
+            reply->writeInt32(val);
+          }
+          break;
+       }
+
+       case KEY_DASH_PAUSE_EVENT:
+       {
+          ALOGV("calling KEY_DASH_PAUSE_EVENT pause()");
+          ret = pause();
+          int32_t val = (ret == OK)? 1:0;
+          reply->setDataPosition(0);
+          reply->writeInt32(val);
+          break;
+       }
+
        case INVOKE_ID_GET_TRACK_INFO:
        {
          // Ignore the invoke call for INVOKE_ID_GET_TRACK_INFO with success return code
@@ -404,9 +435,6 @@ status_t DashPlayerDriver::dump(int fd, const Vector<String16> &args) const {
 void DashPlayerDriver::notifyListener(int msg, int ext1, int ext2, const Parcel *obj) {
     if (msg == MEDIA_PLAYBACK_COMPLETE || msg == MEDIA_ERROR) {
         mAtEOS = true;
-        if(msg == MEDIA_PLAYBACK_COMPLETE){
-            pause();
-        }
     }
 
     sendEvent(msg, ext1, ext2, obj);

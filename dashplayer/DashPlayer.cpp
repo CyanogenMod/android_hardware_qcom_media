@@ -799,47 +799,54 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
 
         case kWhatPause:
         {
+            CHECK(mRenderer != NULL);
+            mRenderer->pause();
+
+            mPauseIndication = true;
+
 #ifdef QCOM_WFD_SINK
             if (mSourceType == kWfdSource) {
                 CHECK(mSource != NULL);
                 mSource->pause();
             }
 #endif //QCOM_WFD_SINK
-                CHECK(mRenderer != NULL);
-                mRenderer->pause();
 
-            mPauseIndication = true;
             if (mSourceType == kHttpDashSource) {
                 Mutex::Autolock autoLock(mLock);
                 if (mSource != NULL)
                 {
-                   mSource->pause();
+                  status_t nRet = mSource->pause();
                 }
             }
+
             break;
         }
 
         case kWhatResume:
         {
-                CHECK(mRenderer != NULL);
-                mRenderer->resume();
-
             mPauseIndication = false;
 
             if (mSourceType == kHttpDashSource) {
+              status_t nRet = UNKNOWN_ERROR;
                Mutex::Autolock autoLock(mLock);
                if (mSource != NULL) {
-                   mSource->resume();
+                nRet = mSource->resume();
                }
+
                 if (mAudioDecoder == NULL || mVideoDecoder == NULL || mTextDecoder == NULL) {
                     mScanSourcesPending = false;
                     postScanSources();
                 }
-            }else if (mSourceType == kWfdSource) {
+            }
+            else
+            {
+              CHECK(mRenderer != NULL);
+              mRenderer->resume();
+
+              if (mSourceType == kWfdSource) {
                 CHECK(mSource != NULL);
                 mSource->resume();
                 int count = 0;
-
                 //check if there are messages stored in the list, then repost them
                 while(!mDecoderMessageQueue.empty()) {
                     (*mDecoderMessageQueue.begin()).mMessageToBeConsumed->post(); //self post
@@ -852,6 +859,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     mScanSourcesPending = false;
                     postScanSources();
                 }
+            }
             }
             break;
         }
@@ -872,7 +880,10 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 ALOGE("Source is null when checking for prepare done\n");
                 break;
             }
-            if (mSource->isPrepareDone()) {
+
+            status_t err;
+            err = mSource->isPrepareDone();
+            if(err == OK) {
                 int64_t durationUs;
                 if (mDriver != NULL && mSource->getDuration(&durationUs) == OK) {
                     sp<DashPlayerDriver> driver = mDriver.promote();
@@ -881,8 +892,11 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     }
                 }
                 notifyListener(MEDIA_PREPARED, 0, 0);
-            } else {
+            } else if(err == -EWOULDBLOCK) {
                 msg->post(100000ll);
+            } else {
+              ALOGE("Prepareasync failed\n");
+              notifyListener(MEDIA_ERROR, MEDIA_ERROR_UNKNOWN, err);
             }
             break;
         case kWhatSourceNotify:
@@ -909,14 +923,17 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                         mSRid = (mSRid+1)%SRMax;
                 }
 
-                if(msgFound) {
+                if(msgFound)
+                {
                     int32_t what;
                     CHECK(sourceRequest->findInt32("what", &what));
-                    sourceRequest->findInt64("track", &track);
-                    getTrackName((int)track,mTrackName);
 
                     if (what == kWhatBufferingStart) {
+
+                    sourceRequest->findInt64("track", &track);
+                    getTrackName((int)track,mTrackName);
                       ALOGE("Source Notified Buffering Start for %s ",mTrackName);
+
                       if (mBufferingNotification == false) {
                           if (track == kVideo && mNativeWindow == NULL)
                           {
@@ -935,6 +952,8 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                       }
                     }
                     else if(what == kWhatBufferingEnd) {
+                    sourceRequest->findInt64("track", &track);
+                    getTrackName((int)track,mTrackName);
                         if (mBufferingNotification) {
                           ALOGE("Source Notified Buffering End for %s ",mTrackName);
                                 mBufferingNotification = false;
@@ -948,10 +967,86 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                                 ,mBufferingNotification);
                         }
                     }
-                }
+                  else if (what == kWhatSourceResumeStatus)
+                  {
+                    status_t status;
+                    sourceRequest->findInt32("status", &status);
+                    if (status == OK)
+                    {
+                      int32_t disc;
+                      sourceRequest->findInt32("discontinuity", &disc);
+                      if (disc == 1 && mSourceType == kHttpDashSource)
+                      {
+                        uint64_t nMin = 0, nMax = 0, nMaxDepth = 0;
+                        status = mSource->getRepositionRange(&nMin, &nMax, &nMaxDepth);
+                        if (status == OK)
+                        {
+                          int64_t seekTimeUs = (int64_t)nMin * 1000ll;
+
+                          ALOGV("kWhatSeek seekTimeUs=%lld us (%.2f secs)", seekTimeUs, seekTimeUs / 1E6);
+
+                          status = mSource->seekTo(seekTimeUs);
+                          if (status == OK)
+                          {
+                            // if seek success then flush the audio,video decoder and renderer
+                            mTimeDiscontinuityPending = true;
+                            bool audPresence = false;
+                            bool vidPresence = false;
+                            bool textPresence = false;
+                            (void)mSource->getMediaPresence(audPresence,vidPresence,textPresence);
+                            mRenderer->setMediaPresence(true,audPresence); // audio
+                            mRenderer->setMediaPresence(false,vidPresence); // video
+                            if( (mVideoDecoder != NULL) &&
+                              (mFlushingVideo == NONE || mFlushingVideo == AWAITING_DISCONTINUITY) ) {
+                                flushDecoder( false, true ); // flush video, shutdown
             }
-            else {
-              ALOGE("kWhatSourceNotify - Source object does not exist anymore");
+
+                            if( (mAudioDecoder != NULL) &&
+                              (mFlushingAudio == NONE|| mFlushingAudio == AWAITING_DISCONTINUITY) )
+                            {
+                              flushDecoder( true, true );  // flush audio,  shutdown
+                            }
+                            if( mAudioDecoder == NULL ) {
+                              ALOGV("Audio is not there, set it to shutdown");
+                              mFlushingAudio = SHUT_DOWN;
+                            }
+                            if( mVideoDecoder == NULL ) {
+                              ALOGV("Video is not there, set it to shutdown");
+                              mFlushingVideo = SHUT_DOWN;
+                            }
+
+                            if (mDriver != NULL)
+                            {
+                              sp<DashPlayerDriver> driver = mDriver.promote();
+                              if (driver != NULL)
+                              {
+                                if( seekTimeUs >= 0 ) {
+                                  mRenderer->notifySeekPosition(seekTimeUs);
+                                  driver->notifyPosition( seekTimeUs );
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                    if (status == OK)
+                    {
+                      CHECK(mRenderer != NULL);
+                      mRenderer->resume();
+                    }
+                    else
+                    {
+                      //Notify error?
+                      ALOGE("kWhatSourceResumeStatus - Resume async failure");
+                      notifyListener(MEDIA_ERROR, MEDIA_ERROR_UNKNOWN, status);
+                    }
+                  }
+                }
+              }
+              else
+              {
+                 ALOGE("kWhatSourceNotify - Source object does not exist anymore");
             }
             break;
        }
@@ -1016,8 +1111,8 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                  }
                  notifyListener(MEDIA_QOE,kWhatQOE,what,&notifyDataQOE);
                }
-           }
            break;
+           }
 
         default:
             TRESPASS();
@@ -1629,6 +1724,25 @@ status_t DashPlayer::getParameter(int key, Parcel *reply)
       ALOGE("Source is NULL in getParameter\n");
       return UNKNOWN_ERROR;
     }
+    if (key == KEY_DASH_REPOSITION_RANGE)
+    {
+       uint64_t nMin = 0, nMax = 0, nMaxDepth = 0;
+       err = mSource->getRepositionRange(&nMin, &nMax, &nMaxDepth);
+       if(err == OK)
+       {
+         reply->setDataPosition(0);
+         reply->writeInt64(nMin);
+         reply->writeInt64(nMax);
+         reply->writeInt64(nMaxDepth);
+         ALOGV("DashPlayer::getParameter KEY_DASH_REPOSITION_RANGE %lld, %lld", nMin, nMax);
+       }
+       else
+       {
+         ALOGE("DashPlayer::getParameter KEY_DASH_REPOSITION_RANGE err in NOT OK");
+       }
+    }
+    else
+    {
     err = mSource->getParameter(key, &data_8, &data_8_Size);
     if (key == KEY_DASH_QOE_PERIODIC_EVENT)
     {
@@ -1687,6 +1801,7 @@ status_t DashPlayer::getParameter(int key, Parcel *reply)
     utf8_to_utf16_no_null_terminator((uint8_t *)data_8, data_8_Size, (char16_t *) data_16);
     err = reply->writeString16((char16_t *)data_16, data_8_Size);
     free(data_16);
+    }
     }
     return err;
 }
