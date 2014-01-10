@@ -284,6 +284,7 @@ class venc_dev
         struct msm_venc_allocatorproperty   m_sOutput_buff_property;
         struct msm_venc_sessionqp           session_qp;
         struct msm_venc_qprange             session_qp_range;
+        struct msm_venc_qprange             session_qp_values;
         struct msm_venc_multiclicecfg       multislice;
         struct msm_venc_entropycfg          entropy;
         struct msm_venc_dbcfg               dbkfilter;
