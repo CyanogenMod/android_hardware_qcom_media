@@ -1689,19 +1689,30 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderSliceInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
                         pParam->bEnabled =
-                            (OMX_BOOL)((m_sExtraData & VEN_EXTRADATA_SLICEINFO) ? 1 : 0);
+                            (OMX_BOOL)(m_sExtraData & VEN_EXTRADATA_SLICEINFO);
                         DEBUG_PRINT_HIGH("Slice Info extradata %d", pParam->bEnabled);
                     } else {
                         DEBUG_PRINT_ERROR("get_parameter: slice information is "
                                 "valid for output port only");
-                        eRet =OMX_ErrorUnsupportedIndex;
+                        eRet = OMX_ErrorUnsupportedIndex;
+                    }
+                }
+                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderMBInfo) {
+                    if (pParam->nPortIndex == PORT_INDEX_OUT) {
+                        pParam->bEnabled =
+                            (OMX_BOOL)(m_sExtraData & VEN_EXTRADATA_MBINFO);
+                        DEBUG_PRINT_HIGH("MB Info extradata %d", pParam->bEnabled);
+                    } else {
+                        DEBUG_PRINT_ERROR("get_parameter: MB information is "
+                                "valid for output port only");
+                        eRet = OMX_ErrorUnsupportedIndex;
                     }
                 }
 #ifndef _MSM8974_
                 else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoLTRInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
                         pParam->bEnabled =
-                            (OMX_BOOL)((m_sExtraData & VEN_EXTRADATA_LTRINFO) ? 1 : 0);
+                            (OMX_BOOL)(m_sExtraData & VEN_EXTRADATA_LTRINFO);
                         DEBUG_PRINT_HIGH("LTR Info extradata %d", pParam->bEnabled);
                     } else {
                         DEBUG_PRINT_ERROR("get_parameter: LTR information is "
