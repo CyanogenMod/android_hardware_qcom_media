@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2011-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -498,11 +498,11 @@ int get_extradata_value(const char * param_name)
 	} else if ((v4l2_name = "METADATA_FILLER") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
 		val = V4L2_MPEG_VIDC_EXTRADATA_METADATA_FILLER;
 	} else if ((v4l2_name = "INPUT_CROP") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
-		val = V4L2_MPEG_VIDC_INDEX_EXTRADATA_INPUT_CROP;
+		val = V4L2_MPEG_VIDC_EXTRADATA_INPUT_CROP;
 	} else if ((v4l2_name = "DIGITAL_ZOOM") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
-		val = V4L2_MPEG_VIDC_INDEX_EXTRADATA_DIGITAL_ZOOM;
+		val = V4L2_MPEG_VIDC_EXTRADATA_DIGITAL_ZOOM;
 	} else if ((v4l2_name = "ASPECT_RATIO") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
-		val = V4L2_MPEG_VIDC_INDEX_EXTRADATA_ASPECT_RATIO;
+		val = V4L2_MPEG_VIDC_EXTRADATA_ASPECT_RATIO;
 	} else if ((v4l2_name = "MPEG2_SEQDISP") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
 		val = V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
 	} else if ((v4l2_name = "STREAM_USERDATA") && !strncmp(param_name, v4l2_name, strlen(v4l2_name))) {
