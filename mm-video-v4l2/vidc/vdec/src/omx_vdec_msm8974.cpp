@@ -89,6 +89,8 @@ char ouputextradatafilename [] = "/data/extradata";
 #define DEFAULT_FPS 30
 #define MAX_INPUT_ERROR DEFAULT_FPS
 #define MAX_SUPPORTED_FPS 120
+#define DEFAULT_WIDTH_ALIGNMENT 128
+#define DEFAULT_HEIGHT_ALIGNMENT 32
 
 #define VC1_SP_MP_START_CODE        0xC5000000
 #define VC1_SP_MP_START_CODE_MASK   0xFF000000
@@ -128,8 +130,8 @@ extern "C" {
 
 int debug_level = PRIO_ERROR;
 
-static const OMX_U32 kMaxSmoothStreamingWidth = 1920;
-static const OMX_U32 kMaxSmoothStreamingHeight = 1088;
+static OMX_U32 maxSmoothStreamingWidth = 1920;
+static OMX_U32 maxSmoothStreamingHeight = 1088;
 
 void* async_message_thread (void *input)
 {
@@ -652,6 +654,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_smoothstreaming_mode = false;
     m_smoothstreaming_width = 0;
     m_smoothstreaming_height = 0;
+    is_q6_platform = false;
 }
 
 static const int event_type[] = {
@@ -1382,8 +1385,17 @@ int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer) {
         int buf_index = buffer - m_out_mem_ptr;
         int stride = drv_ctx.video_resolution.stride;
         int scanlines = drv_ctx.video_resolution.scan_lines;
+        if (m_smoothstreaming_mode) {
+            stride = drv_ctx.video_resolution.frame_width;
+            scanlines = drv_ctx.video_resolution.frame_height;
+            stride = (stride + DEFAULT_WIDTH_ALIGNMENT - 1) & (~(DEFAULT_WIDTH_ALIGNMENT - 1));
+            scanlines = (scanlines + DEFAULT_HEIGHT_ALIGNMENT - 1) & (~(DEFAULT_HEIGHT_ALIGNMENT - 1));
+        }
         char *temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr;
         unsigned i;
+        DEBUG_PRINT_HIGH("Logging width/height(%u/%u) stride/scanlines(%u/%u)",
+            drv_ctx.video_resolution.frame_width,
+            drv_ctx.video_resolution.frame_height, stride, scanlines);
         int bytes_written = 0;
         for (i = 0; i < drv_ctx.video_resolution.frame_height; i++) {
              bytes_written = fwrite(temp, drv_ctx.video_resolution.frame_width, 1, m_debug.outfile);
@@ -1438,6 +1450,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     property_get("ro.board.platform", platform_name, "0");
     if (!strncmp(platform_name, "msm8610", 7)) {
         device_name = (OMX_STRING)"/dev/video/q6_dec";
+        is_q6_platform = true;
+        maxSmoothStreamingWidth = 1280;
+        maxSmoothStreamingHeight = 720;
     }
 #endif
 
@@ -3567,12 +3582,12 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 if (!pParams->bEnable) {
                     return OMX_ErrorNone;
                 }
-                if (pParams->nMaxFrameWidth > kMaxSmoothStreamingWidth
-                        || pParams->nMaxFrameHeight > kMaxSmoothStreamingHeight) {
+                if (pParams->nMaxFrameWidth > maxSmoothStreamingWidth
+                        || pParams->nMaxFrameHeight > maxSmoothStreamingHeight) {
                     DEBUG_PRINT_ERROR(
                             "Adaptive playback request exceeds max supported resolution : [%lu x %lu] vs [%lu x %lu]",
                              pParams->nMaxFrameWidth,  pParams->nMaxFrameHeight,
-                             kMaxSmoothStreamingWidth, kMaxSmoothStreamingHeight);
+                             maxSmoothStreamingWidth, maxSmoothStreamingHeight);
                     eRet = OMX_ErrorBadParameter;
                 } else {
                     eRet = enable_smoothstreaming();
@@ -3586,7 +3601,27 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                          m_smoothstreaming_width = pParams->nMaxFrameWidth;
                          m_smoothstreaming_height = pParams->nMaxFrameHeight;
                      }
-                }
+                     if(is_q6_platform) {
+                         struct v4l2_format fmt;
+                         update_resolution(m_smoothstreaming_width, m_smoothstreaming_height,
+                                                      m_smoothstreaming_width, m_smoothstreaming_height);
+                         eRet = is_video_session_supported();
+                         if (eRet)
+                             break;
+                         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+                         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
+                         fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+                         fmt.fmt.pix_mp.pixelformat = output_capability;
+                         DEBUG_PRINT_LOW("fmt.fmt.pix_mp.height = %d , fmt.fmt.pix_mp.width = %d",
+                                                         fmt.fmt.pix_mp.height,fmt.fmt.pix_mp.width);
+                         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+                         if (ret) {
+                             DEBUG_PRINT_ERROR("Set Resolution failed");
+                             eRet = OMX_ErrorUnsupportedSetting;
+                         } else
+                             eRet = get_buffer_req(&drv_ctx.op_buf);
+                     }
+                 }
             } else {
                 DEBUG_PRINT_ERROR(
                         "Prepare for adaptive playback supported only on output port");
