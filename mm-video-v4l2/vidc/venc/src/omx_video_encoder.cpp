@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -79,7 +79,7 @@ omx_venc::omx_venc()
     property_get("vidc.debug.bframes", property_value, "0");
     bframes = atoi(property_value);
     property_value[0] = '\0';
-    property_get("vidc.debug.entropy", property_value, "0");
+    property_get("vidc.debug.entropy", property_value, "1");
     entropy = !!atoi(property_value);
     property_value[0] = '\0';
 }
@@ -766,13 +766,9 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         avc_param.nRefFrames = avc_param.nBFrames + 1;
                     }
                     DEBUG_PRINT_HIGH("AVC: RefFrames: %lu, BFrames: %lu", avc_param.nRefFrames, avc_param.nBFrames);
-                    if (entropy) {
-                        avc_param.bEntropyCodingCABAC = OMX_TRUE;
-                        avc_param.nCabacInitIdc = 1;
-                    } else {
-                        avc_param.bEntropyCodingCABAC = OMX_FALSE;
-                        avc_param.nCabacInitIdc = 0;
-                    }
+
+                    avc_param.bEntropyCodingCABAC = (OMX_BOOL)(avc_param.bEntropyCodingCABAC && entropy);
+                    avc_param.nCabacInitIdc = entropy ? avc_param.nCabacInitIdc : 0;
 #endif
                 } else {
                     if (pParam->nRefFrames != 1) {
