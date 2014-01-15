@@ -1783,6 +1783,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 break;
             }
+        case OMX_QcomIndexHierarchicalStructure:
+            {
+                QOMX_VIDEO_HIERARCHICALLAYERS* hierp = (QOMX_VIDEO_HIERARCHICALLAYERS*) paramData;
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexHierarchicalStructure");
+                memcpy(hierp, &m_sHierLayers, sizeof(m_sHierLayers));
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
