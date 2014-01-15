@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1783,6 +1783,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     BITMASK_CLEAR(&m_flags, OMX_COMPONENT_LOADED_STOP_PENDING);
                     eRet = OMX_ErrorHardware;
                 }
+                break;
+            }
+        case OMX_QcomIndexHierarchicalStructure:
+            {
+                QOMX_VIDEO_HIERARCHICALLAYERS* hierp = (QOMX_VIDEO_HIERARCHICALLAYERS*) paramData;
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexHierarchicalStructure");
+                memcpy(hierp, &m_sHierLayers, sizeof(m_sHierLayers));
                 break;
             }
         case OMX_IndexParamVideoSliceFMO:

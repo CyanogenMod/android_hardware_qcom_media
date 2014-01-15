@@ -425,6 +425,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* "OMX.QCOM.index.param.video.InputBitsInfoExtradata" */
     OMX_QcomIndexParamVideoInputBitsInfoExtraData = 0x7F000030,
+
+    /* VP8 Hierarchical P support */
+    OMX_QcomIndexHierarchicalStructure = 0x7F000031,
 };
 
 /**
@@ -1161,6 +1164,19 @@ typedef enum {
 typedef enum QOMX_VIDEO_PICTURETYPE {
     QOMX_VIDEO_PictureTypeIDR = OMX_VIDEO_PictureTypeVendorStartUnused + 0x1000
 } QOMX_VIDEO_PICTURETYPE;
+
+typedef enum QOMX_VIDEO_HIERARCHICALCODINGTYPE {
+    QOMX_HIERARCHICALCODING_P = 0x01,
+    QOMX_HIERARCHICALCODING_B = 0x02,
+} QOMX_VIDEO_HIERARCHICALCODINGTYPE;
+
+typedef struct QOMX_VIDEO_HIERARCHICALLAYERS {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nNumLayers;
+    QOMX_VIDEO_HIERARCHICALCODINGTYPE eHierarchicalCodingType;
+} QOMX_VIDEO_HIERARCHICALLAYERS;
 
 #ifdef __cplusplus
 }

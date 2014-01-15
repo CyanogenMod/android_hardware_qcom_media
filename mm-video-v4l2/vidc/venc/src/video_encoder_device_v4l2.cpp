@@ -212,6 +212,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&hec, 0, sizeof(hec));
     memset(&voptimecfg, 0, sizeof(voptimecfg));
     memset(&capability, 0, sizeof(capability));
+    memset(&hier_p_layers,0,sizeof(hier_p_layers));
 }
 
 venc_dev::~venc_dev()
@@ -1389,6 +1390,22 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 
                 break;
             }
+         case OMX_QcomIndexHierarchicalStructure:
+           {
+               QOMX_VIDEO_HIERARCHICALLAYERS* pParam =
+                   (QOMX_VIDEO_HIERARCHICALLAYERS*)paramData;
+                if (pParam->nPortIndex == PORT_INDEX_OUT) {
+                    if (!venc_set_hier_layers(pParam->eHierarchicalCodingType, pParam->nNumLayers)) {
+                        DEBUG_PRINT_ERROR("Setting Hier P count failed");
+                        return OMX_ErrorUnsupportedSetting;
+                    }
+                } else {
+                    DEBUG_PRINT_ERROR("OMX_QcomIndexHierarchicalStructure called on wrong port(%d)", pParam->nPortIndex);
+                    return OMX_ErrorBadPortIndex;
+                }
+
+                break;
+           }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -1723,6 +1740,8 @@ void venc_dev::venc_config_print()
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: IntraMB/Frame: %ld, HEC: %ld, IDR Period: %ld",
             intra_refresh.mbcount, hec.header_extension, idrperiod.idrperiod);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Hier-P layers: %d", hier_p_layers.numlayers);
 
 }
 
@@ -2166,6 +2185,26 @@ bool venc_dev::venc_set_au_delimiter(OMX_BOOL enable)
     DEBUG_PRINT_HIGH("Set au delimiter: %d", enable);
     if(ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control) < 0) {
         DEBUG_PRINT_ERROR("Request to set AU delimiter failed");
+        return false;
+    }
+    return true;
+}
+
+bool venc_dev::venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type,
+                                    OMX_U32 num_layers)
+{
+    struct v4l2_control control;
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_HIER_P_NUM_LAYERS;
+    if (type == QOMX_HIERARCHICALCODING_P) {
+        control.value = num_layers;
+        DEBUG_PRINT_HIGH("Set Hier P num layers: %d", num_layers);
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Request to set Hier P num layers failed");
+            return false;
+        }
+        hier_p_layers.numlayers = num_layers;
+    } else {
+        DEBUG_PRINT_ERROR("Request to set hier num layers failed for type: %d", type);
         return false;
     }
     return true;
