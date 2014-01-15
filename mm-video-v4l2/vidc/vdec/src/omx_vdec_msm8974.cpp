@@ -3087,6 +3087,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            eRet = OMX_ErrorHardware;
                                            break;
                                        }
+                                       m_perf_control.request_cores(frm_int);
                                    }
 
                                    if (drv_ctx.video_resolution.frame_height !=
@@ -8430,7 +8431,7 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
                 DEBUG_PRINT_LOW("set_frame_rate: frm_int(%lu) fps(%f)",
                         frm_int, drv_ctx.frame_rate.fps_numerator /
                         (float)drv_ctx.frame_rate.fps_denominator);
-
+                m_perf_control.request_cores(frm_int);
                 /* We need to report the difference between this FBD and the previous FBD
                  * back to the driver for clock scaling purposes. */
                 struct v4l2_outputparm oparm;
@@ -9685,3 +9686,62 @@ void omx_vdec::send_codec_config() {
     }
 }
 #endif
+
+omx_vdec::perf_control::perf_control ()
+{
+    m_perf_lib = NULL;
+    m_perf_handle = -1;
+    m_perf_lock_acquire = NULL;
+    m_perf_lock_release = NULL;
+}
+
+omx_vdec::perf_control::~perf_control()
+{
+    if (m_perf_handle >= 0 && m_perf_lock_release) {
+        DEBUG_PRINT_LOW("NOTE2: release perf lock");
+        m_perf_lock_release(m_perf_handle);
+    }
+    if (m_perf_lib) {
+        dlclose(m_perf_lib);
+    }
+}
+
+void omx_vdec::perf_control::request_cores(int frame_duration_us)
+{
+    if (frame_duration_us > MIN_FRAME_DURATION_FOR_PERF_REQUEST_US) {
+        return;
+    }
+    load_lib();
+    if (m_perf_lock_acquire && m_perf_handle < 0) {
+        int arg = 0x700 /*base value*/ + 2 /*cores*/;
+        m_perf_handle = m_perf_lock_acquire(m_perf_handle, 0, &arg, sizeof(arg)/sizeof(int));
+        if (m_perf_handle) {
+            DEBUG_PRINT_HIGH("perf lock acquired");
+        }
+    }
+}
+
+void omx_vdec::perf_control::load_lib()
+{
+    char perf_lib_path[PROPERTY_VALUE_MAX] = {0};
+    if (m_perf_lib)
+        return;
+
+    if((property_get("ro.vendor.extension_library", perf_lib_path, NULL) <= 0)) {
+        DEBUG_PRINT_ERROR("vendor library not set in ro.vendor.extension_library");
+        return;
+    }
+
+    if ((m_perf_lib = dlopen(perf_lib_path, RTLD_NOW)) == NULL) {
+        DEBUG_PRINT_ERROR("Failed to open %s : %s",perf_lib_path, dlerror());
+    } else {
+        m_perf_lock_acquire = (perf_lock_acquire_t)dlsym(m_perf_lib, "perf_lock_acq");
+        if (m_perf_lock_acquire == NULL) {
+            DEBUG_PRINT_ERROR("Failed to load symbol: perf_lock_acq");
+        }
+        m_perf_lock_release = (perf_lock_release_t)dlsym(m_perf_lib, "perf_lock_rel");
+        if (m_perf_lock_release == NULL) {
+            DEBUG_PRINT_ERROR("Failed to load symbol: perf_lock_rel");
+        }
+    }
+}
