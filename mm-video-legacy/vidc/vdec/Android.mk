@@ -56,7 +56,12 @@ DISPLAY := display-$(TARGET_QCOM_DISPLAY_VARIANT)
 libOmxVdec-def += -DDISPLAYCAF
 else
 DISPLAY := display/$(TARGET_BOARD_PLATFORM)
+# Fix the header inclusions for platform variants without an explicit path
+ifneq ($(filter msm8660 ,$(TARGET_BOARD_PLATFORM)),)
+   DISPLAY := display/msm8960
 endif
+endif
+
 
 libmm-vdec-inc          := bionic/libc/include
 libmm-vdec-inc          += bionic/libstdc++/include

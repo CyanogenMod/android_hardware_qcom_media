@@ -46,7 +46,12 @@ ifneq ($(TARGET_QCOM_DISPLAY_VARIANT),)
 DISPLAY := display-$(TARGET_QCOM_DISPLAY_VARIANT)
 else
 DISPLAY := display/$(TARGET_BOARD_PLATFORM)
+# Fix the header inclusions for platform variants without an explicit path
+ifneq ($(filter msm8660 ,$(TARGET_BOARD_PLATFORM)),)
+  DISPLAY := display/msm8960
 endif
+endif
+
 
 libmm-venc-inc      := bionic/libc/include
 libmm-venc-inc      += bionic/libstdc++/include
