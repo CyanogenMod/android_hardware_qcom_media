@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -701,11 +701,8 @@ bool venc_dev::venc_open(OMX_U32 codec)
     }
 
     struct v4l2_capability cap;
-
     struct v4l2_fmtdesc fdesc;
-
     struct v4l2_format fmt;
-
     struct v4l2_requestbuffers bufreq;
 
     ret = ioctl(m_nDriver_fd, VIDIOC_QUERYCAP, &cap);
@@ -1324,6 +1321,10 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                                         pParam->eProfile, pParam->eLevel);
                     return false;
                 }
+                if(!venc_set_ltrmode(1, 1)) {
+                   DEBUG_PRINT_ERROR("ERROR: Failed to enable ltrmode");
+                   return false;
+                }
                 break;
             }
         case OMX_IndexParamVideoIntraRefresh:
@@ -1614,6 +1615,27 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+       case OMX_IndexConfigVideoVp8ReferenceFrame:
+           {
+               OMX_VIDEO_VP8REFERENCEFRAMETYPE* vp8refframe = (OMX_VIDEO_VP8REFERENCEFRAMETYPE*) configData;
+                DEBUG_PRINT_LOW("venc_set_config: OMX_IndexConfigVideoVp8ReferenceFrame");
+                if ((vp8refframe->nPortIndex == (OMX_U32)PORT_INDEX_IN) &&
+                    (vp8refframe->bUseGoldenFrame)) {
+                    if(venc_set_useltr() == false) {
+                        DEBUG_PRINT_ERROR("ERROR: use goldenframe failed");
+                        return false;
+                    }
+                } else if((vp8refframe->nPortIndex == (OMX_U32)PORT_INDEX_IN) &&
+                    (vp8refframe->bGoldenFrameRefresh)) {
+                    if(venc_set_markltr() == false) {
+                        DEBUG_PRINT_ERROR("ERROR: Setting goldenframe failed");
+                        return false;
+                    }
+                } else {
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexConfigVideoVp8ReferenceFrame");
+                }
+               break;
+           }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -3248,6 +3270,94 @@ bool venc_dev::venc_set_deinterlace(OMX_U32 enable)
     }
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
     deinterlace_enabled = true;
+    return true;
+}
+
+bool venc_dev::venc_set_ltrmode(OMX_U32 enable, OMX_U32 count)
+{
+    DEBUG_PRINT_LOW("venc_set_ltrmode: enable = %lu", enable);
+    struct v4l2_control control;
+    struct v4l2_ext_control ctrl[2];
+    struct v4l2_ext_controls controls;
+    int rc;
+
+    ctrl[0].id = V4L2_CID_MPEG_VIDC_VIDEO_LTRMODE;
+    if (enable)
+        ctrl[0].value = V4L2_MPEG_VIDC_VIDEO_LTR_MODE_MANUAL;
+    else
+        ctrl[0].value = V4L2_MPEG_VIDC_VIDEO_LTR_MODE_DISABLE;
+
+    ctrl[1].id = V4L2_CID_MPEG_VIDC_VIDEO_LTRCOUNT;
+    if (count)
+        ctrl[1].value = count;
+    else
+        ctrl[1].value = 1;
+
+    controls.count = 2;
+    controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+    controls.controls = ctrl;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x, val=%d id=%x, val=%d",
+                    controls.controls[0].id, controls.controls[0].value,
+                    controls.controls[1].id, controls.controls[1].value);
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_EXT_CTRLS, &controls);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set ltrmode %d", rc);
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, val=%d id=%x, val=%d",
+                    controls.controls[0].id, controls.controls[0].value,
+                    controls.controls[1].id, controls.controls[1].value);
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+    control.value = V4L2_MPEG_VIDC_EXTRADATA_LTR;
+
+    if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_ERROR("ERROR: Request for setting extradata failed");
+        return false;
+    }
+    return true;
+}
+
+bool venc_dev::venc_set_useltr()
+{
+    DEBUG_PRINT_LOW("venc_use_goldenframe");
+    int rc = true;
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_USELTRFRAME;
+    control.value = 1;
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set use_ltr %d", rc);
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, val=%d",
+                    control.id, control.value);
+    return true;
+}
+
+bool venc_dev::venc_set_markltr()
+{
+    DEBUG_PRINT_LOW("venc_set_goldenframe");
+    int rc = true;
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_MARKLTRFRAME;
+    control.value = 1;
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set ltrmode %d", rc);
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, val=%d",
+                    control.id, control.value);
     return true;
 }
 

@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -311,6 +311,9 @@ class venc_dev
         bool venc_reconfig_reqbufs();
         bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
         bool venc_set_deinterlace(OMX_U32 enable);
+        bool venc_set_ltrmode(OMX_U32 enable, OMX_U32 count);
+        bool venc_set_useltr();
+        bool venc_set_markltr();
         bool venc_set_inband_video_header(OMX_BOOL enable);
         bool venc_set_au_delimiter(OMX_BOOL enable);
 #ifdef MAX_RES_1080P
