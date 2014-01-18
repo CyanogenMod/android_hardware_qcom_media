@@ -8557,11 +8557,12 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     payload = (struct msm_vidc_interlace_payload *)data->data;
                     mbaff = (h264_parser)? (h264_parser->is_mbaff()): false;
                     if (payload && !mbaff) {
+                        drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
                         switch (payload->format) {
                             case MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE:
+                                break;
                             case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST:
                             case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST:
-                                drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
                                 enable = 1;
                                 break;
                            default:
@@ -8581,9 +8582,12 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         }
                         enable = 1;
                     }
-                    if (m_enable_android_native_buffers)
+                    if (m_enable_android_native_buffers) {
+                        DEBUG_PRINT_LOW("setMetaData INTERLACED format:%d enable:%d mbaff:%d",
+                                         payload->format, enable, mbaff);
                         setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
                                 PP_PARAM_INTERLACED, (void*)&enable);
+                    }
                     if (!secure_mode && (client_extradata & OMX_INTERLACE_EXTRADATA)) {
                         append_interlace_extradata(p_extra, payload->format);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
