@@ -123,6 +123,9 @@ extern "C"{
 
 int debug_level = PRIO_ERROR;
 
+static const OMX_U32 kMaxSmoothStreamingWidth = 1920;
+static const OMX_U32 kMaxSmoothStreamingHeight = 1088;
+
 void* async_message_thread (void *input)
 {
     OMX_BUFFERHEADERTYPE *buffer;
@@ -691,6 +694,9 @@ omx_vdec::omx_vdec():
 
     dynamic_buf_mode = false;
     out_dynamic_list = NULL;
+    m_smoothstreaming_mode = false;
+    m_smoothstreaming_width = 0;
+    m_smoothstreaming_height = 0;
 }
 
 static const int event_type[] = {
@@ -3255,6 +3261,21 @@ OMX_ERRORTYPE omx_vdec::use_android_native_buffer(OMX_IN OMX_HANDLETYPE hComp, O
     return eRet;
 }
 #endif
+
+OMX_ERRORTYPE omx_vdec::enable_smoothstreaming() {
+    struct v4l2_control control;
+    struct v4l2_format fmt;
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
+    control.value = 1;
+    int rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
+    if (rc < 0) {
+        DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
+        return OMX_ErrorHardware;
+    }
+    m_smoothstreaming_mode = true;
+    return OMX_ErrorNone;
+}
+
 /* ======================================================================
 FUNCTION
 omx_vdec::Setparameter
@@ -3381,13 +3402,19 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         (int)portDefn->format.video.nFrameWidth,
                         (int)portDefn->format.video.nFrameHeight);
                     port_format_changed = true;
-                    if (portDefn->format.video.nFrameHeight != 0x0 &&
-                        portDefn->format.video.nFrameWidth != 0x0)
-                    {
-                        update_resolution(portDefn->format.video.nFrameWidth,
-                            portDefn->format.video.nFrameHeight,
-                            portDefn->format.video.nFrameWidth,
-                            portDefn->format.video.nFrameHeight);
+                    OMX_U32 frameWidth = portDefn->format.video.nFrameWidth;
+                    OMX_U32 frameHeight = portDefn->format.video.nFrameHeight;
+                    if (frameHeight != 0x0 && frameWidth != 0x0) {
+                        if (m_smoothstreaming_mode &&
+                            ((frameWidth * frameHeight) <
+                             (m_smoothstreaming_width * m_smoothstreaming_height))) {
+                            frameWidth = m_smoothstreaming_width;
+                            frameHeight = m_smoothstreaming_height;
+                            DEBUG_PRINT_LOW("NOTE: Setting resolution %lu x %lu for adaptive-playback/smooth-streaming",
+                                frameWidth, frameHeight);
+                        }
+                        update_resolution(frameWidth, frameHeight,
+                                          frameWidth, frameHeight);
                         eRet = is_video_session_supported();
                         if (eRet)
                             break;
@@ -3793,18 +3820,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         break;
     case OMX_QcomIndexParamEnableSmoothStreaming:
         {
+#ifndef SMOOTH_STREAMING_DISABLED
             if (!m_pSwVdec || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY) {
-                struct v4l2_control control;
-                struct v4l2_format fmt;
-                control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
-                control.value = 1;
-                int rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
-                if(rc < 0) {
-                    DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
-                    eRet = OMX_ErrorHardware;
-                }
+                eRet = enable_smoothstreaming();
             }
-            // TODO  for swvdec
+#else
+            eRet = OMX_ErrorUnsupportedSetting;
+#endif
         }
         break;
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
@@ -3894,6 +3916,45 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         }
         break;
+#ifdef ADAPTIVE_PLAYBACK_SUPPORTED
+        case OMX_QcomIndexParamVideoAdaptivePlaybackMode:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_GoogleAndroidIndexPrepareForAdaptivePlayback");
+            PrepareForAdaptivePlaybackParams* pParams =
+                    (PrepareForAdaptivePlaybackParams *) paramData;
+            if (pParams->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
+                if (!pParams->bEnable) {
+                    return OMX_ErrorNone;
+                }
+                if (pParams->nMaxFrameWidth > kMaxSmoothStreamingWidth
+                        || pParams->nMaxFrameHeight > kMaxSmoothStreamingHeight) {
+                    DEBUG_PRINT_ERROR(
+                            "Adaptive playback request exceeds max supported resolution : [%lu x %lu] vs [%lu x %lu]",
+                             pParams->nMaxFrameWidth,  pParams->nMaxFrameHeight,
+                             kMaxSmoothStreamingWidth, kMaxSmoothStreamingHeight);
+                    eRet = OMX_ErrorBadParameter;
+                } else {
+                    eRet = enable_smoothstreaming();
+                    if (eRet != OMX_ErrorNone) {
+                         DEBUG_PRINT_ERROR("Failed to enable Adaptive Playback on driver.");
+                         eRet = OMX_ErrorHardware;
+                     } else  {
+                         DEBUG_PRINT_HIGH("Enabling Adaptive playback for %lu x %lu",
+                                 pParams->nMaxFrameWidth, pParams->nMaxFrameHeight);
+                         m_smoothstreaming_mode = true;
+                         m_smoothstreaming_width = pParams->nMaxFrameWidth;
+                         m_smoothstreaming_height = pParams->nMaxFrameHeight;
+                     }
+                }
+            } else {
+                DEBUG_PRINT_ERROR(
+                        "Prepare for adaptive playback supported only on output port");
+                eRet = OMX_ErrorBadParameter;
+            }
+            break;
+        }
+
+#endif
     default:
         {
             DEBUG_PRINT_ERROR("Setparameter: unknown param %d", paramIndex);
@@ -4097,6 +4158,11 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     else if (!strncmp(paramName, "OMX.google.android.index.storeMetaDataInBuffers", sizeof("OMX.google.android.index.storeMetaDataInBuffers") - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
     }
+#if ADAPTIVE_PLAYBACK_SUPPORTED
+    else if (!strncmp(paramName, "OMX.google.android.index.prepareForAdaptivePlayback", sizeof("OMX.google.android.index.prepareForAdaptivePlayback") -1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoAdaptivePlaybackMode;
+    }
+#endif
     else {
         DEBUG_PRINT_ERROR("Extension: %s not implemented", paramName);
         return OMX_ErrorNotImplemented;
@@ -7001,6 +7067,21 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     {
         return OMX_ErrorBadParameter;
     }
+
+#ifdef ADAPTIVE_PLAYBACK_SUPPORTED
+    if (m_smoothstreaming_mode) {
+        OMX_U32 buf_index = buffer - m_out_mem_ptr;
+        BufferDim_t dim;
+        dim.sliceWidth = drv_ctx.video_resolution.frame_width;
+        dim.sliceHeight = drv_ctx.video_resolution.frame_height;
+        private_handle_t *private_handle = native_buffer[buf_index].privatehandle;
+        if (private_handle) {
+            DEBUG_PRINT_LOW("set metadata: update buf-geometry with stride %d slice %d",
+                dim.sliceWidth, dim.sliceHeight);
+            setMetaData(private_handle, UPDATE_BUFFER_GEOMETRY, (void*)&dim);
+        }
+    }
+#endif
 
     return OMX_ErrorNone;
 }
