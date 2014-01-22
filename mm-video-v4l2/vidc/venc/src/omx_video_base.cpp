@@ -1848,6 +1848,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     pParam->nPeakBitrate = peakbitrate;
                 }
                 break;
+        }
+        case QOMX_IndexParamVideoInitialQp:
+            {
+                 QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp =
+                     reinterpret_cast<QOMX_EXTNINDEX_VIDEO_INITIALQP *>(paramData);
+                 memcpy(initqp, &m_sParamInitqp, sizeof(m_sParamInitqp));
+                 break;
             }
         case OMX_IndexParamVideoSliceFMO:
         default:
