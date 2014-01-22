@@ -455,7 +455,41 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.QCOM.index.config.video.LTRMark"*/
     OMX_QcomIndexConfigVideoLTRMark = QOMX_IndexConfigVideoLTRMark,
+    /* Enable InitialQP index */
+    QOMX_IndexParamVideoInitialQp = 0x7F000038,
 };
+
+/**
+ * Initial QP parameter.  This structure is used to enable
+ * vendor specific extension to let client enable setting
+ * initial QP values to I P B Frames
+ *
+ * STRUCT MEMBERS:
+ *  nSize              : Size of Structure in bytes
+ *  nVersion           : OpenMAX IL specification version information
+ *  nPortIndex         : Index of the port to which this structure applies
+ *  OMX_U32 nQpI       : First Iframe QP
+ *  OMX_U32 nQpP       : First Pframe QP
+ *  OMX_U32 nQpB       : First Bframe QP
+ *  OMX_U32 bEnableInitQp : Bit field indicating which frame type(s) shall
+ *                             use the specified initial QP.
+ *                          Bit 0: Enable initial QP for I/IDR
+ *                                 and use value specified in nInitQpI
+ *                          Bit 1: Enable initial QP for P
+ *                                 and use value specified in nInitQpP
+ *                          Bit 2: Enable initial QP for B
+ *                                 and use value specified in nInitQpB
+ */
+
+typedef struct QOMX_EXTNINDEX_VIDEO_INITIALQP {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nQpI;
+    OMX_U32 nQpP;
+    OMX_U32 nQpB;
+    OMX_U32 bEnableInitQp;
+} QOMX_EXTNINDEX_VIDEO_INITIALQP;
 
 /**
  * Extension index parameter.  This structure is used to enable
