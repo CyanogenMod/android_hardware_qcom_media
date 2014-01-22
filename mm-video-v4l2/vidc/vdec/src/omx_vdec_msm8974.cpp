@@ -615,6 +615,16 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     property_get("vidc.log.loc", property_value, "");
     if (*property_value)
         strlcpy(m_debug.log_loc, property_value, PROPERTY_VALUE_MAX);
+
+    property_value[0] = '\0';
+    property_get("vidc.dec.120fps.enabled", property_value, "0");
+
+    //if this feature is not enabled then reset this value -ve
+    if(atoi(property_value)) {
+        DEBUG_PRINT_LOW("feature 120 FPS decode enabled");
+        m_last_rendered_TS = 0;
+    }
+
 #endif
     memset(&m_cmp,0,sizeof(m_cmp));
     memset(&m_cb,0,sizeof(m_cb));
@@ -2406,8 +2416,11 @@ bool omx_vdec::execute_output_flush()
     /*Generate FBD for all Buffers in the FTBq*/
     pthread_mutex_lock(&m_lock);
     DEBUG_PRINT_LOW("Initiate Output Flush");
-    //reset last render flag
-    m_last_rendered_TS = -1;
+
+    //reset last render TS
+    if(m_last_rendered_TS > 0) {
+        m_last_rendered_TS = 0;
+    }
 
     while (m_ftb_q.m_size) {
         DEBUG_PRINT_LOW("Buffer queue size %d pending buf cnt %d",
@@ -6655,26 +6668,35 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         OMX_BUFFERHEADERTYPE *il_buffer;
         il_buffer = client_buffers.get_il_buf_hdr(buffer);
 
-        //First frame after start \ pause \ seek
-        if(il_buffer && m_last_rendered_TS < 0){
-           DEBUG_PRINT_LOW("--- First Frame (%lld) -- render it", il_buffer->nTimeStamp);
-           m_last_rendered_TS = il_buffer->nTimeStamp;
-        } else if (il_buffer) {
-           int ts_delta = (int)llabs(il_buffer->nTimeStamp - m_last_rendered_TS);
-           if(il_buffer->nTimeStamp ==  0 || ts_delta >= 16000) {
-               //mark for rendering
-               DEBUG_PRINT_LOW("-- rendering frame with TS %lld gap is %d ", il_buffer->nTimeStamp,ts_delta);
+        if (il_buffer && m_last_rendered_TS >= 0) {
+            int current_framerate = (int)(drv_ctx.frame_rate.fps_numerator /drv_ctx.frame_rate.fps_denominator);
+            int ts_delta = (int)llabs(il_buffer->nTimeStamp - m_last_rendered_TS);
+
+            // Current frame can be send for rendering if
+            // (a) current FPS is <=  60
+            // (b) is the next frame after the frame with TS 0
+            // (c) is the first frame after seek
+            // (d) the delta TS b\w two consecutive frames is > 16 ms
+            // (e) its TS is equal to previous frame TS
+            // (f) if marked EOS
+
+            if(current_framerate <= 60 || m_last_rendered_TS == 0 ||
+               il_buffer->nTimeStamp == 0 || ts_delta >= 16000 ||
+               ts_delta == 0 || (il_buffer->nFlags & OMX_BUFFERFLAG_EOS)) {
                m_last_rendered_TS = il_buffer->nTimeStamp;
-           } else {
+            } else {
                //mark for droping
-               DEBUG_PRINT_LOW("-- dropping frame with TS %lld gap is %d ", il_buffer->nTimeStamp,ts_delta);
                buffer->nFilledLen = 0;
-           }
+            }
+
+            DEBUG_PRINT_LOW(" -- %s Frame -- info:: fps(%d) lastRenderTime(%lld) bufferTs(%lld) ts_delta(%d)",
+                              buffer->nFilledLen? "Rendering":"Dropping",current_framerate,m_last_rendered_TS,
+                              il_buffer->nTimeStamp,ts_delta);
         }
 
-        if (il_buffer)
+        if (il_buffer) {
             m_cb.FillBufferDone (hComp,m_app_data,il_buffer);
-        else {
+        } else {
             DEBUG_PRINT_ERROR("Invalid buffer address from get_il_buf_hdr");
             return OMX_ErrorBadParameter;
         }
