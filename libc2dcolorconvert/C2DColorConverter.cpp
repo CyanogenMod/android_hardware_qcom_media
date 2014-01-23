@@ -88,6 +88,7 @@ private:
     uint32_t mSrcSurface, mDstSurface;
     void * mSrcSurfaceDef;
     void * mDstSurfaceDef;
+    int32_t mKgslFd = -1;
 
     C2D_OBJECT mBlit;
     size_t mSrcWidth;
@@ -128,7 +129,7 @@ C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t d
 
      if (!mC2DCreateSurface || !mC2DUpdateSurface || !mC2DReadSurface
         || !mC2DDraw || !mC2DFlush || !mC2DFinish || !mC2DWaitTimestamp
-        || !mC2DDestroySurface || !mC2DMapAddr || !mC2DUnMapAddr) {
+        || !mC2DDestroySurface) {
          ALOGE("%s: dlsym ERROR", __FUNCTION__);
          mError = -1;
          return;
@@ -147,6 +148,22 @@ C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t d
     mDstYSize = calcYSize(dstFormat, dstWidth, dstHeight);
 
     mFlags = flags; // can be used for rotation
+
+     if (!mC2DMapAddr || !mC2DUnMapAddr) 
+     {
+         ALOGD("%s: Found older ioctl-based c2d mapping, enabling fallbacks");
+         mKgslFd = open("/dev/kgsl-2d0", O_RDWR | O_SYNC);
+         if (mKgslFd < 0) {
+             mSrcStride = 0;
+             ALOGE("Cannot open device kgsl-2d0, trying kgsl-3d0\n");
+             mKgslFd = open("/dev/kgsl-3d0", O_RDWR | O_SYNC);
+             if (mKgslFd < 0) {
+                 ALOGE("Failed to open device kgsl-3d0\n");
+                 mError = -1;
+                 return;
+             }
+         }
+     }
 
     mSrcSurfaceDef = getDummySurfaceDef(srcFormat, srcWidth, srcHeight, true);
     mDstSurfaceDef = getDummySurfaceDef(dstFormat, dstWidth, dstHeight, false);
@@ -318,7 +335,10 @@ C2D_STATUS C2DColorConverter::updateYUVSurfaceDef(int fd, void *base, void *data
     if (isSource) {
         C2D_YUV_SURFACE_DEF * srcSurfaceDef = (C2D_YUV_SURFACE_DEF *)mSrcSurfaceDef;
         srcSurfaceDef->plane0 = data;
-        srcSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mSrcSize) + ((uint8_t *)data - (uint8_t *)base);
+        srcSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mSrcSize);
+        if (mKgslFd < 0) {
+            srcSurfaceDef->phys0  += ((uint8_t *)data - (uint8_t *)base);
+        }
         srcSurfaceDef->plane1 = (uint8_t *)data + mSrcYSize;
         srcSurfaceDef->phys1  = (uint8_t *)srcSurfaceDef->phys0 + mSrcYSize;
         srcSurfaceDef->plane2 = (uint8_t *)srcSurfaceDef->plane1 + mSrcYSize/4;
@@ -330,7 +350,10 @@ C2D_STATUS C2DColorConverter::updateYUVSurfaceDef(int fd, void *base, void *data
     } else {
         C2D_YUV_SURFACE_DEF * dstSurfaceDef = (C2D_YUV_SURFACE_DEF *)mDstSurfaceDef;
         dstSurfaceDef->plane0 = data;
-        dstSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mDstSize) + ((uint8_t *)data - (uint8_t *)base);
+        dstSurfaceDef->phys0  = getMappedGPUAddr(fd, data, mDstSize);
+        if (mKgslFd < 0) {
+            dstSurfaceDef->phys0  += ((uint8_t *)data - (uint8_t *)base);
+        }
         dstSurfaceDef->plane1 = (uint8_t *)data + mDstYSize;
         dstSurfaceDef->phys1  = (uint8_t *)dstSurfaceDef->phys0 + mDstYSize;
         dstSurfaceDef->plane2 = (uint8_t *)dstSurfaceDef->plane1 + mDstYSize/4;
@@ -492,31 +515,66 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
  */
 void * C2DColorConverter::getMappedGPUAddr(int bufFD, void *bufPtr, size_t bufLen)
 {
-    C2D_STATUS status;
-    void *gpuaddr = NULL;
+    if (mKgslFd > 0) {
+        struct kgsl_map_user_mem param;
+        memset(&param,0x0,sizeof(param));
+        param.fd = bufFD;
+        param.len = bufLen;
+        param.hostptr = (unsigned int)bufPtr;
+        param.memtype = KGSL_USER_MEM_TYPE_ION;
 
-    status = mC2DMapAddr(bufFD, bufPtr, bufLen, 0, KGSL_USER_MEM_TYPE_ION,
-            &gpuaddr);
-    if (status != C2D_STATUS_OK) {
-        ALOGE("c2dMapAddr failed: status %d fd %d ptr %p len %d flags %d\n",
-                status, bufFD, bufPtr, bufLen, KGSL_USER_MEM_TYPE_ION);
+        if (!ioctl(mKgslFd, IOCTL_KGSL_MAP_USER_MEM, &param, sizeof(param))) {
+            ALOGV("mapping successful for buffer %p size %d\n",
+                    bufPtr, bufLen);
+            return (void *)param.gpuaddr;
+        }
+        ALOGE("mapping failed w/ errno %s", strerror(errno));
         return NULL;
-    }
-    ALOGV("c2d mapping created: gpuaddr %p fd %d ptr %p len %d\n",
-            gpuaddr, bufFD, bufPtr, bufLen);
 
-    return gpuaddr;
+    } else {
+        C2D_STATUS status;
+        void *gpuaddr = NULL;
+
+        status = mC2DMapAddr(bufFD, bufPtr, bufLen, 0, KGSL_USER_MEM_TYPE_ION,
+                &gpuaddr);
+        if (status != C2D_STATUS_OK) {
+            ALOGE("c2dMapAddr failed: status %d fd %d ptr %p len %d flags %d\n",
+                    status, bufFD, bufPtr, bufLen, KGSL_USER_MEM_TYPE_ION);
+            return NULL;
+        }
+        ALOGV("c2d mapping created: gpuaddr %p fd %d ptr %p len %d\n",
+                gpuaddr, bufFD, bufPtr, bufLen);
+        return gpuaddr;
+    }
+    return NULL;
 }
 
 bool C2DColorConverter::unmapGPUAddr(uint32_t gAddr)
 {
+    if (mKgslFd > 0) {
+        int rc = 0;
+        struct kgsl_sharedmem_free param;
+        memset(&param, 0, sizeof(param));
+        param.gpuaddr = gAddr;
 
-    C2D_STATUS status = mC2DUnMapAddr((void*)gAddr);
+        rc = ioctl(mKgslFd, IOCTL_KGSL_SHAREDMEM_FREE, (void *)&param,
+                sizeof(param));
+        if (rc < 0) {
+            ALOGE("%s: IOCTL_KGSL_SHAREDMEM_FREE failed rc = %d\n", __func__, rc);
+            return false;
+        }
+        return true;
 
-    if (status != C2D_STATUS_OK)
-        ALOGE("c2dUnMapAddr failed: status %d gpuaddr %08x\n", status, gAddr);
+    } else {
 
-    return (status == C2D_STATUS_OK);
+        C2D_STATUS status = mC2DUnMapAddr((void*)gAddr);
+
+        if (status != C2D_STATUS_OK)
+            ALOGE("c2dUnMapAddr failed: status %d gpuaddr %08x\n", status, gAddr);
+
+        return (status == C2D_STATUS_OK);
+    }
+    return false;
 }
 
 int32_t C2DColorConverter::getBuffReq(int32_t port, C2DBuffReq *req) {
