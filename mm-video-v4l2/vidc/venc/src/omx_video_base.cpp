@@ -1755,6 +1755,14 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
             }
             break;
+        case OMX_QcomIndexParamVideoLTRCount:
+            {
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamVideoLTRCount");
+                OMX_QCOM_VIDEO_PARAM_LTRCOUNT_TYPE *pParam =
+                        reinterpret_cast<OMX_QCOM_VIDEO_PARAM_LTRCOUNT_TYPE*>(paramData);
+                memcpy(pParam, &m_sParamLTRCount, sizeof(m_sParamLTRCount));
+                break;
+            }
 #endif
         case QOMX_IndexParamVideoSyntaxHdr:
             {

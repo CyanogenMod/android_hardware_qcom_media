@@ -331,6 +331,7 @@ class venc_dev
         struct msm_venc_perf_level          performance_level;
         struct msm_venc_vui_timing_info     vui_timing_info;
         struct msm_venc_peak_bitrate        peak_bitrate;
+        struct msm_venc_ltrinfo             ltrinfo;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -356,9 +357,9 @@ class venc_dev
         bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
         bool venc_set_deinterlace(OMX_U32 enable);
         bool venc_set_ltrmode(OMX_U32 enable, OMX_U32 count);
-        bool venc_set_useltr();
-        bool venc_set_markltr();
 	bool venc_enable_initial_qp(QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp);
+        bool venc_set_useltr(OMX_U32 frameIdx);
+        bool venc_set_markltr(OMX_U32 frameIdx);
         bool venc_set_inband_video_header(OMX_BOOL enable);
         bool venc_set_au_delimiter(OMX_BOOL enable);
         bool venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type, OMX_U32 num_layers);
