@@ -13,6 +13,7 @@ ifneq ($(filter msm8610 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
 endif
 ifneq ($(filter msm8660 ,$(TARGET_BOARD_PLATFORM)),)
     DISPLAY := display/msm8960
+    LOCAL_CFLAGS += -DFORCE_IOCTL_KGSL_MAP_USER_MEM
 endif
 endif
 
