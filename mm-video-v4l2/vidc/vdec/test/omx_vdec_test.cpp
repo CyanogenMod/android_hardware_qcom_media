@@ -643,6 +643,12 @@ int process_current_command(const char *seq_command)
 
 void PrintFramePackArrangement(OMX_QCOM_FRAME_PACK_ARRANGEMENT framePackingArrangement)
 {
+    if (framePackingArrangement.cancel_flag == 1) {
+        /* Not worth printing out because the struct doesn't contain
+         * valid or useful data */
+        return;
+    }
+
     printf("id (%lu)\n",
             framePackingArrangement.id);
     printf("cancel_flag (%lu)\n",
@@ -2045,31 +2051,21 @@ int Play_Decoder()
 #if 0
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamInterlaceExtraData,
             (OMX_PTR)&extra_data);
-#endif
-#if 0
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamConcealMBMapExtraData,
             (OMX_PTR)&extra_data);
+    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexEnableExtnUserData,
+            (OMX_PTR)&extra_data);
 #endif
-#if 1
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
+    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoFramePackingExtradata,
             (OMX_PTR)&extra_data);
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoQPExtraData,
             (OMX_PTR)&extra_data);
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoInputBitsInfoExtraData,
             (OMX_PTR)&extra_data);
-#endif
+    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
+            (OMX_PTR)&extra_data);
 #ifdef TEST_TS_FROM_SEI
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamH264TimeInfo,
-            (OMX_PTR)&extra_data);
-#endif
-#if 0
-    extra_data.bEnable = OMX_FALSE;
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamConcealMBMapExtraData,
-            (OMX_PTR)&extra_data);
-#endif
-#if 0
-    extra_data.bEnable = OMX_TRUE;
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexEnableExtnUserData,
             (OMX_PTR)&extra_data);
 #endif
     /* Query the decoder outport's min buf requirements */
