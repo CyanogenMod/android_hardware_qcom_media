@@ -446,6 +446,15 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* VP8 Hierarchical P support */
     OMX_QcomIndexHierarchicalStructure = 0x7F000037,
+
+    /*"OMX.QCOM.index.param.video.LTRCount"*/
+    OMX_QcomIndexParamVideoLTRCount = QOMX_IndexParamVideoLTRCount,
+
+    /*"OMX.QCOM.index.config.video.LTRUse"*/
+    OMX_QcomIndexConfigVideoLTRUse = QOMX_IndexConfigVideoLTRUse,
+
+    /*"OMX.QCOM.index.config.video.LTRMark"*/
+    OMX_QcomIndexConfigVideoLTRMark = QOMX_IndexConfigVideoLTRMark,
 };
 
 /**
@@ -554,6 +563,12 @@ typedef struct QOMX_VIDEO_PARAM_LTRCOUNT_TYPE {
     OMX_U32 nCount;
 } QOMX_VIDEO_PARAM_LTRCOUNT_TYPE;
 
+
+/**
+ * This should be used with OMX_QcomIndexParamVideoLTRCount extension.
+ */
+typedef QOMX_VIDEO_PARAM_LTRCOUNT_TYPE OMX_QCOM_VIDEO_PARAM_LTRCOUNT_TYPE;
+
 /**
  * LTR period index parameter.  This structure is used
  * to enable vendor specific extension on output port
@@ -579,12 +594,20 @@ typedef struct QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE {
  *  nSize              : Size of Structure in bytes
  *  nVersion           : OpenMAX IL specification version information
  *  nPortIndex         : Index of the port to which this structure applies
+ *  nID                : Specifies the identifier of the LTR frame to be marked
+ *                       as reference frame for encoding subsequent frames.
  */
 typedef struct QOMX_VIDEO_CONFIG_LTRMARK_TYPE {
     OMX_U32 nSize;
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
+    OMX_U32 nID;
 } QOMX_VIDEO_CONFIG_LTRMARK_TYPE;
+
+/**
+ * This should be used with OMX_QcomIndexConfigVideoLTRMark extension.
+ */
+typedef QOMX_VIDEO_CONFIG_LTRMARK_TYPE OMX_QCOM_VIDEO_CONFIG_LTRMARK_TYPE;
 
 /**
  * Specifies an LTR frame to encode subsequent frames.
@@ -608,6 +631,11 @@ typedef struct QOMX_VIDEO_CONFIG_LTRUSE_TYPE {
     OMX_U32 nID;
     OMX_U32 nFrames;
 } QOMX_VIDEO_CONFIG_LTRUSE_TYPE;
+
+/**
+ * This should be used with OMX_QcomIndexConfigVideoLTRUse extension.
+ */
+typedef QOMX_VIDEO_CONFIG_LTRUSE_TYPE OMX_QCOM_VIDEO_CONFIG_LTRUSE_TYPE;
 
 /**
  * Enumeration used to define the video encoder modes
