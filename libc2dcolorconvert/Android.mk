@@ -16,6 +16,10 @@ ifneq ($(filter msm8660 ,$(TARGET_BOARD_PLATFORM)),)
 endif
 endif
 
+ifneq ($(filter msm8660 ,$(TARGET_BOARD_PLATFORM)),)
+    LOCAL_CFLAGS += -DFORCE_IOCTL_KGSL_MAP_USER_MEM
+endif
+
 LOCAL_SRC_FILES := \
         C2DColorConverter.cpp
 
