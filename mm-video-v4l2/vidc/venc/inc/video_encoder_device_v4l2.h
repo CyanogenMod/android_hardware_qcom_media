@@ -273,6 +273,7 @@ class venc_dev
         struct msm_venc_allocatorproperty   m_sInput_buff_property;
         struct msm_venc_allocatorproperty   m_sOutput_buff_property;
         struct msm_venc_sessionqp           session_qp;
+        struct msm_venc_qprange             session_qp_range;
         struct msm_venc_multiclicecfg       multislice;
         struct msm_venc_entropycfg          entropy;
         struct msm_venc_dbcfg               dbkfilter;
@@ -288,6 +289,7 @@ class venc_dev
         bool venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config);
         bool venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate);
         bool venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U32 b_frame_qp);
+        bool venc_set_session_qp_range(OMX_U32 min_qp, OMX_U32 max_qp);
         bool venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 config);
         bool venc_set_intra_vop_refresh(OMX_BOOL intra_vop_refresh);
         bool venc_set_color_format(OMX_COLOR_FORMATTYPE color_format);
