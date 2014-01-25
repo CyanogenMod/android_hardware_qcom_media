@@ -694,6 +694,8 @@ bool venc_dev::venc_open(OMX_U32 codec)
         session_qp_range.minqp = 1;
         session_qp_range.maxqp = 128;
     }
+    session_qp_values.minqp = session_qp_range.minqp;
+    session_qp_values.maxqp = session_qp_range.maxqp;
 
     int ret;
     ret = subscribe_to_events(m_nDriver_fd);
@@ -1416,6 +1418,9 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
                         DEBUG_PRINT_ERROR("ERROR: Setting QP Range[%d %d] failed",
                             session_qp_range->minQP, session_qp_range->maxQP);
                         return false;
+                    } else {
+                        session_qp_values.minqp = session_qp_range->minQP;
+                        session_qp_values.maxqp = session_qp_range->maxQP;
                     }
                 } else {
                     DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_QcomIndexParamVideoQPRange");
@@ -1832,7 +1837,7 @@ void venc_dev::venc_config_print()
             session_qp.iframeqp, session_qp.pframqp,session_qp.bframqp);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: minQP: %d, maxQP: %d",
-            session_qp_range.minqp, session_qp_range.maxqp);
+            session_qp_values.minqp, session_qp_values.maxqp);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: VOP_Resolution: %ld, Slice-Mode: %ld, Slize_Size: %ld",
             voptimecfg.voptime_resolution, multislice.mslice_mode,
