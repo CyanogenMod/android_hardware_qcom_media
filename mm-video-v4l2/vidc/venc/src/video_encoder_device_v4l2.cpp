@@ -319,6 +319,9 @@ void* venc_dev::async_venc_message_thread (void *input)
                 if (omx->handle->num_planes > 1 && v4l2_buf.m.planes->bytesused)
                     venc_msg.buf.flags |= OMX_BUFFERFLAG_EXTRADATA;
 
+                if (omxhdr->nFilledLen)
+                    venc_msg.buf.flags |= OMX_BUFFERFLAG_ENDOFFRAME;
+
                 omx->handle->fbd++;
 
                 if (omx->async_message_process(input,&venc_msg) < 0) {
