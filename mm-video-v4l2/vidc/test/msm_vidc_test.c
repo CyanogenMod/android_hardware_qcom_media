@@ -57,6 +57,8 @@
 #define MAX_NUM_BUFS 32
 #define MEM_DEVICE "/dev/ion"
 #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
+#define MAX_NAL_SIZE (1920*1080*3/2)
+
 
 #define EXTRADATA_IDX(__num_planes) (__num_planes - 1)
 
@@ -128,6 +130,28 @@ typedef enum paramtype {
 	DOUBLE_ARRAY,
 	FLAG,
 } paramtype;
+
+/* for h264 */
+typedef enum nal_unit_type {
+    NALU_TYPE_UNSPECIFIED = 0,
+    NALU_TYPE_NON_IDR = 1,
+    NALU_TYPE_PARTITION_A = 2,
+    NALU_TYPE_PARTITION_B = 3,
+    NALU_TYPE_PARTITION_C = 4,
+    NALU_TYPE_IDR = 5,
+    NALU_TYPE_SEI = 6,
+    NALU_TYPE_SPS = 7,
+    NALU_TYPE_PPS = 8,
+    NALU_TYPE_ACCESS_DELIM = 9,
+    NALU_TYPE_EOSEQ = 10,
+    NALU_TYPE_EOSTREAM = 11,
+    NALU_TYPE_FILLER_DATA = 12,
+    NALU_TYPE_SPS_EXT = 13,
+    NALU_TYPE_PREFIX = 14,
+    NALU_TYPE_SUBSET_SPS =15,
+    NALU_TYPE_SLICE_EXT = 20,
+    NALU_TYPE_RESERVED = 0x1FFFFFFF
+} nal_unit_type;
 
 struct ion_info {
 	int ion_device_fd;
@@ -267,7 +291,7 @@ static int subscribe_event(int fd, struct v4l2_event_subscription *sub);
 static int unsubscribe_event(int fd, struct v4l2_event_subscription *sub);
 static int decoder_cmd(int fd, struct v4l2_decoder_cmd *dec);
 static void* poll_func(void *data);
-int read_annexb_nalu(FILE * bits, unsigned char * pBuf);
+int read_annexb_nalu(FILE * bits, unsigned char * pBuf, int * sc_size);
 int read_annexb_nalu_key_frame(FILE * bits, unsigned char * pBuf);
 int parse_annexb_nalu_key_frame(FILE * bits, unsigned char * pBuf);
 int read_mpeg2_chunk(FILE * bits, unsigned char * pBuf);
@@ -3648,7 +3672,7 @@ int parse_annexb_nalu_key_frame(FILE * bits, unsigned char * pBuf)
 	return (pos+rewind);
 }
 
-int read_annexb_nalu(FILE * bits, unsigned char * pBuf)
+int read_annexb_nalu(FILE * bits, unsigned char * pBuf, int * sc_size)
 {
 	int info2, info3, pos = 0;
 	int StartCodeFound, rewind;
@@ -3676,6 +3700,9 @@ int read_annexb_nalu(FILE * bits, unsigned char * pBuf)
 	} else {
 		E( " Panic: Error \n");
 		return -1;
+	}
+	if (sc_size != NULL) {
+		*sc_size = pos;
 	}
 	StartCodeFound = 0;
 	info2 = 0;
@@ -3725,16 +3752,72 @@ static int find_start_code(const unsigned char * pBuf, unsigned int zeros_in_sta
 	return info;
 }
 
+static int read_two_views_mvc(FILE * bits, unsigned char * pBuf)
+{
+	int read_lenght = 0;
+	int read =0;
+	int nal_type = 0;
+	int sc_size = 0;
+	int got_right_view = 0;
+	int pos = 0;
+
+	do {
+		D("file pos = %ld, pointer %p, pointing = %p, %d\n",
+			ftell(bits), &pBuf, pBuf, read_lenght);
+		read = read_annexb_nalu(bits, pBuf, &sc_size);
+		read_lenght += read;
+		nal_type = (pBuf[sc_size] & 0x1F);
+		D("sc_size = %d, read = %d, read_lenght = %d\n", sc_size, read, read_lenght);
+		D("nal_type = %d\n", nal_type);
+		switch (nal_type) {
+		case NALU_TYPE_PREFIX:
+		case NALU_TYPE_PPS:
+		case NALU_TYPE_SPS:
+		case NALU_TYPE_SEI:
+		case NALU_TYPE_SUBSET_SPS:
+		case NALU_TYPE_NON_IDR:
+		case NALU_TYPE_IDR:
+		{
+			D("NALU: non-right\n");
+			break;
+		}
+		case NALU_TYPE_SLICE_EXT:
+		{
+			D("NALU: right view\n");
+			got_right_view = 1;
+			break;
+		}
+		case NALU_TYPE_PARTITION_A:
+		case NALU_TYPE_PARTITION_B:
+		case NALU_TYPE_PARTITION_C:
+		case NALU_TYPE_ACCESS_DELIM:
+		case NALU_TYPE_FILLER_DATA:
+		default:
+			D("Error: test app doesn't handle this NAL unit types\n");
+			return 0;
+			break;
+		}
+		pBuf += read;
+	} while (read_lenght < MAX_NAL_SIZE && !got_right_view);
+	if (read_lenght >= MAX_NAL_SIZE) {
+		E("File may not be MVC or corrupted. Not found both views\n");
+		read_lenght = 0;
+	}
+
+	return read_lenght;
+}
+
 int read_one_frame(FILE * bits, unsigned char * pBuf)
 {
 	int read_length;
-	if (!strcmp(input_args->codec_type, "H.264") ||
-		!strcmp(input_args->codec_type, "MVC")) {
+	if (!strcmp(input_args->codec_type, "H.264")) {
 		if (input_args->trick_mode) {
 			read_length = read_annexb_nalu_key_frame(bits, pBuf);
 		} else {
-			read_length = read_annexb_nalu(bits, pBuf);
+			read_length = read_annexb_nalu(bits, pBuf, NULL);
 		}
+	} else if (!strcmp(input_args->codec_type, "MVC")) {
+		read_length = read_two_views_mvc(bits, pBuf);
 	} else if (!strcmp(input_args->codec_type, "MPEG4")) {
 		read_length = read_mpeg4_chunk(bits,pBuf);
 	} else if (!strcmp(input_args->codec_type, "VP8")) {
