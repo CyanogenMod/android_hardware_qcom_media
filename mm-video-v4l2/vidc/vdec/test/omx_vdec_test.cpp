@@ -197,9 +197,10 @@ size_t fwrite_helper(const void *ptr, size_t size, size_t nmemb, FILE *stream)
          * for some reason.  Seems contrary to what one would expect */
         size_t temp = fwrite(ptr2 + written, 1, to_write - written, stream);
 
-        if (temp < 0)
+        if (!temp && ferror(stream)) {
+            printf("Error while writing\n");
             return temp;
-
+        }
         written += temp;
     }
 
@@ -249,6 +250,7 @@ typedef enum {
     CODEC_FORMAT_VP8,
     CODEC_FORMAT_HEVC,
     CODEC_FORMAT_HEVC_HYBRID,
+    CODEC_FORMAT_MVC,
 #endif
     CODEC_FORMAT_MAX
 } codec_format;
@@ -279,7 +281,9 @@ typedef enum {
 #ifdef _MSM8974_
     FILE_TYPE_START_OF_VP8_SPECIFIC = 60,
     FILE_TYPE_VP8_START_CODE = FILE_TYPE_START_OF_VP8_SPECIFIC,
-    FILE_TYPE_VP8
+    FILE_TYPE_VP8,
+
+    FILE_TYPE_MVC = 5,
 #endif
 
 } file_type;
@@ -454,6 +458,7 @@ static int Read_Buffer_From_RCV_File_Seq_Layer(OMX_BUFFERHEADERTYPE  *pBufHdr);
 static int Read_Buffer_From_RCV_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
 #ifdef _MSM8974_
 static int Read_Buffer_From_VP8_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
+static int Read_Buffer_From_MVC_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
 #endif
 static int Read_Buffer_From_VC1_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
 static int Read_Buffer_From_DivX_4_5_6_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
@@ -835,25 +840,41 @@ void* fbd_thread(void* pArg)
             }
 
             if (takeYuvLog) {
-                if (color_fmt == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
-                    printf("\n width: %lu height: %lu\n", crop_rect.nWidth, crop_rect.nHeight);
+                bytes_written = 0;
+                if (color_fmt == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m ||
+                    color_fmt == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView) {
+                    unsigned int i = 0;
+                    unsigned int nViewsDone = 0;
                     unsigned int stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, portFmt.format.video.nFrameWidth);
                     unsigned int scanlines = VENUS_Y_SCANLINES(COLOR_FMT_NV12, portFmt.format.video.nFrameHeight);
-                    char *temp = (char *) pBuffer->pBuffer;
-                    unsigned int i = 0;
+                    char *frame_pos = (char *) pBuffer->pBuffer;
+                    char *view2 = color_fmt == (OMX_COLOR_FORMATTYPE)
+                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView?
+                            (char *) pBuffer->pBuffer +
+                                VENUS_VIEW2_OFFSET(COLOR_FMT_NV12_MVTB,
+                                    portFmt.format.video.nFrameWidth,
+                                    portFmt.format.video.nFrameHeight):
+                             NULL;
+                    do {
+                        frame_pos += (stride * (int)crop_rect.nTop) + (int)crop_rect.nLeft;
+                        for (i = 0; i < crop_rect.nHeight; i++) {
+                            bytes_written += fwrite_helper(frame_pos, crop_rect.nWidth, 1, outputBufferFile);
+                            frame_pos += stride;
+                        }
 
-                    temp += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
-                    for (i = 0; i < crop_rect.nHeight; i++) {
-                        bytes_written = fwrite_helper(temp, crop_rect.nWidth, 1, outputBufferFile);
-                        temp += stride;
-                    }
-
-                    temp = (char *)pBuffer->pBuffer + stride * scanlines;
-                    temp += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
-                    for (i = 0; i < crop_rect.nHeight/2; i++) {
-                        bytes_written += fwrite_helper(temp, crop_rect.nWidth, 1, outputBufferFile);
-                        temp += stride;
-                    }
+                        frame_pos = (nViewsDone == 0 ?
+                            (char *) pBuffer->pBuffer:
+                            view2) + stride * scanlines;
+                        frame_pos += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
+                        for (i = 0; i < crop_rect.nHeight/2; i++) {
+                            bytes_written += fwrite_helper(frame_pos, crop_rect.nWidth, 1, outputBufferFile);
+                            frame_pos += stride;
+                        }
+                        nViewsDone++;
+                        if (view2 != NULL) {
+                            frame_pos = view2;
+                        }
+                    } while (view2 != NULL && nViewsDone < 2);
                 } else {
                     bytes_written = fwrite_helper((const char *)pBuffer->pBuffer,
                             pBuffer->nFilledLen,1,outputBufferFile);
@@ -1355,6 +1376,7 @@ int main(int argc, char **argv)
         printf(" 7--> VP8\n");
         printf(" 8--> HEVC\n");
         printf(" 9--> HYBRID\n");
+        printf(" 10-> MVC\n");
 #endif
         fflush(stdin);
         fgets(tempbuf,sizeof(tempbuf),stdin);
@@ -1386,7 +1408,9 @@ int main(int argc, char **argv)
             printf(" 3--> MPEG2 START CODE CLIP (.m2v)\n");
         }
 #ifdef _MSM8974_
-        else if (codec_format_option == CODEC_FORMAT_VP8) {
+        else if (codec_format_option == CODEC_FORMAT_MVC) {
+            printf(" 5--> MVC clip (.264)\n");
+        } else if (codec_format_option == CODEC_FORMAT_VP8) {
             printf(" 61--> VP8 START CODE CLIP (.ivf)\n");
         }
 #endif
@@ -1396,6 +1420,8 @@ int main(int argc, char **argv)
 #ifdef _MSM8974_
         if (codec_format_option == CODEC_FORMAT_VP8) {
             file_type_option = FILE_TYPE_VP8;
+        } else if (codec_format_option == CODEC_FORMAT_MVC) {
+            file_type_option = FILE_TYPE_MVC;
         }
 #endif
         fflush(stdin);
@@ -1530,6 +1556,7 @@ int main(int argc, char **argv)
                 break;
 #ifdef _MSM8974_
             case CODEC_FORMAT_VP8:
+            case CODEC_FORMAT_MVC:
                 break;
 #endif
             default:
@@ -1692,6 +1719,8 @@ int run_tests()
 #ifdef _MSM8974_
     else if (file_type_option == FILE_TYPE_VP8) {
         Read_Buffer = Read_Buffer_From_VP8_File;
+    } else if (codec_format_option == CODEC_FORMAT_MVC) {
+        Read_Buffer = Read_Buffer_From_MVC_File;
     }
 #endif
     else if (file_type_option == FILE_TYPE_VC1) {
@@ -1711,6 +1740,7 @@ int run_tests()
         case FILE_TYPE_VC1:
 #ifdef _MSM8974_
         case FILE_TYPE_VP8:
+        case FILE_TYPE_MVC:
 #endif
         case FILE_TYPE_DIVX_4_5_6:
 #ifdef MAX_RES_1080P
@@ -1847,6 +1877,9 @@ int Init_Decoder()
     else if (codec_format_option == CODEC_FORMAT_VP8) {
         strlcpy(vdecCompNames, "OMX.qcom.video.decoder.vp8", 27);
     }
+    else if (codec_format_option == CODEC_FORMAT_MVC) {
+        strlcpy(vdecCompNames, "OMX.qcom.video.decoder.mvc", 27);
+    }
 #endif
     else if (codec_format_option == CODEC_FORMAT_HEVC) {
         strlcpy(vdecCompNames, "OMX.qcom.video.decoder.hevc", 28);
@@ -1870,6 +1903,11 @@ int Init_Decoder()
             (OMX_STRING)vdecCompNames, NULL, &call_back);
     if (FAILED(omxresult)) {
         DEBUG_PRINT_ERROR("\nFailed to Load the component:%s\n", vdecCompNames);
+        if (!strncmp(vdecCompNames, "OMX.qcom.video.decoder.mvc", 27)) {
+            char platform_name[PROPERTY_VALUE_MAX] = {0};
+            property_get("ro.product.name", platform_name, "Name not available");
+            printf("Error: MVC not listed as supported codec in this platform: %s\n", platform_name);
+        }
         return -1;
     } else {
         DEBUG_PRINT("\nComponent %s is in LOADED state\n", vdecCompNames);
@@ -1898,6 +1936,8 @@ int Init_Decoder()
     /* Set the compression format on i/p port */
     if (codec_format_option == CODEC_FORMAT_H264) {
         portFmt.format.video.eCompressionFormat = OMX_VIDEO_CodingAVC;
+    } else if (codec_format_option == CODEC_FORMAT_MVC) {
+        portFmt.format.video.eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingMVC;
     } else if (codec_format_option == CODEC_FORMAT_MP4) {
         portFmt.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG4;
     } else if (codec_format_option == CODEC_FORMAT_H263) {
@@ -2121,8 +2161,12 @@ int Play_Decoder()
             QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka;
     }
 #elif _MSM8974_
-    color_fmt = (OMX_COLOR_FORMATTYPE)
-        QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+    if (codec_format_option == CODEC_FORMAT_MVC)
+        color_fmt = (OMX_COLOR_FORMATTYPE)
+            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView;
+    else
+        color_fmt = (OMX_COLOR_FORMATTYPE)
+            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
 #else
     color_fmt = (OMX_COLOR_FORMATTYPE)
         QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka;
@@ -3532,7 +3576,75 @@ static int Read_Buffer_From_VP8_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     pBufHdr->nTimeStamp = time_stamp;
     return n_offset;
 }
+
+static int Read_Buffer_From_MVC_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
+{
+    int newFrame = 0;
+    int bytes_read = 0;
+    int cnt = 0;
+    int naluType = 0;
+    unsigned int code = 0;
+    char *pBuffer = NULL;
+
+    if (pBufHdr == NULL || pBufHdr->pBuffer == NULL) {
+        DEBUG_PRINT("\n ERROR: %s: input is NULL\n", __FUNCTION__);
+        return 0;
+    }
+    pBuffer = (char *)pBufHdr->pBuffer;
+    pBufHdr->nFilledLen = 0;
+
+    do {
+        naluType = 0;
+        cnt = 0;
+        code = 0;
+        newFrame = 0;
+        do {
+            bytes_read = read(inputBufferFileFd, &pBuffer[cnt], 1);
+            if (!bytes_read) {
+                DEBUG_PRINT("\n%s: Bytes read Zero\n", __FUNCTION__);
+                break;
+            } else if (cnt == 4) {
+                naluType = pBuffer[cnt] & 0x1F;
+                DEBUG_PRINT("%s: Found NALU type = %d\n", __FUNCTION__, naluType);
+            }
+            code <<= 8;
+            code |= (0x000000FF & pBuffer[cnt]);
+            cnt++;
+            if ((cnt == 4) && (code != H264_START_CODE)) {
+                DEBUG_PRINT_ERROR("\n%s: ERROR: Invalid start code found 0x%x\n", __FUNCTION__, code);
+                lseek64(inputBufferFileFd, -4, SEEK_CUR);
+                cnt = 0;
+                bytes_read = 0;
+                break;
+            } else if ((cnt > 4) && (code == H264_START_CODE)) {
+                DEBUG_PRINT("%s: Found next H264_START_CODE\n", __FUNCTION__);
+                lseek64(inputBufferFileFd, -4, SEEK_CUR);
+                cnt -= 4;
+                break;
+            }
+            if (pBufHdr->nAllocLen <= pBufHdr->nFilledLen + cnt) {
+                DEBUG_PRINT_ERROR("\n%s: ERROR: Invalid input file for MVC codec", __FUNCTION__);
+                cnt = 0;
+                bytes_read = 0;
+                break;
+            }
+        } while (1);
+        pBufHdr->nFilledLen += cnt;
+        pBuffer += cnt;
+    }while (naluType != 20 && bytes_read != 0);
+
+    pBufHdr->nTimeStamp = 0;
+    pBufHdr->nOffset = 0;
+
+    DEBUG_PRINT("%s: Return: pBuffer = %p, FilledLen= %ld, TS=[%Lu]\n",
+            __FUNCTION__,
+            pBufHdr->pBuffer,
+            pBufHdr->nFilledLen,
+            pBufHdr->nTimeStamp);
+    return pBufHdr->nFilledLen;
+}
 #endif
+
 static int open_video_file ()
 {
     int error_code = 0;
