@@ -228,6 +228,24 @@ void* async_message_thread (void *input)
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE) {
                 DEBUG_PRINT_HIGH("VIDC Close Done Recieved and async_message_thread Exited");
                 break;
+            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_HW_OVERLOAD) {
+                struct vdec_msginfo vdec_msg;
+                vdec_msg.msgcode=VDEC_MSG_EVT_HW_OVERLOAD;
+                vdec_msg.status_code=VDEC_S_SUCCESS;
+                DEBUG_PRINT_ERROR("HW Overload received");
+                if (omx->async_message_process(input,&vdec_msg) < 0) {
+                    DEBUG_PRINT_HIGH("async_message_thread Exited");
+                    break;
+                }
+            } else if(dqevent.type == V4L2_EVENT_MSM_VIDC_MAX_CLIENTS) {
+                struct vdec_msginfo vdec_msg;
+                vdec_msg.msgcode=VDEC_MSG_EVT_MAX_CLIENTS;
+                vdec_msg.status_code=VDEC_S_SUCCESS;
+                DEBUG_PRINT_ERROR("Max Client Reached");
+                if (omx->async_message_process(input,&vdec_msg) < 0) {
+                    DEBUG_PRINT_HIGH("async_message_thread Exited");
+                    break;
+                }
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_SYS_ERROR) {
                 struct vdec_msginfo vdec_msg;
                 vdec_msg.msgcode=VDEC_MSG_EVT_HW_ERROR;
@@ -1234,6 +1252,16 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                 case OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING:
                                         DEBUG_PRINT_ERROR("OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING");
                                         pThis->omx_report_unsupported_setting();
+                                        break;
+
+               case OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD:
+                                        DEBUG_PRINT_ERROR("OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD");
+                                        pThis->omx_report_hw_overload();
+                                        break;
+
+               case OMX_COMPONENT_GENERATE_MAX_CLIENTS_ERROR:
+                                        DEBUG_PRINT_ERROR("OMX_COMPONENT_GENERATE_MAX_CLIENTS_ERROR");
+                                        pThis->omx_report_max_clients_reached();
                                         break;
 
                 default:
@@ -6784,6 +6812,16 @@ int omx_vdec::async_message_process (void *context, void* message)
         case VDEC_MSG_EVT_HW_ERROR:
             omx->post_event ((unsigned)NULL, vdec_msg->status_code,\
                     OMX_COMPONENT_GENERATE_HARDWARE_ERROR);
+            break;
+
+        case VDEC_MSG_EVT_HW_OVERLOAD:
+            omx->post_event ((unsigned)NULL, vdec_msg->status_code,\
+                    OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD);
+            break;
+
+        case VDEC_MSG_EVT_MAX_CLIENTS:
+            omx->post_event ((unsigned)NULL, vdec_msg->status_code,\
+                    OMX_COMPONENT_GENERATE_MAX_CLIENTS_ERROR);
             break;
 
         case VDEC_MSG_RESP_START_DONE:

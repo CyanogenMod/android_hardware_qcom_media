@@ -379,7 +379,25 @@ void* venc_dev::async_venc_message_thread (void *input)
                     DEBUG_PRINT_ERROR("ERROR: Wrong ioctl message");
                     break;
                 }
-            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_SYS_ERROR) {
+            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_HW_OVERLOAD) {
+                DEBUG_PRINT_ERROR("HW Overload received");
+                venc_msg.statuscode=VEN_S_EFAIL;
+                venc_msg.msgcode = VEN_MSG_HW_OVERLOAD;
+
+                if (omx->async_message_process(input,&venc_msg) < 0) {
+                    DEBUG_PRINT_ERROR("ERROR: Wrong ioctl message");
+                    break;
+                }
+            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_MAX_CLIENTS) {
+                DEBUG_PRINT_ERROR("Max Clients Reached");
+                venc_msg.statuscode=VEN_S_EFAIL;
+                venc_msg.msgcode = VEN_MSG_MAX_CLIENTS;
+
+                if (omx->async_message_process(input,&venc_msg) < 0) {
+                    DEBUG_PRINT_ERROR("ERROR: Wrong ioctl message");
+                    break;
+                }
+            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_SYS_ERROR){
                 DEBUG_PRINT_ERROR("HW Error recieved");
                 venc_msg.statuscode=VEN_S_EFAIL;
 

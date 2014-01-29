@@ -514,6 +514,25 @@ class omx_video: public qc_omx_component
             }
         }
 
+        inline void omx_report_hw_overload ()
+        {
+            if (m_pCallbacks.EventHandler && !m_error_propogated)
+            {
+                m_error_propogated = true;
+                m_pCallbacks.EventHandler(&m_cmp,m_app_data,
+                        OMX_EventError,OMX_ErrorHardwareOverload,0,NULL);
+            }
+        }
+
+        inline void omx_report_max_clients_error ()
+        {
+            if (m_pCallbacks.EventHandler && !m_error_propogated)
+            {
+                m_error_propogated = true;
+                m_pCallbacks.EventHandler(&m_cmp,m_app_data,
+                        OMX_EventError,OMX_ErrorMaxClientsReached,0,NULL);
+            }
+        }
         inline void omx_report_unsupported_setting () {
             if (m_pCallbacks.EventHandler && !m_error_propogated) {
                 m_error_propogated = true;
