@@ -384,7 +384,8 @@ DashCodec::DashCodec()
       mChannelMask(0),
       mDequeueCounter(0),
       mStoreMetaDataInOutputBuffers(false),
-      mMetaDataBuffersToSubmit(0)  {
+      mMetaDataBuffersToSubmit(0),
+      mAdaptivePlayback(false) {
     mUninitializedState = new UninitializedState(this);
     mLoadedState = new LoadedState(this);
     mLoadedToIdleState = new LoadedToIdleState(this);
@@ -628,6 +629,11 @@ OMX_U32 *bufferCount, OMX_U32 *bufferSize,
     if (def.nBufferCountActual < def.nBufferCountMin + *minUndequeuedBuffers) {
         OMX_U32 newBufferCount = def.nBufferCountMin + *minUndequeuedBuffers;
         def.nBufferCountActual = newBufferCount;
+
+        //Keep an extra buffer for smooth streaming
+        if (mAdaptivePlayback) {
+            def.nBufferCountActual += 1;
+        }
 
         err = mOMX->setParameter(
                 mNode, OMX_IndexParamPortDefinition, &def, sizeof(def));
@@ -1093,7 +1099,6 @@ status_t DashCodec::configureCodec(
             // surfaces as they never had to respond to changes in the
             // crop window, and we don't trust that they will be able to.
             int usageBits = 0;
-            bool canDoAdaptivePlayback;
 
             sp<NativeWindowWrapper> windowWrapper(
                     static_cast<NativeWindowWrapper *>(obj.get()));
@@ -1103,26 +1108,31 @@ status_t DashCodec::configureCodec(
                     nativeWindow.get(),
                     NATIVE_WINDOW_CONSUMER_USAGE_BITS,
                     &usageBits) != OK) {
-                canDoAdaptivePlayback = false;
             } else {
-                canDoAdaptivePlayback =
+                mAdaptivePlayback =
                     (usageBits &
                             (GRALLOC_USAGE_SW_READ_MASK |
                              GRALLOC_USAGE_SW_WRITE_MASK)) == 0;
             }
-
             int32_t maxWidth = MAX_WIDTH;
             int32_t maxHeight = MAX_HEIGHT;
-            if (canDoAdaptivePlayback) {
+            if (mAdaptivePlayback) {
                 ALOGV("[%s] prepareForAdaptivePlayback(%ldx%ld)",
                       mComponentName.c_str(), maxWidth, maxHeight);
 
                 err = mOMX->prepareForAdaptivePlayback(
                         mNode, kPortIndexOutput, OMX_TRUE, maxWidth, maxHeight);
-                ALOGW_IF(err != OK,
-                        "[%s] prepareForAdaptivePlayback failed w/ err %d",
+                if (err != OK)
+                {
+                  ALOGE("[%s] prepareForAdaptivePlayback failed w/ err %d",
+                         mComponentName.c_str(), err);
+                }
+                else
+                {
+                  ALOGV("[%s] prepareForAdaptivePlayback : Success",
                         mComponentName.c_str(), err);
             }
+          }
             // allow failure
             err = OK;
         } else {
@@ -1130,7 +1140,7 @@ status_t DashCodec::configureCodec(
             mStoreMetaDataInOutputBuffers = true;
         }
       }
-    if (video) {
+    if (!strncasecmp(mime, "video/", 6)) {
         if (encoder) {
             err = setupVideoEncoder(mime, msg);
         } else {
@@ -1139,6 +1149,11 @@ status_t DashCodec::configureCodec(
                     || !msg->findInt32("height", &height)) {
                 err = INVALID_OPERATION;
             } else {
+                //override height & width with max for smooth streaming
+                if (mAdaptivePlayback) {
+                    width = MAX_WIDTH;
+                    height = MAX_HEIGHT;
+                }
                 err = setupVideoDecoder(mime, width, height);
             }
         }
@@ -3159,8 +3174,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
                 mCodec->mPortEOS[kPortIndexOutput] = true;
                 break;
             }
-
-            if (!mCodec->mIsEncoder && !mCodec->mSentFormat) {
+            if (!mCodec->mIsEncoder && !mCodec->mSentFormat && !mCodec->mAdaptivePlayback) {
                 mCodec->sendFormatChange();
             }
 
@@ -3186,6 +3200,12 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
             notify->setInt32("flags", flags);
             sp<AMessage> reply =
                 new AMessage(kWhatOutputBufferDrained, mCodec->id());
+
+           if (!mCodec->mPostFormat && mCodec->mAdaptivePlayback){
+                   ALOGV("Resolution will change from this buffer, set a flag");
+                   reply->setInt32("resChange", 1);
+                   mCodec->mPostFormat = true;
+            }
 
             reply->setPointer("buffer-id", info->mBufferID);
 
@@ -3219,7 +3239,14 @@ void DashCodec::BaseState::onOutputBufferDrained(const sp<AMessage> &msg) {
     BufferInfo *info =
         mCodec->findBufferByID(kPortIndexOutput, bufferID, &index);
     CHECK_EQ((int)info->mStatus, (int)BufferInfo::OWNED_BY_DOWNSTREAM);
-
+    if (mCodec->mAdaptivePlayback) {
+        int32_t resChange = 0;
+        if (msg->findInt32("resChange", &resChange) && resChange == 1) {
+            ALOGV("Resolution change is sent to native window now ");
+            mCodec->sendFormatChange();
+            msg->setInt32("resChange", 0);
+        }
+    }
     int32_t render;
     if (mCodec->mNativeWindow != NULL
             && msg->findInt32("render", &render) && render != 0) {
