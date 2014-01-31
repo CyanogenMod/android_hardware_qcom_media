@@ -83,7 +83,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef OUTPUT_EXTRADATA_LOG
 FILE *outputExtradataFile;
-char ouputextradatafilename [] = "/data/extradata";
+char output_extradata_filename [] = "/data/misc/extradata";
 #endif
 
 #define DEFAULT_FPS 30
@@ -1508,7 +1508,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
 
 #ifdef OUTPUT_EXTRADATA_LOG
-    outputExtradataFile = fopen (ouputextradatafilename, "ab");
+    outputExtradataFile = fopen (output_extradata_filename, "ab");
 #endif
 
     // Copy the role information which provides the decoder kind

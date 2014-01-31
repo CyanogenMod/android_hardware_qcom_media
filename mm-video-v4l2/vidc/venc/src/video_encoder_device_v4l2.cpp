@@ -212,13 +212,15 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&m_debug,0,sizeof(m_debug));
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
-    property_value[0] = '\0';
     property_get("vidc.enc.log.in", property_value, "0");
     m_debug.in_buffer_log = atoi(property_value);
 
-    property_value[0] = '\0';
     property_get("vidc.enc.log.out", property_value, "0");
     m_debug.out_buffer_log = atoi(property_value);
+
+    property_get("vidc.enc.log.extradata", property_value, "0");
+    m_debug.extradata_log = atoi(property_value);
+
     snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
              "%s", BUFFER_LOG_LOC);
 }
@@ -644,6 +646,48 @@ int venc_dev::venc_output_log_buffers(const char *buffer_addr, int buffer_len)
     return 0;
 }
 
+int venc_dev::venc_extradata_log_buffers(char *buffer_addr)
+{
+    if (!m_debug.extradatafile && m_debug.extradata_log) {
+        int size = 0;
+        if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_MPEG4) {
+           size = snprintf(m_debug.extradatafile_name, PROPERTY_VALUE_MAX, "%s/extradata_enc_%d_%d_%p.m4v",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
+           size = snprintf(m_debug.extradatafile_name, PROPERTY_VALUE_MAX, "%s/extradata_enc_%d_%d_%p.264",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263) {
+           size = snprintf(m_debug.extradatafile_name, PROPERTY_VALUE_MAX, "%s/extradata_enc_%d_%d_%p.263",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_VP8) {
+           size = snprintf(m_debug.extradatafile_name, PROPERTY_VALUE_MAX, "%s/extradata_enc_%d_%d_%p.ivf",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        }
+        if ((size > PROPERTY_VALUE_MAX) && (size < 0)) {
+             DEBUG_PRINT_ERROR("Failed to open extradata file: %s for logging size:%s",
+                                m_debug.extradatafile_name, size);
+        }
+
+        m_debug.extradatafile = fopen(m_debug.extradatafile_name, "ab");
+        if (!m_debug.extradatafile) {
+            DEBUG_PRINT_ERROR("Failed to open extradata file: %s for logging errno:%d",
+                               m_debug.extradatafile_name, errno);
+            m_debug.extradatafile_name[0] = '\0';
+            return -1;
+        }
+    }
+
+    if (m_debug.extradatafile) {
+        OMX_OTHER_EXTRADATATYPE *p_extra = NULL;
+        do {
+            p_extra = (OMX_OTHER_EXTRADATATYPE *)(!p_extra ? buffer_addr :
+                    ((char *)p_extra) + p_extra->nSize);
+            fwrite(p_extra, p_extra->nSize, 1, m_debug.extradatafile);
+        } while (p_extra->eType != OMX_ExtraDataNone);
+    }
+    return 0;
+}
+
 int venc_dev::venc_input_log_buffers(OMX_BUFFERHEADERTYPE *pbuffer, int fd, int plane_offset) {
     if (!m_debug.infile) {
         int size = snprintf(m_debug.infile_name, PROPERTY_VALUE_MAX, "%s/input_enc_%d_%d_%p.yuv",
@@ -955,11 +999,16 @@ void venc_dev::venc_close()
         fclose(m_debug.infile);
         m_debug.infile = NULL;
     }
+
     if (m_debug.outfile) {
         fclose(m_debug.outfile);
         m_debug.outfile = NULL;
     }
 
+    if (m_debug.extradatafile) {
+        fclose(m_debug.extradatafile);
+        m_debug.extradatafile = NULL;
+    }
 }
 
 bool venc_dev::venc_set_buf_req(unsigned long *min_buff_count,

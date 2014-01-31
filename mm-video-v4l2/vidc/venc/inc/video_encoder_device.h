@@ -81,6 +81,7 @@ class venc_dev
         bool venc_get_output_log_flag();
         int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
         int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, void* pmem_data_buf, int framelen);
+        int venc_extradata_log_buffers(char *buffer_addr);
         bool venc_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *);
         OMX_U32 m_nDriver_fd;
         bool m_profile_set;

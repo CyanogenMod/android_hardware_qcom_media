@@ -3884,6 +3884,9 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
         if (buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
             if (!dev_handle_extradata((void *)buffer, index))
                 DEBUG_PRINT_ERROR("Failed to parse extradata");
+
+            dev_extradata_log_buffers((char *)(((int)buffer->pBuffer + buffer->nOffset +
+                        buffer->nFilledLen + 3) & (~3)));
         }
 #endif
         m_pCallbacks.FillBufferDone (hComp,m_app_data,buffer);
