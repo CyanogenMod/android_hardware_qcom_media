@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -313,6 +313,9 @@ void* venc_dev::async_venc_message_thread (void *input)
 
                 if (omx->handle->num_planes > 1 && v4l2_buf.m.planes->bytesused)
                     venc_msg.buf.flags |= OMX_BUFFERFLAG_EXTRADATA;
+
+                if (omxhdr->nFilledLen)
+                    venc_msg.buf.flags |= OMX_BUFFERFLAG_ENDOFFRAME;
 
                 omx->handle->fbd++;
 
