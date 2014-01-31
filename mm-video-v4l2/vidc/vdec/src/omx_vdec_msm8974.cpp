@@ -6601,7 +6601,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                 }
             }
         } else {
-            m_inp_err_count++;
             time_stamp_dts.remove_time_stamp(
                     buffer->nTimeStamp,
                     is_interlaced && is_duplicate_ts_valid);
