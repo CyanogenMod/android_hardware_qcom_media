@@ -195,6 +195,10 @@ void* async_venc_message_thread (void *input)
     return NULL;
 }
 
+int venc_dev::venc_extradata_log_buffers(char *buffer_addr)
+{
+    return OMX_ErrorUnsupportedSetting;
+}
 
 int venc_dev::venc_output_log_buffers(const char *buffer_addr, int buffer_len)
 {

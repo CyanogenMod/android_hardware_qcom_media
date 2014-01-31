@@ -78,11 +78,14 @@ struct pmem {
 struct venc_debug_cap {
     bool in_buffer_log;
     bool out_buffer_log;
+    bool extradata_log;
     char infile_name[PROPERTY_VALUE_MAX];
     char outfile_name[PROPERTY_VALUE_MAX];
+    char extradatafile_name[PROPERTY_VALUE_MAX];
     char log_loc[PROPERTY_VALUE_MAX];
     FILE *infile;
     FILE *outfile;
+    FILE *extradatafile;
 };
 #ifdef USE_ION
 struct venc_ion {
