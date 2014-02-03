@@ -3746,26 +3746,24 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                          m_smoothstreaming_width = pParams->nMaxFrameWidth;
                          m_smoothstreaming_height = pParams->nMaxFrameHeight;
                      }
-                     if(is_q6_platform) {
-                         struct v4l2_format fmt;
-                         update_resolution(m_smoothstreaming_width, m_smoothstreaming_height,
-                                                      m_smoothstreaming_width, m_smoothstreaming_height);
-                         eRet = is_video_session_supported();
-                         if (eRet)
-                             break;
-                         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-                         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
-                         fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
-                         fmt.fmt.pix_mp.pixelformat = output_capability;
-                         DEBUG_PRINT_LOW("fmt.fmt.pix_mp.height = %d , fmt.fmt.pix_mp.width = %d",
-                                                         fmt.fmt.pix_mp.height,fmt.fmt.pix_mp.width);
-                         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
-                         if (ret) {
-                             DEBUG_PRINT_ERROR("Set Resolution failed");
-                             eRet = OMX_ErrorUnsupportedSetting;
-                         } else
-                             eRet = get_buffer_req(&drv_ctx.op_buf);
-                     }
+                     struct v4l2_format fmt;
+                     update_resolution(m_smoothstreaming_width, m_smoothstreaming_height,
+                                                  m_smoothstreaming_width, m_smoothstreaming_height);
+                     eRet = is_video_session_supported();
+                     if (eRet)
+                         break;
+                     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+                     fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
+                     fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+                     fmt.fmt.pix_mp.pixelformat = output_capability;
+                     DEBUG_PRINT_LOW("fmt.fmt.pix_mp.height = %d , fmt.fmt.pix_mp.width = %d",
+                                                     fmt.fmt.pix_mp.height,fmt.fmt.pix_mp.width);
+                     ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+                     if (ret) {
+                         DEBUG_PRINT_ERROR("Set Resolution failed");
+                         eRet = OMX_ErrorUnsupportedSetting;
+                     } else
+                         eRet = get_buffer_req(&drv_ctx.op_buf);
                  }
             } else {
                 DEBUG_PRINT_ERROR(
