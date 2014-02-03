@@ -638,7 +638,11 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     memset(&native_buffer, 0 ,(sizeof(struct nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
 #endif
     memset(&drv_ctx.extradata_info, 0, sizeof(drv_ctx.extradata_info));
+
+    /* invalidate m_frame_pack_arrangement */
     memset(&m_frame_pack_arrangement, 0, sizeof(OMX_QCOM_FRAME_PACK_ARRANGEMENT));
+    m_frame_pack_arrangement.cancel_flag = 1;
+
     drv_ctx.timestamp_adjust = false;
     drv_ctx.video_driver_fd = -1;
     m_vendor_config.pData = NULL;
