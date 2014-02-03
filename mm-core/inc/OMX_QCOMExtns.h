@@ -378,6 +378,7 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     OMX_QcomIndexEnableSliceDeliveryMode = 0x7F00001F,
 
+    /* "OMX.QCOM.index.param.video.ExtnUserExtraData" */
     OMX_QcomIndexEnableExtnUserData = 0x7F000020,
 
     /*"OMX.QCOM.index.param.video.EnableSmoothStreaming"*/
@@ -874,6 +875,11 @@ typedef struct OMX_QCOM_EXTRADATA_BITS_INFO
    OMX_U32 frame_bits;
 } OMX_QCOM_EXTRADATA_BITS_INFO;
 
+typedef struct OMX_QCOM_EXTRADATA_USERDATA {
+   OMX_U32 type;
+   OMX_U32 data[1];
+} OMX_QCOM_EXTRADATA_USERDATA;
+
 typedef struct OMX_QCOM_EXTRADATA_FRAMEINFO
 {
    // common frame meta data. interlace related info removed
@@ -1187,6 +1193,7 @@ typedef struct QOMX_INDEXDOWNSCALAR {
 #define OMX_QCOM_INDEX_PARAM_VIDEO_FRAMEPACKING_EXTRADATA "OMX.QCOM.index.param.video.FramePackingExtradata"
 #define OMX_QCOM_INDEX_PARAM_VIDEO_QP_EXTRADATA "OMX.QCOM.index.param.video.QPExtradata"
 #define OMX_QCOM_INDEX_PARAM_VIDEO_INPUTBITSINFO_EXTRADATA "OMX.QCOM.index.param.video.InputBitsInfoExtradata"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_EXTNUSER_EXTRADATA "OMX.QCOM.index.param.video.ExtnUserExtraData"
 #define OMX_QCOM_INDEX_CONFIG_VIDEO_FRAMEPACKING_INFO "OMX.QCOM.index.config.video.FramePackingInfo"
 
 typedef enum {
