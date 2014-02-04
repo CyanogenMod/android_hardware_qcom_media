@@ -277,7 +277,7 @@ private:
             status_t internalError = UNKNOWN_ERROR);
 
     status_t requestIDRFrame();
-
+    bool mAdaptivePlayback;
     Vector<OMX_PARAM_PORTDEFINITIONTYPE*> mFormats;
     Vector<OMX_CONFIG_RECTTYPE*> mOutputCrops;
     DISALLOW_EVIL_CONSTRUCTORS(DashCodec);
