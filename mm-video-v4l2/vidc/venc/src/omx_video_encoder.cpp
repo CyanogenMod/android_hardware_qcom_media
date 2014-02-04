@@ -1035,63 +1035,48 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             {
                 DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexParamIndexExtraDataType");
                 QOMX_INDEXEXTRADATATYPE *pParam = (QOMX_INDEXEXTRADATATYPE *)paramData;
+                OMX_U32 mask = 0;
+
                 if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderSliceInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
-                        if (pParam->bEnabled == OMX_TRUE)
-                            m_sExtraData |= VEN_EXTRADATA_SLICEINFO;
-                        else
-                            m_sExtraData &= ~VEN_EXTRADATA_SLICEINFO;
+                        mask = VEN_EXTRADATA_SLICEINFO;
+
                         DEBUG_PRINT_HIGH("SliceInfo extradata %s",
                                 ((pParam->bEnabled == OMX_TRUE) ? "enabled" : "disabled"));
-                        if (handle->venc_set_param(&m_sExtraData,
-                                    (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderSliceInfo) != true) {
-                            DEBUG_PRINT_ERROR("ERROR: Setting "
-                                    "OMX_ExtraDataVideoEncoderSliceInfo failed");
-                            return OMX_ErrorUnsupportedSetting;
-                        } else {
-                            m_sOutPortDef.nPortIndex = PORT_INDEX_OUT;
-                            dev_get_buf_req(&m_sOutPortDef.nBufferCountMin,
-                                    &m_sOutPortDef.nBufferCountActual,
-                                    &m_sOutPortDef.nBufferSize,
-                                    m_sOutPortDef.nPortIndex);
-                            DEBUG_PRINT_HIGH("updated out_buf_req: buffer cnt=%lu, "
-                                    "count min=%lu, buffer size=%lu",
-                                    m_sOutPortDef.nBufferCountActual,
-                                    m_sOutPortDef.nBufferCountMin,
-                                    m_sOutPortDef.nBufferSize);
-                        }
+                    } else {
+                        DEBUG_PRINT_ERROR("set_parameter: Slice information is "
+                                "valid for output port only");
+                        eRet = OMX_ErrorUnsupportedIndex;
+                        break;
+                    }
+                }
+
+                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderMBInfo) {
+                    if (pParam->nPortIndex == PORT_INDEX_OUT) {
+                        mask = VEN_EXTRADATA_MBINFO;
+
+                        DEBUG_PRINT_HIGH("MBInfo extradata %s",
+                                ((pParam->bEnabled == OMX_TRUE) ? "enabled" : "disabled"));
+                    } else {
+                        DEBUG_PRINT_ERROR("set_parameter: MB information is "
+                                "valid for output port only");
+                        eRet = OMX_ErrorUnsupportedIndex;
+                        break;
                     }
                 }
 #ifndef _MSM8974_
                 else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoLTRInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
                         if (pParam->bEnabled == OMX_TRUE)
-                            m_sExtraData |= VEN_EXTRADATA_LTRINFO;
-                        else
-                            m_sExtraData &= ~VEN_EXTRADATA_LTRINFO;
+                            mask = VEN_EXTRADATA_LTRINFO;
+
                         DEBUG_PRINT_HIGH("LTRInfo extradata %s",
                                 ((pParam->bEnabled == OMX_TRUE) ? "enabled" : "disabled"));
-                        if (handle->venc_set_param(&m_sExtraData,
-                                    (OMX_INDEXTYPE)OMX_ExtraDataVideoLTRInfo) != true) {
-                            DEBUG_PRINT_ERROR("ERROR: Setting "
-                                    "OMX_ExtraDataVideoLTRInfo failed");
-                            return OMX_ErrorUnsupportedSetting;
-                        } else {
-                            m_sOutPortDef.nPortIndex = PORT_INDEX_OUT;
-                            dev_get_buf_req(&m_sOutPortDef.nBufferCountMin,
-                                    &m_sOutPortDef.nBufferCountActual,
-                                    &m_sOutPortDef.nBufferSize,
-                                    m_sOutPortDef.nPortIndex);
-                            DEBUG_PRINT_HIGH("updated out_buf_req: buffer cnt=%d, "
-                                    "count min=%d, buffer size=%d",
-                                    m_sOutPortDef.nBufferCountActual,
-                                    m_sOutPortDef.nBufferCountMin,
-                                    m_sOutPortDef.nBufferSize);
-                        }
                     } else {
                         DEBUG_PRINT_ERROR("set_parameter: LTR information is "
                                 "valid for output port only");
                         eRet = OMX_ErrorUnsupportedIndex;
+                        break;
                     }
                 }
 #endif
@@ -1099,6 +1084,30 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     DEBUG_PRINT_ERROR("set_parameter: unsupported extrdata index (%x)",
                             pParam->nIndex);
                     eRet = OMX_ErrorUnsupportedIndex;
+                    break;
+                }
+
+
+                if (pParam->bEnabled == OMX_TRUE)
+                    m_sExtraData |= mask;
+                else
+                    m_sExtraData &= ~mask;
+
+                if (handle->venc_set_param((OMX_PTR)!!(m_sExtraData & mask),
+                            (OMX_INDEXTYPE)pParam->nIndex) != true) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting Extradata (%x) failed", pParam->nIndex);
+                    return OMX_ErrorUnsupportedSetting;
+                } else {
+                    m_sOutPortDef.nPortIndex = PORT_INDEX_OUT;
+                    dev_get_buf_req(&m_sOutPortDef.nBufferCountMin,
+                            &m_sOutPortDef.nBufferCountActual,
+                            &m_sOutPortDef.nBufferSize,
+                            m_sOutPortDef.nPortIndex);
+                    DEBUG_PRINT_HIGH("updated out_buf_req: buffer cnt=%lu, "
+                            "count min=%lu, buffer size=%lu",
+                            m_sOutPortDef.nBufferCountActual,
+                            m_sOutPortDef.nBufferCountMin,
+                            m_sOutPortDef.nBufferSize);
                 }
                 break;
             }

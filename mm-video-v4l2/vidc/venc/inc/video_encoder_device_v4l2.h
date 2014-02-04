@@ -267,6 +267,7 @@ class venc_dev
         class omx_venc *venc_handle;
         OMX_ERRORTYPE allocate_extradata();
         void free_extradata();
+        int append_mbi_extradata(void *, struct msm_vidc_extradata_header*);
         bool handle_extradata(void *, int);
         int venc_set_format(int);
         bool deinterlace_enabled;
@@ -313,7 +314,7 @@ class venc_dev
         bool venc_set_voptiming_cfg(OMX_U32 nTimeIncRes);
         void venc_config_print();
         bool venc_set_slice_delivery_mode(OMX_U32 enable);
-        bool venc_set_extradata(OMX_U32 extra_data);
+        bool venc_set_extradata(OMX_U32 extra_data, OMX_BOOL enable);
         bool venc_set_idr_period(OMX_U32 nPFrames, OMX_U32 nIDRPeriod);
         bool venc_reconfig_reqbufs();
         bool venc_set_ltrmode(OMX_U32 enable, OMX_U32 count);
