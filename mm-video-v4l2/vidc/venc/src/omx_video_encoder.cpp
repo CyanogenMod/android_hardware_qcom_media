@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -417,6 +417,11 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     OMX_INIT_STRUCT(&m_sConfigDeinterlace, OMX_VIDEO_CONFIG_DEINTERLACE);
     m_sConfigDeinterlace.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sConfigDeinterlace.nEnable = OMX_FALSE;
+
+    OMX_INIT_STRUCT(&m_sHierLayers, QOMX_VIDEO_HIERARCHICALLAYERS);
+    m_sHierLayers.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sHierLayers.nNumLayers = 0;
+    m_sHierLayers.eHierarchicalCodingType = QOMX_HIERARCHICALCODING_P;
 
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
@@ -1191,6 +1196,27 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 break;
             }
+       case OMX_QcomIndexHierarchicalStructure:
+           {
+                QOMX_VIDEO_HIERARCHICALLAYERS* pParam =
+                    (QOMX_VIDEO_HIERARCHICALLAYERS*)paramData;
+                DEBUG_PRINT_LOW("OMX_QcomIndexHierarchicalStructure");
+                if (pParam->nPortIndex == PORT_INDEX_OUT) {
+                    if (!handle->venc_set_param(paramData,
+                                (OMX_INDEXTYPE)OMX_QcomIndexHierarchicalStructure)) {
+                        DEBUG_PRINT_ERROR("ERROR: Request for setting PlusPType failed");
+                        return OMX_ErrorUnsupportedSetting;
+                    }
+                    m_sHierLayers.nNumLayers = pParam->nNumLayers;
+                    m_sHierLayers.eHierarchicalCodingType = pParam->eHierarchicalCodingType;
+                } else {
+                    DEBUG_PRINT_ERROR("ERROR: OMX_QcomIndexHierarchicalStructure called on wrong port(%lu)",
+                          pParam->nPortIndex);
+                    return OMX_ErrorBadPortIndex;
+                }
+                break;
+
+           }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {

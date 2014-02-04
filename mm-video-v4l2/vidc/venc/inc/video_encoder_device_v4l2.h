@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -174,6 +174,10 @@ struct msm_venc_slice_delivery {
     unsigned long enable;
 };
 
+struct msm_venc_hierlayers {
+    unsigned int numlayers;
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -283,6 +287,7 @@ class venc_dev
         struct msm_venc_video_capability    capability;
         struct msm_venc_idrperiod           idrperiod;
         struct msm_venc_slice_delivery      slice_mode;
+        struct msm_venc_hierlayers          hier_p_layers;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -309,6 +314,7 @@ class venc_dev
         bool venc_set_au_delimiter(OMX_BOOL enable);
         bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
         bool venc_set_deinterlace(OMX_U32 enable);
+        bool venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type, OMX_U32 num_layers);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
