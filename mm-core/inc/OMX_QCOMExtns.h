@@ -904,7 +904,7 @@ typedef struct OMX_QCOM_EXTRADATA_FRAMEDIMENSION
    OMX_U32   nActualWidth; /** Actual Frame Width */
    OMX_U32   nActualHeight; /** Actual Frame Height */
 
-}OMX_QCOM_EXTRADATA_FRAMEDIMENSION;
+} OMX_QCOM_EXTRADATA_FRAMEDIMENSION;
 
 typedef struct OMX_QCOM_H264EXTRADATA
 {
@@ -924,6 +924,13 @@ typedef union OMX_QCOM_EXTRADATA_CODEC_DATA
    OMX_QCOM_VC1EXTRADATA vc1ExtraData;
 } OMX_QCOM_EXTRADATA_CODEC_DATA;
 
+typedef struct OMX_QCOM_EXTRADATA_MBINFO
+{
+   OMX_U32 nFormat;
+   OMX_U32 nDataSize;
+   OMX_U8  data[0];
+} OMX_QCOM_EXTRADATA_MBINFO;
+
 typedef enum OMX_QCOM_EXTRADATATYPE
 {
     OMX_ExtraDataFrameInfo =               0x7F000001,
@@ -940,6 +947,7 @@ typedef enum OMX_QCOM_EXTRADATATYPE
     OMX_ExtraDataFramePackingArrangement = 0x7F00000c,
     OMX_ExtraDataQP =                      0x7F00000d,
     OMX_ExtraDataInputBitsInfo =           0x7F00000e,
+    OMX_ExtraDataVideoEncoderMBInfo =      0x7F00000f,
 } OMX_QCOM_EXTRADATATYPE;
 
 typedef struct  OMX_STREAMINTERLACEFORMATTYPE {
@@ -957,7 +965,7 @@ typedef enum OMX_INTERLACETYPE
    OMX_InterlaceInterleaveFrameBottomFieldFirst,
    OMX_InterlaceFrameTopFieldFirst,
    OMX_InterlaceFrameBottomFieldFirst
-}OMX_INTERLACEs;
+} OMX_INTERLACES;
 
 
 #define OMX_EXTRADATA_HEADER_SIZE 20
