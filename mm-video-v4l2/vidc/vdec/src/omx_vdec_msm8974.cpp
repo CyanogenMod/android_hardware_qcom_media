@@ -2818,22 +2818,42 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     }
                                 } else if (1 == portFmt->nPortIndex) {
                                     portFmt->eCompressionFormat =  OMX_VIDEO_CodingUnused;
+                                    //On Android, we default to standard YUV formats for non-surface use-cases
+                                    //where apps prefer known color formats.
+                                    OMX_COLOR_FORMATTYPE formatsNonSurfaceMode[] = {
+                                        [0] = OMX_COLOR_FormatYUV420SemiPlanar,
+                                        [1] = OMX_COLOR_FormatYUV420Planar,
+                                        [2] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
+                                        [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
+                                    };
+                                    //for surface mode (normal playback), advertise native/accelerated formats first
+                                    OMX_COLOR_FORMATTYPE formatsDefault[] = {
+                                        [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
+                                        [1] = OMX_COLOR_FormatYUV420Planar,
+                                        [2] = OMX_COLOR_FormatYUV420SemiPlanar,
+                                        [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
+                                    };
+#if _ANDROID_
+                                    //Distinguish non-surface mode from normal playback use-case based on
+                                    //usage hinted via "OMX.google.android.index.useAndroidNativeBuffer2"
+                                    OMX_COLOR_FORMATTYPE *colorFormats =
+                                            m_enable_android_native_buffers ? formatsDefault : formatsNonSurfaceMode;
+                                    OMX_U32 maxIndex =
+                                            m_enable_android_native_buffers ? sizeof(formatsDefault) : sizeof(formatsNonSurfaceMode);
+                                    maxIndex /= sizeof(OMX_COLOR_FORMATTYPE);
+#else
+                                    OMX_COLOR_FORMATTYPE *colorFormats = formatsDefault;
+                                    OMX_U32 maxIndex = sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE);
+#endif
 
-                                    if (0 == portFmt->nIndex)
-                                        portFmt->eColorFormat = (OMX_COLOR_FORMATTYPE)
-                                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
-                                    else if (1 == portFmt->nIndex)
-                                        portFmt->eColorFormat = OMX_COLOR_FormatYUV420Planar;
-                                    else if (2 == portFmt->nIndex &&
-                                        drv_ctx.decoder_format == VDEC_CODECTYPE_MVC)
-                                        portFmt->eColorFormat = (OMX_COLOR_FORMATTYPE)
-                                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView;
-                                    else {
+                                    if (portFmt->nIndex < maxIndex) {
+                                        portFmt->eColorFormat = colorFormats[portFmt->nIndex];
+                                    } else {
+                                        eRet = OMX_ErrorNoMore;
                                         DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoPortFormat:"\
                                                 " NoMore Color formats");
-                                        eRet =  OMX_ErrorNoMore;
                                     }
-                                    DEBUG_PRINT_LOW("returning 0x%x", portFmt->eColorFormat);
+                                    DEBUG_PRINT_HIGH("returning color-format: 0x%x", portFmt->eColorFormat);
                                 } else {
                                     DEBUG_PRINT_ERROR("get_parameter: Bad port index %d",
                                             (int)portFmt->nPortIndex);
@@ -3264,12 +3284,9 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                 QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m ||
                                             portFmt->eColorFormat == (OMX_COLOR_FORMATTYPE)
                                                 QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView ||
-                                            portFmt->eColorFormat == OMX_COLOR_FormatYUV420Planar)
+                                            portFmt->eColorFormat == OMX_COLOR_FormatYUV420Planar ||
+                                            portFmt->eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)
                                         op_format = (enum vdec_output_fromat)VDEC_YUV_FORMAT_NV12;
-                                    else if (portFmt->eColorFormat ==
-                                            (OMX_COLOR_FORMATTYPE)
-                                            QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
-                                        op_format = VDEC_YUV_FORMAT_TILE_4x2;
                                     else
                                         eRet = OMX_ErrorBadParameter;
 
@@ -8366,7 +8383,8 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
     portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
     portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
     portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
-    if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) {
+    if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
+       (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
         portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
         portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
     }
@@ -9545,6 +9563,7 @@ omx_vdec::allocate_color_convert_buf::allocate_color_convert_buf()
     omx = NULL;
     init_members();
     ColorFormat = OMX_COLOR_FormatMax;
+    dest_format = YCbCr420P;
 }
 
 void omx_vdec::allocate_color_convert_buf::set_vdec_client(void *client)
@@ -9596,7 +9615,7 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
     c2d.close();
     status = c2d.open(omx->drv_ctx.video_resolution.frame_height,
             omx->drv_ctx.video_resolution.frame_width,
-            NV12_128m,YCbCr420P);
+            NV12_128m,dest_format);
     if (status) {
         status = c2d.get_buffer_size(C2D_INPUT,src_size);
         if (status)
@@ -9649,11 +9668,14 @@ bool omx_vdec::allocate_color_convert_buf::set_color_format(
         drv_color_format != dest_color_format &&
         drv_color_format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView) {
         DEBUG_PRINT_LOW("Enabling C2D");
-        if (dest_color_format != OMX_COLOR_FormatYUV420Planar) {
+        if ((dest_color_format != OMX_COLOR_FormatYUV420Planar) &&
+           (dest_color_format != OMX_COLOR_FormatYUV420SemiPlanar)) {
             DEBUG_PRINT_ERROR("Unsupported color format for c2d");
             status = false;
         } else {
-            ColorFormat = OMX_COLOR_FormatYUV420Planar;
+            ColorFormat = dest_color_format;
+            dest_format = (dest_color_format == OMX_COLOR_FormatYUV420Planar) ?
+                    YCbCr420P : YCbCr420SP;
             if (enabled)
                 c2d.destroy();
             enabled = false;
@@ -9903,10 +9925,11 @@ bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE
         else
             status = false;
     } else {
-        if (ColorFormat != OMX_COLOR_FormatYUV420Planar) {
-            status = false;
+        if (ColorFormat == OMX_COLOR_FormatYUV420Planar ||
+            ColorFormat == OMX_COLOR_FormatYUV420SemiPlanar) {
+            dest_color_format = ColorFormat;
         } else
-            dest_color_format = OMX_COLOR_FormatYUV420Planar;
+            status = false;
     }
     return status;
 }
