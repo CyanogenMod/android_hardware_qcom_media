@@ -674,7 +674,7 @@ class omx_vdec: public qc_omx_component
         void append_framepack_extradata(OMX_OTHER_EXTRADATATYPE *extra,
                 struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload);
         void append_qp_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                struct msm_vidc_frame_qp_payoad *qp_payload);
+                struct msm_vidc_frame_qp_payload *qp_payload);
         void append_bitsinfo_extradata(OMX_OTHER_EXTRADATATYPE *extra,
                 struct msm_vidc_frame_bits_info_payload *bits_payload);
         void insert_demux_addr_offset(OMX_U32 address_offset);

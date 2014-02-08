@@ -727,9 +727,9 @@ int handle_extradata_v4l2(struct v4l2_buffer v4l2_buf)
 				}
 				case MSM_VIDC_EXTRADATA_FRAME_QP:
 				{
-					struct msm_vidc_frame_qp_payoad *frame_qp_payload;
+					struct msm_vidc_frame_qp_payload *frame_qp_payload;
 					unsigned int frame_QP;
-					frame_qp_payload = (struct msm_vidc_frame_qp_payoad *)data->data;
+					frame_qp_payload = (struct msm_vidc_frame_qp_payload *)data->data;
 					frame_QP = frame_qp_payload->frame_qp;
 					I("Frame base QP = %d\n", frame_QP);
 					break;

@@ -8753,8 +8753,8 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_FRAME_QP:
-                    struct msm_vidc_frame_qp_payoad *qp_payload;
-                    qp_payload = (struct msm_vidc_frame_qp_payoad*)data->data;
+                    struct msm_vidc_frame_qp_payload *qp_payload;
+                    qp_payload = (struct msm_vidc_frame_qp_payload*)data->data;
                     if (!secure_mode && (client_extradata & OMX_QP_EXTRADATA)) {
                         append_qp_extradata(p_extra, qp_payload);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
@@ -9245,7 +9245,7 @@ void omx_vdec::append_framepack_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 }
 
 void omx_vdec::append_qp_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-            struct msm_vidc_frame_qp_payoad *qp_payload)
+            struct msm_vidc_frame_qp_payload *qp_payload)
 {
     OMX_QCOM_EXTRADATA_QP * qp = NULL;
     if (!qp_payload) {
