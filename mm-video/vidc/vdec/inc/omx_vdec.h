@@ -874,8 +874,9 @@ private:
              OMX_BUFFERHEADERTYPE **bufferHdr,OMX_U32 port,OMX_PTR appData,
              OMX_U32 bytes);
         OMX_ERRORTYPE free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
-    private:
         #define MAX_COUNT 32
+        OMX_BUFFERHEADERTYPE  m_out_mem_ptr_client[MAX_COUNT];
+    private:
         omx_vdec *omx;
         bool enabled;
         OMX_COLOR_FORMATTYPE ColorFormat;
@@ -889,7 +890,6 @@ private:
         OMX_QCOM_PLATFORM_PRIVATE_LIST      m_platform_list_client[MAX_COUNT];
         OMX_QCOM_PLATFORM_PRIVATE_ENTRY     m_platform_entry_client[MAX_COUNT];
         OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO m_pmem_info_client[MAX_COUNT];
-        OMX_BUFFERHEADERTYPE  m_out_mem_ptr_client[MAX_COUNT];
         struct vdec_ion op_buf_ion_info[MAX_COUNT];
         unsigned char *pmem_baseaddress[MAX_COUNT];
         int pmem_fd[MAX_COUNT];
