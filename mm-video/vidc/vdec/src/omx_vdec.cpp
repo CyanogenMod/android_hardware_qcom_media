@@ -6522,6 +6522,7 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
         for (i = 0; i < drv_ctx.op_buf.actualcount; i++ )
         {
           free_output_buffer (&m_out_mem_ptr[i]);
+          client_buffers.free_output_buffer (&client_buffers.m_out_mem_ptr_client[i]);
 #ifdef _ANDROID_ICS_
         if (m_enable_android_native_buffers)
         {
