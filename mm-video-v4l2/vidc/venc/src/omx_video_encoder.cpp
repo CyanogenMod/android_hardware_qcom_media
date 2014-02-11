@@ -1930,6 +1930,7 @@ int omx_venc::async_message_process (void *context, void* message)
             break;
 #endif
         default:
+            DEBUG_PRINT_HIGH("Unknown msg received : %d", m_sVenc_msg->msgcode);
             break;
     }
     return 0;
