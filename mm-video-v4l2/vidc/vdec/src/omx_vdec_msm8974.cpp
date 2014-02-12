@@ -4154,7 +4154,7 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     else if (extn_equals(paramName, "OMX.google.android.index.storeMetaDataInBuffers")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
     }
-#if ADAPTIVE_PLAYBACK_SUPPORTED
+#ifdef ADAPTIVE_PLAYBACK_SUPPORTED
     else if (extn_equals(paramName, "OMX.google.android.index.prepareForAdaptivePlayback")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoAdaptivePlaybackMode;
     }
@@ -6871,12 +6871,14 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     }
 
 #ifdef ADAPTIVE_PLAYBACK_SUPPORTED
-    if (m_smoothstreaming_mode) {
+    if (m_smoothstreaming_mode && m_out_mem_ptr) {
         OMX_U32 buf_index = buffer - m_out_mem_ptr;
         BufferDim_t dim;
+        private_handle_t *private_handle = NULL;
         dim.sliceWidth = drv_ctx.video_resolution.frame_width;
         dim.sliceHeight = drv_ctx.video_resolution.frame_height;
-        private_handle_t *private_handle = native_buffer[buf_index].privatehandle;
+        if (native_buffer[buf_index].privatehandle)
+            private_handle = native_buffer[buf_index].privatehandle;
         if (private_handle) {
             DEBUG_PRINT_LOW("set metadata: update buf-geometry with stride %d slice %d",
                 dim.sliceWidth, dim.sliceHeight);
