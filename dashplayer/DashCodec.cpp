@@ -877,12 +877,10 @@ status_t DashCodec::freeOutputBuffersNotOwnedByComponent() {
         BufferInfo *info =
             &mBuffers[kPortIndexOutput].editItemAt(i);
 
-        if (info->mStatus !=
-                BufferInfo::OWNED_BY_COMPONENT) {
-            // We shouldn't have sent out any buffers to the client at this
-            // point.
-            CHECK_NE((int)info->mStatus, (int)BufferInfo::OWNED_BY_DOWNSTREAM);
-
+        // At this time some buffers may still be with the component
+        // or being drained.
+        if (info->mStatus != BufferInfo::OWNED_BY_COMPONENT &&
+            info->mStatus != BufferInfo::OWNED_BY_DOWNSTREAM) {
             CHECK_EQ((status_t)OK, freeBuffer(kPortIndexOutput, i));
         }
     }
@@ -1048,6 +1046,10 @@ status_t DashCodec::configureCodec(
                   mComponentName.c_str(), err);
 
             return err;
+        }
+        else
+        {
+          ALOGE("[%s] storeMetaDataInBuffers succedded", mComponentName.c_str());
         }
     }
 
@@ -3887,13 +3889,25 @@ bool DashCodec::ExecutingState::onOMXEvent(
             CHECK_EQ(data1, (OMX_U32)kPortIndexOutput);
 
             if (data2 == 0 || data2 == OMX_IndexParamPortDefinition) {
+                if (mCodec->mStoreMetaDataInOutputBuffers) {
+                    ALOGE("[%s] storeMetaDataInBuffers:Rcvd port settings changed event..disabling outputport",
+                          mCodec->mComponentName.c_str());
 mCodec->mMetaDataBuffersToSubmit = 0;
-                ALOGV("Flush output port before disable");
-                CHECK_EQ(mCodec->mOMX->sendCommand(
+                    CHECK_EQ(mCodec->mOMX->sendCommand(
+                                mCodec->mNode,
+                                OMX_CommandPortDisable, kPortIndexOutput),
+                             (status_t)OK);
+
+                    mCodec->freeOutputBuffersNotOwnedByComponent();
+                    mCodec->changeState(mCodec->mOutputPortSettingsChangedState);
+                }else {
+                  ALOGV("Flush output port before disable");
+                  CHECK_EQ(mCodec->mOMX->sendCommand(
                         mCodec->mNode, OMX_CommandFlush, kPortIndexOutput),
                      (status_t)OK);
 
-                mCodec->changeState(mCodec->mFlushingOutputState);
+                  mCodec->changeState(mCodec->mFlushingOutputState);
+                }
 
             } else if (data2 == OMX_IndexConfigCommonOutputCrop) {
                 mCodec->mSentFormat = false;
