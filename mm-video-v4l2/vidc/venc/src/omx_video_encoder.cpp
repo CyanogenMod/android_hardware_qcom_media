@@ -128,9 +128,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_encoder.avc",OMX_MAX_STRINGNAME_SIZE);
         codec_type = OMX_VIDEO_CodingAVC;
-    }
-    else if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.avc.secure",\
-            OMX_MAX_STRINGNAME_SIZE)) {
+    } else if(!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.avc.secure",\
+                OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_encoder.avc",OMX_MAX_STRINGNAME_SIZE);
         codec_type = OMX_VIDEO_CodingAVC;
         secure_session = true;
@@ -808,6 +807,12 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     m_sParamAVC.eLevel = (OMX_VIDEO_AVCLEVELTYPE)m_sParamProfileLevel.eLevel;
                     DEBUG_PRINT_LOW("AVC profile = %d, level = %d", m_sParamAVC.eProfile,
                             m_sParamAVC.eLevel);
+                } else if (!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.avc.secure",\
+                            OMX_MAX_STRINGNAME_SIZE)) {
+                    m_sParamAVC.eProfile = (OMX_VIDEO_AVCPROFILETYPE)m_sParamProfileLevel.eProfile;
+                    m_sParamAVC.eLevel = (OMX_VIDEO_AVCLEVELTYPE)m_sParamProfileLevel.eLevel;
+                    DEBUG_PRINT_LOW("\n AVC profile = %d, level = %d", m_sParamAVC.eProfile,
+                            m_sParamAVC.eLevel);
                 }
                 else if (!strncmp((char*)m_nkind, "OMX.qcom.video.encoder.vp8",\
                             OMX_MAX_STRINGNAME_SIZE)) {
@@ -838,6 +843,13 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         strlcpy((char*)m_cRole,"video_encoder.avc",OMX_MAX_STRINGNAME_SIZE);
                     } else {
                         DEBUG_PRINT_ERROR("ERROR: Setparameter: unknown Index %s", comp_role->cRole);
+                        eRet =OMX_ErrorUnsupportedSetting;
+                    }
+                } else if (!strncmp((char*)m_nkind, "OMX.qcom.video.encoder.avc.secure",OMX_MAX_STRINGNAME_SIZE)) {
+                    if (!strncmp((char*)comp_role->cRole,"video_encoder.avc",OMX_MAX_STRINGNAME_SIZE)) {
+                        strlcpy((char*)m_cRole,"video_encoder.avc",OMX_MAX_STRINGNAME_SIZE);
+                    } else {
+                        DEBUG_PRINT_ERROR("ERROR: Setparameter: unknown Index %s\n", comp_role->cRole);
                         eRet =OMX_ErrorUnsupportedSetting;
                     }
                 } else if (!strncmp((char*)m_nkind, "OMX.qcom.video.encoder.mpeg4",OMX_MAX_STRINGNAME_SIZE)) {
@@ -1021,6 +1033,15 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     &m_sOutPortDef.nBufferSize,
                                     m_sOutPortDef.nPortIndex);
                         }
+                    }
+                } else if (pParam->nPortIndex == PORT_INDEX_OUT && secure_session) {
+                    if (pParam->bStoreMetaData != meta_mode_enable) {
+                        if (!handle->venc_set_meta_mode(pParam->bStoreMetaData)) {
+                            DEBUG_PRINT_ERROR("\nERROR: set Metabuffer mode %d fail",
+                                    pParam->bStoreMetaData);
+                            return OMX_ErrorUnsupportedSetting;
+                        }
+                        meta_mode_enable = pParam->bStoreMetaData;
                     }
                 } else {
                     DEBUG_PRINT_ERROR("set_parameter: metamode is "
@@ -1270,6 +1291,12 @@ bool omx_venc::update_profile_level()
         m_sParamAVC.eProfile = (OMX_VIDEO_AVCPROFILETYPE)eProfile;
         m_sParamAVC.eLevel = (OMX_VIDEO_AVCLEVELTYPE)eLevel;
         DEBUG_PRINT_LOW("AVC profile = %d, level = %d", m_sParamAVC.eProfile,
+                m_sParamAVC.eLevel);
+    } else if (!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.avc.secure",\
+                OMX_MAX_STRINGNAME_SIZE)) {
+        m_sParamAVC.eProfile = (OMX_VIDEO_AVCPROFILETYPE)eProfile;
+        m_sParamAVC.eLevel = (OMX_VIDEO_AVCLEVELTYPE)eLevel;
+        DEBUG_PRINT_LOW("\n AVC profile = %d, level = %d", m_sParamAVC.eProfile,
                 m_sParamAVC.eLevel);
     }
     else if (!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.vp8",\
