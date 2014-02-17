@@ -100,6 +100,10 @@ struct DashPlayer::Source : public RefBase {
       return INVALID_OPERATION;
     }
 
+    virtual bool isPlaybackDiscontinued() {
+      return false;
+    }
+
 protected:
     virtual ~Source() {}
 

@@ -159,7 +159,6 @@ private:
     enum {
         kWhatBufferingStart             = 'bfst',
         kWhatBufferingEnd               = 'bfen',
-        kWhatSourceResumeStatus         = 'srsm',
     };
 
     wp<DashPlayerDriver> mDriver;
