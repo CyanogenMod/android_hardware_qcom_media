@@ -6693,7 +6693,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
 
         if (il_buffer && m_last_rendered_TS >= 0) {
             int current_framerate = (int)(drv_ctx.frame_rate.fps_numerator /drv_ctx.frame_rate.fps_denominator);
-            int ts_delta = (int)llabs(il_buffer->nTimeStamp - m_last_rendered_TS);
+            OMX_TICKS ts_delta = (OMX_TICKS)llabs(il_buffer->nTimeStamp - m_last_rendered_TS);
 
             // Current frame can be send for rendering if
             // (a) current FPS is <=  60
