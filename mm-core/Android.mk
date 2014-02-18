@@ -28,6 +28,8 @@ else ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 MM_CORE_TARGET = 8610
 else ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
 MM_CORE_TARGET = 8226
+else ifeq ($(TARGET_BOARD_PLATFORM),msm8916)
+MM_CORE_TARGET = 8916
 else ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
 MM_CORE_TARGET = 8084
 else ifeq ($(TARGET_BOARD_PLATFORM),mpq8092)
@@ -83,7 +85,11 @@ LOCAL_CFLAGS            := $(OMXCORE_CFLAGS)
 
 LOCAL_SRC_FILES         := src/common/omx_core_cmp.cpp
 LOCAL_SRC_FILES         += src/common/qc_omx_core.c
+ifeq ($(TARGET_BOARD_PLATFORM),msm8916)
+LOCAL_SRC_FILES         += src/$(MM_CORE_TARGET)/registry_table_android.c
+else
 LOCAL_SRC_FILES         += src/$(MM_CORE_TARGET)/qc_registry_table_android.c
+endif
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -103,7 +109,11 @@ LOCAL_CFLAGS            := $(OMXCORE_CFLAGS)
 
 LOCAL_SRC_FILES         := src/common/omx_core_cmp.cpp
 LOCAL_SRC_FILES         += src/common/qc_omx_core.c
+ifeq ($(TARGET_BOARD_PLATFORM),msm8916)
+LOCAL_SRC_FILES         += src/$(MM_CORE_TARGET)/registry_table.c
+else
 LOCAL_SRC_FILES         += src/$(MM_CORE_TARGET)/qc_registry_table.c
+endif
 
 include $(BUILD_SHARED_LIBRARY)
 
