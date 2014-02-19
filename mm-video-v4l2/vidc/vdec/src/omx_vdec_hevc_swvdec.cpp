@@ -792,7 +792,8 @@ omx_vdec::~omx_vdec()
 
     if (msg_thread_created)
         pthread_join(msg_thread_id,NULL);
-    if (!m_pSwVdec || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
+    if ((!m_pSwVdec || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY) &&
+        (m_swvdec_mode != SWVDEC_MODE_PARSE_DECODE))
     {
         DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit driver id %d", drv_ctx.video_driver_fd);
         dec.cmd = V4L2_DEC_CMD_STOP;
@@ -1626,7 +1627,8 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
 {
     if (m_debug.in_buffer_log && !m_debug.infile) {
         if(!strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.hevc", OMX_MAX_STRINGNAME_SIZE) ||
-           !strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.hevchybrid", OMX_MAX_STRINGNAME_SIZE) ) {
+           !strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.hevchybrid", OMX_MAX_STRINGNAME_SIZE) ||
+           !strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.hevcswvdec", OMX_MAX_STRINGNAME_SIZE)) {
            sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.hevc",
                    m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         }
@@ -1733,19 +1735,27 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     m_decoder_capability.min_height = 16;
     m_decoder_capability.max_width = 1920;
     m_decoder_capability.max_height = 1080;
-
+    strlcpy(drv_ctx.kind,role,128);
     OMX_STRING device_name = (OMX_STRING)"/dev/video/q6_dec";
-    drv_ctx.video_driver_fd = open(device_name, O_RDWR);
-    if(drv_ctx.video_driver_fd == 0){
-        drv_ctx.video_driver_fd = open(device_name, O_RDWR);
-    }
-    if(drv_ctx.video_driver_fd < 0)
+    if((!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevc",
+        OMX_MAX_STRINGNAME_SIZE)) ||
+        (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevchybrid",
+        OMX_MAX_STRINGNAME_SIZE)))
     {
-        DEBUG_PRINT_ERROR("Omx_vdec::Comp Init Returning failure, errno %d", errno);
-        return OMX_ErrorInsufficientResources;
+        drv_ctx.video_driver_fd = open(device_name, O_RDWR);
+        if(drv_ctx.video_driver_fd == 0){
+            drv_ctx.video_driver_fd = open(device_name, O_RDWR);
+        }
+        if(drv_ctx.video_driver_fd < 0)
+        {
+            DEBUG_PRINT_ERROR("Omx_vdec::Comp Init Returning failure, errno %d", errno);
+            return OMX_ErrorInsufficientResources;
+        }
+        DEBUG_PRINT_HIGH("omx_vdec::component_init(%s): Open device %s returned fd %d",
+            role, device_name, drv_ctx.video_driver_fd);
     }
-    DEBUG_PRINT_HIGH("omx_vdec::component_init(%s): Open device %s returned fd %d",
-        role, device_name, drv_ctx.video_driver_fd);
+    else
+        DEBUG_PRINT_HIGH("Omx_vdec::Comp Init for full SW hence skip Q6 open");
 
     // Copy the role information which provides the decoder kind
     strlcpy(drv_ctx.kind,role,128);
@@ -1797,7 +1807,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     m_frame_parser.init_start_codes (codec_type_parse);
     m_frame_parser.init_nal_length(nal_length);
 
-    update_resolution(320, 240, 320, 240);
+    update_resolution(1280, 720, 1280, 720);
     drv_ctx.output_format = VDEC_YUV_FORMAT_NV12;
     OMX_COLOR_FORMATTYPE dest_color_format = (OMX_COLOR_FORMATTYPE)
         QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
@@ -1829,11 +1839,12 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         // Init for SWCodec
         DEBUG_PRINT_HIGH(":Initializing SwVdec mode %d", m_swvdec_mode);
         memset(&sSwVdecParameter, 0, sizeof(SWVDEC_INITPARAMS));
-        sSwVdecParameter.sDimensions.nWidth = 320;
-        sSwVdecParameter.sDimensions.nHeight = 240;
+        sSwVdecParameter.sDimensions.nWidth = 1280;
+        sSwVdecParameter.sDimensions.nHeight = 720;
         sSwVdecParameter.eDecType = SWVDEC_DECODER_HEVC;
         sSwVdecParameter.eColorFormat = SWVDEC_FORMAT_NV12;
         sSwVdecParameter.uProfile.eHevcProfile = SWVDEC_HEVC_MAIN_PROFILE;
+        sSwVdecParameter.sMode.eMode = (SWVDEC_MODE_TYPE)m_swvdec_mode;
 
         //SWVDEC_CALLBACK       m_callBackInfo;
         m_callBackInfo.FillBufferDone   = swvdec_fill_buffer_done_cb;
@@ -1843,14 +1854,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         SWVDEC_STATUS sRet = SwVdec_Init(&sSwVdecParameter, &m_callBackInfo, &m_pSwVdec);
         if (sRet != SWVDEC_S_SUCCESS)
         {
+            DEBUG_PRINT_ERROR("SwVdec_Init returned %d, ret insufficient resources", sRet);
             return OMX_ErrorInsufficientResources;
         }
-
-        // set the swvdec mode
-        SWVDEC_PROP prop;
-        prop.ePropId = SWVDEC_PROP_ID_MODE;
-        prop.uProperty.sMode.eMode = (SWVDEC_MODE_TYPE)m_swvdec_mode;
-        SwVdec_SetProperty(m_pSwVdec, &prop);
     }
 
     if (!m_pSwVdec || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
@@ -1963,6 +1969,35 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eRet=get_buffer_req(&drv_ctx.ip_buf);
         DEBUG_PRINT_HIGH("Input Buffer Size =%d",drv_ctx.ip_buf.buffer_size);
     }
+    else if (m_swvdec_mode == SWVDEC_MODE_PARSE_DECODE)
+    {
+        SWVDEC_PROP prop_dimen, prop_attr;
+
+        capture_capability = V4L2_PIX_FMT_NV12;
+        output_capability = V4L2_PIX_FMT_HEVC;
+
+        prop_dimen.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
+        prop_dimen.uProperty.sDimensions.nWidth = drv_ctx.video_resolution.frame_width;
+        prop_dimen.uProperty.sDimensions.nHeight = drv_ctx.video_resolution.frame_height;
+        ret = SwVdec_SetProperty(m_pSwVdec,&prop_dimen);
+        if (ret) {
+            DEBUG_PRINT_ERROR("Failed to set dimensions to SwVdec in full SW");
+            return OMX_ErrorInsufficientResources;
+        }
+        DEBUG_PRINT_LOW("Set dimensions to SwVdec in full SW successful");
+        prop_attr.ePropId = SWVDEC_PROP_ID_FRAME_ATTR;
+        prop_attr.uProperty.sFrameAttr.eColorFormat = SWVDEC_FORMAT_NV12;
+        ret = SwVdec_SetProperty(m_pSwVdec,&prop_attr);
+        if (ret) {
+            DEBUG_PRINT_ERROR("Failed to set color fmt to SwVdec in full SW");
+            return OMX_ErrorInsufficientResources;
+        }
+        DEBUG_PRINT_HIGH("Set dimensions and color format successful");
+
+        //TODO: Get the supported min/max dimensions of full SW solution
+
+        drv_ctx.idr_only_decoding = 0;
+    }
 
     m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
@@ -1971,8 +2006,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 #endif
 
     get_buffer_req_swvdec();
-    DEBUG_PRINT_HIGH("Interm Buffer Size %d Output Buffer Size =%d",
-        drv_ctx.interm_op_buf.buffer_size, drv_ctx.op_buf.buffer_size);
+    DEBUG_PRINT_HIGH("Input Buffer Size %d Interm Buffer Size %d Output Buffer Size =%d",
+        drv_ctx.ip_buf.buffer_size, drv_ctx.interm_op_buf.buffer_size,
+        drv_ctx.op_buf.buffer_size);
 
     h264_scratch.nAllocLen = drv_ctx.ip_buf.buffer_size;
     h264_scratch.pBuffer = (OMX_U8 *)malloc (drv_ctx.ip_buf.buffer_size);
@@ -2145,7 +2181,7 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
                         DEBUG_PRINT_ERROR("SWVDEC failed to start in allocate_done");
                         return OMX_ErrorInvalidState;
                     }
-                    DEBUG_PRINT_LOW("send_command_proxy(): Loaded-->Idle");
+                    DEBUG_PRINT_LOW("SwVdec start successful: send_command_proxy(): Loaded-->Idle");
                 }
                 else
                 {
@@ -2709,6 +2745,7 @@ bool omx_vdec::execute_omx_flush(OMX_U32 flushType)
         {
             DEBUG_PRINT_ERROR("Flush swvdec Failed ");
         }
+        DEBUG_PRINT_LOW("Flush swvdec type %d successful", aFlushType);
     }
     return bRet;
 }
@@ -3441,6 +3478,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             prop.uProperty.sDimensions.nWidth = portDefn->format.video.nFrameWidth;
                             prop.uProperty.sDimensions.nHeight= portDefn->format.video.nFrameHeight;
                             SwVdec_SetProperty(m_pSwVdec,&prop);
+                            prop.ePropId = SWVDEC_PROP_ID_FRAME_ATTR;
+                            prop.uProperty.sFrameAttr.eColorFormat = SWVDEC_FORMAT_NV12;
+                            ret = SwVdec_SetProperty(m_pSwVdec,&prop);
+                            if (ret) {
+                                DEBUG_PRINT_ERROR("Failed to set color fmt to SwVdec in full SW");
+                                return OMX_ErrorInsufficientResources;
+                            }
                         }
                         eRet = get_buffer_req_swvdec();
                     }
@@ -3452,7 +3496,11 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     drv_ctx.ip_buf.actualcount = portDefn->nBufferCountActual;
                     drv_ctx.ip_buf.buffer_size = (portDefn->nBufferSize + buffer_prop->alignment - 1) &
                         (~(buffer_prop->alignment - 1));
-                    eRet = set_buffer_req(buffer_prop);
+                    DEBUG_PRINT_LOW("IP Requirements(#%d: %u) Requested(#%lu: %lu)",
+                        drv_ctx.ip_buf.mincount, drv_ctx.ip_buf.buffer_size,
+                        portDefn->nBufferCountActual, portDefn->nBufferSize);
+                    if (!m_pSwVdec || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
+                       eRet = set_buffer_req(buffer_prop);
                 }
                 else
                 {
@@ -3503,6 +3551,18 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     if (!m_pSwVdec)
                     {
                         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+                    }
+                    else if ((m_swvdec_mode == SWVDEC_MODE_PARSE_DECODE) ||
+                             (m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY))
+                    {
+                        SWVDEC_PROP prop;
+                        prop.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
+                        prop.uProperty.sDimensions.nWidth = fmt.fmt.pix_mp.width;
+                        prop.uProperty.sDimensions.nHeight= fmt.fmt.pix_mp.height;
+                        SwVdec_SetProperty(m_pSwVdec,&prop);
+                        prop.ePropId = SWVDEC_PROP_ID_FRAME_ATTR;
+                        prop.uProperty.sFrameAttr.eColorFormat = SWVDEC_FORMAT_NV12;
+                        SwVdec_SetProperty(m_pSwVdec,&prop);
                     }
                     // need to set output format to swvdec
                     if(ret)
@@ -6155,6 +6215,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
         m_pSwVdecIpBuffer[nPortIndex].nFlags = buffer->nFlags;
         m_pSwVdecIpBuffer[nPortIndex].nFilledLen = buffer->nFilledLen;
         m_pSwVdecIpBuffer[nPortIndex].nIpTimestamp = buffer->nTimeStamp;
+
         if (SwVdec_EmptyThisBuffer(m_pSwVdec, &m_pSwVdecIpBuffer[nPortIndex]) != SWVDEC_S_SUCCESS) {
             ret = OMX_ErrorBadParameter;
         }
@@ -9706,7 +9767,8 @@ OMX_ERRORTYPE omx_vdec::set_buffer_req_swvdec(vdec_allocatorproperty *buffer_pro
         }
     }
 
-    if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT)
+    if ((m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY) &&
+        (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT))
     {
         // need to update extradata buffers also
         drv_ctx.extradata_info.size = buffer_prop->actualcount * drv_ctx.extradata_info.buffer_size;
@@ -10297,6 +10359,7 @@ SWVDEC_STATUS omx_vdec::swvdec_input_buffer_done_cb
     }
     else
     {
+        DEBUG_PRINT_LOW("%s invoked", __func__);
         omx->swvdec_input_buffer_done(m_pSwVdecIpBuffer);
     }
 
@@ -10324,7 +10387,7 @@ SWVDEC_STATUS omx_vdec::swvdec_fill_buffer_done_cb
  SWVDEC_HANDLE pSwDec,
  SWVDEC_OPBUFFER *m_pSwVdecOpBuffer,
  void *pClientHandle
- )
+)
 {
     SWVDEC_STATUS eRet = SWVDEC_S_SUCCESS;
     omx_vdec *omx = reinterpret_cast<omx_vdec*>(pClientHandle);
