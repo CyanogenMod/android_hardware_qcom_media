@@ -286,7 +286,7 @@ struct vdpp_allocatorproperty {
 	size_t buffer_size;
 	uint32_t alignment;
 	uint32_t buf_poolid;
-	size_t meta_buffer_size;
+	size_t frame_size;
 };
 
 struct vdpp_bufferpayload {
