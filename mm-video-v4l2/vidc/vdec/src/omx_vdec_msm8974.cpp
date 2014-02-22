@@ -3359,71 +3359,33 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                      break;
                                  }
         case OMX_QcomIndexParamConcealMBMapExtraData:
-                                 if (!secure_mode)
-                                     eRet = enable_extradata(VDEC_EXTRADATA_MB_ERROR_MAP, false,
-                                             ((QOMX_ENABLETYPE *)paramData)->bEnable);
-                                 else {
-                                     DEBUG_PRINT_ERROR("secure mode setting not supported");
-                                     eRet = OMX_ErrorUnsupportedSetting;
-                                 }
-                                 break;
-        case OMX_QcomIndexParamFrameInfoExtraData: {
-                                   if (!secure_mode)
-                                       eRet = enable_extradata(OMX_FRAMEINFO_EXTRADATA, false,
-                                               ((QOMX_ENABLETYPE *)paramData)->bEnable);
-                                   else {
-                                       DEBUG_PRINT_ERROR("secure mode setting not supported");
-                                       eRet = OMX_ErrorUnsupportedSetting;
-                                   }
-                                   break;
-                               }
+                                eRet = enable_extradata(VDEC_EXTRADATA_MB_ERROR_MAP, false,
+                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                                break;
+        case OMX_QcomIndexParamFrameInfoExtraData:
+                                eRet = enable_extradata(OMX_FRAMEINFO_EXTRADATA, false,
+                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                                break;
         case OMX_QcomIndexParamInterlaceExtraData:
-                               if (!secure_mode)
-                                   eRet = enable_extradata(OMX_INTERLACE_EXTRADATA, false,
-                                           ((QOMX_ENABLETYPE *)paramData)->bEnable);
-                               else {
-                                   DEBUG_PRINT_ERROR("secure mode setting not supported");
-                                   eRet = OMX_ErrorUnsupportedSetting;
-                               }
-                               break;
+                                eRet = enable_extradata(OMX_INTERLACE_EXTRADATA, false,
+                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                                break;
         case OMX_QcomIndexParamH264TimeInfo:
-                               if (!secure_mode)
-                                   eRet = enable_extradata(OMX_TIMEINFO_EXTRADATA, false,
-                                           ((QOMX_ENABLETYPE *)paramData)->bEnable);
-                               else {
-                                   DEBUG_PRINT_ERROR("secure mode setting not supported");
-                                   eRet = OMX_ErrorUnsupportedSetting;
-                               }
-                               break;
+                                eRet = enable_extradata(OMX_TIMEINFO_EXTRADATA, false,
+                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                                break;
         case OMX_QcomIndexParamVideoFramePackingExtradata:
-                               if (!secure_mode)
-                                   eRet = enable_extradata(OMX_FRAMEPACK_EXTRADATA, false,
-                                           ((QOMX_ENABLETYPE *)paramData)->bEnable);
-                               else {
-                                   DEBUG_PRINT_ERROR("secure mode setting not supported");
-                                   eRet = OMX_ErrorUnsupportedSetting;
-                               }
-                               break;
-        case OMX_QcomIndexParamVideoQPExtraData: {
-                                   if (!secure_mode)
-                                       eRet = enable_extradata(OMX_QP_EXTRADATA, false,
-                                               ((QOMX_ENABLETYPE *)paramData)->bEnable);
-                                   else {
-                                       DEBUG_PRINT_ERROR("secure mode setting not supported");
-                                       eRet = OMX_ErrorUnsupportedSetting;
-                                   }
-                                   break;
-                               }
-        case OMX_QcomIndexParamVideoInputBitsInfoExtraData: {
-                                   if (!secure_mode)
-                                       eRet = enable_extradata(OMX_BITSINFO_EXTRADATA, false,
-                                               ((QOMX_ENABLETYPE *)paramData)->bEnable);
-                                   else {
-                                       DEBUG_PRINT_ERROR("secure mode setting not supported");
-                                       eRet = OMX_ErrorUnsupportedSetting;
-                                   }
-                                   break;
-                               }
+                                eRet = enable_extradata(OMX_FRAMEPACK_EXTRADATA, false,
+                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                                break;
+        case OMX_QcomIndexParamVideoQPExtraData:
+                                eRet = enable_extradata(OMX_QP_EXTRADATA, false,
+                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                                break;
+        case OMX_QcomIndexParamVideoInputBitsInfoExtraData:
+                                eRet = enable_extradata(OMX_BITSINFO_EXTRADATA, false,
+                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                                break;
         case OMX_QcomIndexParamVideoDivx: {
                               QOMX_VIDEO_PARAM_DIVXTYPE* divXType = (QOMX_VIDEO_PARAM_DIVXTYPE *) paramData;
                           }
@@ -3479,17 +3441,14 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    break;
 
         case OMX_QcomIndexParamIndexExtraDataType: {
-                                   if (!secure_mode) {
-                                       QOMX_INDEXEXTRADATATYPE *extradataIndexType = (QOMX_INDEXEXTRADATATYPE *) paramData;
-                                       if ((extradataIndexType->nIndex == OMX_IndexParamPortDefinition) &&
-                                               (extradataIndexType->bEnabled == OMX_TRUE) &&
-                                               (extradataIndexType->nPortIndex == 1)) {
-                                           DEBUG_PRINT_HIGH("set_parameter:  OMX_QcomIndexParamIndexExtraDataType SmoothStreaming");
-                                           eRet = enable_extradata(OMX_PORTDEF_EXTRADATA, false, extradataIndexType->bEnabled);
-
-                                       }
-                                   }
-                               }
+                                    QOMX_INDEXEXTRADATATYPE *extradataIndexType = (QOMX_INDEXEXTRADATATYPE *) paramData;
+                                    if ((extradataIndexType->nIndex == OMX_IndexParamPortDefinition) &&
+                                            (extradataIndexType->bEnabled == OMX_TRUE) &&
+                                            (extradataIndexType->nPortIndex == 1)) {
+                                        DEBUG_PRINT_HIGH("set_parameter:  OMX_QcomIndexParamIndexExtraDataType SmoothStreaming");
+                                        eRet = enable_extradata(OMX_PORTDEF_EXTRADATA, false, extradataIndexType->bEnabled);
+                                    }
+                                }
                                break;
         case OMX_QcomIndexParamEnableSmoothStreaming: {
 #ifndef SMOOTH_STREAMING_DISABLED
@@ -8427,7 +8386,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                 case EXTRADATA_S3D_FRAME_PACKING:
                     struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload;
                     s3d_frame_packing_payload = (struct msm_vidc_s3d_frame_packing_payload *)data->data;
-                    if (!secure_mode && (client_extradata & OMX_FRAMEPACK_EXTRADATA)) {
+                    if (client_extradata & OMX_FRAMEPACK_EXTRADATA) {
                         append_framepack_extradata(p_extra, s3d_frame_packing_payload);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
                     }
@@ -8435,7 +8394,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                 case EXTRADATA_FRAME_QP:
                     struct msm_vidc_frame_qp_payload *qp_payload;
                     qp_payload = (struct msm_vidc_frame_qp_payload*)data->data;
-                    if (!secure_mode && (client_extradata & OMX_QP_EXTRADATA)) {
+                    if (client_extradata & OMX_QP_EXTRADATA) {
                         append_qp_extradata(p_extra, qp_payload);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
                     }
@@ -8443,7 +8402,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                 case EXTRADATA_FRAME_BITS_INFO:
                     struct msm_vidc_frame_bits_info_payload *bits_info_payload;
                     bits_info_payload = (struct msm_vidc_frame_bits_info_payload*)data->data;
-                    if (!secure_mode && (client_extradata & OMX_BITSINFO_EXTRADATA)) {
+                    if (client_extradata & OMX_BITSINFO_EXTRADATA) {
                         append_bitsinfo_extradata(p_extra, bits_info_payload);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
                     }
@@ -8454,7 +8413,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
             consumed_len += data->nSize;
             data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
         }
-        if (!secure_mode && (client_extradata & OMX_FRAMEINFO_EXTRADATA)) {
+        if (client_extradata & OMX_FRAMEINFO_EXTRADATA) {
             p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
             append_frame_info_extradata(p_extra,
                     num_conceal_MB, ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->pic_type, frame_rate,
@@ -8464,8 +8423,15 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         }
     }
 unrecognized_extradata:
-    if (!secure_mode && client_extradata)
+    if (client_extradata)
         append_terminator_extradata(p_extra);
+    if (secure_mode) {
+        struct vdec_output_frameinfo  *ptr_extradatabuff = NULL;
+        memcpy(p_extradata, m_other_extradata, drv_ctx.extradata_info.buffer_size);
+        ptr_extradatabuff = (struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate;
+        ptr_extradatabuff->metadata_info.metabufaddr = (void *)p_extradata;
+        ptr_extradatabuff->metadata_info.size = drv_ctx.extradata_info.buffer_size;
+    }
     return;
 }
 
