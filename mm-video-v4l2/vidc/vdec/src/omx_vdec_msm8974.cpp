@@ -7738,6 +7738,7 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
     struct v4l2_requestbuffers bufreq;
     unsigned int buf_size = 0, extra_data_size = 0, client_extra_data_size = 0;
+    unsigned int final_extra_data_size = 0;
     struct v4l2_format fmt;
     int ret = 0;
     DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d)",
@@ -7833,9 +7834,11 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
             client_extra_data_size += sizeof(OMX_OTHER_EXTRADATATYPE); //Space for terminator
             buf_size = ((buf_size + 3)&(~3)); //Align extradata start address to 64Bit
         }
-        drv_ctx.extradata_info.size = buffer_prop->actualcount * extra_data_size;
+        final_extra_data_size = (extra_data_size > client_extra_data_size ?
+            extra_data_size : client_extra_data_size);
+        drv_ctx.extradata_info.size = buffer_prop->actualcount * final_extra_data_size;
         drv_ctx.extradata_info.count = buffer_prop->actualcount;
-        drv_ctx.extradata_info.buffer_size = extra_data_size;
+        drv_ctx.extradata_info.buffer_size = final_extra_data_size;
         buf_size += client_extra_data_size;
         buf_size = (buf_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
         DEBUG_PRINT_LOW("GetBufReq UPDATE: ActCnt(%d) Size(%d) BufSize(%d)",
