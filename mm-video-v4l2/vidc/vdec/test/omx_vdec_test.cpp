@@ -905,7 +905,7 @@ void* fbd_thread(void* pArg)
 #endif
             if (pBuffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
                 OMX_OTHER_EXTRADATATYPE *pExtra;
-                DEBUG_PRINT(">> BUFFER WITH EXTRA DATA RCVD <<<");
+                DEBUG_PRINT_ERROR(">> BUFFER WITH EXTRA DATA RCVD <<<");
                 pExtra = (OMX_OTHER_EXTRADATATYPE *)
                     ((unsigned)(pBuffer->pBuffer + pBuffer->nOffset +
                         pBuffer->nFilledLen + 3)&(~3));
@@ -926,7 +926,7 @@ void* fbd_thread(void* pArg)
                         case OMX_ExtraDataFrameInfo:
                             {
                                 OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info = (OMX_QCOM_EXTRADATA_FRAMEINFO *)pExtra->data;
-                                DEBUG_PRINT("OMX_ExtraDataFrameInfo: Buf(%p) TSmp(%lld) PicType(%u) IntT(%u) ConMB(%u)",
+                                DEBUG_PRINT_ERROR("OMX_ExtraDataFrameInfo: Buf(%p) TSmp(%lld) PicType(%u) IntT(%u) ConMB(%u)",
                                         pBuffer->pBuffer, pBuffer->nTimeStamp, frame_info->ePicType,
                                         frame_info->interlaceType, frame_info->nConcealedMacroblocks);
                                 if (aspectratio_prop)
@@ -935,13 +935,13 @@ void* fbd_thread(void* pArg)
                                             frame_info->aspectRatio.aspectRatioY, frame_info->displayAspectRatio.displayHorizontalSize,
                                             frame_info->displayAspectRatio.displayVerticalSize);
                                 else
-                                    DEBUG_PRINT(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) DispWidth(%u) DispHeight(%u)",
+                                    DEBUG_PRINT_ERROR(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) DispWidth(%u) DispHeight(%u)",
                                             frame_info->nFrameRate, frame_info->aspectRatio.aspectRatioX,
                                             frame_info->aspectRatio.aspectRatioY, frame_info->displayAspectRatio.displayHorizontalSize,
                                             frame_info->displayAspectRatio.displayVerticalSize);
-                                DEBUG_PRINT("PANSCAN numWindows(%d)", frame_info->panScan.numWindows);
+                                DEBUG_PRINT_ERROR("PANSCAN numWindows(%d)", frame_info->panScan.numWindows);
                                 for (unsigned int i = 0; i < frame_info->panScan.numWindows; i++) {
-                                    DEBUG_PRINT("WINDOW Lft(%d) Tp(%d) Rgt(%d) Bttm(%d)",
+                                    DEBUG_PRINT_ERROR("WINDOW Lft(%d) Tp(%d) Rgt(%d) Bttm(%d)",
                                             frame_info->panScan.window[i].x,
                                             frame_info->panScan.window[i].y,
                                             frame_info->panScan.window[i].dx,
@@ -963,17 +963,17 @@ void* fbd_thread(void* pArg)
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
-                                DEBUG_PRINT("OMX_ExtraDataConcealMB: Buf(%p) TSmp(%lld) ConcealMB(%u)",
+                                DEBUG_PRINT_ERROR("OMX_ExtraDataConcealMB: Buf(%p) TSmp(%lld) ConcealMB(%u)",
                                         pBuffer->pBuffer, pBuffer->nTimeStamp, concealMBnum);
                             }
                             break;
                         case OMX_ExtraDataMP2ExtnData:
                             {
-                                DEBUG_PRINT("\nOMX_ExtraDataMP2ExtnData");
+                                DEBUG_PRINT_ERROR("\nOMX_ExtraDataMP2ExtnData");
                                 OMX_U8 data = 0, *data_ptr = (OMX_U8 *)pExtra->data;
                                 OMX_U32 bytes_cnt = 0;
                                 while (bytes_cnt < pExtra->nDataSize) {
-                                    DEBUG_PRINT("\n MPEG-2 Extension Data Values[%d] = 0x%x", bytes_cnt, *data_ptr);
+                                    DEBUG_PRINT_ERROR("\n MPEG-2 Extension Data Values[%d] = 0x%x", bytes_cnt, *data_ptr);
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
@@ -981,11 +981,11 @@ void* fbd_thread(void* pArg)
                             break;
                         case OMX_ExtraDataMP2UserData:
                             {
-                                DEBUG_PRINT("\nOMX_ExtraDataMP2UserData");
+                                DEBUG_PRINT_ERROR("\nOMX_ExtraDataMP2UserData");
                                 OMX_U8 data = 0, *data_ptr = (OMX_U8 *)pExtra->data;
                                 OMX_U32 bytes_cnt = 0;
                                 while (bytes_cnt < pExtra->nDataSize) {
-                                    DEBUG_PRINT("\n MPEG-2 User Data Values[%d] = 0x%x", bytes_cnt, *data_ptr);
+                                    DEBUG_PRINT_ERROR("\n MPEG-2 User Data Values[%d] = 0x%x", bytes_cnt, *data_ptr);
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
@@ -2048,26 +2048,45 @@ int Play_Decoder()
 #endif
     QOMX_ENABLETYPE extra_data;
     extra_data.bEnable = OMX_TRUE;
-#if 0
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamInterlaceExtraData,
+
+    char frameinfo_value[PROPERTY_VALUE_MAX] = {0};
+    char interlace_value[PROPERTY_VALUE_MAX] = {0};
+    char h264info_value[PROPERTY_VALUE_MAX] = {0};
+    char video_qp_value[PROPERTY_VALUE_MAX] = {0};
+    char videoinput_bitsinfo_value[PROPERTY_VALUE_MAX] = {0};
+
+    OMX_U32 frameinfo = 0,interlace = 0,h264info =0, video_qp =0, videoinput_bitsinfo =0;
+    property_get("vidc.vdec.debug.frameinfo", frameinfo_value, "0");
+    frameinfo = atoi(frameinfo_value);
+    if (frameinfo) {
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
             (OMX_PTR)&extra_data);
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamConcealMBMapExtraData,
+    }
+    property_get("vidc.vdec.debug.interlace", interlace_value, "0");
+    interlace = atoi(interlace_value);
+    if (interlace) {
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamInterlaceExtraData,
             (OMX_PTR)&extra_data);
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexEnableExtnUserData,
+    }
+    property_get("vidc.vdec.debug.h264info", h264info_value, "0");
+    h264info = atoi(h264info_value);
+    if (h264info) {
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamH264TimeInfo,
             (OMX_PTR)&extra_data);
-#endif
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoFramePackingExtradata,
+    }
+    property_get("vidc.vdec.debug.video_qp_value", video_qp_value, "0");
+    video_qp = atoi(video_qp_value);
+    if (video_qp) {
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoQPExtraData,
             (OMX_PTR)&extra_data);
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoQPExtraData,
+    }
+    property_get("vidc.vdec.debug.input_bitsinfo", videoinput_bitsinfo_value, "0");
+    videoinput_bitsinfo = atoi(videoinput_bitsinfo_value);
+    if (videoinput_bitsinfo) {
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoInputBitsInfoExtraData,
             (OMX_PTR)&extra_data);
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoInputBitsInfoExtraData,
-            (OMX_PTR)&extra_data);
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
-            (OMX_PTR)&extra_data);
-#ifdef TEST_TS_FROM_SEI
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamH264TimeInfo,
-            (OMX_PTR)&extra_data);
-#endif
+    }
+
     /* Query the decoder outport's min buf requirements */
     CONFIG_VERSION_SIZE(portFmt);
 
