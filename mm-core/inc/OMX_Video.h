@@ -292,6 +292,7 @@ typedef enum OMX_VIDEO_INTRAREFRESHTYPE {
     OMX_VIDEO_IntraRefreshCyclic,
     OMX_VIDEO_IntraRefreshAdaptive,
     OMX_VIDEO_IntraRefreshBoth,
+    OMX_VIDEO_IntraRefreshRandom,
     OMX_VIDEO_IntraRefreshKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */ 
     OMX_VIDEO_IntraRefreshVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
     OMX_VIDEO_IntraRefreshMax = 0x7FFFFFFF

@@ -3236,6 +3236,11 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
     } else if ((ir_mode == OMX_VIDEO_IntraRefreshBoth) &&
             (irMBs < ((m_sVenc_cfg.dvs_width * m_sVenc_cfg.dvs_height)>>8))) {
         control_mode.value = V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_CYCLIC_ADAPTIVE;
+    } else if ((ir_mode == OMX_VIDEO_IntraRefreshRandom) &&
+            (irMBs < ((m_sVenc_cfg.dvs_width * m_sVenc_cfg.dvs_height)>>8))) {
+        control_mode.value = V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_RANDOM;
+        control_mbs.id = V4L2_CID_MPEG_VIDC_VIDEO_AIR_MBS;
+        control_mbs.value = irMBs;
     } else {
         DEBUG_PRINT_ERROR("ERROR: Invalid IntraRefresh Parameters:"
                 "mb count: %lu, mb mode:%d", irMBs, ir_mode);
