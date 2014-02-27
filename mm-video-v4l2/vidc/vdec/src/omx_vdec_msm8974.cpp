@@ -1070,6 +1070,8 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                                                     OMX_COMPONENT_GENERATE_EVENT);
                                                             BITMASK_CLEAR (&pThis->m_flags,
                                                                     OMX_COMPONENT_DISABLE_OUTPUT_DEFERRED);
+                                                            BITMASK_CLEAR (&pThis->m_flags,
+                                                                    OMX_COMPONENT_OUTPUT_DISABLE_PENDING);
 
                                                         }
                                                     }
