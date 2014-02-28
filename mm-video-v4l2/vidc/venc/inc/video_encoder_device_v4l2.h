@@ -271,6 +271,7 @@ class venc_dev
         int venc_set_format(int);
         bool deinterlace_enabled;
     private:
+        OMX_U32                             m_codec;
         struct msm_venc_basecfg             m_sVenc_cfg;
         struct msm_venc_ratectrlcfg         rate_ctrl;
         struct msm_venc_targetbitrate       bitrate;
