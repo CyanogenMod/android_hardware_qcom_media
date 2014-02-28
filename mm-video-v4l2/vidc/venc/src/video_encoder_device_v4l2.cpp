@@ -783,6 +783,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     m_sVenc_cfg.fps_den = 1;
     m_sVenc_cfg.targetbitrate = 64000;
     m_sVenc_cfg.inputformat= V4L2_PIX_FMT_NV12;
+    m_codec = codec;
 
     if (codec == OMX_VIDEO_CodingMPEG4) {
         m_sVenc_cfg.codectype = V4L2_PIX_FMT_MPEG4;
@@ -1448,10 +1449,21 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                                         pParam->eProfile, pParam->eLevel);
                     return false;
                 }
+
                 if(!venc_set_ltrmode(1, 1)) {
                    DEBUG_PRINT_ERROR("ERROR: Failed to enable ltrmode");
                    return false;
                 }
+
+                 // For VP8, hier-p and ltr are mutually exclusive features in firmware
+                 // Disable hier-p if ltr is enabled.
+                 if (m_codec == OMX_VIDEO_CodingVPX) {
+                     DEBUG_PRINT_LOW("Disable Hier-P as LTR is being set");
+                     if (!venc_set_hier_layers(QOMX_HIERARCHICALCODING_P, 0)) {
+                        DEBUG_PRINT_ERROR("Disabling Hier P count failed");
+                     }
+                 }
+
                 break;
             }
         case OMX_IndexParamVideoIntraRefresh:
@@ -1624,16 +1636,25 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
            {
                QOMX_VIDEO_HIERARCHICALLAYERS* pParam =
                    (QOMX_VIDEO_HIERARCHICALLAYERS*)paramData;
+
                 if (pParam->nPortIndex == PORT_INDEX_OUT) {
                     if (!venc_set_hier_layers(pParam->eHierarchicalCodingType, pParam->nNumLayers)) {
                         DEBUG_PRINT_ERROR("Setting Hier P count failed");
-                        return OMX_ErrorUnsupportedSetting;
+                        return false;
                     }
                 } else {
                     DEBUG_PRINT_ERROR("OMX_QcomIndexHierarchicalStructure called on wrong port(%d)", pParam->nPortIndex);
-                    return OMX_ErrorBadPortIndex;
+                    return false;
                 }
 
+                // For VP8, hier-p and ltr are mutually exclusive features in firmware
+                // Disable ltr if hier-p is enabled.
+                if (m_codec == OMX_VIDEO_CodingVPX) {
+                    DEBUG_PRINT_LOW("Disable LTR as HIER-P is being set");
+                    if(!venc_set_ltrmode(0, 1)) {
+                         DEBUG_PRINT_ERROR("ERROR: Failed to disable ltrmode");
+                     }
+                }
                 break;
            }
         case OMX_QcomIndexParamVideoLTRCount:
