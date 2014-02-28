@@ -1070,9 +1070,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         eRet = OMX_ErrorUnsupportedIndex;
                         break;
                     }
-                }
-
-                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderMBInfo) {
+                } else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderMBInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
                         mask = VEN_EXTRADATA_MBINFO;
 
