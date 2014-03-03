@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  *  File: QCMediaPlayer.java
  *  Description: Snapdragon SDK for Android support class.
@@ -34,6 +34,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
+import java.util.HashSet;
+
 
 /**
 * QCMediaPlayer extends MediaPlayer from package android.media and provides
@@ -46,6 +48,9 @@ public class QCMediaPlayer extends MediaPlayer
 {
   private final static String TAG = "QCMediaPlayer";
   private QCMediaEventHandler mEventHandler;
+
+  //Stores the supported keys for getParameter invoke call
+  public static final HashSet<Integer> mValidGetParameterKeys = new HashSet<Integer>();
 
   public QCMediaPlayer()
   {
@@ -63,7 +68,24 @@ public class QCMediaPlayer extends MediaPlayer
     {
        mEventHandler = null;
     }
+
+    mValidGetParameterKeys.add(new Integer(OnMPDAttributeListener.ATTRIBUTES_WHOLE_MPD));
+    mValidGetParameterKeys.add(new Integer(OnMPDAttributeListener.INVOKE_ID_GET_ATTRIBUTES_TYPE_MPD));
+    mValidGetParameterKeys.add(new Integer(OnQOEEventListener.ATTRIBUTES_QOE_EVENT_PERIODIC));
+    mValidGetParameterKeys.add(new Integer(KEY_DASH_REPOSITION_RANGE));
+
     Log.d(TAG, "QCMediaPlayer::QCMediaPlayer");
+  }
+
+  public void release() {
+      Log.d(TAG, "QCMediaPlayer release");
+
+      mQCOnPreparedListener = null;
+      mOnMPDAttributeListener = null;
+      mOnQCTimedTextListener = null;
+      mOnQOEEventListener = null;
+
+      super.release();
   }
 
   private void callOnPreparedListener()
@@ -400,6 +422,11 @@ public class QCMediaPlayer extends MediaPlayer
 
   private String QCgetStringParameter(int key)
   {
+        if(!mValidGetParameterKeys.contains(new Integer(key))) {
+            Log.d(TAG, "QCgetStringParameter Unsupported key "+key+" Return null");
+            return null;
+        }
+
     Parcel request = newRequest();
     Parcel reply = Parcel.obtain();
 	reply.setDataPosition(0);
@@ -438,7 +465,11 @@ public class QCMediaPlayer extends MediaPlayer
     }
 
   public Parcel QCgetParcelParameter(int key) {
-        boolean retval = false;
+
+        if(!mValidGetParameterKeys.contains(new Integer(key))) {
+            Log.d(TAG, "QCgetParcelParameter Unsupported key "+key+" Return null");
+            return null;
+        }
         Parcel request = newRequest();
         Parcel reply = Parcel.obtain();
         request.writeInt(key);
