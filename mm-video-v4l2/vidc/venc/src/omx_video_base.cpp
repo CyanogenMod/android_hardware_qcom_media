@@ -1698,8 +1698,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 "valid for output port only");
                         eRet = OMX_ErrorUnsupportedIndex;
                     }
-                }
-                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderMBInfo) {
+                } else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderMBInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
                         pParam->bEnabled =
                             (OMX_BOOL)(m_sExtraData & VEN_EXTRADATA_MBINFO);
