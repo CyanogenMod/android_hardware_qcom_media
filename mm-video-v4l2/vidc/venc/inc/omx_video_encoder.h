@@ -89,6 +89,7 @@ class omx_venc: public omx_video
                         OMX_U32 height);
         bool dev_get_output_log_flag();
         int dev_output_log_buffers(const char *buffer_addr, int buffer_len);
+        int dev_extradata_log_buffers(char *buffer);
 };
 
 #endif //__OMX_VENC__H

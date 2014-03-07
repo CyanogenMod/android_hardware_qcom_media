@@ -1924,3 +1924,8 @@ int omx_venc::dev_output_log_buffers(const char *buffer, int bufferlen)
 {
     return handle->venc_output_log_buffers(buffer, bufferlen);
 }
+
+int omx_venc::dev_extradata_log_buffers(char *buffer)
+{
+    return handle->venc_extradata_log_buffers(buffer);
+}
