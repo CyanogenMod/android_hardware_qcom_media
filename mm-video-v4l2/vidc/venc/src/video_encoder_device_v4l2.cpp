@@ -168,14 +168,7 @@ static const unsigned int h263_profile_level_table[][5]= {
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
 
-#ifdef INPUT_BUFFER_LOG
-FILE *inputBufferFile1;
-char inputfilename [] = "/data/input.yuv";
-#endif
-#ifdef OUTPUT_BUFFER_LOG
-FILE *outputBufferFile1;
-char outputfilename [] = "/data/output-bitstream.\0\0\0\0";
-#endif
+#define BUFFER_LOG_LOC "/data/misc/media"
 
 //constructor
 venc_dev::venc_dev(class omx_venc *venc_class)
@@ -216,6 +209,18 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&capability, 0, sizeof(capability));
     memset(&hier_p_layers,0,sizeof(hier_p_layers));
     memset(&ltrinfo, 0, sizeof(ltrinfo));
+    memset(&m_debug,0,sizeof(m_debug));
+
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+    property_value[0] = '\0';
+    property_get("vidc.enc.log.in", property_value, "0");
+    m_debug.in_buffer_log = atoi(property_value);
+
+    property_value[0] = '\0';
+    property_get("vidc.enc.log.out", property_value, "0");
+    m_debug.out_buffer_log = atoi(property_value);
+    snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
+             "%s", BUFFER_LOG_LOC);
 }
 
 venc_dev::~venc_dev()
@@ -598,6 +603,106 @@ void venc_dev::free_extradata()
 #endif
 }
 
+bool venc_dev::venc_get_output_log_flag()
+{
+    return (m_debug.out_buffer_log == 1);
+}
+
+int venc_dev::venc_output_log_buffers(const char *buffer_addr, int buffer_len)
+{
+    if (!m_debug.outfile) {
+        int size = 0;
+        if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_MPEG4) {
+           size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%d_%d_%p.m4v",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
+           size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%d_%d_%p.264",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263) {
+           size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%d_%d_%p.263",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_VP8) {
+           size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%d_%d_%p.ivf",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        }
+        if ((size > PROPERTY_VALUE_MAX) && (size < 0)) {
+             DEBUG_PRINT_ERROR("Failed to open output file: %s for logging size:%s",
+                                m_debug.outfile_name, size);
+        }
+        m_debug.outfile = fopen(m_debug.outfile_name, "ab");
+        if (!m_debug.outfile) {
+            DEBUG_PRINT_ERROR("Failed to open output file: %s for logging errno:%d",
+                               m_debug.outfile_name, errno);
+            m_debug.outfile_name[0] = '\0';
+            return -1;
+        }
+    }
+    if (m_debug.outfile && buffer_len) {
+        DEBUG_PRINT_LOW("%s buffer_len:%d", __func__, buffer_len);
+        fwrite(buffer_addr, buffer_len, 1, m_debug.outfile);
+    }
+    return 0;
+}
+
+int venc_dev::venc_input_log_buffers(OMX_BUFFERHEADERTYPE *pbuffer, int fd, int plane_offset) {
+    if (!m_debug.infile) {
+        int size = snprintf(m_debug.infile_name, PROPERTY_VALUE_MAX, "%s/input_enc_%d_%d_%p.yuv",
+                            m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        if ((size > PROPERTY_VALUE_MAX) && (size < 0)) {
+             DEBUG_PRINT_ERROR("Failed to open output file: %s for logging size:%s",
+                                m_debug.infile_name, size);
+        }
+        m_debug.infile = fopen (m_debug.infile_name, "ab");
+        if (!m_debug.infile) {
+            DEBUG_PRINT_HIGH("Failed to open input file: %s for logging", m_debug.infile);
+            m_debug.infile_name[0] = '\0';
+            return -1;
+        }
+    }
+    if (m_debug.infile && pbuffer && pbuffer->nFilledLen) {
+        int i,msize;
+        int stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, m_sVenc_cfg.input_width);
+        int scanlines = VENUS_Y_SCANLINES(COLOR_FMT_NV12, m_sVenc_cfg.input_height);
+        unsigned char *pvirt,*ptemp;
+
+        char *temp = (char *)pbuffer->pBuffer;
+
+        msize = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
+        if (metadatamode == 1) {
+            pvirt= (unsigned char *)mmap(NULL, msize, PROT_READ|PROT_WRITE,MAP_SHARED, fd, plane_offset);
+            if (pvirt) {
+               ptemp = pvirt;
+               for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+                    fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                    ptemp += stride;
+               }
+               ptemp = pvirt + (stride * scanlines);
+               for(i = 0; i < m_sVenc_cfg.input_height/2; i++) {
+                   fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                   ptemp += stride;
+               }
+               munmap(pvirt, msize);
+             } else if (pvirt == MAP_FAILED) {
+                 DEBUG_PRINT_ERROR("%s mmap failed", __func__);
+                 return -1;
+             }
+        } else {
+            for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+                 fwrite(temp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                 temp += stride;
+            }
+
+            temp = (char *)pbuffer->pBuffer + (stride * scanlines);
+
+            for(i = 0; i < m_sVenc_cfg.input_height/2; i++) {
+                fwrite(temp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                temp += stride;
+            }
+        }
+    }
+    return 0;
+}
+
 bool venc_dev::venc_open(OMX_U32 codec)
 {
     int r;
@@ -641,50 +746,28 @@ bool venc_dev::venc_open(OMX_U32 codec)
         profile_level.level = V4L2_MPEG_VIDEO_MPEG4_LEVEL_2;
         session_qp_range.minqp = 1;
         session_qp_range.maxqp = 31;
-#ifdef OUTPUT_BUFFER_LOG
-        strcat(outputfilename, "m4v");
-#endif
     } else if (codec == OMX_VIDEO_CodingH263) {
         m_sVenc_cfg.codectype = V4L2_PIX_FMT_H263;
         codec_profile.profile = VEN_PROFILE_H263_BASELINE;
         profile_level.level = VEN_LEVEL_H263_20;
         session_qp_range.minqp = 1;
         session_qp_range.maxqp = 31;
-#ifdef OUTPUT_BUFFER_LOG
-        strcat(outputfilename, "263");
-#endif
     } else if (codec == OMX_VIDEO_CodingAVC) {
         m_sVenc_cfg.codectype = V4L2_PIX_FMT_H264;
         codec_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE;
         profile_level.level = V4L2_MPEG_VIDEO_H264_LEVEL_1_0;
         session_qp_range.minqp = 1;
         session_qp_range.maxqp = 51;
-#ifdef OUTPUT_BUFFER_LOG
-        strcat(outputfilename, "264");
-#endif
     } else if (codec == OMX_VIDEO_CodingVPX) {
         m_sVenc_cfg.codectype = V4L2_PIX_FMT_VP8;
         codec_profile.profile = V4L2_MPEG_VIDC_VIDEO_VP8_UNUSED;
         profile_level.level = V4L2_MPEG_VIDC_VIDEO_VP8_VERSION_0;
         session_qp_range.minqp = 1;
         session_qp_range.maxqp = 128;
-#ifdef OUTPUT_BUFFER_LOG
-        strcat(outputfilename, "ivf");
-#endif
     }
     session_qp_values.minqp = session_qp_range.minqp;
     session_qp_values.maxqp = session_qp_range.maxqp;
 
-#ifdef INPUT_BUFFER_LOG
-    inputBufferFile1 = fopen (inputfilename, "ab");
-
-    if (!inputBufferFile1)
-        DEBUG_PRINT_ERROR("Input File open failed");
-
-#endif
-#ifdef OUTPUT_BUFFER_LOG
-    outputBufferFile1 = fopen (outputfilename, "ab");
-#endif
     int ret;
     ret = subscribe_to_events(m_nDriver_fd);
 
@@ -868,12 +951,15 @@ void venc_dev::venc_close()
         m_nDriver_fd = -1;
     }
 
-#ifdef INPUT_BUFFER_LOG
-    fclose (inputBufferFile1);
-#endif
-#ifdef OUTPUT_BUFFER_LOG
-    fclose (outputBufferFile1);
-#endif
+    if (m_debug.infile) {
+        fclose(m_debug.infile);
+        m_debug.infile = NULL;
+    }
+    if (m_debug.outfile) {
+        fclose(m_debug.outfile);
+        m_debug.outfile = NULL;
+    }
+
 }
 
 bool venc_dev::venc_set_buf_req(unsigned long *min_buff_count,
@@ -2216,44 +2302,10 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
             streaming[OUTPUT_PORT] = true;
         }
     }
-#ifdef INPUT_BUFFER_LOG
-    int i,msize;
-    int stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, m_sVenc_cfg.input_width);
-    int scanlines = VENUS_Y_SCANLINES(COLOR_FMT_NV12, m_sVenc_cfg.input_height);
-    unsigned char *pvirt,*ptemp;
-
-    char *temp = (char *)bufhdr->pBuffer;
-
-    msize = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
-    if (metadatamode == 1) {
-        pvirt= (unsigned char *)mmap(NULL, msize, PROT_READ|PROT_WRITE,MAP_SHARED, fd, plane.data_offset);
-        if(pvirt) {
-            ptemp = pvirt;
-            for (i = 0; i < m_sVenc_cfg.input_height; i++) {
-                fwrite(ptemp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
-                ptemp += stride;
-            }
-            ptemp = pvirt + (stride * scanlines);
-            for(i = 0; i < m_sVenc_cfg.input_height/2; i++) {
-                fwrite(ptemp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
-                ptemp += stride;
-            }
-            munmap(pvirt, msize);
-        }
-    } else {
-        for (i = 0; i < m_sVenc_cfg.input_height; i++) {
-            fwrite(temp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
-            temp += stride;
-        }
-
-        temp = (char *)bufhdr->pBuffer + (stride * scanlines);
-
-        for(i = 0; i < m_sVenc_cfg.input_height/2; i++) {
-	    fwrite(temp, m_sVenc_cfg.input_width, 1, inputBufferFile1);
-	    temp += stride;
-        }
+    if (m_debug.in_buffer_log) {
+        venc_input_log_buffers(bufhdr, fd, plane.data_offset);
     }
-#endif
+
     return true;
 }
 bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,unsigned fd)
