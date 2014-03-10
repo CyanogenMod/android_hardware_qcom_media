@@ -2209,6 +2209,11 @@ bool venc_dev::venc_color_align(OMX_BUFFERHEADERTYPE *buffer,
             uv_scanlines = VENUS_UV_SCANLINES(COLOR_FMT_NV12, height),
             src_chroma_offset = width * height;
 
+    if (!buffer->nFilledLen) {
+        DEBUG_PRINT_HIGH("Skip color aligment on zero length buffer");
+        return true;
+    }
+
     if (buffer->nAllocLen >= VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height)) {
         OMX_U8* src_buf = buffer->pBuffer, *dst_buf = buffer->pBuffer;
         //Do chroma first, so that we can convert it in-place
@@ -2227,6 +2232,7 @@ bool venc_dev::venc_color_align(OMX_BUFFERHEADERTYPE *buffer,
                     src_buf + line * width,
                     width);
         }
+        buffer->nFilledLen = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height);
     } else {
         DEBUG_PRINT_ERROR("Failed to align Chroma. from %lu to %lu : \
                 Insufficient bufferLen=%lu v/s Required=%u",
