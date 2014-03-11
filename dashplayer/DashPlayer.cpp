@@ -512,8 +512,19 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                         track, codecRequest);
 
                 if (err == -EWOULDBLOCK) {
-                    if (mSource->feedMoreTSData() == OK) {
+                    status_t nRet = mSource->feedMoreTSData();
+                    if (nRet == OK) {
                            msg->post(10000ll);
+                    }
+                    else if(nRet == (status_t)UNKNOWN_ERROR ||
+                            nRet == (status_t)ERROR_DRM_CANNOT_HANDLE)
+                    {
+                      // reply back to dashcodec if there is an error
+                      ALOGE("FeedMoreTSData error on track %d ",track);
+                      sp<AMessage> reply;
+                      CHECK(codecRequest->findMessage("reply", &reply));
+                      reply->setInt32("err", UNKNOWN_ERROR);
+                      reply->post();
                     }
                 }
 
