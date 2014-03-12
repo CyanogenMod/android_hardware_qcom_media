@@ -4287,7 +4287,7 @@ void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
             if (media_ptr && media_ptr->meta_handle) {
                 if (media_ptr->buffer_type == kMetadataBufferTypeCameraSource &&
                         media_ptr->meta_handle->numFds == 1 &&
-                        media_ptr->meta_handle->numInts == 2) {
+                        media_ptr->meta_handle->numInts >= 2) {
                     Input_pmem.fd = media_ptr->meta_handle->data[0];
                     Input_pmem.buffer = media_ptr;
                     Input_pmem.size = media_ptr->meta_handle->data[2];
