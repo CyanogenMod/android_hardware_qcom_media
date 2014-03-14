@@ -5557,7 +5557,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
     if (dynamic_buf_mode) {
         private_handle_t *handle = NULL;
         struct VideoDecoderOutputMetaData *meta;
-        OMX_U8 *buff = NULL;
         unsigned int nPortIndex = 0;
 
         if (!buffer || !buffer->pBuffer) {
@@ -5570,23 +5569,11 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         handle = (private_handle_t *)meta->pHandle;
         DEBUG_PRINT_LOW("FTB: buftype: %d bufhndl: %p", meta->eType, meta->pHandle);
 
-        //map the buffer handle based on the size set on output port definition.
-        if (!secure_mode) {
-            buff = (OMX_U8*)mmap(0, drv_ctx.op_buf.buffer_size,
-                          PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd, 0);
-        } else {
-            buff = (OMX_U8*) buffer;
-        }
 
         //Fill outputbuffer with buffer details, this will be sent to f/w during VIDIOC_QBUF
         nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
         drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd = handle->fd;
-        drv_ctx.ptr_outputbuffer[nPortIndex].offset = 0;
-        drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr = buff;
-        drv_ctx.ptr_outputbuffer[nPortIndex].buffer_len = drv_ctx.op_buf.buffer_size;
-        drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size = drv_ctx.op_buf.buffer_size;
-        buf_ref_add(drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd,
-                    drv_ctx.ptr_outputbuffer[nPortIndex].offset);
+        drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr = (OMX_U8*) buffer;
     }
 
 
@@ -5653,6 +5640,20 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
         buffer->nFilledLen = 0;
         m_cb.FillBufferDone (hComp,m_app_data,buffer);
         return OMX_ErrorNone;
+    }
+    if (dynamic_buf_mode) {
+        //map the buffer handle based on the size set on output port definition.
+        if (!secure_mode) {
+            drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr =
+                (OMX_U8*)mmap(0, drv_ctx.op_buf.buffer_size,
+                PROT_READ|PROT_WRITE, MAP_SHARED,
+                drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd, 0);
+        }
+        drv_ctx.ptr_outputbuffer[nPortIndex].offset = 0;
+        drv_ctx.ptr_outputbuffer[nPortIndex].buffer_len = drv_ctx.op_buf.buffer_size;
+        drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size = drv_ctx.op_buf.buffer_size;
+        buf_ref_add(drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd,
+                   drv_ctx.ptr_outputbuffer[nPortIndex].offset);
     }
     pending_output_buffers++;
     buffer = client_buffers.get_dr_buf_hdr(bufferAdd);
