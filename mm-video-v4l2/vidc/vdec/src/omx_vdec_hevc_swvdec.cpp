@@ -9919,13 +9919,13 @@ OMX_ERRORTYPE omx_vdec::fill_all_buffers_proxy_dsp(OMX_HANDLETYPE hComp)
     {
         return nRet;
     }
-    m_fill_internal_bufers = OMX_FALSE;
 
     if (m_interm_mem_ptr == NULL)
     {
         DEBUG_PRINT_ERROR("fill_all_buffers_proxy_dsp called in bad state");
         return nRet;
     }
+    m_fill_internal_bufers = OMX_FALSE;
 
     for (idx=0; idx < (int)drv_ctx.interm_op_buf.actualcount; idx++)
     {
