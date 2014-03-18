@@ -89,7 +89,6 @@ libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_MSM8974_
-libOmxVdec-def += -D_HEVC_USE_ADSP_HEAP_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),plutonium)
 libOmxVdec-def += -DMAX_RES_1080P
@@ -205,7 +204,7 @@ LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
 
-ifneq (,$(filter msm8974 msm8226,$(TARGET_BOARD_PLATFORM)))
+ifneq (,$(filter msm8974 msm8226 msm8916,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SHARED_LIBRARIES  += libHevcSwDecoder
 LOCAL_SRC_FILES         += src/omx_vdec_hevc_swvdec.cpp
 else

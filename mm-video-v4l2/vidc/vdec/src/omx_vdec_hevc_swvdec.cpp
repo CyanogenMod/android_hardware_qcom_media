@@ -4327,6 +4327,8 @@ OMX_ERRORTYPE omx_vdec::allocate_extradata()
         int heap = 0;
 #ifdef _HEVC_USE_ADSP_HEAP_
         heap = ION_ADSP_HEAP_ID;
+#else
+        heap = ION_IOMMU_HEAP_ID;
 #endif
         drv_ctx.extradata_info.ion.ion_device_fd = alloc_map_ion_memory(
             drv_ctx.extradata_info.size, 4096,
@@ -5123,6 +5125,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
         int heap = 0;
 #ifdef _HEVC_USE_ADSP_HEAP_
         heap = ION_ADSP_HEAP_ID;
+#else
+        heap = ION_IOMMU_HEAP_ID;
 #endif
         DEBUG_PRINT_HIGH("Allocate ion input Buffer size %d", drv_ctx.ip_buf.buffer_size);
         drv_ctx.ip_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
@@ -5317,6 +5321,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         if (!m_pSwVdec) {
 #ifdef _HEVC_USE_ADSP_HEAP_
             heap_id = ION_ADSP_HEAP_ID;
+#else
+            heap_id = ION_IOMMU_HEAP_ID;
 #endif
         }
         ion_device_fd = alloc_map_ion_memory(
@@ -10139,10 +10145,17 @@ OMX_ERRORTYPE  omx_vdec::allocate_interm_buffer(OMX_U32 bytes)
     unsigned                         i= 0; // Temporary counter
     struct vdec_setbuffer_cmd setbuffers;
     int extra_idx = 0;
+    int heap_id = 0;
 
     int ion_device_fd =-1;
     struct ion_allocation_data ion_alloc_data;
     struct ion_fd_data fd_ion_data;
+
+#ifdef _HEVC_USE_ADSP_HEAP_
+    heap_id = ION_ADSP_HEAP_ID;
+#else
+    heap_id = ION_IOMMU_HEAP_ID;
+#endif
 
     if(!m_interm_mem_ptr)
     {
@@ -10187,7 +10200,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_interm_buffer(OMX_U32 bytes)
         ion_device_fd = alloc_map_ion_memory(
             drv_ctx.interm_op_buf.buffer_size,
             drv_ctx.interm_op_buf.alignment,
-            &ion_alloc_data, &fd_ion_data, flags, ION_ADSP_HEAP_ID);
+            &ion_alloc_data, &fd_ion_data, flags, heap_id);
         if (ion_device_fd < 0) {
             eRet = OMX_ErrorInsufficientResources;
             goto clean_up;
