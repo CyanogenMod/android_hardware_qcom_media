@@ -183,7 +183,7 @@ bool HEVC_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
 
     nalu_type = (buffer[pos] & 0x7E)>>1 ;      //=== nal_unit_type
 
-    DEBUG_PRINT_LOW("@#@# Pos = %x NalType = %x buflen = %d", pos-1, nalu_type, buffer_length);
+    DEBUG_PRINT_LOW("@#@# Pos = %x NalType = %x buflen = %u", pos-1, nalu_type, (unsigned int) buffer_length);
 
     isNewFrame =  OMX_FALSE;
 

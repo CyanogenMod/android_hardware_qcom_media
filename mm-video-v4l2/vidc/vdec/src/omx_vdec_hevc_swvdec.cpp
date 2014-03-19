@@ -3978,7 +3978,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
             } else {
                 DEBUG_PRINT_ERROR(
-                   "OMX_QcomIndexParamVideoMetaBufferMode not supported for port: %d",
+                   "OMX_QcomIndexParamVideoMetaBufferMode not supported for port: %lu",
                    metabuffer->nPortIndex);
                 eRet = OMX_ErrorUnsupportedSetting;
             }
@@ -5973,7 +5973,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         return OMX_ErrorBadParameter;
     }
 
-    DEBUG_PRINT_LOW("[ETB] BHdr(%p) pBuf(%p) nTS(%lld) nFL(%lu) nFlags(%x)",
+    DEBUG_PRINT_LOW("[ETB] BHdr(%p) pBuf(%p) nTS(%lld) nFL(%lu) nFlags(%lu)",
         buffer, buffer->pBuffer, buffer->nTimeStamp, buffer->nFilledLen, buffer->nFlags);
     if (arbitrary_bytes)
     {
@@ -6635,7 +6635,7 @@ OMX_ERRORTYPE  omx_vdec::use_EGL_image(OMX_IN OMX_HANDLETYPE                hCom
 #endif
     DEBUG_PRINT_HIGH("use EGL image support for decoder");
     if (!bufferHdr || !eglImage|| port != OMX_CORE_OUTPUT_PORT_INDEX) {
-        DEBUG_PRINT_ERROR("");
+        DEBUG_PRINT_ERROR("use_EGL_image: Invalid param");
     }
 #ifdef USE_EGL_IMAGE_GPU
     if(m_display_id == NULL) {
@@ -6998,9 +6998,9 @@ bool omx_vdec::release_input_done(void)
 OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                                          OMX_BUFFERHEADERTYPE * buffer)
 {
-    unsigned int nPortIndex = buffer - m_out_mem_ptr;
+    unsigned long nPortIndex = buffer - m_out_mem_ptr;
     OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pPMEMInfo = NULL;
-    if (!buffer || nPortIndex >= (int)drv_ctx.op_buf.actualcount)
+    if (!buffer || nPortIndex >= drv_ctx.op_buf.actualcount)
     {
         DEBUG_PRINT_ERROR("[FBD] ERROR in ptr(%p)", buffer);
         return OMX_ErrorBadParameter;
@@ -7015,7 +7015,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         buffer->nFlags &= ~OMX_BUFFERFLAG_DATACORRUPT;
     }
 
-    DEBUG_PRINT_LOW("fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p idx %d, TS %lld nFlags %x",
+    DEBUG_PRINT_LOW("fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p idx %d, TS %lld nFlags %lu",
         buffer, buffer->pBuffer, buffer - m_out_mem_ptr, buffer->nTimeStamp, buffer->nFlags );
     pending_output_buffers --;
 
@@ -7915,7 +7915,7 @@ struct ion_fd_data *fd_data, int flag, int heap_id)
     rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
     if (rc || !alloc_data->handle) {
         DEBUG_PRINT_ERROR("ION ALLOC memory failed ");
-        alloc_data->handle = NULL;
+        alloc_data->handle = 0;
         close(fd);
         fd = -ENOMEM;
         return fd;
@@ -7949,7 +7949,7 @@ void omx_vdec::free_ion_memory(struct vdec_ion *buf_ion_info) {
 
     close(buf_ion_info->ion_device_fd);
     buf_ion_info->ion_device_fd = -1;
-    buf_ion_info->ion_alloc_data.handle = NULL;
+    buf_ion_info->ion_alloc_data.handle = 0;
     buf_ion_info->fd_ion_data.fd = -1;
 }
 #endif
@@ -8655,7 +8655,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     if (data) {
         while((consumed_len < drv_ctx.extradata_info.buffer_size)
             && (data->eType != (OMX_EXTRADATATYPE)MSM_VIDC_EXTRADATA_NONE)) {
-                if ((consumed_len + data->nSize) > (int)drv_ctx.extradata_info.buffer_size) {
+                if ((consumed_len + data->nSize) > (OMX_U32)drv_ctx.extradata_info.buffer_size) {
                     DEBUG_PRINT_LOW("Invalid extra data size");
                     break;
                 }
@@ -8747,7 +8747,7 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
         DEBUG_PRINT_ERROR("ERROR: enable extradata allowed in Loaded state only");
         return OMX_ErrorIncorrectStateOperation;
     }
-    DEBUG_PRINT_ERROR("NOTE: enable_extradata: actual[%x] requested[%x] enable[%d], is_internal: %d swvdec mode %d",
+    DEBUG_PRINT_ERROR("NOTE: enable_extradata: actual[%lx] requested[%lx] enable[%d], is_internal: %d swvdec mode %d",
         client_extradata, requested_extradata, enable, is_internal, m_swvdec_mode);
 
     if (!is_internal) {
@@ -9582,7 +9582,7 @@ void omx_vdec::buf_ref_add(int index, OMX_U32 fd, OMX_U32 offset)
         (out_dynamic_list[index].fd != fd) &&
         (out_dynamic_list[index].offset != offset))
     {
-        DEBUG_PRINT_LOW("buf_ref_add error: index %d taken by fd = %d offset = %d, new fd %d offset %d",
+        DEBUG_PRINT_LOW("buf_ref_add error: index %d taken by fd = %lu offset = %lu, new fd %lu offset %lu",
             index, out_dynamic_list[index].fd, out_dynamic_list[index].offset, fd, offset);
         pthread_mutex_unlock(&m_lock);
         return;
@@ -9595,14 +9595,14 @@ void omx_vdec::buf_ref_add(int index, OMX_U32 fd, OMX_U32 offset)
         out_dynamic_list[index].dup_fd = dup(fd);
     }
     out_dynamic_list[index].ref_count++;
-    DEBUG_PRINT_LOW("buf_ref_add: [ADDED] fd = %d ref_count = %d",
+    DEBUG_PRINT_LOW("buf_ref_add: [ADDED] fd = %lu ref_count = %lu",
           out_dynamic_list[index].fd, out_dynamic_list[index].ref_count);
     pthread_mutex_unlock(&m_lock);
 }
 
 void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
 {
-    int i = 0;
+    unsigned long i = 0;
     pthread_mutex_lock(&m_lock);
     for (i = 0; i < drv_ctx.op_buf.actualcount; i++) {
         //check the buffer fd, offset, uv addr with list contents
@@ -9612,7 +9612,7 @@ void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
             out_dynamic_list[i].ref_count--;
             if (out_dynamic_list[i].ref_count == 0) {
                 close(out_dynamic_list[i].dup_fd);
-                DEBUG_PRINT_LOW("buf_ref_remove: [REMOVED] fd = %d ref_count = %d",
+                DEBUG_PRINT_LOW("buf_ref_remove: [REMOVED] fd = %lu ref_count = %lu",
                      out_dynamic_list[i].fd, out_dynamic_list[i].ref_count);
                 out_dynamic_list[i].dup_fd = 0;
                 out_dynamic_list[i].fd = 0;
@@ -9620,7 +9620,7 @@ void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
 
                 munmap(drv_ctx.ptr_outputbuffer[i].bufferaddr,
                     drv_ctx.ptr_outputbuffer[i].mmaped_size);
-                DEBUG_PRINT_LOW("unmapped dynamic buffer idx %d pBuffer %p",
+                DEBUG_PRINT_LOW("unmapped dynamic buffer idx %lu pBuffer %p",
                     i, drv_ctx.ptr_outputbuffer[i].bufferaddr);
 
                 drv_ctx.ptr_outputbuffer[i].bufferaddr = NULL;
@@ -9702,7 +9702,7 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req_swvdec()
         drv_ctx.op_buf.buffer_size = property.uProperty.sOpBuffReq.nSize + client_extra_data_size;
         drv_ctx.op_buf.mincount = property.uProperty.sOpBuffReq.nMinCount;
         drv_ctx.op_buf.actualcount = property.uProperty.sOpBuffReq.nMinCount;
-        DEBUG_PRINT_HIGH("swvdec opbuf size %d extradata size %d total size %d count %d",
+        DEBUG_PRINT_HIGH("swvdec opbuf size %lu extradata size %d total size %d count %d",
             property.uProperty.sOpBuffReq.nSize, client_extra_data_size,
             drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.actualcount);
     }
@@ -9747,12 +9747,12 @@ OMX_ERRORTYPE omx_vdec::set_buffer_req_swvdec(vdec_allocatorproperty *buffer_pro
         if(buffer_prop->buffer_type == VDEC_BUFFER_TYPE_INPUT)
         {
             property.ePropId = SWVDEC_PROP_ID_IPBUFFREQ;
-            DEBUG_PRINT_HIGH("swvdec input Buffer Size =%d Count = %d",property.uProperty.sIpBuffReq.nSize, buffer_prop->mincount);
+            DEBUG_PRINT_HIGH("swvdec input Buffer Size = %lu Count = %d",property.uProperty.sIpBuffReq.nSize, buffer_prop->mincount);
         }
         else if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT)
         {
             property.ePropId = SWVDEC_PROP_ID_OPBUFFREQ;
-            DEBUG_PRINT_HIGH("swvdec output Buffer Size =%d and Count = %d",property.uProperty.sOpBuffReq.nSize, buffer_prop->actualcount);
+            DEBUG_PRINT_HIGH("swvdec output Buffer Size = %lu and Count = %d",property.uProperty.sOpBuffReq.nSize, buffer_prop->actualcount);
         }
         else
         {
@@ -10171,7 +10171,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_interm_buffer(OMX_U32 bytes)
     }
 
     bufHdr = m_interm_mem_ptr;
-    for (int i = 0; i < drv_ctx.interm_op_buf.actualcount; i++)
+    for (unsigned long i = 0; i < drv_ctx.interm_op_buf.actualcount; i++)
     {
         int pmem_fd = -1;
         unsigned char *pmem_baseaddress = NULL;
@@ -10182,7 +10182,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_interm_buffer(OMX_U32 bytes)
             flags = ION_FLAG_CACHED;
         }
 
-        DEBUG_PRINT_HIGH("allocate interm output buffer size %d idx %d",
+        DEBUG_PRINT_HIGH("allocate interm output buffer size %d idx %lu",
             drv_ctx.interm_op_buf.buffer_size, i);
         ion_device_fd = alloc_map_ion_memory(
             drv_ctx.interm_op_buf.buffer_size,
@@ -10423,7 +10423,7 @@ void omx_vdec::swvdec_fill_buffer_done(SWVDEC_OPBUFFER *m_pSwVdecOpBuffer)
     {
         DEBUG_PRINT_HIGH("swvdec output EOS reached");
     }
-    DEBUG_PRINT_LOW("swvdec_fill_buffer_done bufHdr %p pBuffer %p SwvdecOpBuffer %p idx %d nFilledLen %d nAllocLen %d nFlags %x",
+    DEBUG_PRINT_LOW("swvdec_fill_buffer_done bufHdr %p pBuffer %p SwvdecOpBuffer %p idx %d nFilledLen %lu nAllocLen %lu nFlags %lx",
         bufHdr, bufHdr->pBuffer, m_pSwVdecOpBuffer->pBuffer, index, m_pSwVdecOpBuffer->nFilledLen, bufHdr->nAllocLen, m_pSwVdecOpBuffer->nFlags);
     post_event((unsigned int)bufHdr, VDEC_S_SUCCESS, OMX_COMPONENT_GENERATE_FBD);
 }
@@ -10496,12 +10496,12 @@ void omx_vdec::swvdec_handle_event(SWVDEC_EVENTHANDLER *pEvent)
             {
                 DEBUG_PRINT_ERROR("swvdec release buffer reference for null buffer");
             }
-            int idx = (int)pOpBuffer->pClientBufferData;
-            DEBUG_PRINT_HIGH("swvdec release buffer reference idx %d", idx);
+            unsigned long idx = (unsigned long)pOpBuffer->pClientBufferData;
+            DEBUG_PRINT_HIGH("swvdec release buffer reference idx %lu", idx);
 
-            if (idx >=0 && idx < drv_ctx.op_buf.actualcount)
+            if (idx >= 0 && idx < drv_ctx.op_buf.actualcount)
             {
-                DEBUG_PRINT_LOW("swvdec REFERENCE RELEASE EVENT fd = %d offset = %d buf idx %d pBuffer %p",
+                DEBUG_PRINT_LOW("swvdec REFERENCE RELEASE EVENT fd = %d offset = %u buf idx %lu pBuffer %p",
                     drv_ctx.ptr_outputbuffer[idx].pmem_fd, drv_ctx.ptr_outputbuffer[idx].offset,
                     idx, drv_ctx.ptr_outputbuffer[idx].bufferaddr);
                 buf_ref_remove(drv_ctx.ptr_outputbuffer[idx].pmem_fd,
@@ -10621,11 +10621,11 @@ OMX_ERRORTYPE omx_vdec::free_interm_buffers()
 
     if (drv_ctx.ptr_interm_outputbuffer)
     {
-        for(int i=0; i< drv_ctx.interm_op_buf.actualcount; i++)
+        for(unsigned long i=0; i< drv_ctx.interm_op_buf.actualcount; i++)
         {
             if (drv_ctx.ptr_interm_outputbuffer[i].pmem_fd > 0)
             {
-                DEBUG_PRINT_LOW("Free interm ouput Buffer index = %d addr = %x", i,
+                DEBUG_PRINT_LOW("Free interm ouput Buffer index = %lu addr = %x", i,
                     (unsigned int)drv_ctx.ptr_interm_outputbuffer[i].bufferaddr);
 
                 munmap (drv_ctx.ptr_interm_outputbuffer[i].bufferaddr,

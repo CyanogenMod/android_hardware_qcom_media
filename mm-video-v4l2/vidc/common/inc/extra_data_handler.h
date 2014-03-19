@@ -68,7 +68,7 @@ class extra_data_handler
         OMX_U32 sei_payload_type;
         OMX_U32 d_u(OMX_U32 num_bits);
         OMX_U32 d_ue();
-        OMX_U32 parse_frame_pack(OMX_U32 payload_size);
+        OMX_U32 parse_frame_pack(void);
         OMX_S32 parse_rbsp(OMX_U8 *buf, OMX_U32 len);
         OMX_S32 parse_sei(OMX_U8 *buffer, OMX_U32 buffer_length);
         OMX_U32 e_u(OMX_U32 symbol, OMX_U32 num_bits);
@@ -78,8 +78,7 @@ class extra_data_handler
         OMX_U32 create_sei(OMX_U8 *buffer);
         OMX_S32 parse_sliceinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
                 OMX_OTHER_EXTRADATATYPE *pExtra);
-        OMX_S32 parse_ltrinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
-                OMX_OTHER_EXTRADATATYPE *pExtra);
+        OMX_S32 parse_ltrinfo(OMX_OTHER_EXTRADATATYPE *pExtra);
 };
 
 #endif

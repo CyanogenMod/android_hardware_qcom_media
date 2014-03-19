@@ -418,21 +418,21 @@ class omx_video: public qc_omx_component
         };
 
         struct omx_event {
-            unsigned param1;
-            unsigned param2;
-            unsigned id;
+            unsigned long param1;
+            unsigned long param2;
+            unsigned long id;
         };
 
         struct omx_cmd_queue {
             omx_event m_q[OMX_CORE_CONTROL_CMDQ_SIZE];
-            unsigned m_read;
-            unsigned m_write;
-            unsigned m_size;
+            unsigned long m_read;
+            unsigned long m_write;
+            unsigned long m_size;
 
             omx_cmd_queue();
             ~omx_cmd_queue();
-            bool insert_entry(unsigned p1, unsigned p2, unsigned id);
-            bool pop_entry(unsigned *p1,unsigned *p2, unsigned *id);
+            bool insert_entry(unsigned long p1, unsigned long p2, unsigned long id);
+            bool pop_entry(unsigned long *p1,unsigned long *p2, unsigned long *id);
             // get msgtype of the first ele from the queue
             unsigned get_q_msg_type();
 
@@ -492,7 +492,7 @@ class omx_video: public qc_omx_component
                 OMX_BUFFERHEADERTYPE *buffer);
         OMX_ERRORTYPE push_input_buffer(OMX_HANDLETYPE hComp);
         OMX_ERRORTYPE convert_queue_buffer(OMX_HANDLETYPE hComp,
-                struct pmem &Input_pmem_info,unsigned &index);
+                struct pmem &Input_pmem_info,unsigned long &index);
         OMX_ERRORTYPE queue_meta_buffer(OMX_HANDLETYPE hComp,
                 struct pmem &Input_pmem_info);
         OMX_ERRORTYPE push_empty_eos_buffer(OMX_HANDLETYPE hComp,
@@ -508,9 +508,9 @@ class omx_video: public qc_omx_component
                 OMX_COMMANDTYPE cmd,
                 OMX_U32         param1,
                 OMX_PTR         cmdData);
-        bool post_event( unsigned int p1,
-                unsigned int p2,
-                unsigned int id
+        bool post_event( unsigned long p1,
+                unsigned long p2,
+                unsigned long id
                    );
         OMX_ERRORTYPE get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
         inline void omx_report_error () {

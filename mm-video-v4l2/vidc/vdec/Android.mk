@@ -24,6 +24,7 @@ libOmxVdec-def += -UENABLE_DEBUG_HIGH
 libOmxVdec-def += -DENABLE_DEBUG_ERROR
 libOmxVdec-def += -UINPUT_BUFFER_LOG
 libOmxVdec-def += -UOUTPUT_BUFFER_LOG
+libOmxVdec-def += -Wno-parentheses
 ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
@@ -147,7 +148,7 @@ endif
 
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
-LOCAL_CFLAGS                    := $(libOmxVdec-def)
+LOCAL_CFLAGS                    := $(libOmxVdec-def) -Werror
 LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
 
 LOCAL_PRELINK_MODULE    := false

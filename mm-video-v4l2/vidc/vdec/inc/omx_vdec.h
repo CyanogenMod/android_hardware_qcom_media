@@ -231,7 +231,7 @@ struct vdec_ion {
 
 #ifdef _MSM8974_
 struct extradata_buffer_info {
-    int buffer_size;
+    unsigned long buffer_size;
     char* uaddr;
     int count;
     int size;
@@ -518,21 +518,21 @@ class omx_vdec: public qc_omx_component
 #endif
 
         struct omx_event {
-            unsigned param1;
-            unsigned param2;
-            unsigned id;
+            unsigned long param1;
+            unsigned long param2;
+            unsigned long id;
         };
 
         struct omx_cmd_queue {
             omx_event m_q[OMX_CORE_CONTROL_CMDQ_SIZE];
-            unsigned m_read;
-            unsigned m_write;
-            unsigned m_size;
+            unsigned long m_read;
+            unsigned long m_write;
+            unsigned long m_size;
 
             omx_cmd_queue();
             ~omx_cmd_queue();
-            bool insert_entry(unsigned p1, unsigned p2, unsigned id);
-            bool pop_entry(unsigned *p1,unsigned *p2, unsigned *id);
+            bool insert_entry(unsigned long p1, unsigned long p2, unsigned long id);
+            bool pop_entry(unsigned long *p1,unsigned long *p2, unsigned long *id);
             // get msgtype of the first ele from the queue
             unsigned get_q_msg_type();
 
@@ -698,9 +698,9 @@ class omx_vdec: public qc_omx_component
                 OMX_COMMANDTYPE cmd,
                 OMX_U32         param1,
                 OMX_PTR         cmdData);
-        bool post_event( unsigned int p1,
-                unsigned int p2,
-                unsigned int id
+        bool post_event( unsigned long p1,
+                unsigned long p2,
+                unsigned long id
                    );
         inline int clip2(int x) {
             x = x -1;
@@ -987,7 +987,7 @@ class omx_vdec: public qc_omx_component
                 struct vdec_ion op_buf_ion_info[MAX_COUNT];
 #endif
                 unsigned char *pmem_baseaddress[MAX_COUNT];
-                int pmem_fd[MAX_COUNT];
+                unsigned long pmem_fd[MAX_COUNT];
                 struct vidc_heap {
                     sp<MemoryHeapBase>    video_heap_ptr;
                 };
