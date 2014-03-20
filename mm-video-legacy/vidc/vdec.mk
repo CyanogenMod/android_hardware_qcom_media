@@ -53,7 +53,7 @@ LOCAL_PATH:= $(ROOT_DIR)
 
 libmm-vdec-inc          := bionic/libc/include
 libmm-vdec-inc          += bionic/libstdc++/include
-libmm-vdec-inc          += $(LOCAL_PATH)/inc
+libmm-vdec-inc          += $(LOCAL_PATH)/vdec/inc
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
 #DRM include - Interface which loads the DRM library
@@ -97,13 +97,13 @@ LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
 LOCAL_SHARED_LIBRARIES += libqservice
 LOCAL_SHARED_LIBRARIES += libqdMetaData
 
-LOCAL_SRC_FILES         := src/frameparser.cpp
-LOCAL_SRC_FILES         += src/h264_utils.cpp
-LOCAL_SRC_FILES         += src/ts_parser.cpp
-LOCAL_SRC_FILES         += src/mp4_utils.cpp
-LOCAL_SRC_FILES         += src/omx_vdec.cpp
-LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
-LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
+LOCAL_SRC_FILES         := vdec/src/frameparser.cpp
+LOCAL_SRC_FILES         += vdec/src/h264_utils.cpp
+LOCAL_SRC_FILES         += vdec/src/ts_parser.cpp
+LOCAL_SRC_FILES         += vdec/src/mp4_utils.cpp
+LOCAL_SRC_FILES         += vdec/src/omx_vdec.cpp
+LOCAL_SRC_FILES         += common/src/extra_data_handler.cpp
+LOCAL_SRC_FILES         += common/src/vidc_color_converter.cpp
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -113,7 +113,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 
 mm-vdec-test-inc    := hardware/qcom/media/mm-core/inc
-mm-vdec-test-inc    += $(LOCAL_PATH)/inc
+mm-vdec-test-inc    += $(LOCAL_PATH)/vdec/inc
 
 LOCAL_MODULE                    := mm-vdec-omx-test
 LOCAL_MODULE_TAGS               := optional
@@ -123,8 +123,8 @@ LOCAL_C_INCLUDES                := $(mm-vdec-test-inc)
 LOCAL_PRELINK_MODULE      := false
 LOCAL_SHARED_LIBRARIES    := libutils liblog libOmxCore libOmxVdec libbinder
 
-LOCAL_SRC_FILES           := src/queue.c
-LOCAL_SRC_FILES           += test/omx_vdec_test.cpp
+LOCAL_SRC_FILES           := vdec/src/queue.c
+LOCAL_SRC_FILES           += vdec/test/omx_vdec_test.cpp
 
 include $(BUILD_EXECUTABLE)
 
@@ -134,7 +134,7 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 mm-vdec-drv-test-inc    := hardware/qcom/media/mm-core/inc
-mm-vdec-drv-test-inc    += $(LOCAL_PATH)/inc
+mm-vdec-drv-test-inc    += $(LOCAL_PATH)/vdec/inc
 
 LOCAL_MODULE                    := mm-video-driver-test
 LOCAL_MODULE_TAGS               := optional
@@ -142,8 +142,8 @@ LOCAL_CFLAGS                    := $(libOmxVdec-def)
 LOCAL_C_INCLUDES                := $(mm-vdec-drv-test-inc)
 LOCAL_PRELINK_MODULE            := false
 
-LOCAL_SRC_FILES                 := src/message_queue.c
-LOCAL_SRC_FILES                 += test/decoder_driver_test.c
+LOCAL_SRC_FILES                 := vdec/src/message_queue.c
+LOCAL_SRC_FILES                 += vdec/test/decoder_driver_test.c
 
 include $(BUILD_EXECUTABLE)
 
