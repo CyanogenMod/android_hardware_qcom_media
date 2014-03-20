@@ -76,7 +76,7 @@ include $(CLEAR_VARS)
 
 libmm-venc-inc      := bionic/libc/include
 libmm-venc-inc      += bionic/libstdc++/include
-libmm-venc-inc      += $(LOCAL_PATH)/inc
+libmm-venc-inc      += $(LOCAL_PATH)/venc/inc
 libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-venc-inc      += hardware/qcom/media/mm-core/inc
 libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
@@ -98,15 +98,15 @@ LOCAL_PRELINK_MODULE      := false
 LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
                              libc2dcolorconvert libdl
 
-LOCAL_SRC_FILES   := src/omx_video_base.cpp
-LOCAL_SRC_FILES   += src/omx_video_encoder.cpp
+LOCAL_SRC_FILES   := venc/src/omx_video_base.cpp
+LOCAL_SRC_FILES   += venc/src/omx_video_encoder.cpp
 ifneq ($(filter msm8974 msm8610 msm8226 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
-LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
+LOCAL_SRC_FILES   += venc/src/video_encoder_device_v4l2.cpp
 else
-LOCAL_SRC_FILES   += src/video_encoder_device.cpp
+LOCAL_SRC_FILES   += venc/src/video_encoder_device.cpp
 endif
 
-LOCAL_SRC_FILES   += ../common/src/extra_data_handler.cpp
+LOCAL_SRC_FILES   += common/src/extra_data_handler.cpp
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -117,7 +117,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 
 mm-venc-test720p-inc            := $(TARGET_OUT_HEADERS)/mm-core
-mm-venc-test720p-inc            += $(LOCAL_PATH)/inc
+mm-venc-test720p-inc            += $(LOCAL_PATH)/venc/inc
 mm-venc-test720p-inc            += $(OMX_VIDEO_PATH)/vidc/common/inc
 mm-venc-test720p-inc            += hardware/qcom/media/mm-core/inc
 mm-venc-test720p-inc            += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
@@ -130,10 +130,10 @@ LOCAL_C_INCLUDES                := $(mm-venc-test720p-inc)
 LOCAL_PRELINK_MODULE            := false
 LOCAL_SHARED_LIBRARIES          := libmm-omxcore libOmxVenc libbinder liblog
 
-LOCAL_SRC_FILES                 := test/venc_test.cpp
-LOCAL_SRC_FILES                 += test/camera_test.cpp
-LOCAL_SRC_FILES                 += test/venc_util.c
-LOCAL_SRC_FILES                 += test/fb_test.c
+LOCAL_SRC_FILES                 := venc/test/venc_test.cpp
+LOCAL_SRC_FILES                 += venc/test/camera_test.cpp
+LOCAL_SRC_FILES                 += venc/test/venc_util.c
+LOCAL_SRC_FILES                 += venc/test/fb_test.c
 
 include $(BUILD_EXECUTABLE)
 
@@ -143,7 +143,7 @@ include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
 
-venc-test-inc                   += $(LOCAL_PATH)/inc
+venc-test-inc                   += $(LOCAL_PATH)/venc/inc
 venc-test-inc                   += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
 venc-test-inc                   += $(venc-inc)
 
@@ -154,8 +154,8 @@ LOCAL_C_INCLUDES                += hardware/qcom/media/mm-core/inc
 
 LOCAL_PRELINK_MODULE            := false
 
-LOCAL_SRC_FILES                 := test/video_encoder_test.c
-LOCAL_SRC_FILES                 += test/queue.c
+LOCAL_SRC_FILES                 := venc/test/video_encoder_test.c
+LOCAL_SRC_FILES                 += venc/test/queue.c
 
 include $(BUILD_EXECUTABLE)
 
