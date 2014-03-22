@@ -4471,10 +4471,10 @@ bool omx_video::omx_c2d_conv::convert(int src_fd, void *src_base, void *src_vira
 }
 
 bool omx_video::omx_c2d_conv::open(unsigned int height,unsigned int width,
-     ColorConvertFormat src, ColorConvertFormat dest)
+     ColorConvertFormat src, ColorConvertFormat dest,
+     unsigned int srcStride)
 {
   bool status = false;
-  size_t srcStride = 0;
   if(!c2dcc) {
      c2dcc = mConvertOpen(width, height, width, height,
              src, dest, 0, srcStride);
@@ -4563,7 +4563,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888) {
           DEBUG_PRINT_ERROR("\n open Color conv for RGBA888");
           if(!c2d_conv.open(m_sInPortDef.format.video.nFrameHeight,
-               m_sInPortDef.format.video.nFrameWidth,RGBA8888,NV12_2K)){
+               m_sInPortDef.format.video.nFrameWidth,RGBA8888,NV12_2K,
+               (unsigned int)handle->width)){
              m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
              DEBUG_PRINT_ERROR("\n Color conv open failed");
              return OMX_ErrorBadParameter;
