@@ -47,6 +47,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <inttypes.h>
 #include <cstddef>
+#include <cutils/atomic.h>
 
 static ptrdiff_t x;
 
@@ -765,6 +766,7 @@ class omx_vdec: public qc_omx_component
         pthread_mutex_t       c_lock;
         //sem to handle the minimum procesing of commands
         sem_t                 m_cmd_lock;
+        sem_t                 m_safe_flush;
         bool              m_error_propogated;
         // compression format
         OMX_VIDEO_CODINGTYPE eCompressionFormat;
@@ -1040,6 +1042,8 @@ class omx_vdec: public qc_omx_component
             return (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?
                 formatsDefault[index] : OMX_COLOR_FormatMax;
         }
+
+        volatile int32_t m_queued_codec_config_count;
 };
 
 #ifdef _MSM8974_
