@@ -209,6 +209,9 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&capability, 0, sizeof(capability));
     memset(&m_debug,0,sizeof(m_debug));
     memset(&hier_p_layers,0,sizeof(hier_p_layers));
+    memset(&display_info,0,sizeof(display_info));
+    is_searchrange_set = false;
+    enable_mv_narrow_searchrange = false;
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vidc.enc.log.in", property_value, "0");
@@ -760,7 +763,14 @@ bool venc_dev::venc_open(OMX_U32 codec)
     if (!strncmp(platform_name, "msm8610", 7)) {
         device_name = (OMX_STRING)"/dev/video/q6_enc";
     }
-
+    if (!strncmp(platform_name, "msm8916", 7)) {
+        enable_mv_narrow_searchrange = true;
+        sp<IBinder> display(SurfaceComposerClient::getBuiltInDisplay(
+                        ISurfaceComposer::eDisplayIdMain));
+        SurfaceComposerClient::getDisplayInfo(display, &display_info);
+        DEBUG_PRINT_LOW("Display panel resolution %dX%d",
+            display_info.w, display_info.h);
+    }
     m_nDriver_fd = open (device_name, O_RDWR);
 
     if (m_nDriver_fd == 0) {
@@ -1181,7 +1191,14 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                     if (!venc_set_color_format(portDefn->format.video.eColorFormat)) {
                         return false;
                     }
-
+                    if ((display_info.w * display_info.h) > (OMX_CORE_720P_WIDTH * OMX_CORE_720P_HEIGHT)
+                        && enable_mv_narrow_searchrange &&
+                        (m_sVenc_cfg.input_width * m_sVenc_cfg.input_height) >=
+                        (OMX_CORE_1080P_WIDTH * OMX_CORE_1080P_HEIGHT)) {
+                        if (venc_set_searchrange() == false) {
+                            DEBUG_PRINT_ERROR("ERROR: Failed to set search range");
+                        }
+                    }
                     if (m_sVenc_cfg.input_height != portDefn->format.video.nFrameHeight ||
                             m_sVenc_cfg.input_width != portDefn->format.video.nFrameWidth) {
                         DEBUG_PRINT_LOW("Basic parameter has changed");
@@ -1707,6 +1724,16 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+       case OMX_QcomIndexParamSetMVSearchrange:
+            {
+               DEBUG_PRINT_LOW("venc_set_config: OMX_QcomIndexParamSetMVSearchrange");
+               is_searchrange_set = true;
+               if (!venc_set_searchrange()) {
+                   DEBUG_PRINT_ERROR("ERROR: Failed to set search range");
+                   return false;
+               }
+            }
+            break;
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -3108,6 +3135,11 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
             (codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_HIGH)) {
         nBFrames=0;
     }
+    if ((display_info.w * display_info.h > OMX_CORE_720P_WIDTH * OMX_CORE_720P_HEIGHT)
+        && enable_mv_narrow_searchrange && (m_sVenc_cfg.input_width * m_sVenc_cfg.input_height >=
+        OMX_CORE_1080P_WIDTH * OMX_CORE_1080P_HEIGHT || is_searchrange_set)) {
+        nBFrames=0;
+    }
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
     control.value = (m_sVenc_cfg.fps_num /m_sVenc_cfg.fps_den) - (nBFrames+1);
@@ -3772,6 +3804,81 @@ bool venc_dev::venc_set_vpe_rotation(OMX_S32 rotation_angle)
     if (bufreq.count >= m_sOutput_buff_property.mincount)
         m_sOutput_buff_property.actualcount = m_sOutput_buff_property.mincount = bufreq.count;
 
+    return true;
+}
+
+bool venc_dev::venc_set_searchrange()
+{
+    DEBUG_PRINT_LOW("venc_set_searchrange");
+    struct v4l2_control control;
+    struct v4l2_ext_control ctrl[6];
+    struct v4l2_ext_controls controls;
+    int rc;
+
+    if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_MPEG4) {
+        ctrl[0].id = V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_X_RANGE;
+        ctrl[0].value = 16;
+        ctrl[1].id = V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_Y_RANGE;
+        ctrl[1].value = 4;
+        ctrl[2].id = V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_X_RANGE;
+        ctrl[2].value = 16;
+        ctrl[3].id = V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_Y_RANGE;
+        ctrl[3].value = 4;
+        ctrl[4].id = V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_X_RANGE;
+        ctrl[4].value = 12;
+        ctrl[5].id = V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_Y_RANGE;
+        ctrl[5].value = 4;
+    } else if ((m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) ||
+               (m_sVenc_cfg.codectype == V4L2_PIX_FMT_VP8)) {
+        ctrl[0].id = V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_X_RANGE;
+        ctrl[0].value = 16;
+        ctrl[1].id = V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_Y_RANGE;
+        ctrl[1].value = 4;
+        ctrl[2].id = V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_X_RANGE;
+        ctrl[2].value = 16;
+        ctrl[3].id = V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_Y_RANGE;
+        ctrl[3].value = 4;
+        ctrl[4].id = V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_X_RANGE;
+        ctrl[4].value = 12;
+        ctrl[5].id = V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_Y_RANGE;
+        ctrl[5].value = 4;
+    } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263) {
+        ctrl[0].id = V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_X_RANGE;
+        ctrl[0].value = 4;
+        ctrl[1].id = V4L2_CID_MPEG_VIDC_VIDEO_IFRAME_Y_RANGE;
+        ctrl[1].value = 4;
+        ctrl[2].id = V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_X_RANGE;
+        ctrl[2].value = 4;
+        ctrl[3].id = V4L2_CID_MPEG_VIDC_VIDEO_PFRAME_Y_RANGE;
+        ctrl[3].value = 4;
+        ctrl[4].id = V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_X_RANGE;
+        ctrl[4].value = 4;
+        ctrl[5].id = V4L2_CID_MPEG_VIDC_VIDEO_BFRAME_Y_RANGE;
+        ctrl[5].value = 4;
+    } else {
+        DEBUG_PRINT_ERROR("Invalid codec type");
+        return false;
+    }
+    controls.count = 6;
+    controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+    controls.controls = ctrl;
+
+    DEBUG_PRINT_LOW(" Calling IOCTL set control for"
+        "id=%x, val=%d id=%x, val=%d"
+        "id=%x, val=%d id=%x, val=%d"
+        "id=%x, val=%d id=%x, val=%d",
+        controls.controls[0].id, controls.controls[0].value,
+        controls.controls[1].id, controls.controls[1].value,
+        controls.controls[2].id, controls.controls[2].value,
+        controls.controls[3].id, controls.controls[3].value,
+        controls.controls[4].id, controls.controls[4].value,
+        controls.controls[5].id, controls.controls[5].value);
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_EXT_CTRLS, &controls);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set search range %d", rc);
+        return false;
+    }
     return true;
 }
 

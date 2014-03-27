@@ -60,6 +60,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OMX_CORE_VGA_WIDTH           640
 #define OMX_CORE_WVGA_HEIGHT         480
 #define OMX_CORE_WVGA_WIDTH          800
+#define OMX_CORE_720P_WIDTH          1280
+#define OMX_CORE_720P_HEIGHT          720
+#define OMX_CORE_1080P_WIDTH         1920
+#define OMX_CORE_1080P_HEIGHT        1080
 
 enum PortIndexType {
     PORT_INDEX_IN = 0,

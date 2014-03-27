@@ -38,7 +38,11 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_video_base.h"
 #include "omx_video_encoder.h"
 #include <linux/videodev2.h>
+#include <linux/fb.h>
 #include <poll.h>
+#include <gui/ISurfaceComposer.h>
+#include <gui/SurfaceComposerClient.h>
+#include <ui/DisplayInfo.h>
 
 #define TIMEOUT 5*60*1000
 
@@ -361,6 +365,8 @@ class venc_dev
         bool venc_set_perf_level(QOMX_VIDEO_PERF_LEVEL ePerfLevel);
         bool venc_set_vui_timing_info(OMX_BOOL enable);
         bool venc_set_peak_bitrate(OMX_U32 nPeakBitrate);
+        bool venc_set_searchrange();
+
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
         OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
@@ -384,6 +390,9 @@ class venc_dev
         pthread_cond_t pause_resume_cond;
         bool paused;
         int color_format;
+        bool is_searchrange_set;
+        bool enable_mv_narrow_searchrange;
+        DisplayInfo display_info;
 };
 
 enum instance_state {
