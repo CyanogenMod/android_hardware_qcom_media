@@ -1675,6 +1675,45 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexParamPerfLevel:
+            {
+                OMX_QCOM_VIDEO_PARAM_PERF_LEVEL *pParam =
+                        (OMX_QCOM_VIDEO_PARAM_PERF_LEVEL *)paramData;
+                DEBUG_PRINT_LOW("Set perf level: %d\n", pParam->ePerfLevel);
+                if (venc_set_perf_level(pParam->ePerfLevel) == false) {
+                    DEBUG_PRINT_ERROR("ERROR: Failed to set perf level to %d", pParam->ePerfLevel);
+                    return false;
+                } else {
+                    performance_level.perflevel = (unsigned int) pParam->ePerfLevel;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamH264VUITimingInfo:
+            {
+                OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO *pParam =
+                        (OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO *)paramData;
+                DEBUG_PRINT_LOW("Set VUI timing info: %d\n", pParam->bEnable);
+                if (venc_set_vui_timing_info(pParam->bEnable) == false) {
+                    DEBUG_PRINT_ERROR("ERROR: Failed to set vui timing info to %d", pParam->bEnable);
+                    return false;
+                } else {
+                    vui_timing_info.enabled = (unsigned int) pParam->bEnable;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamPeakBitrate:
+            {
+                OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE *pParam =
+                        (OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE *)paramData;
+                DEBUG_PRINT_LOW("Set peak bitrate: %lu\n", pParam->nPeakBitrate);
+                if (venc_set_peak_bitrate(pParam->nPeakBitrate) == false) {
+                    DEBUG_PRINT_ERROR("ERROR: Failed to set peak bitrate to %lu", pParam->nPeakBitrate);
+                    return false;
+                } else {
+                    peak_bitrate.peakbitrate = (unsigned int) pParam->nPeakBitrate;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -2063,6 +2102,12 @@ void venc_dev::venc_config_print()
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: LTR Enabled: %d, Count: %d",
             ltrinfo.enabled, ltrinfo.count);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Performace level: %d", performance_level.perflevel);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: VUI timing info enabled: %d", vui_timing_info.enabled);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Peak bitrate: %d", peak_bitrate.peakbitrate);
 }
 
 bool venc_dev::venc_reconfig_reqbufs()
@@ -2263,6 +2308,39 @@ bool venc_dev::venc_color_align(OMX_BUFFERHEADERTYPE *buffer,
     }
 
     return true;
+}
+
+bool venc_dev::venc_get_performance_level(OMX_U32 *perflevel)
+{
+    if (!perflevel) {
+        DEBUG_PRINT_ERROR("Null pointer error");
+        return false;
+    } else {
+        *perflevel = performance_level.perflevel;
+        return true;
+    }
+}
+
+bool venc_dev::venc_get_vui_timing_info(OMX_U32 *enabled)
+{
+    if (!enabled) {
+        DEBUG_PRINT_ERROR("Null pointer error");
+        return false;
+    } else {
+        *enabled = vui_timing_info.enabled;
+        return true;
+    }
+}
+
+bool venc_dev::venc_get_peak_bitrate(OMX_U32 *peakbitrate)
+{
+    if (!peakbitrate) {
+        DEBUG_PRINT_ERROR("Null pointer error");
+        return false;
+    } else {
+        *peakbitrate = peak_bitrate.peakbitrate;
+        return true;
+    }
 }
 
 bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index, unsigned fd)
@@ -3723,6 +3801,82 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
     }
 
     return status;
+}
+
+bool venc_dev::venc_set_perf_level(QOMX_VIDEO_PERF_LEVEL ePerfLevel)
+{
+    bool status = true;
+    struct v4l2_control control;
+    int rc = 0;
+    control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+
+    switch (ePerfLevel) {
+    case OMX_QCOM_PerfLevelNominal:
+        control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL;
+        break;
+    case OMX_QCOM_PerfLevelTurbo:
+        control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO;
+        break;
+    default:
+        status = false;
+        break;
+    }
+
+    if (status) {
+        DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d", control.id, control.value);
+        rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+
+        if (rc) {
+            DEBUG_PRINT_ERROR("Failed to set control for id=%d, val=%d", control.id, control.value);
+            return false;
+        }
+
+        DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
+    }
+    return status;
+}
+
+bool venc_dev::venc_set_vui_timing_info(OMX_BOOL enable)
+{
+    struct v4l2_control control;
+    int rc = 0;
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_VUI_TIMING_INFO;
+
+    if (enable)
+        control.value = V4L2_MPEG_VIDC_VIDEO_H264_VUI_TIMING_INFO_ENABLED;
+    else
+        control.value = V4L2_MPEG_VIDC_VIDEO_H264_VUI_TIMING_INFO_DISABLED;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set VUI timing info control");
+        return false;
+    }
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
+    return true;
+}
+
+bool venc_dev::venc_set_peak_bitrate(OMX_U32 nPeakBitrate)
+{
+    struct v4l2_control control;
+    int rc = 0;
+    control.id = V4L2_CID_MPEG_VIDEO_BITRATE_PEAK;
+    control.value = nPeakBitrate;
+
+    DEBUG_PRINT_LOW("venc_set_peak_bitrate: bitrate = %lu", nPeakBitrate);
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d", control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set peak bitrate control");
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
+
+    return true;
 }
 
 bool venc_dev::venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel)
