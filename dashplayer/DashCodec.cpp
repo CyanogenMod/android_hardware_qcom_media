@@ -3055,6 +3055,20 @@ void DashCodec::BaseState::onInputBufferFilled(const sp<AMessage> &msg) {
                          mCodec->mComponentName.c_str());
                 }
 
+                if (mCodec->mStoreMetaDataInOutputBuffers) {
+                    // try to submit an output buffer for each input buffer
+                    PortMode outputMode = getPortMode(kPortIndexOutput);
+
+                    ALOGV("MetaDataBuffersToSubmit=%u portMode=%s",
+                            mCodec->mMetaDataBuffersToSubmit,
+                            (outputMode == FREE_BUFFERS ? "FREE" :
+                             outputMode == KEEP_BUFFERS ? "KEEP" : "RESUBMIT"));
+                    if (outputMode == RESUBMIT_BUFFERS) {
+                        CHECK_EQ(mCodec->submitOutputMetaDataBuffer(),
+                                (status_t)OK);
+                    }
+                }
+
                 ALOGV("[%s] calling emptyBuffer %p signalling EOS",
                      mCodec->mComponentName.c_str(), bufferID);
 
