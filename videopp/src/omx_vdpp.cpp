@@ -6842,6 +6842,7 @@ OMX_ERRORTYPE omx_vdpp::get_buffer_req(vdpp_allocatorproperty *buffer_prop)
   int ret = 0;
 
     memset((void *)&fmt, 0, sizeof(v4l2_format));
+    memset((void *)&bufreq, 0, sizeof(v4l2_requestbuffers));
     DEBUG_PRINT_HIGH("GetBufReq IN: ActCnt(%d) Size(%d) buffer_prop->buffer_type (%d), streaming[OUTPUT_PORT] (%d), streaming[CAPTURE_PORT] (%d)",
     buffer_prop->actualcount, buffer_prop->buffer_size, buffer_prop->buffer_type, streaming[OUTPUT_PORT], streaming[CAPTURE_PORT]);
 	bufreq.memory = V4L2_MEMORY_USERPTR;
@@ -7011,6 +7012,7 @@ OMX_ERRORTYPE omx_vdpp::set_buffer_req(vdpp_allocatorproperty *buffer_prop)
   DEBUG_PRINT_LOW("SetBufReq IN: ActCnt(%d) Size(%d)",
     buffer_prop->actualcount, buffer_prop->buffer_size);
   memset((void *)&fmt, 0, sizeof(v4l2_format));
+  memset((void *)&bufreq, 0, sizeof(v4l2_requestbuffers));
   buf_size = (buffer_prop->buffer_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
   if (buf_size != buffer_prop->buffer_size)
   {
