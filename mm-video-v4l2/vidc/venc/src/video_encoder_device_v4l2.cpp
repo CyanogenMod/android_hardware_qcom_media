@@ -3142,8 +3142,11 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
     }
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
-    control.value = (m_sVenc_cfg.fps_num /m_sVenc_cfg.fps_den) - (nBFrames+1);
-
+    if (!nBFrames) {
+        control.value = nPFrames;
+    } else {
+        control.value = (m_sVenc_cfg.fps_num /m_sVenc_cfg.fps_den) - (nBFrames+1);
+    }
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 
     if (rc) {
