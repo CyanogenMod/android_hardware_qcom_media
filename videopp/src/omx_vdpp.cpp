@@ -3930,15 +3930,6 @@ OMX_ERRORTYPE  omx_vdpp::use_output_buffer(
             return OMX_ErrorBadParameter;
         }
 
-        if (!m_use_android_native_buffers) {
-                buff =  (OMX_U8*)mmap(0, handle->size,
-                                      PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd, 0);
-                DEBUG_PRINT_HIGH("Use_op_buf:m_enable_android_native_buffers 4, buff = %p\n", buff);
-                if (buff == MAP_FAILED) {
-                  DEBUG_PRINT_ERROR("Failed to mmap pmem with fd = %d, size = %d", handle->fd, handle->size);
-                  return OMX_ErrorInsufficientResources;
-                }
-        }
 #if defined(_ANDROID_ICS_)
         native_buffer[i].nativehandle = handle;
         native_buffer[i].privatehandle = handle;
@@ -3949,7 +3940,7 @@ OMX_ERRORTYPE  omx_vdpp::use_output_buffer(
         }
         drv_ctx.ptr_outputbuffer[i].pmem_fd = handle->fd;
         drv_ctx.ptr_outputbuffer[i].offset = 0;
-        drv_ctx.ptr_outputbuffer[i].bufferaddr = buff;
+        drv_ctx.ptr_outputbuffer[i].bufferaddr = NULL;
         drv_ctx.ptr_outputbuffer[i].buffer_len = drv_ctx.op_buf.buffer_size;
         drv_ctx.ptr_outputbuffer[i].mmaped_size = handle->size;
         DEBUG_PRINT_HIGH("Use_op_buf:m_enable_android_native_buffers 5 drv_ctx.ptr_outputbuffer[i].bufferaddr = %p, size1=%d, size2=%d\n",
@@ -4299,10 +4290,10 @@ OMX_ERRORTYPE  omx_vdpp::use_input_buffers(
         }
 
         if (!m_use_android_native_buffers) {
-                buff =  (OMX_U8*)mmap(0, handle->size,
-                                      PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd, 0);
-                DEBUG_PRINT_LOW("omx_vdpp::use_input_heap_buffers 4 buff = %p, size1=%d, size2=%d\n", buff,
+                buff =  (OMX_U8*)mmap(0, (handle->size - drv_ctx.ip_buf.frame_size),
+                                      PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd, drv_ctx.ip_buf.frame_size);
 
+                DEBUG_PRINT_LOW("omx_vdpp::use_input_heap_buffers 4 buff = %p, size1=%d, size2=%d\n", buff,
                         drv_ctx.ip_buf.buffer_size,
                                      handle->size);
                 if (buff == MAP_FAILED) {
@@ -4371,7 +4362,7 @@ OMX_ERRORTYPE  omx_vdpp::use_input_buffers(
     drv_ctx.ptr_inputbuffer [i].bufferaddr = buff;
     drv_ctx.ptr_inputbuffer [i].pmem_fd = handle->fd;
     drv_ctx.ptr_inputbuffer [i].buffer_len = drv_ctx.ip_buf.buffer_size;
-    drv_ctx.ptr_inputbuffer [i].mmaped_size = handle->size;
+    drv_ctx.ptr_inputbuffer [i].mmaped_size = handle->size - drv_ctx.ip_buf.frame_size;
     drv_ctx.ptr_inputbuffer [i].offset = 0;
 
     input = m_phdr_pmem_ptr[m_in_alloc_cnt];
@@ -4568,28 +4559,30 @@ OMX_ERRORTYPE omx_vdpp::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
             DEBUG_PRINT_LOW(" Free output Buffer android 2 bufferaddr=%p, mmaped_size=%d",
                     drv_ctx.ptr_outputbuffer[index].bufferaddr,
                     drv_ctx.ptr_outputbuffer[index].mmaped_size);
-
-            munmap(drv_ctx.ptr_outputbuffer[index].bufferaddr,
-                    drv_ctx.ptr_outputbuffer[index].mmaped_size);
+            if( NULL != drv_ctx.ptr_outputbuffer[index].bufferaddr)
+            {
+                munmap(drv_ctx.ptr_outputbuffer[index].bufferaddr,
+                        drv_ctx.ptr_outputbuffer[index].mmaped_size);
+            }
         }
         drv_ctx.ptr_outputbuffer[index].pmem_fd = -1;
     } else {
 #endif
-        if (drv_ctx.ptr_outputbuffer[0].pmem_fd > 0 && !ouput_egl_buffers && !m_use_output_pmem)
+        if (drv_ctx.ptr_outputbuffer[index].pmem_fd > 0 && !ouput_egl_buffers && !m_use_output_pmem)
         {
             {
                 DEBUG_PRINT_LOW(" unmap the output buffer fd = %d",
-                        drv_ctx.ptr_outputbuffer[0].pmem_fd);
+                        drv_ctx.ptr_outputbuffer[index].pmem_fd);
                 DEBUG_PRINT_LOW(" unmap the ouput buffer size=%d  address = %p",
-                        drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
-                        drv_ctx.ptr_outputbuffer[0].bufferaddr);
-                munmap (drv_ctx.ptr_outputbuffer[0].bufferaddr,
-                        drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount);
+                        drv_ctx.ptr_outputbuffer[index].mmaped_size * drv_ctx.op_buf.actualcount,
+                        drv_ctx.ptr_outputbuffer[index].bufferaddr);
+                munmap (drv_ctx.ptr_outputbuffer[index].bufferaddr,
+                        drv_ctx.ptr_outputbuffer[index].mmaped_size * drv_ctx.op_buf.actualcount);
             }
-            close (drv_ctx.ptr_outputbuffer[0].pmem_fd);
-            drv_ctx.ptr_outputbuffer[0].pmem_fd = -1;
+            close (drv_ctx.ptr_outputbuffer[index].pmem_fd);
+            drv_ctx.ptr_outputbuffer[index].pmem_fd = -1;
 #ifdef USE_ION
-            free_ion_memory(&drv_ctx.op_buf_ion_info[0]);
+            free_ion_memory(&drv_ctx.op_buf_ion_info[index]);
 #endif
         }
 #ifdef _ANDROID_
@@ -5398,7 +5391,7 @@ OMX_ERRORTYPE  omx_vdpp::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
   }
 
   nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)m_inp_mem_ptr);
-  //DEBUG_PRINT_HIGH("omx_vdpp::empty_this_buffer_proxy 2 nPortIndex = %d, buffer->nFilledLen = %lu\n", nPortIndex, buffer->nFilledLen);
+  DEBUG_PRINT_HIGH("omx_vdpp::empty_this_buffer_proxy 2 nPortIndex = %d, buffer->nFilledLen = %lu\n", nPortIndex, buffer->nFilledLen);
   if (nPortIndex > drv_ctx.ip_buf.actualcount)
   {
     DEBUG_PRINT_ERROR("ERROR:empty_this_buffer_proxy invalid nPortIndex[%u]",
@@ -5426,7 +5419,7 @@ OMX_ERRORTYPE  omx_vdpp::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
   {
       OMX_OTHER_EXTRADATATYPE *pExtra;
       v4l2_field field = drv_ctx.interlace;// V4L2_FIELD_NONE;
-      OMX_U8 *pTmp = buffer->pBuffer + buffer->nOffset + buffer->nFilledLen + 3;
+      OMX_U8 *pTmp = buffer->pBuffer + buffer->nOffset + 3;
 
       pExtra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U32) pTmp) & ~3);
       DEBUG_PRINT_LOW("omx_vdpp::empty_this_buffer_proxy 3 buffer->nFlags = 0x%x, pExtra->eType = 0x%x\n", buffer->nFlags, pExtra->eType);
@@ -6849,6 +6842,7 @@ OMX_ERRORTYPE omx_vdpp::get_buffer_req(vdpp_allocatorproperty *buffer_prop)
   int ret = 0;
 
     memset((void *)&fmt, 0, sizeof(v4l2_format));
+    memset((void *)&bufreq, 0, sizeof(v4l2_requestbuffers));
     DEBUG_PRINT_HIGH("GetBufReq IN: ActCnt(%d) Size(%d) buffer_prop->buffer_type (%d), streaming[OUTPUT_PORT] (%d), streaming[CAPTURE_PORT] (%d)",
     buffer_prop->actualcount, buffer_prop->buffer_size, buffer_prop->buffer_type, streaming[OUTPUT_PORT], streaming[CAPTURE_PORT]);
 	bufreq.memory = V4L2_MEMORY_USERPTR;
@@ -6925,8 +6919,12 @@ OMX_ERRORTYPE omx_vdpp::get_buffer_req(vdpp_allocatorproperty *buffer_prop)
         drv_ctx.video_resolution_output.frame_height,  drv_ctx.video_resolution_output.frame_width);
   }
 
-  DEBUG_PRINT_HIGH("GetBufReq Buffer Size = %d, fmt.fmt.pix_mp.num_planes = %d, fmt.fmt.pix_mp.height = %d, fmt.fmt.pix_mp.width = %d \n ",
-      fmt.fmt.pix_mp.plane_fmt[0].sizeimage, fmt.fmt.pix_mp.num_planes, fmt.fmt.pix_mp.height, fmt.fmt.pix_mp.width);
+  buffer_prop->frame_size = paddedFrameWidth32(fmt.fmt.pix_mp.height) *
+                                   paddedFrameWidth128(fmt.fmt.pix_mp.width) *
+                                   3 / 2;
+  DEBUG_PRINT_HIGH("GetBufReq fmt.fmt.pix_mp.num_planes = %d, fmt.fmt.pix_mp.height = %d, fmt.fmt.pix_mp.width = %d, buffer_prop->frame_size = %d \n",
+      fmt.fmt.pix_mp.num_planes, fmt.fmt.pix_mp.height, fmt.fmt.pix_mp.width, buffer_prop->frame_size);
+
 
   if(ret)
   {
@@ -7013,6 +7011,8 @@ OMX_ERRORTYPE omx_vdpp::set_buffer_req(vdpp_allocatorproperty *buffer_prop)
   int ret;
   DEBUG_PRINT_LOW("SetBufReq IN: ActCnt(%d) Size(%d)",
     buffer_prop->actualcount, buffer_prop->buffer_size);
+  memset((void *)&fmt, 0, sizeof(v4l2_format));
+  memset((void *)&bufreq, 0, sizeof(v4l2_requestbuffers));
   buf_size = (buffer_prop->buffer_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
   if (buf_size != buffer_prop->buffer_size)
   {
