@@ -86,7 +86,7 @@ qc_omx_component_init(OMX_IN OMX_HANDLETYPE hComp, OMX_IN OMX_STRING componentNa
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_init %x\n",(unsigned)hComp);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_init %p\n", hComp);
 
   if(pThis)
   {
@@ -112,7 +112,7 @@ qc_omx_component_get_version(OMX_IN OMX_HANDLETYPE               hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_get_version %x, %s , %x\n",(unsigned)hComp,componentName,(unsigned)componentVersion);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_get_version %p, %s , %p\n", hComp, componentName, componentVersion);
   if(pThis)
   {
     eRet = pThis->get_component_version(hComp,componentName,componentVersion,specVersion,componentUUID);
@@ -128,7 +128,7 @@ qc_omx_component_send_command(OMX_IN OMX_HANDLETYPE hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_send_command %x, %d , %d\n",(unsigned)hComp,(unsigned)cmd,(unsigned)param1);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_send_command %p, %d , %d\n", hComp,(unsigned)cmd,(unsigned)param1);
 
   if(pThis)
   {
@@ -144,7 +144,7 @@ qc_omx_component_get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_get_parameter %x, %x , %d\n",(unsigned)hComp,(unsigned)paramData,paramIndex);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_get_parameter %p, %p , %d\n", hComp, paramData, paramIndex);
 
   if(pThis)
   {
@@ -160,7 +160,7 @@ qc_omx_component_set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_set_parameter %x, %x , %d\n",(unsigned)hComp,(unsigned)paramData,paramIndex);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_set_parameter %p, %p , %d\n", hComp, paramData, paramIndex);
 
   if(pThis)
   {
@@ -176,7 +176,7 @@ qc_omx_component_get_config(OMX_IN OMX_HANDLETYPE      hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_get_config %x\n",(unsigned)hComp);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_get_config %p\n", hComp);
 
   if(pThis)
   {
@@ -194,7 +194,7 @@ qc_omx_component_set_config(OMX_IN OMX_HANDLETYPE      hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_set_config %x\n",(unsigned)hComp);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_set_config %p\n", hComp);
 
   if(pThis)
   {
@@ -225,7 +225,7 @@ qc_omx_component_get_state(OMX_IN OMX_HANDLETYPE  hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_get_state %x\n",(unsigned)hComp);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_get_state %p\n", hComp);
 
   if(pThis)
   {
@@ -241,6 +241,7 @@ qc_omx_component_tunnel_request(OMX_IN OMX_HANDLETYPE                hComp,
                        OMX_IN OMX_U32                    peerPort,
                        OMX_INOUT OMX_TUNNELSETUPTYPE* tunnelSetup)
 {
+  (void) hComp, (void) port, (void) peerComponent, (void) peerPort, (void) tunnelSetup;
   DEBUG_PRINT("Error: qc_omx_component_tunnel_request Not Implemented\n");
   return OMX_ErrorNotImplemented;
 }
@@ -255,7 +256,7 @@ qc_omx_component_use_buffer(OMX_IN OMX_HANDLETYPE                hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_use_buffer %x\n",(unsigned)hComp);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_use_buffer %p\n", hComp);
 
   if(pThis)
   {
@@ -281,7 +282,7 @@ qc_omx_component_allocate_buffer(OMX_IN OMX_HANDLETYPE                hComp,
 
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_allocate_buffer %x, %x , %d\n",(unsigned)hComp,(unsigned)bufferHdr,(unsigned)port);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_allocate_buffer %p, %p , %d\n",hComp, bufferHdr,(unsigned)port);
 
   if(pThis)
   {
@@ -298,7 +299,7 @@ qc_omx_component_free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
 
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_free_buffer[%d] %x, %x\n", (unsigned)port, (unsigned)hComp, (unsigned)buffer);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_free_buffer[%d] %p, %p\n", (unsigned)port, hComp, buffer);
 
   if(pThis)
   {
@@ -313,7 +314,7 @@ qc_omx_component_empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_empty_this_buffer %x, %x\n",(unsigned)hComp,(unsigned)buffer);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_empty_this_buffer %p, %p\n",hComp, buffer);
 
   if(pThis)
   {
@@ -328,7 +329,7 @@ qc_omx_component_fill_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_fill_this_buffer %x, %x\n",(unsigned)hComp,(unsigned)buffer);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_fill_this_buffer %p, %p\n", hComp, buffer);
   if(pThis)
   {
     eRet = pThis->fill_this_buffer(hComp,buffer);
@@ -343,7 +344,7 @@ qc_omx_component_set_callbacks(OMX_IN OMX_HANDLETYPE        hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_set_callbacks %x, %x , %x\n",(unsigned)hComp,(unsigned)callbacks,(unsigned)appData);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_set_callbacks %p, %p , %p\n", hComp, callbacks, appData);
 
   if(pThis)
   {
@@ -357,7 +358,7 @@ qc_omx_component_deinit(OMX_IN OMX_HANDLETYPE hComp)
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_deinit %x\n",(unsigned)hComp);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_deinit %p\n", hComp);
 
   if(pThis)
   {
@@ -381,7 +382,7 @@ qc_omx_component_use_EGL_image(OMX_IN OMX_HANDLETYPE                hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_use_EGL_image %x, %x , %d\n",(unsigned)hComp,(unsigned)bufferHdr,(unsigned)port);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_use_EGL_image %p, %p , %d\n", hComp, bufferHdr,(unsigned)port);
   if(pThis)
   {
     eRet = pThis->use_EGL_image(hComp,bufferHdr,port,appData,eglImage);
@@ -396,7 +397,7 @@ qc_omx_component_role_enum(OMX_IN OMX_HANDLETYPE hComp,
 {
   OMX_ERRORTYPE eRet = OMX_ErrorBadParameter;
   qc_omx_component *pThis = (hComp)? (qc_omx_component *)(((OMX_COMPONENTTYPE *)hComp)->pComponentPrivate):NULL;
-  DEBUG_PRINT("OMXCORE: qc_omx_component_role_enum %x, %x , %d\n",(unsigned)hComp,(unsigned)role,(unsigned)index);
+  DEBUG_PRINT("OMXCORE: qc_omx_component_role_enum %p, %p , %d\n", hComp, role,(unsigned)index);
 
   if(pThis)
   {

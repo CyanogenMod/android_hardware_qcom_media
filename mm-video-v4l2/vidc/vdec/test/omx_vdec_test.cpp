@@ -649,42 +649,42 @@ void PrintFramePackArrangement(OMX_QCOM_FRAME_PACK_ARRANGEMENT framePackingArran
         return;
     }
 
-    printf("id (%lu)\n",
-            framePackingArrangement.id);
-    printf("cancel_flag (%lu)\n",
-            framePackingArrangement.cancel_flag);
-    printf("type (%lu)\n",
-            framePackingArrangement.type);
-    printf("quincunx_sampling_flag (%lu)\n",
-            framePackingArrangement.quincunx_sampling_flag);
-    printf("content_interpretation_type (%lu)\n",
-            framePackingArrangement.content_interpretation_type);
-    printf("spatial_flipping_flag (%lu)\n",
-            framePackingArrangement.spatial_flipping_flag);
-    printf("frame0_flipped_flag (%lu)\n",
-            framePackingArrangement.frame0_flipped_flag);
-    printf("field_views_flag (%lu)\n",
-            framePackingArrangement.field_views_flag);
-    printf("current_frame_is_frame0_flag (%lu)\n",
-            framePackingArrangement.current_frame_is_frame0_flag);
-    printf("frame0_self_contained_flag (%lu)\n",
-            framePackingArrangement.frame0_self_contained_flag);
-    printf("frame1_self_contained_flag (%lu)\n",
-            framePackingArrangement.frame1_self_contained_flag);
-    printf("frame0_grid_position_x (%lu)\n",
-            framePackingArrangement.frame0_grid_position_x);
-    printf("frame0_grid_position_y (%lu)\n",
-            framePackingArrangement.frame0_grid_position_y);
-    printf("frame1_grid_position_x (%lu)\n",
-            framePackingArrangement.frame1_grid_position_x);
-    printf("frame1_grid_position_y (%lu)\n",
-            framePackingArrangement.frame1_grid_position_y);
-    printf("reserved_byte (%lu)\n",
-            framePackingArrangement.reserved_byte);
-    printf("repetition_period (%lu)\n",
-            framePackingArrangement.repetition_period);
-    printf("extension_flag (%lu)\n",
-            framePackingArrangement.extension_flag);
+    printf("id (%u)\n",
+            (unsigned int)framePackingArrangement.id);
+    printf("cancel_flag (%u)\n",
+            (unsigned int)framePackingArrangement.cancel_flag);
+    printf("type (%u)\n",
+            (unsigned int)framePackingArrangement.type);
+    printf("quincunx_sampling_flag (%u)\n",
+            (unsigned int)framePackingArrangement.quincunx_sampling_flag);
+    printf("content_interpretation_type (%u)\n",
+            (unsigned int)framePackingArrangement.content_interpretation_type);
+    printf("spatial_flipping_flag (%u)\n",
+            (unsigned int)framePackingArrangement.spatial_flipping_flag);
+    printf("frame0_flipped_flag (%u)\n",
+            (unsigned int)framePackingArrangement.frame0_flipped_flag);
+    printf("field_views_flag (%u)\n",
+            (unsigned int)framePackingArrangement.field_views_flag);
+    printf("current_frame_is_frame0_flag (%u)\n",
+            (unsigned int)framePackingArrangement.current_frame_is_frame0_flag);
+    printf("frame0_self_contained_flag (%u)\n",
+            (unsigned int)framePackingArrangement.frame0_self_contained_flag);
+    printf("frame1_self_contained_flag (%u)\n",
+            (unsigned int)framePackingArrangement.frame1_self_contained_flag);
+    printf("frame0_grid_position_x (%u)\n",
+            (unsigned int)framePackingArrangement.frame0_grid_position_x);
+    printf("frame0_grid_position_y (%u)\n",
+            (unsigned int)framePackingArrangement.frame0_grid_position_y);
+    printf("frame1_grid_position_x (%u)\n",
+            (unsigned int)framePackingArrangement.frame1_grid_position_x);
+    printf("frame1_grid_position_y (%u)\n",
+            (unsigned int)framePackingArrangement.frame1_grid_position_y);
+    printf("reserved_byte (%u)\n",
+            (unsigned int)framePackingArrangement.reserved_byte);
+    printf("repetition_period (%u)\n",
+            (unsigned int)framePackingArrangement.repetition_period);
+    printf("extension_flag (%u)\n",
+            (unsigned int)framePackingArrangement.extension_flag);
 }
 void* ebd_thread(void* pArg)
 {
@@ -926,26 +926,26 @@ void* fbd_thread(void* pArg)
                         case OMX_ExtraDataFrameInfo:
                             {
                                 OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info = (OMX_QCOM_EXTRADATA_FRAMEINFO *)pExtra->data;
-                                DEBUG_PRINT_ERROR("OMX_ExtraDataFrameInfo: Buf(%p) TSmp(%lld) PicType(%u) IntT(%u) ConMB(%u)",
+                                DEBUG_PRINT_ERROR("OMX_ExtraDataFrameInfo: Buf(%p) TSmp(%lld) PicType(%u) IntT(%d) ConMB(%u)",
                                         pBuffer->pBuffer, pBuffer->nTimeStamp, frame_info->ePicType,
-                                        frame_info->interlaceType, frame_info->nConcealedMacroblocks);
+                                        frame_info->interlaceType, (unsigned int)frame_info->nConcealedMacroblocks);
                                 if (aspectratio_prop)
-                                    DEBUG_PRINT_ERROR(" FrmRate(%lu), AspRatioX(%lu), AspRatioY(%lu) DispWidth(%lu) DispHeight(%lu)",
-                                            frame_info->nFrameRate, frame_info->aspectRatio.aspectRatioX,
-                                            frame_info->aspectRatio.aspectRatioY, frame_info->displayAspectRatio.displayHorizontalSize,
-                                            frame_info->displayAspectRatio.displayVerticalSize);
+                                    DEBUG_PRINT_ERROR(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) DispWidth(%u) DispHeight(%u)",
+                                            (unsigned int)frame_info->nFrameRate, (unsigned int)frame_info->aspectRatio.aspectRatioX,
+                                            (unsigned int)frame_info->aspectRatio.aspectRatioY, (unsigned int)frame_info->displayAspectRatio.displayHorizontalSize,
+                                            (unsigned int)frame_info->displayAspectRatio.displayVerticalSize);
                                 else
                                     DEBUG_PRINT_ERROR(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) DispWidth(%u) DispHeight(%u)",
-                                            frame_info->nFrameRate, frame_info->aspectRatio.aspectRatioX,
-                                            frame_info->aspectRatio.aspectRatioY, frame_info->displayAspectRatio.displayHorizontalSize,
-                                            frame_info->displayAspectRatio.displayVerticalSize);
-                                DEBUG_PRINT_ERROR("PANSCAN numWindows(%d)", frame_info->panScan.numWindows);
+                                            (unsigned int)frame_info->nFrameRate, (unsigned int)frame_info->aspectRatio.aspectRatioX,
+                                            (unsigned int)frame_info->aspectRatio.aspectRatioY, (unsigned int)frame_info->displayAspectRatio.displayHorizontalSize,
+                                            (unsigned int)frame_info->displayAspectRatio.displayVerticalSize);
+                                DEBUG_PRINT_ERROR("PANSCAN numWindows(%u)", (unsigned int)frame_info->panScan.numWindows);
                                 for (unsigned int i = 0; i < frame_info->panScan.numWindows; i++) {
                                     DEBUG_PRINT_ERROR("WINDOW Lft(%d) Tp(%d) Rgt(%d) Bttm(%d)",
-                                            frame_info->panScan.window[i].x,
-                                            frame_info->panScan.window[i].y,
-                                            frame_info->panScan.window[i].dx,
-                                            frame_info->panScan.window[i].dy);
+                                            (int)frame_info->panScan.window[i].x,
+                                            (int)frame_info->panScan.window[i].y,
+                                            (int)frame_info->panScan.window[i].dx,
+                                            (int)frame_info->panScan.window[i].dy);
                                 }
                                 break;
                             }
@@ -964,7 +964,7 @@ void* fbd_thread(void* pArg)
                                     bytes_cnt++;
                                 }
                                 DEBUG_PRINT_ERROR("OMX_ExtraDataConcealMB: Buf(%p) TSmp(%lld) ConcealMB(%u)",
-                                        pBuffer->pBuffer, pBuffer->nTimeStamp, concealMBnum);
+                                        pBuffer->pBuffer, pBuffer->nTimeStamp, (unsigned int)concealMBnum);
                             }
                             break;
                         case OMX_ExtraDataMP2ExtnData:
@@ -973,7 +973,7 @@ void* fbd_thread(void* pArg)
                                 OMX_U8 data = 0, *data_ptr = (OMX_U8 *)pExtra->data;
                                 OMX_U32 bytes_cnt = 0;
                                 while (bytes_cnt < pExtra->nDataSize) {
-                                    DEBUG_PRINT_ERROR("\n MPEG-2 Extension Data Values[%d] = 0x%x", bytes_cnt, *data_ptr);
+                                    DEBUG_PRINT_ERROR("\n MPEG-2 Extension Data Values[%u] = 0x%x", (unsigned int)bytes_cnt, *data_ptr);
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
@@ -985,7 +985,7 @@ void* fbd_thread(void* pArg)
                                 OMX_U8 data = 0, *data_ptr = (OMX_U8 *)pExtra->data;
                                 OMX_U32 bytes_cnt = 0;
                                 while (bytes_cnt < pExtra->nDataSize) {
-                                    DEBUG_PRINT_ERROR("\n MPEG-2 User Data Values[%d] = 0x%x", bytes_cnt, *data_ptr);
+                                    DEBUG_PRINT_ERROR("\n MPEG-2 User Data Values[%u] = 0x%x", (unsigned int)bytes_cnt, *data_ptr);
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
@@ -2389,7 +2389,7 @@ int Play_Decoder()
             pInputBufHdrs[0]->nFilledLen = Read_Buffer(pInputBufHdrs[0]);
             bHdrflag = 0;
             DEBUG_PRINT_ERROR("After 1st Read_Buffer for VC1, "
-                    "pInputBufHdrs[0]->nFilledLen %lu\n", pInputBufHdrs[0]->nFilledLen);
+                    "pInputBufHdrs[0]->nFilledLen %u\n", (unsigned int)pInputBufHdrs[0]->nFilledLen);
         } else {
             pInputBufHdrs[0]->nFilledLen = Read_Buffer(pInputBufHdrs[0]);
             DEBUG_PRINT("After Read_Buffer pInputBufHdrs[0]->nFilledLen %d\n",
@@ -2606,10 +2606,10 @@ static OMX_ERRORTYPE use_output_buffer ( OMX_COMPONENTTYPE *dec_handle,
         align_pmem_buffers(p_eglHeaders[bufCnt]->pmem_fd, bufSize,
                 8192);
 #endif
-        DEBUG_PRINT_ERROR("\n allocation size %lu pmem fd %d",bufSize,p_eglHeaders[bufCnt]->pmem_fd);
+        DEBUG_PRINT_ERROR("\n allocation size %u pmem fd %d",(unsigned int)bufSize,p_eglHeaders[bufCnt]->pmem_fd);
         pvirt = (unsigned char *)mmap(NULL,bufSize,PROT_READ|PROT_WRITE,
                 MAP_SHARED,p_eglHeaders[bufCnt]->pmem_fd,0);
-        DEBUG_PRINT_ERROR("\n Virtaul Address %p Size %lu",pvirt,bufSize);
+        DEBUG_PRINT_ERROR("\n Virtaul Address %p Size %u",pvirt,(unsigned int)bufSize);
         if (pvirt == MAP_FAILED) {
             DEBUG_PRINT_ERROR("\n mmap failed for buffers");
             return OMX_ErrorInsufficientResources;
@@ -3238,7 +3238,7 @@ static int Read_Buffer_From_RCV_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     }
 
     if (len > pBufHdr->nAllocLen) {
-        DEBUG_PRINT_ERROR("Error in sufficient buffer framesize %u, allocalen %lu noffset %lu\n",len,pBufHdr->nAllocLen, pBufHdr->nOffset);
+        DEBUG_PRINT_ERROR("Error in sufficient buffer framesize %u, allocalen %u noffset %u\n",len,(unsigned int)pBufHdr->nAllocLen, (unsigned int)pBufHdr->nOffset);
         readOffset = read(inputBufferFileFd, pBufHdr->pBuffer+pBufHdr->nOffset,
                 pBufHdr->nAllocLen - pBufHdr->nOffset);
 
@@ -3965,7 +3965,7 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     }
 
     if ((int)pExtraData->eType != (int)OMX_ExtraDataFrameInfo) {
-        DEBUG_PRINT_ERROR("pExtraData->eType %d pExtraData->nSize %lu\n",pExtraData->eType,pExtraData->nSize);
+        DEBUG_PRINT_ERROR("pExtraData->eType %d pExtraData->nSize %u\n",pExtraData->eType, (unsigned int)pExtraData->nSize);
     }
     pExtraFrameInfo = (OMX_QCOM_EXTRADATA_FRAMEINFO *)pExtraData->data;
 
@@ -3977,8 +3977,8 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
 #endif
 
 
-    DEBUG_PRINT_ERROR("DecWidth %lu DecHeight %lu\n",portFmt.format.video.nStride,portFmt.format.video.nSliceHeight);
-    DEBUG_PRINT_ERROR("DispWidth %lu DispHeight %lu\n",portFmt.format.video.nFrameWidth,portFmt.format.video.nFrameHeight);
+    DEBUG_PRINT_ERROR("DecWidth %u DecHeight %u\n",(unsigned int)portFmt.format.video.nStride,(unsigned int)portFmt.format.video.nSliceHeight);
+    DEBUG_PRINT_ERROR("DispWidth %u DispHeight %u\n",(unsigned int)portFmt.format.video.nFrameWidth,(unsigned int)portFmt.format.video.nFrameHeight);
 
 
 

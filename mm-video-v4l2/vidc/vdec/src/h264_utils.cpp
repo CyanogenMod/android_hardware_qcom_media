@@ -922,7 +922,7 @@ void h264_stream_parser::sei_pan_scan()
 
     pan_scan_param->rect_id = uev();
     if (pan_scan_param->rect_id > 0xFF) {
-        ALOGE("sei_pan_scan: ERROR: Invalid rect_id[%lu]!", pan_scan_param->rect_id);
+        ALOGE("sei_pan_scan: ERROR: Invalid rect_id[%u]!", (unsigned int)pan_scan_param->rect_id);
         pan_scan_param->rect_id = NO_PAN_SCAN_BIT;
         return;
     }
@@ -934,7 +934,7 @@ void h264_stream_parser::sei_pan_scan()
     else {
         pan_scan_param->cnt = uev() + 1;
         if (pan_scan_param->cnt > MAX_PAN_SCAN_RECT) {
-            ALOGE("sei_pan_scan: ERROR: Invalid num of rect [%lu]!", pan_scan_param->cnt);
+            ALOGE("sei_pan_scan: ERROR: Invalid num of rect [%u]!", (unsigned int)pan_scan_param->cnt);
             pan_scan_param->rect_id = NO_PAN_SCAN_BIT;
             return;
         }
@@ -964,18 +964,18 @@ void h264_stream_parser::print_pan_data(h264_pan_scan *pan_scan_param)
 {
     ALOGE("@@print_pan_data: IN");
 
-    ALOGE("-->rect_id            : %lu", pan_scan_param->rect_id);
+    ALOGE("-->rect_id            : %u", (unsigned int)pan_scan_param->rect_id);
     ALOGE("-->rect_cancel_flag   : %u", pan_scan_param->rect_cancel_flag);
 
-    ALOGE("-->cnt                : %lu", pan_scan_param->cnt);
+    ALOGE("-->cnt                : %u", (unsigned int)pan_scan_param->cnt);
 
     for (OMX_U32 i = 0; i < pan_scan_param->cnt; i++) {
-        ALOGE("-->rect_left_offset   : %ld", pan_scan_param->rect_left_offset[i]);
-        ALOGE("-->rect_right_offset  : %ld", pan_scan_param->rect_right_offset[i]);
-        ALOGE("-->rect_top_offset    : %ld", pan_scan_param->rect_top_offset[i]);
-        ALOGE("-->rect_bottom_offset : %ld", pan_scan_param->rect_bottom_offset[i]);
+        ALOGE("-->rect_left_offset   : %d", (int)pan_scan_param->rect_left_offset[i]);
+        ALOGE("-->rect_right_offset  : %d", (int)pan_scan_param->rect_right_offset[i]);
+        ALOGE("-->rect_top_offset    : %d", (int)pan_scan_param->rect_top_offset[i]);
+        ALOGE("-->rect_bottom_offset : %d", (int)pan_scan_param->rect_bottom_offset[i]);
     }
-    ALOGE("-->repetition_period  : %lu", pan_scan_param->rect_repetition_period);
+    ALOGE("-->repetition_period  : %u", (unsigned int)pan_scan_param->rect_repetition_period);
 
     ALOGE("@@print_pan_data: OUT");
 }
