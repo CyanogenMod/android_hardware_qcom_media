@@ -64,14 +64,15 @@ extern "C"{
 #include <poll.h>
 #define TIMEOUT 5000
 
-
+/*
 #define DEBUG_PRINT_LOW(x, ...) ALOGV("[Entry] "x, ##__VA_ARGS__)
 #define DEBUG_PRINT_HIGH(x, ...) ALOGV("[Step] "x, ##__VA_ARGS__)
 #define DEBUG_PRINT_ERROR(x, ...) ALOGE("[Error] "x, ##__VA_ARGS__)
+*/
 
-/*#define DEBUG_PRINT_LOW(x, ...)
+#define DEBUG_PRINT_LOW(x, ...)
 #define DEBUG_PRINT_HIGH(x, ...)
-#define DEBUG_PRINT_ERROR(x, ...) */
+#define DEBUG_PRINT_ERROR(x, ...)
 
 #else //_ANDROID_
 #define DEBUG_PRINT_LOW printf
@@ -286,7 +287,7 @@ struct vdpp_allocatorproperty {
 	size_t buffer_size;
 	uint32_t alignment;
 	uint32_t buf_poolid;
-	size_t meta_buffer_size;
+	size_t frame_size;
 };
 
 struct vdpp_bufferpayload {
@@ -825,7 +826,6 @@ private:
     };
     nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
-
 
     //*************************************************************
     //*******************MEMBER VARIABLES *************************
