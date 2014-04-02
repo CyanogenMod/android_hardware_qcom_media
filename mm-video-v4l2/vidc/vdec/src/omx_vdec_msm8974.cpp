@@ -561,7 +561,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     secure_mode(false),
     m_profile(0),
     client_set_fps(false),
-    m_last_rendered_TS(-1)
+    m_last_rendered_TS(-1),
+    m_queued_codec_config_count(0)
 {
     /* Assumption is that , to begin with , we have all the frames with decoder */
     DEBUG_PRINT_HIGH("In OMX vdec Constructor");
@@ -651,6 +652,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     pthread_mutex_init(&m_lock, NULL);
     pthread_mutex_init(&c_lock, NULL);
     sem_init(&m_cmd_lock,0,0);
+    sem_init(&m_safe_flush, 0, 0);
     streaming[CAPTURE_PORT] =
         streaming[OUTPUT_PORT] = false;
 #ifdef _ANDROID_
@@ -1951,7 +1953,20 @@ OMX_ERRORTYPE  omx_vdec::send_command(OMX_IN OMX_HANDLETYPE hComp,
         DEBUG_PRINT_ERROR("send_command(): ERROR OMX_CommandFlush "
                 "to invalid port: %lu", param1);
         return OMX_ErrorBadPortIndex;
+    } else if (cmd == OMX_CommandFlush && (param1 == OMX_CORE_INPUT_PORT_INDEX ||
+                param1 == OMX_ALL)) {
+        while (android_atomic_add(0, &m_queued_codec_config_count) > 0) {
+            struct timespec ts;
+
+            clock_gettime(CLOCK_REALTIME, &ts);
+            ts.tv_sec += 2;
+            if (sem_timedwait(&m_safe_flush, &ts)) {
+                DEBUG_PRINT_ERROR("Failed to wait for EBDs of CODEC CONFIG buffers");
+                break;
+            }
+        }
     }
+
     post_event((unsigned)cmd,(unsigned)param1,OMX_COMPONENT_GENERATE_COMMAND);
     sem_wait(&m_cmd_lock);
     DEBUG_PRINT_LOW("send_command: Command Processed");
@@ -5880,6 +5895,11 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
         DEBUG_PRINT_ERROR("Failed to qbuf Input buffer to driver");
         return OMX_ErrorHardware;
     }
+
+    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+        android_atomic_inc(&m_queued_codec_config_count);
+    }
+
     if (codec_config_flag && !(buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG)) {
         codec_config_flag = false;
     }
@@ -6873,6 +6893,18 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
     DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p",
             buffer, buffer->pBuffer);
     pending_input_buffers--;
+    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+        int pending_flush_waiters;
+
+        while (pending_flush_waiters = INT_MAX,
+                sem_getvalue(&m_safe_flush, &pending_flush_waiters),
+                /* 0 == there /are/ waiters depending on POSIX implementation */
+                pending_flush_waiters <= 0 ) {
+            sem_post(&m_safe_flush);
+        }
+
+        android_atomic_and(0, &m_queued_codec_config_count); /* no clearer way to set to 0 */
+    }
 
     if (arbitrary_bytes) {
         if (pdest_frame == NULL && input_flush_progress == false) {
