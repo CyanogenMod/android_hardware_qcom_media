@@ -87,7 +87,6 @@ char output_extradata_filename [] = "/data/misc/extradata";
 #endif
 
 #define DEFAULT_FPS 30
-#define MAX_INPUT_ERROR DEFAULT_FPS
 #define MAX_SUPPORTED_FPS 120
 #define DEFAULT_WIDTH_ALIGNMENT 128
 #define DEFAULT_HEIGHT_ALIGNMENT 32
@@ -498,7 +497,6 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_app_data(NULL),
     m_inp_mem_ptr(NULL),
     m_out_mem_ptr(NULL),
-    m_inp_err_count(0),
     input_flush_progress (false),
     output_flush_progress (false),
     input_use_buffer (false),
@@ -957,21 +955,15 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                         pThis->omx_report_error ();
                     } else {
                         if (p2 == VDEC_S_INPUT_BITSTREAM_ERR && p1) {
-                            pThis->m_inp_err_count++;
                             pThis->time_stamp_dts.remove_time_stamp(
                                     ((OMX_BUFFERHEADERTYPE *)p1)->nTimeStamp,
                                     (pThis->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
                                     ?true:false);
-                        } else {
-                            pThis->m_inp_err_count = 0;
                         }
+
                         if ( pThis->empty_buffer_done(&pThis->m_cmp,
                                     (OMX_BUFFERHEADERTYPE *)p1) != OMX_ErrorNone) {
                             DEBUG_PRINT_ERROR("empty_buffer_done failure");
-                            pThis->omx_report_error ();
-                        }
-                        if (pThis->m_inp_err_count >= MAX_INPUT_ERROR) {
-                            DEBUG_PRINT_ERROR("Input bitstream error for consecutive %d frames.", MAX_INPUT_ERROR);
                             pThis->omx_report_error ();
                         }
                     }
