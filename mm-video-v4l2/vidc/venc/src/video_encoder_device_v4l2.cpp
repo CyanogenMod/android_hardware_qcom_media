@@ -185,6 +185,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     paused = false;
     async_thread_created = false;
     color_format = 0;
+    hw_overload = false;
     pthread_mutex_init(&pause_resume_mlock, NULL);
     pthread_cond_init(&pause_resume_cond, NULL);
     memset(&extradata_info, 0, sizeof(extradata_info));
@@ -381,24 +382,15 @@ void* venc_dev::async_venc_message_thread (void *input)
                 }
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_HW_OVERLOAD) {
                 DEBUG_PRINT_ERROR("HW Overload received");
-                venc_msg.statuscode=VEN_S_EFAIL;
+                venc_msg.statuscode = VEN_S_EFAIL;
                 venc_msg.msgcode = VEN_MSG_HW_OVERLOAD;
 
                 if (omx->async_message_process(input,&venc_msg) < 0) {
                     DEBUG_PRINT_ERROR("ERROR: Wrong ioctl message");
                     break;
                 }
-            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_MAX_CLIENTS) {
-                DEBUG_PRINT_ERROR("Max Clients Reached");
-                venc_msg.statuscode=VEN_S_EFAIL;
-                venc_msg.msgcode = VEN_MSG_MAX_CLIENTS;
-
-                if (omx->async_message_process(input,&venc_msg) < 0) {
-                    DEBUG_PRINT_ERROR("ERROR: Wrong ioctl message");
-                    break;
-                }
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_SYS_ERROR){
-                DEBUG_PRINT_ERROR("HW Error recieved");
+                DEBUG_PRINT_ERROR("ERROR: Encoder is in bad state");
                 venc_msg.msgcode = VEN_MSG_INDICATION;
                 venc_msg.statuscode=VEN_S_EFAIL;
 
@@ -2487,6 +2479,9 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 
         if (ret) {
             DEBUG_PRINT_ERROR("Failed to call streamon");
+            if (errno == EBUSY) {
+                hw_overload = true;
+            }
             return false;
         } else {
             streaming[OUTPUT_PORT] = true;

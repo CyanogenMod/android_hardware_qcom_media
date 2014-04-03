@@ -1741,7 +1741,10 @@ bool omx_venc::dev_free_buf(void *buf_addr,unsigned port)
 
 bool omx_venc::dev_empty_buf(void *buffer, void *pmem_data_buf,unsigned index,unsigned fd)
 {
-    return  handle->venc_empty_buf(buffer, pmem_data_buf,index,fd);
+    bool bret = false;
+    bret = handle->venc_empty_buf(buffer, pmem_data_buf,index,fd);
+    hw_overload = handle->hw_overload;
+    return bret;
 }
 
 bool omx_venc::dev_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,unsigned fd)
@@ -1878,12 +1881,11 @@ int omx_venc::async_message_process (void *context, void* message)
     if (m_sVenc_msg->statuscode != VEN_S_SUCCESS) {
         DEBUG_PRINT_ERROR("ERROR: async_msg_process() - Error statuscode = %lu",
                 m_sVenc_msg->statuscode);
-        if(m_sVenc_msg->msgcode == VEN_MSG_HW_OVERLOAD)
+        if(m_sVenc_msg->msgcode == VEN_MSG_HW_OVERLOAD) {
             omx->omx_report_hw_overload();
-        else if(m_sVenc_msg->msgcode == VEN_MSG_MAX_CLIENTS)
-            omx->omx_report_max_clients_error();
-        else
+        } else {
             omx->omx_report_error();
+        }
     }
 
     DEBUG_PRINT_LOW("omx_venc::async_message_process- msgcode = %lu",
