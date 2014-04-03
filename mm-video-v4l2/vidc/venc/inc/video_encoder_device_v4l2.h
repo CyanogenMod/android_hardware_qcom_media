@@ -302,6 +302,7 @@ class venc_dev
         bool handle_extradata(void *, int);
         int venc_set_format(int);
         bool deinterlace_enabled;
+        bool hw_overload;
     private:
         OMX_U32                             m_codec;
         struct msm_venc_basecfg             m_sVenc_cfg;
