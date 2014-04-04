@@ -1086,8 +1086,28 @@ status_t DashCodec::configureCodec(
       int32_t haveNativeWindow = msg->findObject("native-window", &obj) &&
             obj != NULL;
     mStoreMetaDataInOutputBuffers = false;
+
+    bool mEnableDynamicBuffering = true;
+    char property_value[PROPERTY_VALUE_MAX];
+    property_value[0] = '\0';
+    property_get("persist.dash.dbm.enable", property_value, "1");
+    if(*property_value)
+    {
+      mEnableDynamicBuffering = atoi(property_value) > 0 ? true: false;
+      ALOGE("DynamicBuffering is set to [%d]", mEnableDynamicBuffering);
+    }
       if (!encoder && video && haveNativeWindow) {
-        err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexOutput, OMX_TRUE);
+
+        if (mEnableDynamicBuffering)
+        {
+          ALOGE("Enabling Dynamic Buffering Mode");
+          err = mOMX->storeMetaDataInBuffers(mNode, kPortIndexOutput, OMX_TRUE);
+        }
+        else
+        {
+            ALOGE("Disabling Dynamic Buffering Mode Thru SetProp");
+            err =  INVALID_OPERATION;
+        }
         if (err != OK) {
 
             ALOGE("[%s] storeMetaDataInBuffers failed w/ err %d",
