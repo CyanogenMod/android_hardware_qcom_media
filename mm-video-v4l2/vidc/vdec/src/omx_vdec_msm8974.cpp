@@ -633,6 +633,11 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
         m_last_rendered_TS = 0;
     }
 
+    property_value[0] = '\0';
+    property_get("vidc.dec.debug.dyn.disabled", property_value, "0");
+    m_disable_dynamic_buf_mode = atoi(property_value);
+    DEBUG_PRINT_HIGH("vidc.dec.debug.dyn.disabled value is %d",m_disable_dynamic_buf_mode);
+
 #endif
     memset(&m_cmp,0,sizeof(m_cmp));
     memset(&m_cb,0,sizeof(m_cb));
@@ -3664,6 +3669,11 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             if (!metabuffer) {
                 DEBUG_PRINT_ERROR("Invalid param: %p", metabuffer);
                 eRet = OMX_ErrorBadParameter;
+                break;
+            }
+            if (m_disable_dynamic_buf_mode) {
+                DEBUG_PRINT_HIGH("Dynamic buffer mode disabled by setprop");
+                eRet = OMX_ErrorUnsupportedSetting;
                 break;
             }
             if (metabuffer->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {

@@ -885,6 +885,7 @@ class omx_vdec: public qc_omx_component
         bool m_use_android_native_buffers;
         bool m_debug_extradata;
         bool m_debug_concealedmb;
+        bool m_disable_dynamic_buf_mode;
         OMX_U32 m_conceal_color;
 #endif
 
