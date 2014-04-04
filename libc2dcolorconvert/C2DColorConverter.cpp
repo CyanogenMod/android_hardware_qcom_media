@@ -58,7 +58,7 @@ namespace android {
 class C2DColorConverter : public C2DColorConverterBase {
 
 public:
-    C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags);
+    C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags, size_t stride);
     int32_t getBuffReq(int32_t port, C2DBuffReq *req);
     int32_t dumpOutput(char * filename, char mode);
 protected:
@@ -78,7 +78,6 @@ private:
     virtual bool unmapGPUAddr(uint32_t gAddr);
     virtual size_t calcLumaAlign(ColorConvertFormat format);
     virtual size_t calcSizeAlign(ColorConvertFormat format);
-    virtual bool isTarget8930(void);
 
     void *mC2DLibHandle;
     LINK_c2dCreateSurface mC2DCreateSurface;
@@ -105,6 +104,7 @@ private:
     size_t mDstSize;
     size_t mSrcYSize;
     size_t mDstYSize;
+    size_t mStride;
     enum ColorConvertFormat mSrcFormat;
     enum ColorConvertFormat mDstFormat;
     int32_t mFlags;
@@ -112,7 +112,7 @@ private:
     int mError;
 };
 
-C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags)
+C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags, size_t stride)
 {
      mError = 0;
      mC2DLibHandle = dlopen("libC2D2.so", RTLD_NOW);
@@ -150,7 +150,7 @@ C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t d
     mDstSize = calcSize(dstFormat, dstWidth, dstHeight);
     mSrcYSize = calcYSize(srcFormat, srcWidth, srcHeight);
     mDstYSize = calcYSize(dstFormat, dstWidth, dstHeight);
-
+    mStride = stride;
     mFlags = flags; // can be used for rotation
 
     mSrcSurfaceDef = getDummySurfaceDef(srcFormat, srcWidth, srcHeight, true);
@@ -394,11 +394,10 @@ size_t C2DColorConverter::calcStride(ColorConvertFormat format, size_t width)
         case RGB565:
             return ALIGN(width, ALIGN32) * 2; // RGB565 has width as twice
         case RGBA8888:
-            if (isTarget8930() && mSrcWidth == WIDTH_720P && mSrcHeight == HEIGHT_720P) {
-             return ALIGN((width + PADDING_720P), ALIGN32) * 4;
-            } else {
-             return ALIGN(width, ALIGN32) * 4;
-            }
+            if (mStride)
+                width = mStride;
+            return ALIGN(width, ALIGN32) * 4;
+
         case YCbCr420Tile:
             return ALIGN(width, ALIGN128);
         case YCbCr420SP:
@@ -661,34 +660,10 @@ int32_t C2DColorConverter::dumpOutput(char * filename, char mode) {
     close(fd);
     return ret < 0 ? ret : 0;
 }
-bool C2DColorConverter::isTarget8930(void) {
-    int fd;
-    if ((fd = open("/sys/devices/system/soc/soc0/id", O_RDONLY)) != -1) {
-        char raw_buf[5];
-        int soc;
-        if (read(fd, raw_buf,4) == -1) {
-             close(fd);
-             return false;
-        } else {
-            raw_buf[4] = 0;
-            soc = atoi(raw_buf);
-            close(fd);
-            if (/* MSM_CPU_8930 */
-                soc == 116 || soc == 117 || soc == 118 || soc == 119 || soc == 179 ||
-                /* MSM_CPU_8930AA */
-                soc == 142 || soc == 143 || soc == 144 || soc == 160 || soc == 180 ||
-                /* MSM_CPU_8930AB */
-                soc == 154 || soc == 155 || soc == 156 || soc == 157 || soc == 181) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
 
-extern "C" C2DColorConverterBase* createC2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags)
+extern "C" C2DColorConverterBase* createC2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags, size_t stride)
 {
-    return new C2DColorConverter(srcWidth, srcHeight, dstWidth, dstHeight, srcFormat, dstFormat, flags);
+    return new C2DColorConverter(srcWidth, srcHeight, dstWidth, dstHeight, srcFormat, dstFormat, flags, stride);
 }
 
 extern "C" void destroyC2DColorConverter(C2DColorConverterBase* C2DCC)
