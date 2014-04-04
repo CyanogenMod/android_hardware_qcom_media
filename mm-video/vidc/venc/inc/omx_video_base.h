@@ -150,7 +150,7 @@ protected:
 	bool init();
 	bool open(unsigned int height,unsigned int width,
 			  ColorConvertFormat src,
-			  ColorConvertFormat dest);
+			  ColorConvertFormat dest, unsigned int stride);
 	bool convert(int src_fd, void *src_viraddr,
 				 int dest_fd,void *dest_viraddr);
 	bool get_buffer_size(int port,unsigned int &buf_size);
