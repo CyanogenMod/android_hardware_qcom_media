@@ -87,12 +87,12 @@ bool omx_c2d_conv::convert(int src_fd, void *src_viraddr,
 }
 
 bool omx_c2d_conv::open(unsigned int height,unsigned int width,
-     ColorConvertFormat src, ColorConvertFormat dest)
+     ColorConvertFormat src, ColorConvertFormat dest, unsigned int stride)
 {
   bool status = false;
   if(!c2dcc) {
      c2dcc = mConvertOpen(width, height, width, height,
-             src,dest,0);
+             src,dest,0, stride);
      if(c2dcc) {
        src_format = src;
        status = true;

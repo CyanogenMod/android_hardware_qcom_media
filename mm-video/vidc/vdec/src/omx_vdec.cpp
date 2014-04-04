@@ -10154,9 +10154,10 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
     return false;
   }
   c2d.close();
+
   status = c2d.open(omx->drv_ctx.video_resolution.frame_height,
                     omx->drv_ctx.video_resolution.frame_width,
-                    YCbCr420Tile,YCbCr420P);
+                    YCbCr420Tile,YCbCr420P, 0);
   if (status) {
     status = c2d.get_buffer_size(C2D_INPUT,src_size);
     if (status)
