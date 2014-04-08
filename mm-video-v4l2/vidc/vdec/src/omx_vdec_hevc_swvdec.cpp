@@ -989,6 +989,12 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                     SwVdec_Stop(pThis->m_pSwVdec);
                                 }
                             }
+                            else if (pThis->m_pSwVdec &&
+                                     pThis->m_swvdec_mode == SWVDEC_MODE_PARSE_DECODE)
+                            {
+                                DEBUG_PRINT_HIGH("In port reconfig, SwVdec_Stop");
+                                SwVdec_Stop(pThis->m_pSwVdec);
+                            }
                             OMX_ERRORTYPE eRet1 = pThis->get_buffer_req_swvdec();
                             pThis->in_reconfig = false;
                             if(eRet !=  OMX_ErrorNone)
@@ -1003,7 +1009,8 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                         break;
                     case OMX_CommandPortEnable:
                         DEBUG_PRINT_HIGH("OMX_CommandPortEnable complete for port [%d]", p2);
-                        if (p2 == OMX_CORE_OUTPUT_PORT_INDEX && pThis->m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
+                        if (p2 == OMX_CORE_OUTPUT_PORT_INDEX &&
+                            pThis->m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
                         {
                             DEBUG_PRINT_LOW("send all interm buffers to dsp after port enabled");
                             pThis->fill_all_buffers_proxy_dsp(&pThis->m_cmp);
@@ -3384,6 +3391,17 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port");
                 m_display_id = portDefn->format.video.pNativeWindow;
                 unsigned int buffer_size;
+
+                if (m_swvdec_mode == SWVDEC_MODE_PARSE_DECODE) {
+                    SWVDEC_PROP prop;
+                    prop.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
+                    prop.uProperty.sDimensions.nWidth =
+                               portDefn->format.video.nFrameWidth;
+                    prop.uProperty.sDimensions.nHeight =
+                               portDefn->format.video.nFrameHeight;
+                    SwVdec_SetProperty(m_pSwVdec,&prop);
+                }
+
                 if (!client_buffers.get_buffer_req(buffer_size)) {
                     DEBUG_PRINT_ERROR("Error in getting buffer requirements");
                     eRet = OMX_ErrorBadParameter;
@@ -6998,11 +7016,17 @@ bool omx_vdec::release_input_done(void)
 OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                                          OMX_BUFFERHEADERTYPE * buffer)
 {
-    unsigned long nPortIndex = buffer - m_out_mem_ptr;
-    OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pPMEMInfo = NULL;
-    if (!buffer || nPortIndex >= drv_ctx.op_buf.actualcount)
+    if (!buffer)
     {
         DEBUG_PRINT_ERROR("[FBD] ERROR in ptr(%p)", buffer);
+        return OMX_ErrorBadParameter;
+    }
+    unsigned int nPortIndex = buffer - m_out_mem_ptr;
+    OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pPMEMInfo = NULL;
+    if (nPortIndex >= (int)drv_ctx.op_buf.actualcount)
+    {
+        DEBUG_PRINT_ERROR("[FBD] ERROR in port idx(%d), act cnt(%d)",
+               nPortIndex, (int)drv_ctx.op_buf.actualcount);
         return OMX_ErrorBadParameter;
     }
     else if (output_flush_progress)
@@ -10480,10 +10504,35 @@ void omx_vdec::swvdec_handle_event(SWVDEC_EVENTHANDLER *pEvent)
         break;
 
     case SWVDEC_RECONFIG_INSUFFICIENT_RESOURCES:
-        DEBUG_PRINT_HIGH("swvdec port settings changed");
-        in_reconfig = true;
-        post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexParamPortDefinition,
-            OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+        {
+            SWVDEC_PROP prop;
+            DEBUG_PRINT_HIGH("swvdec port settings changed");
+            in_reconfig = true;
+            // get_buffer_req and populate port defn structure
+            prop.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
+            SwVdec_GetProperty(m_pSwVdec, &prop);
+
+            update_resolution(prop.uProperty.sDimensions.nWidth,
+                prop.uProperty.sDimensions.nHeight,
+                prop.uProperty.sDimensions.nWidth,
+                prop.uProperty.sDimensions.nHeight);
+            drv_ctx.video_resolution.stride =
+                            (prop.uProperty.sDimensions.nWidth + 127) & (~127);
+            drv_ctx.video_resolution.scan_lines =
+                            (prop.uProperty.sDimensions.nHeight + 31) & (~31);
+
+            m_port_def.nPortIndex = 1;
+            update_portdef(&m_port_def);
+
+            //Set property for dimensions and attrb to SwVdec
+            SwVdec_SetProperty(m_pSwVdec,&prop);
+            prop.ePropId = SWVDEC_PROP_ID_FRAME_ATTR;
+            prop.uProperty.sFrameAttr.eColorFormat = SWVDEC_FORMAT_NV12;
+            SwVdec_SetProperty(m_pSwVdec,&prop);
+
+            post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexParamPortDefinition,
+                OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+        }
         break;
 
     case SWVDEC_ERROR:
