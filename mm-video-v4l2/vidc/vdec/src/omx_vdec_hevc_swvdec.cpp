@@ -5851,6 +5851,15 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
                     DEBUG_PRINT_LOW("release_output_done: start free_interm_buffers");
                     free_interm_buffers();
                 }
+                else if (m_swvdec_mode == SWVDEC_MODE_PARSE_DECODE)
+                {
+                    DEBUG_PRINT_LOW("free m_pSwVdecOpBuffer");
+                    if (m_pSwVdecOpBuffer)
+                    {
+                        free(m_pSwVdecOpBuffer);
+                        m_pSwVdecOpBuffer = NULL;
+                    }
+                }
             }
         }
         else
@@ -6267,6 +6276,8 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
         if (SwVdec_EmptyThisBuffer(m_pSwVdec, &m_pSwVdecIpBuffer[nPortIndex]) != SWVDEC_S_SUCCESS) {
             ret = OMX_ErrorBadParameter;
         }
+        codec_config_flag = false;
+        DEBUG_PRINT_LOW("%s: codec_config cleared", __FUNCTION__);
     }
 
     DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%d)",
