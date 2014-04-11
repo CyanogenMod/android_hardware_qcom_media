@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -4956,7 +4956,7 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
 #endif
   }
 #ifdef MAX_RES_1080P
-  if(drv_ctx.enable_sec_metadata && client_extradata)
+  if(drv_ctx.enable_sec_metadata)
   {
     vdec_dealloc_meta_buffers();
   }
@@ -5405,7 +5405,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         pPlatformList++;
       }
 #ifdef MAX_RES_1080P
-      if(eRet == OMX_ErrorNone && drv_ctx.enable_sec_metadata && client_extradata)
+      if(eRet == OMX_ErrorNone && drv_ctx.enable_sec_metadata)
       {
         eRet = vdec_alloc_meta_buffers();
         if (eRet) {
@@ -10154,9 +10154,10 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
     return false;
   }
   c2d.close();
+
   status = c2d.open(omx->drv_ctx.video_resolution.frame_height,
                     omx->drv_ctx.video_resolution.frame_width,
-                    YCbCr420Tile,YCbCr420P);
+                    YCbCr420Tile,YCbCr420P, 0);
   if (status) {
     status = c2d.get_buffer_size(C2D_INPUT,src_size);
     if (status)
