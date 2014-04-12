@@ -982,19 +982,21 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                 pThis->stream_off(OMX_CORE_OUTPUT_PORT_INDEX);
                                 if(release_buffers(pThis, VDEC_BUFFER_TYPE_OUTPUT))
                                     DEBUG_PRINT_HIGH("Failed to release output buffers");
+                            }
 
-                                if (pThis->m_pSwVdec)
+                            if (pThis->m_pSwVdec)
+                            {
+                                SWVDEC_STATUS SwStatus;
+                                DEBUG_PRINT_HIGH("In port reconfig, SwVdec_Stop");
+                                SwStatus = SwVdec_Stop(pThis->m_pSwVdec);
+                                if (SWVDEC_S_SUCCESS != SwStatus)
                                 {
-                                    DEBUG_PRINT_HIGH("In port reconfig, SwVdec_Stop");
-                                    SwVdec_Stop(pThis->m_pSwVdec);
+                                   DEBUG_PRINT_ERROR("SwVdec_Stop failed (%d)",SwStatus);
+                                   pThis->omx_report_error();
+                                   break;
                                 }
                             }
-                            else if (pThis->m_pSwVdec &&
-                                     pThis->m_swvdec_mode == SWVDEC_MODE_PARSE_DECODE)
-                            {
-                                DEBUG_PRINT_HIGH("In port reconfig, SwVdec_Stop");
-                                SwVdec_Stop(pThis->m_pSwVdec);
-                            }
+
                             OMX_ERRORTYPE eRet1 = pThis->get_buffer_req_swvdec();
                             pThis->in_reconfig = false;
                             if(eRet !=  OMX_ErrorNone)
@@ -1789,11 +1791,17 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevchybrid",
         OMX_MAX_STRINGNAME_SIZE))
     {
+        DEBUG_PRINT_ERROR("HEVC Hybrid mode");
         m_swvdec_mode = SWVDEC_MODE_DECODE_ONLY;
     }
     else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevcswvdec",
         OMX_MAX_STRINGNAME_SIZE))
     {
+        DEBUG_PRINT_ERROR("HEVC Full SW mode");
+        maxSmoothStreamingWidth = 1280;
+        maxSmoothStreamingHeight = 720;
+        m_decoder_capability.max_width = 1280;
+        m_decoder_capability.max_height = 720;
         m_swvdec_mode = SWVDEC_MODE_PARSE_DECODE;
     }
     else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevc",
@@ -3310,17 +3318,31 @@ OMX_ERRORTYPE omx_vdec::use_android_native_buffer(OMX_IN OMX_HANDLETYPE hComp, O
 #endif
 
 OMX_ERRORTYPE omx_vdec::enable_smoothstreaming() {
-    struct v4l2_control control;
-    struct v4l2_format fmt;
-    control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
-    control.value = 1;
-    int rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
-    if (rc < 0) {
-        DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
-        return OMX_ErrorHardware;
+    if (!m_pSwVdec || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
+    {
+        struct v4l2_control control;
+        struct v4l2_format fmt;
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONTINUE_DATA_TRANSFER;
+        control.value = 1;
+        int rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
+        if (rc < 0) {
+            DEBUG_PRINT_ERROR("Failed to enable Smooth Streaming on driver.");
+            return OMX_ErrorHardware;
+        }
     }
-    DEBUG_PRINT_LOW("Smooth Streaming enabled.");
-    m_smoothstreaming_mode = true;
+    else if (m_swvdec_mode == SWVDEC_MODE_PARSE_DECODE)
+    {
+        /* Full SW solution */
+        SWVDEC_PROP prop;
+        prop.ePropId = SWVDEC_PROP_ID_SMOOTH_STREAMING;
+        prop.uProperty.sSmoothStreaming.bEnableSmoothStreaming = TRUE;
+        if (SwVdec_SetProperty(m_pSwVdec, &prop))
+        {
+            DEBUG_PRINT_ERROR(
+                  "OMX_QcomIndexParamVideoAdaptivePlaybackMode not supported");
+            return OMX_ErrorUnsupportedSetting;
+        }
+    }
     return OMX_ErrorNone;
 }
 
@@ -3500,8 +3522,8 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         {
                             SWVDEC_PROP prop;
                             prop.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
-                            prop.uProperty.sDimensions.nWidth = portDefn->format.video.nFrameWidth;
-                            prop.uProperty.sDimensions.nHeight= portDefn->format.video.nFrameHeight;
+                            prop.uProperty.sDimensions.nWidth = drv_ctx.video_resolution.frame_width;
+                            prop.uProperty.sDimensions.nHeight= drv_ctx.video_resolution.frame_height;
                             SwVdec_SetProperty(m_pSwVdec,&prop);
                             prop.ePropId = SWVDEC_PROP_ID_FRAME_ATTR;
                             prop.uProperty.sFrameAttr.eColorFormat = SWVDEC_FORMAT_NV12;
@@ -3991,7 +4013,19 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         SWVDEC_PROP prop;
                         prop.ePropId = SWVDEC_PROP_ID_BUFFER_ALLOC_MODE;
                         prop.uProperty.sBufAllocMode.eBufAllocMode = SWVDEC_BUF_ALLOC_MODE_DYNAMIC;
-                        SwVdec_SetProperty(m_pSwVdec, &prop);
+                        if (SwVdec_SetProperty(m_pSwVdec, &prop))
+                        {
+                            DEBUG_PRINT_ERROR(
+                                  "OMX_QcomIndexParamVideoMetaBufferMode not supported for port: %lu",
+                                  metabuffer->nPortIndex);
+                            eRet = OMX_ErrorUnsupportedSetting;
+                        }
+                        else
+                        {
+                            DEBUG_PRINT_LOW(
+                                  "OMX_QcomIndexParamVideoMetaBufferMode supported for port: %lu",
+                                  metabuffer->nPortIndex);
+                        }
                     }
                 }
             } else {
@@ -4005,56 +4039,150 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #ifdef ADAPTIVE_PLAYBACK_SUPPORTED
         case OMX_QcomIndexParamVideoAdaptivePlaybackMode:
         {
-            if (!m_pSwVdec || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY) {
-              DEBUG_PRINT_LOW("set_parameter: OMX_GoogleAndroidIndexPrepareForAdaptivePlayback");
-              PrepareForAdaptivePlaybackParams* pParams =
-                      (PrepareForAdaptivePlaybackParams *) paramData;
-              if (pParams->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
-                  if (!pParams->bEnable) {
-                      return OMX_ErrorNone;
-                  }
-                  if (pParams->nMaxFrameWidth > maxSmoothStreamingWidth
-                          || pParams->nMaxFrameHeight > maxSmoothStreamingHeight) {
-                      DEBUG_PRINT_ERROR(
-                              "Adaptive playback request exceeds max supported resolution : [%lu x %lu] vs [%lu x %lu]",
-                               pParams->nMaxFrameWidth,  pParams->nMaxFrameHeight,
-                              maxSmoothStreamingWidth, maxSmoothStreamingHeight);
-                      eRet = OMX_ErrorBadParameter;
-                  } else {
-                       eRet = enable_smoothstreaming();
-                       if (eRet != OMX_ErrorNone) {
-                           DEBUG_PRINT_ERROR("Failed to enable Adaptive Playback on driver.");
-                           eRet = OMX_ErrorHardware;
-                       } else  {
-                           DEBUG_PRINT_HIGH("Enabling Adaptive playback for %lu x %lu",
-                                   pParams->nMaxFrameWidth, pParams->nMaxFrameHeight);
-                           m_smoothstreaming_mode = true;
-                           m_smoothstreaming_width = pParams->nMaxFrameWidth;
-                           m_smoothstreaming_height = pParams->nMaxFrameHeight;
-                       }
-                       struct v4l2_format fmt;
-                       update_resolution(m_smoothstreaming_width, m_smoothstreaming_height,
-                                                    m_smoothstreaming_width, m_smoothstreaming_height);
-                       fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-                       fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
-                       fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
-                       fmt.fmt.pix_mp.pixelformat = output_capability;
-                       DEBUG_PRINT_LOW("fmt.fmt.pix_mp.height = %d , fmt.fmt.pix_mp.width = %d",
-                                                       fmt.fmt.pix_mp.height,fmt.fmt.pix_mp.width);
-                       ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
-                       if (ret) {
-                           DEBUG_PRINT_ERROR("Set Resolution failed");
-                           eRet = OMX_ErrorUnsupportedSetting;
-                       } else
-                           eRet = get_buffer_req(&drv_ctx.op_buf);
-                   }
-              } else {
-                  DEBUG_PRINT_ERROR(
-                          "Prepare for adaptive playback supported only on output port");
-                  eRet = OMX_ErrorBadParameter;
-              }
-              break;
-          }
+            DEBUG_PRINT_LOW("set_parameter: OMX_GoogleAndroidIndexPrepareForAdaptivePlayback");
+            PrepareForAdaptivePlaybackParams* pParams =
+                    (PrepareForAdaptivePlaybackParams *) paramData;
+            if (pParams->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
+                if (!pParams->bEnable) {
+                    return OMX_ErrorNone;
+                }
+                if (pParams->nMaxFrameWidth > maxSmoothStreamingWidth
+                        || pParams->nMaxFrameHeight > maxSmoothStreamingHeight) {
+                    DEBUG_PRINT_ERROR(
+                            "Adaptive playback request exceeds max supported resolution : [%lu x %lu] vs [%lu x %lu]",
+                             pParams->nMaxFrameWidth,  pParams->nMaxFrameHeight,
+                            maxSmoothStreamingWidth, maxSmoothStreamingHeight);
+                    eRet = OMX_ErrorBadParameter;
+                } else
+                {
+                     eRet = enable_smoothstreaming();
+                     if (eRet != OMX_ErrorNone) {
+                         DEBUG_PRINT_ERROR("Failed to enable Adaptive Playback on driver.");
+                         eRet = OMX_ErrorHardware;
+                     } else  {
+                         DEBUG_PRINT_HIGH("Enabling Adaptive playback for %lu x %lu",
+                                 pParams->nMaxFrameWidth, pParams->nMaxFrameHeight);
+                         m_smoothstreaming_mode = true;
+                         m_smoothstreaming_width = pParams->nMaxFrameWidth;
+                         m_smoothstreaming_height = pParams->nMaxFrameHeight;
+                     }
+                     struct v4l2_format fmt;
+                     update_resolution(m_smoothstreaming_width, m_smoothstreaming_height,
+                                                  m_smoothstreaming_width, m_smoothstreaming_height);
+                     if (!m_pSwVdec || m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
+                     {
+                         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+                         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
+                         fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+                         fmt.fmt.pix_mp.pixelformat = output_capability;
+                         DEBUG_PRINT_LOW("fmt.fmt.pix_mp.height = %d , fmt.fmt.pix_mp.width = %d",
+                                                     fmt.fmt.pix_mp.height,fmt.fmt.pix_mp.width);
+                         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+                         if (ret) {
+                             DEBUG_PRINT_ERROR("Set Resolution failed");
+                             eRet = OMX_ErrorUnsupportedSetting;
+                         } else
+                             eRet = get_buffer_req(&drv_ctx.op_buf);
+                     }
+                     else if (SWVDEC_MODE_PARSE_DECODE == m_swvdec_mode)
+                     {
+                         SWVDEC_PROP prop;
+                         SWVDEC_STATUS sRet;
+                         /* set QCIF resolution to get UpperLimit_bufferCount */
+                         prop.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
+                         prop.uProperty.sDimensions.nWidth = 176;
+                         prop.uProperty.sDimensions.nHeight= 144;
+                         sRet = SwVdec_SetProperty(m_pSwVdec,&prop);
+                         if (SWVDEC_S_SUCCESS != sRet)
+                         {
+                             DEBUG_PRINT_ERROR("SwVdec_SetProperty failed (%d)", sRet);
+                             eRet = OMX_ErrorUndefined;
+                             break;
+                         }
+
+                         prop.ePropId = SWVDEC_PROP_ID_OPBUFFREQ;
+                         sRet = SwVdec_GetProperty(m_pSwVdec, &prop);
+                         if (SWVDEC_S_SUCCESS == sRet)
+                         {
+                             drv_ctx.op_buf.actualcount = prop.uProperty.sOpBuffReq.nMinCount;
+                             drv_ctx.op_buf.mincount = prop.uProperty.sOpBuffReq.nMinCount;
+                         }
+                         else
+                         {
+                             DEBUG_PRINT_ERROR("SwVdec_GetProperty failed (%d)", sRet);
+                             eRet = OMX_ErrorUndefined;
+                             break;
+                         }
+
+                         /* set the max smooth-streaming resolution to get the buffer size */
+                         prop.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
+                         prop.uProperty.sDimensions.nWidth = m_smoothstreaming_width;
+                         prop.uProperty.sDimensions.nHeight= m_smoothstreaming_height;
+                         SwVdec_SetProperty(m_pSwVdec,&prop);
+                         if (SWVDEC_S_SUCCESS != sRet)
+                         {
+                             DEBUG_PRINT_ERROR("SwVdec_SetProperty failed (%d)", sRet);
+                             eRet = OMX_ErrorUndefined;
+                             break;
+                         }
+
+                         prop.ePropId = SWVDEC_PROP_ID_OPBUFFREQ;
+                         sRet = SwVdec_GetProperty(m_pSwVdec, &prop);
+                         if (SWVDEC_S_SUCCESS == sRet)
+                         {
+                             int client_extra_data_size = 0;
+                             if (client_extradata & OMX_FRAMEINFO_EXTRADATA)
+                             {
+                                 DEBUG_PRINT_HIGH("Frame info extra data enabled!");
+                                 client_extra_data_size += OMX_FRAMEINFO_EXTRADATA_SIZE;
+                             }
+                             if (client_extradata & OMX_INTERLACE_EXTRADATA)
+                             {
+                                 DEBUG_PRINT_HIGH("OMX_INTERLACE_EXTRADATA!");
+                                 client_extra_data_size += OMX_INTERLACE_EXTRADATA_SIZE;
+                             }
+                             if (client_extradata & OMX_PORTDEF_EXTRADATA)
+                             {
+                                 client_extra_data_size += OMX_PORTDEF_EXTRADATA_SIZE;
+                                 DEBUG_PRINT_HIGH("Smooth streaming enabled extra_data_size=%d",
+                                       client_extra_data_size);
+                             }
+                             if (client_extra_data_size)
+                             {
+                                 client_extra_data_size += sizeof(OMX_OTHER_EXTRADATATYPE); //Space for terminator
+                             }
+                             drv_ctx.op_buf.buffer_size = prop.uProperty.sOpBuffReq.nSize + client_extra_data_size;
+                         }
+                         else
+                         {
+                           DEBUG_PRINT_ERROR("SwVdec_GetProperty failed (%d)", sRet);
+                           eRet = OMX_ErrorUndefined;
+                           break;
+                         }
+
+                         /* set the buffer requirement to sw vdec */
+                         prop.uProperty.sOpBuffReq.nSize = drv_ctx.op_buf.buffer_size;
+                         prop.uProperty.sOpBuffReq.nMaxCount = drv_ctx.op_buf.actualcount;
+                         prop.uProperty.sOpBuffReq.nMinCount = drv_ctx.op_buf.mincount;
+
+                         prop.ePropId = SWVDEC_PROP_ID_OPBUFFREQ;
+                         sRet = SwVdec_SetProperty(m_pSwVdec, &prop);
+                         if (SWVDEC_S_SUCCESS != sRet)
+                         {
+                           DEBUG_PRINT_ERROR("SwVdec_SetProperty failed (%d)", sRet);
+                           eRet = OMX_ErrorUndefined;
+                           break;
+                         }
+                     }
+                 }
+            }
+            else
+            {
+                DEBUG_PRINT_ERROR(
+                        "Prepare for adaptive playback supported only on output port");
+                eRet = OMX_ErrorBadParameter;
+            }
+            break;
         }
 #endif
     default:
@@ -7040,7 +7168,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     }
     unsigned int nPortIndex = buffer - m_out_mem_ptr;
     OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pPMEMInfo = NULL;
-    if (nPortIndex >= (int)drv_ctx.op_buf.actualcount)
+    if (nPortIndex >= drv_ctx.op_buf.actualcount)
     {
         DEBUG_PRINT_ERROR("[FBD] ERROR in port idx(%d), act cnt(%d)",
                nPortIndex, (int)drv_ctx.op_buf.actualcount);
@@ -9711,41 +9839,48 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req_swvdec()
         }
     }
 
-    property.ePropId = SWVDEC_PROP_ID_OPBUFFREQ;
-    SWVDEC_STATUS sRet = SwVdec_GetProperty(m_pSwVdec, &property);
-    if (sRet != SWVDEC_S_SUCCESS)
+    /* buffer requirement for out*/
+    if ( (false == m_smoothstreaming_mode) ||
+         ((drv_ctx.video_resolution.frame_height > m_smoothstreaming_width) &&
+          (drv_ctx.video_resolution.frame_width  > m_smoothstreaming_height))
+       )
     {
-        return OMX_ErrorUndefined;
-    }
-    else
-    {
-        int client_extra_data_size = 0;
-        if (client_extradata & OMX_FRAMEINFO_EXTRADATA)
+        property.ePropId = SWVDEC_PROP_ID_OPBUFFREQ;
+        SWVDEC_STATUS sRet = SwVdec_GetProperty(m_pSwVdec, &property);
+        if (sRet != SWVDEC_S_SUCCESS)
         {
-            DEBUG_PRINT_HIGH("Frame info extra data enabled!");
-            client_extra_data_size += OMX_FRAMEINFO_EXTRADATA_SIZE;
+            return OMX_ErrorUndefined;
         }
-        if (client_extradata & OMX_INTERLACE_EXTRADATA)
+        else
         {
-            DEBUG_PRINT_HIGH("OMX_INTERLACE_EXTRADATA!");
-            client_extra_data_size += OMX_INTERLACE_EXTRADATA_SIZE;
+            int client_extra_data_size = 0;
+            if (client_extradata & OMX_FRAMEINFO_EXTRADATA)
+            {
+                DEBUG_PRINT_HIGH("Frame info extra data enabled!");
+                client_extra_data_size += OMX_FRAMEINFO_EXTRADATA_SIZE;
+            }
+            if (client_extradata & OMX_INTERLACE_EXTRADATA)
+            {
+                DEBUG_PRINT_HIGH("OMX_INTERLACE_EXTRADATA!");
+                client_extra_data_size += OMX_INTERLACE_EXTRADATA_SIZE;
+            }
+            if (client_extradata & OMX_PORTDEF_EXTRADATA)
+            {
+                client_extra_data_size += OMX_PORTDEF_EXTRADATA_SIZE;
+                DEBUG_PRINT_HIGH("Smooth streaming enabled extra_data_size=%d",
+                    client_extra_data_size);
+            }
+            if (client_extra_data_size)
+            {
+                client_extra_data_size += sizeof(OMX_OTHER_EXTRADATATYPE); //Space for terminator
+            }
+            drv_ctx.op_buf.buffer_size = property.uProperty.sOpBuffReq.nSize + client_extra_data_size;
+            drv_ctx.op_buf.mincount = property.uProperty.sOpBuffReq.nMinCount;
+            drv_ctx.op_buf.actualcount = property.uProperty.sOpBuffReq.nMinCount;
+            DEBUG_PRINT_HIGH("swvdec opbuf size %lu extradata size %d total size %d count %d",
+                property.uProperty.sOpBuffReq.nSize, client_extra_data_size,
+                drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.actualcount);
         }
-        if (client_extradata & OMX_PORTDEF_EXTRADATA)
-        {
-            client_extra_data_size += OMX_PORTDEF_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("Smooth streaming enabled extra_data_size=%d",
-                client_extra_data_size);
-        }
-        if (client_extra_data_size)
-        {
-            client_extra_data_size += sizeof(OMX_OTHER_EXTRADATATYPE); //Space for terminator
-        }
-        drv_ctx.op_buf.buffer_size = property.uProperty.sOpBuffReq.nSize + client_extra_data_size;
-        drv_ctx.op_buf.mincount = property.uProperty.sOpBuffReq.nMinCount;
-        drv_ctx.op_buf.actualcount = property.uProperty.sOpBuffReq.nMinCount;
-        DEBUG_PRINT_HIGH("swvdec opbuf size %lu extradata size %d total size %d count %d",
-            property.uProperty.sOpBuffReq.nSize, client_extra_data_size,
-            drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.actualcount);
     }
 
     if (m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
@@ -10463,6 +10598,27 @@ void omx_vdec::swvdec_fill_buffer_done(SWVDEC_OPBUFFER *m_pSwVdecOpBuffer)
     bufHdr->nFlags = m_pSwVdecOpBuffer->nFlags;
     bufHdr->nTimeStamp = m_pSwVdecOpBuffer->nOpTimestamp;
 
+    if (m_pSwVdecOpBuffer->nFilledLen != 0)
+    {
+        if ((m_pSwVdecOpBuffer->nHeight != rectangle.nHeight) ||
+            (m_pSwVdecOpBuffer->nWidth != rectangle.nWidth))
+        {
+            //drv_ctx.video_resolution.frame_height = m_pSwVdecOpBuffer->nHeight;
+            //drv_ctx.video_resolution.frame_width = m_pSwVdecOpBuffer->nWidth;
+
+            rectangle.nLeft = 0;
+            rectangle.nTop = 0;
+            rectangle.nWidth = m_pSwVdecOpBuffer->nWidth;
+            rectangle.nHeight = m_pSwVdecOpBuffer->nHeight;
+
+            DEBUG_PRINT_HIGH("swvdec_fill_buffer_done rectangle.WxH: %lu %lu",
+                rectangle.nWidth, rectangle.nHeight);
+
+            post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexConfigCommonOutputCrop,
+                                   OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+        }
+    }
+
     if (dynamic_buf_mode && m_pSwVdecOpBuffer->nFilledLen)
     {
         bufHdr->nFilledLen = bufHdr->nAllocLen;
@@ -10508,22 +10664,24 @@ void omx_vdec::swvdec_handle_event(SWVDEC_EVENTHANDLER *pEvent)
     case SWVDEC_RECONFIG_SUFFICIENT_RESOURCES:
         {
             DEBUG_PRINT_HIGH("swvdec port settings changed info");
+            if (false == m_smoothstreaming_mode)
+            {
+                // get_buffer_req and populate port defn structure
+                SWVDEC_PROP prop;
+                prop.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
+                SwVdec_GetProperty(m_pSwVdec, &prop);
 
-            // get_buffer_req and populate port defn structure
-            SWVDEC_PROP prop;
-            prop.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
-            SwVdec_GetProperty(m_pSwVdec, &prop);
+                update_resolution(prop.uProperty.sDimensions.nWidth,
+                    prop.uProperty.sDimensions.nHeight,
+                    prop.uProperty.sDimensions.nWidth,
+                    prop.uProperty.sDimensions.nHeight);
+                drv_ctx.video_resolution.stride = (prop.uProperty.sDimensions.nWidth + 127) & (~127);
+                drv_ctx.video_resolution.scan_lines = (prop.uProperty.sDimensions.nHeight + 31) & (~31);
 
-            update_resolution(prop.uProperty.sDimensions.nWidth,
-                prop.uProperty.sDimensions.nHeight,
-                prop.uProperty.sDimensions.nWidth,
-                prop.uProperty.sDimensions.nHeight);
-            drv_ctx.video_resolution.stride = (prop.uProperty.sDimensions.nWidth + 127) & (~127);
-            drv_ctx.video_resolution.scan_lines = (prop.uProperty.sDimensions.nHeight + 31) & (~31);
-
-            m_port_def.nPortIndex = 1;
-            update_portdef(&m_port_def);
-            post_event ((unsigned)NULL, VDEC_S_SUCCESS, OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG);
+                m_port_def.nPortIndex = 1;
+                update_portdef(&m_port_def);
+                post_event ((unsigned)NULL, VDEC_S_SUCCESS, OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG);
+            }
         }
         break;
 
@@ -10572,7 +10730,7 @@ void omx_vdec::swvdec_handle_event(SWVDEC_EVENTHANDLER *pEvent)
             unsigned long idx = (unsigned long)pOpBuffer->pClientBufferData;
             DEBUG_PRINT_HIGH("swvdec release buffer reference idx %lu", idx);
 
-            if (idx >= 0 && idx < drv_ctx.op_buf.actualcount)
+            if (idx < drv_ctx.op_buf.actualcount)
             {
                 DEBUG_PRINT_LOW("swvdec REFERENCE RELEASE EVENT fd = %d offset = %u buf idx %lu pBuffer %p",
                     drv_ctx.ptr_outputbuffer[idx].pmem_fd, drv_ctx.ptr_outputbuffer[idx].offset,
