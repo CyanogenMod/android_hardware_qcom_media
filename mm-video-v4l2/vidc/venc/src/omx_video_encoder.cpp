@@ -423,6 +423,10 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sParamLTRMode.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sParamLTRMode.eLTRMode = QOMX_VIDEO_LTRMode_Disable;
 
+    OMX_INIT_STRUCT(&m_sParamLTRCount, QOMX_VIDEO_PARAM_LTRCOUNT_TYPE);
+    m_sParamLTRCount.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sParamLTRCount.nCount = 0;
+
     OMX_INIT_STRUCT(&m_sConfigDeinterlace, OMX_VIDEO_CONFIG_DEINTERLACE);
     m_sConfigDeinterlace.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sConfigDeinterlace.nEnable = OMX_FALSE;
@@ -1622,7 +1626,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
        case QOMX_IndexConfigVideoLTRUse:
             {
                 QOMX_VIDEO_CONFIG_LTRUSE_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRUSE_TYPE*)configData;
-                if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRUse)) {
+                if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRUse)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting LTR use failed");
                     return OMX_ErrorUnsupportedSetting;
                 }
@@ -1632,8 +1636,10 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
         case QOMX_IndexConfigVideoLTRMark:
             {
                 QOMX_VIDEO_CONFIG_LTRMARK_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRMARK_TYPE*)configData;
-                DEBUG_PRINT_ERROR("Setting ltr mark is not supported");
-                return OMX_ErrorUnsupportedSetting;
+                if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRMark)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting LTR mark failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
                 break;
             }
         case OMX_IndexConfigVideoAVCIntraPeriod:
