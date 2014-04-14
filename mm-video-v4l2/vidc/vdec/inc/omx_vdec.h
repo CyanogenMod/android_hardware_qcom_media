@@ -1029,6 +1029,30 @@ class omx_vdec: public qc_omx_component
         perf_control m_perf_control;
 
         volatile int32_t m_queued_codec_config_count;
+        static OMX_COLOR_FORMATTYPE getPreferredColorFormatNonSurfaceMode(OMX_U32 index) {
+            //On Android, we default to standard YUV formats for non-surface use-cases
+            //where apps prefer known color formats.
+            OMX_COLOR_FORMATTYPE formatsNonSurfaceMode[] = {
+                [0] = OMX_COLOR_FormatYUV420SemiPlanar,
+                [1] = OMX_COLOR_FormatYUV420Planar,
+                [2] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
+                [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
+            };
+            return (index < sizeof(formatsNonSurfaceMode) / sizeof(OMX_COLOR_FORMATTYPE)) ?
+                formatsNonSurfaceMode[index] : OMX_COLOR_FormatMax;
+        }
+
+        static OMX_COLOR_FORMATTYPE getPreferredColorFormatDefaultMode(OMX_U32 index) {
+            //for surface mode (normal playback), advertise native/accelerated formats first
+            OMX_COLOR_FORMATTYPE formatsDefault[] = {
+                [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
+                [1] = OMX_COLOR_FormatYUV420Planar,
+                [2] = OMX_COLOR_FormatYUV420SemiPlanar,
+                [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
+            };
+            return (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?
+                formatsDefault[index] : OMX_COLOR_FormatMax;
+        }
 };
 
 #ifdef _MSM8974_
