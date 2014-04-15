@@ -1161,6 +1161,12 @@ status_t DashCodec::configureCodec(
             ALOGV("[%s] storeMetaDataInBuffers succeeded", mComponentName.c_str());
             mStoreMetaDataInOutputBuffers = true;
         }
+
+        int32_t push;
+        if (msg->findInt32("push-blank-buffers-on-shutdown", &push)
+                && push != 0) {
+            mFlags |= kFlagPushBlankBuffersToNativeWindowOnShutdown;
+        }
       }
     if (!strncasecmp(mime, "video/", 6)) {
         if (encoder) {
@@ -2552,7 +2558,7 @@ void DashCodec::signalError(OMX_ERRORTYPE error, status_t internalError) {
     notify->post();
 }
 
-status_t DashCodec::pushBlankBuffersToNativeWindow() {
+status_t DashCodec::PushBlankBuffersToNativeWindow(sp<ANativeWindow> nativeWindow) {
     status_t err = NO_ERROR;
     ANativeWindowBuffer* anb = NULL;
     int numBufs = 0;
@@ -2561,7 +2567,7 @@ status_t DashCodec::pushBlankBuffersToNativeWindow() {
     // We need to reconnect to the ANativeWindow as a CPU client to ensure that
     // no frames get dropped by SurfaceFlinger assuming that these are video
     // frames.
-    err = native_window_api_disconnect(mNativeWindow.get(),
+    err = native_window_api_disconnect(nativeWindow.get(),
             NATIVE_WINDOW_API_MEDIA);
     if (err != NO_ERROR) {
         ALOGE("error pushing blank frames: api_disconnect failed: %s (%d)",
@@ -2569,7 +2575,7 @@ status_t DashCodec::pushBlankBuffersToNativeWindow() {
         return err;
     }
 
-    err = native_window_api_connect(mNativeWindow.get(),
+    err = native_window_api_connect(nativeWindow.get(),
             NATIVE_WINDOW_API_CPU);
     if (err != NO_ERROR) {
         ALOGE("error pushing blank frames: api_connect failed: %s (%d)",
@@ -2577,7 +2583,7 @@ status_t DashCodec::pushBlankBuffersToNativeWindow() {
         return err;
     }
 
-    err = native_window_set_buffers_geometry(mNativeWindow.get(), 1, 1,
+    err = native_window_set_buffers_geometry(nativeWindow.get(), 1, 1,
             HAL_PIXEL_FORMAT_RGBX_8888);
     if (err != NO_ERROR) {
         ALOGE("error pushing blank frames: set_buffers_geometry failed: %s (%d)",
@@ -2585,7 +2591,15 @@ status_t DashCodec::pushBlankBuffersToNativeWindow() {
         goto error;
     }
 
-    err = native_window_set_usage(mNativeWindow.get(),
+    err = native_window_set_scaling_mode(nativeWindow.get(),
+                NATIVE_WINDOW_SCALING_MODE_SCALE_TO_WINDOW);
+    if (err != NO_ERROR) {
+        ALOGE("error pushing blank_frames: set_scaling_mode failed: %s (%d)",
+              strerror(-err), -err);
+        goto error;
+    }
+
+    err = native_window_set_usage(nativeWindow.get(),
             GRALLOC_USAGE_SW_WRITE_OFTEN);
     if (err != NO_ERROR) {
         ALOGE("error pushing blank frames: set_usage failed: %s (%d)",
@@ -2593,7 +2607,7 @@ status_t DashCodec::pushBlankBuffersToNativeWindow() {
         goto error;
     }
 
-    err = mNativeWindow->query(mNativeWindow.get(),
+    err = nativeWindow->query(nativeWindow.get(),
             NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS, &minUndequeuedBufs);
     if (err != NO_ERROR) {
         ALOGE("error pushing blank frames: MIN_UNDEQUEUED_BUFFERS query "
@@ -2602,7 +2616,7 @@ status_t DashCodec::pushBlankBuffersToNativeWindow() {
     }
 
     numBufs = minUndequeuedBufs + 1;
-    err = native_window_set_buffer_count(mNativeWindow.get(), numBufs);
+    err = native_window_set_buffer_count(nativeWindow.get(), numBufs);
     if (err != NO_ERROR) {
         ALOGE("error pushing blank frames: set_buffer_count failed: %s (%d)",
                 strerror(-err), -err);
@@ -2615,7 +2629,7 @@ status_t DashCodec::pushBlankBuffersToNativeWindow() {
     // guaranteed NOT to be currently displayed.
     for (int i = 0; i < numBufs + 1; i++) {
         int fenceFd = -1;
-        err = native_window_dequeue_buffer_and_wait(mNativeWindow.get(), &anb);
+        err = native_window_dequeue_buffer_and_wait(nativeWindow.get(), &anb);
         if (err != NO_ERROR) {
             ALOGE("error pushing blank frames: dequeueBuffer failed: %s (%d)",
                     strerror(-err), -err);
@@ -2642,7 +2656,7 @@ status_t DashCodec::pushBlankBuffersToNativeWindow() {
             goto error;
         }
 
-        err = mNativeWindow->queueBuffer(mNativeWindow.get(),
+        err = nativeWindow->queueBuffer(nativeWindow.get(),
                 buf->getNativeBuffer(), -1);
         if (err != NO_ERROR) {
             ALOGE("error pushing blank frames: queueBuffer failed: %s (%d)",
@@ -2658,18 +2672,18 @@ error:
     if (err != NO_ERROR) {
         // Clean up after an error.
         if (anb != NULL) {
-            mNativeWindow->cancelBuffer(mNativeWindow.get(), anb, -1);
+            nativeWindow->cancelBuffer(nativeWindow.get(), anb, -1);
         }
 
-        native_window_api_disconnect(mNativeWindow.get(),
+        native_window_api_disconnect(nativeWindow.get(),
                 NATIVE_WINDOW_API_CPU);
-        native_window_api_connect(mNativeWindow.get(),
+        native_window_api_connect(nativeWindow.get(),
                 NATIVE_WINDOW_API_MEDIA);
 
         return err;
     } else {
         // Clean up after success.
-        err = native_window_api_disconnect(mNativeWindow.get(),
+        err = native_window_api_disconnect(nativeWindow.get(),
                 NATIVE_WINDOW_API_CPU);
         if (err != NO_ERROR) {
             ALOGE("error pushing blank frames: api_disconnect failed: %s (%d)",
@@ -2677,7 +2691,7 @@ error:
             return err;
         }
 
-        err = native_window_api_connect(mNativeWindow.get(),
+        err = native_window_api_connect(nativeWindow.get(),
                 NATIVE_WINDOW_API_MEDIA);
         if (err != NO_ERROR) {
             ALOGE("error pushing blank frames: api_connect failed: %s (%d)",
@@ -3492,6 +3506,7 @@ bool DashCodec::UninitializedState::onAllocateComponent(const sp<AMessage> &msg)
 
     if (componentName.endsWith(".secure")) {
         mCodec->mFlags |= kFlagIsSecure;
+        mCodec->mFlags |= kFlagPushBlankBuffersToNativeWindowOnShutdown;
     }
 
     mCodec->mQuirks = quirks;
@@ -4152,12 +4167,13 @@ void DashCodec::ExecutingToIdleState::changeStateIfWeOwnAllBuffers() {
         CHECK_EQ(mCodec->freeBuffersOnPort(kPortIndexInput), (status_t)OK);
         CHECK_EQ(mCodec->freeBuffersOnPort(kPortIndexOutput), (status_t)OK);
 
-        if (mCodec->mFlags & kFlagIsSecure && mCodec->mNativeWindow != NULL) {
+        if (mCodec->mFlags & kFlagPushBlankBuffersToNativeWindowOnShutdown
+               && mCodec->mNativeWindow != NULL) {
             // We push enough 1x1 blank buffers to ensure that one of
             // them has made it to the display.  This allows the OMX
             // component teardown to zero out any protected buffers
             // without the risk of scanning out one of those buffers.
-            mCodec->pushBlankBuffersToNativeWindow();
+            PushBlankBuffersToNativeWindow(mCodec->mNativeWindow);
         }
 
         mCodec->changeState(mCodec->mIdleToLoadedState);

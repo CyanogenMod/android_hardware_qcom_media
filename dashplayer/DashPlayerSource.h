@@ -100,6 +100,10 @@ struct DashPlayer::Source : public RefBase {
       return INVALID_OPERATION;
     }
 
+    virtual status_t getTrackInfo(Parcel *reply) {
+      return INVALID_OPERATION;
+    }
+
     virtual bool isPlaybackDiscontinued() {
       return false;
     }
