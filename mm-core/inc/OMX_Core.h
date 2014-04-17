@@ -392,7 +392,16 @@ typedef struct OMX_PARAM_COMPONENTROLETYPE {
  */
 #define OMX_BUFFERFLAG_CODECCONFIG 0x00000080
 
-
+/*
+* OMX_BUFFERFLAG_READONLY: This flag is set when a component emitting the
+* buffer on an output port or the IL client wishes to identify the buffer
+* payload contents to be read-only. An IL client or an input port
+* shall not alter the contents of the buffer. This flag shall only be
+* cleared by the originator of the buffer when the buffer is returned.
+* For tunneled ports, the usage of this flag shall be allowed only if the
+* components negotiated a read-only tunnel
+*/
+#define OMX_BUFFERFLAG_READONLY 0x00000200
 
 /** @ingroup buf */
 typedef struct OMX_BUFFERHEADERTYPE

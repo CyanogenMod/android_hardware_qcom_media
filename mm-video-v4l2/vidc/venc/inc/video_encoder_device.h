@@ -73,17 +73,22 @@ class venc_dev
         bool venc_set_config(void *configData, OMX_INDEXTYPE index);
         bool venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel);
         bool venc_max_allowed_bitrate_check(OMX_U32 nTargetBitrate);
-        bool venc_get_seq_hdr(void *, unsigned, unsigned *);
+        bool venc_get_seq_hdr(void *, unsigned, OMX_U32 *);
         bool venc_loaded_start(void);
         bool venc_loaded_stop(void);
         bool venc_loaded_start_done(void);
         bool venc_loaded_stop_done(void);
+        bool venc_get_output_log_flag();
+        int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
+        int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, void* pmem_data_buf, int framelen);
+        int venc_extradata_log_buffers(char *buffer_addr);
         bool venc_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *);
         OMX_U32 m_nDriver_fd;
         bool m_profile_set;
         bool m_level_set;
         pthread_mutex_t loaded_start_stop_mlock;
         pthread_cond_t loaded_start_stop_cond;
+        struct venc_debug_cap m_debug;
 
         struct recon_buffer {
             unsigned char* virtual_address;
