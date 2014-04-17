@@ -1541,6 +1541,20 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
 
                 break;
             }
+        case QOMX_IndexParamVideoInitialQp:
+            {
+                QOMX_EXTNINDEX_VIDEO_INITIALQP * initqp =
+                    (QOMX_EXTNINDEX_VIDEO_INITIALQP *)paramData;
+                 if (initqp->bEnableInitQp) {
+                    DEBUG_PRINT_LOW("Enable initial QP: %d", initqp->bEnableInitQp);
+                    if(venc_enable_initial_qp(initqp) == false) {
+                       DEBUG_PRINT_ERROR("ERROR: Failed to enable initial QP");
+                       return OMX_ErrorUnsupportedSetting;
+                     }
+                 } else
+                    DEBUG_PRINT_ERROR("ERROR: setting QOMX_IndexParamVideoEnableInitialQp");
+                break;
+            }
         case OMX_QcomIndexParamVideoQPRange:
             {
                 DEBUG_PRINT_LOW("venc_set_param:OMX_QcomIndexParamVideoQPRange\n");
@@ -2080,7 +2094,10 @@ void venc_dev::venc_config_print()
             bitrate.target_bitrate, rate_ctrl.rcmode, intra_period.num_pframes);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: qpI: %ld, qpP: %ld, qpb: %ld",
-            session_qp.iframeqp, session_qp.pframqp,session_qp.bframqp);
+            session_qp.iframeqp, session_qp.pframeqp, session_qp.bframeqp);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Init_qpI: %ld, Init_qpP: %ld, Init_qpb: %ld",
+            init_qp.iframeqp, init_qp.pframeqp, init_qp.bframeqp);
 
     DEBUG_PRINT_HIGH("\nENC_CONFIG: minQP: %d, maxQP: %d",
             session_qp_values.minqp, session_qp_values.maxqp);
@@ -2644,6 +2661,59 @@ bool venc_dev::venc_set_slice_delivery_mode(OMX_U32 enable)
     return true;
 }
 
+bool venc_dev::venc_enable_initial_qp(QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp)
+{
+    int rc;
+    struct v4l2_control control;
+    struct v4l2_ext_control ctrl[4];
+    struct v4l2_ext_controls controls;
+
+    if (((initqp->nQpI >= 1) && (initqp->nQpI <= 51)) &&
+        ((initqp->nQpP >= 1) && (initqp->nQpP <= 51)) &&
+        ((initqp->nQpB >= 1) && (initqp->nQpB <= 51))) {
+        ctrl[0].id = V4L2_CID_MPEG_VIDC_VIDEO_I_FRAME_QP;
+        ctrl[0].value = initqp->nQpI;
+        ctrl[1].id = V4L2_CID_MPEG_VIDC_VIDEO_P_FRAME_QP;
+        ctrl[1].value = initqp->nQpP;
+        ctrl[2].id = V4L2_CID_MPEG_VIDC_VIDEO_B_FRAME_QP;
+        ctrl[2].value = initqp->nQpB;
+        ctrl[3].id = V4L2_CID_MPEG_VIDC_VIDEO_ENABLE_INITIAL_QP;
+        ctrl[3].value = initqp->bEnableInitQp;
+
+        controls.count = 4;
+        controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+        controls.controls = ctrl;
+
+        DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x val=%d, id=%x val=%d, id=%x val=%d, id=%x val=%d",
+                        controls.controls[0].id, controls.controls[0].value,
+                        controls.controls[1].id, controls.controls[1].value,
+                        controls.controls[2].id, controls.controls[2].value,
+                        controls.controls[3].id, controls.controls[3].value);
+
+        rc = ioctl(m_nDriver_fd, VIDIOC_S_EXT_CTRLS, &controls);
+        if (rc) {
+            DEBUG_PRINT_ERROR("Failed to set session_qp, errno:%d", errno);
+            return false;
+        }
+
+        init_qp.iframeqp = initqp->nQpI;
+        init_qp.pframeqp = initqp->nQpP;
+        init_qp.bframeqp = initqp->nQpB;
+        init_qp.enableinitqp = initqp->bEnableInitQp;
+
+        DEBUG_PRINT_LOW("Success IOCTL set control for id=%x val=%d, id=%x val=%d, id=%x val=%d, id=%x val=%d",
+                        controls.controls[0].id, controls.controls[0].value,
+                        controls.controls[1].id, controls.controls[1].value,
+                        controls.controls[2].id, controls.controls[2].value,
+                        controls.controls[3].id, controls.controls[3].value);
+        return true;
+    } else {
+        DEBUG_PRINT_ERROR("QP Values are out of valid range (1-51) I: %d, P: %d, B: %d",
+                    initqp->nQpI, initqp->nQpP, initqp->nQpB);
+        return false;
+    }
+}
+
 bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U32 b_frame_qp)
 {
     int rc;
@@ -2676,7 +2746,7 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U3
 
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
 
-    session_qp.pframqp = control.value;
+    session_qp.pframeqp = control.value;
 
     if ((codec_profile.profile == V4L2_MPEG_VIDEO_H264_PROFILE_MAIN) ||
             (codec_profile.profile == V4L2_MPEG_VIDEO_H264_PROFILE_HIGH)) {
@@ -2694,7 +2764,7 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U3
 
         DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
 
-        session_qp.bframqp = control.value;
+        session_qp.bframeqp = control.value;
     }
 
     return true;
