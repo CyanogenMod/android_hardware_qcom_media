@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -52,6 +52,7 @@ enum {
     kKeyFileFormat           = 'ffmt',  // cstring
 
     kkeyAacFormatAdif        = 'adif',  // bool (int32_t)
+    kKeyInterlace            = 'intL',  // bool (int32_t)
     kkeyAacFormatLtp         = 'ltp',
 
 
@@ -62,6 +63,7 @@ enum {
     kKeyUseArbitraryMode     = 'ArbM',  //bool (int32_t)
     kKeySmoothStreaming      = 'ESmS',  //bool (int32_t)
     kKeyHFR                  = 'hfr ',  // int32_t
+    kKeyHSR                  = 'hsr ',  // int32_t
 };
 
 enum {

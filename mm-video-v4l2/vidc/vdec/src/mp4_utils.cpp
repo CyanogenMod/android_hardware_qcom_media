@@ -27,20 +27,13 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #include "mp4_utils.h"
 //#include "omx_vdec.h"
+#include "vidc_debug.h"
 # include <stdio.h>
 #ifdef _ANDROID_
 extern "C" {
 #include<utils/Log.h>
 }
 #endif//_ANDROID_
-
-#undef DEBUG_PRINT_LOW
-#undef DEBUG_PRINT_HIGH
-#undef DEBUG_PRINT_ERROR
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_HIGH ALOGV
-#define DEBUG_PRINT_ERROR ALOGE
 
 MP4_Utils::MP4_Utils()
 {
@@ -86,7 +79,7 @@ uint32 MP4_Utils::read_bit_field(posInfoType * posPtr, uint32 size)
         }
     }
 
-    DEBUG_PRINT_LOW("Unable to find code 0x%x\n", referenceCode);
+    DEBUG_PRINT_LOW("Unable to find code 0x%x", referenceCode);
     return NULL;
 }
 bool MP4_Utils::parseHeader(mp4StreamType * psBits)

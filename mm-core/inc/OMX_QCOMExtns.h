@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2009-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -97,6 +97,8 @@ struct OMX_QCOM_PARAM_MEMMAPENTRYTYPE
 #define QOMX_VIDEO_BUFFERFLAG_BFRAME 0x00100000
 
 #define QOMX_VIDEO_BUFFERFLAG_EOSEQ  0x00200000
+
+#define QOMX_VIDEO_BUFFERFLAG_MBAFF  0x00400000
 
 #define OMX_QCOM_PORTDEFN_EXTN   "OMX.QCOM.index.param.portdefn"
 /* Allowed APIs on the above Index: OMX_GetParameter() and OMX_SetParameter() */
@@ -213,9 +215,12 @@ struct OMX_QCOM_PLATFORMPRIVATE_EXTN
 typedef struct OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO
 {
     /** pmem file descriptor */
-    OMX_U32 pmem_fd;
+    unsigned long pmem_fd;
     /** Offset from pmem device base address */
     OMX_U32 offset;
+    OMX_U32 size;
+    OMX_U32 mapped_size;
+    OMX_PTR buffer;
 }OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO;
 
 typedef struct OMX_QCOM_PLATFORM_PRIVATE_ENTRY
@@ -271,6 +276,7 @@ enum OMX_QCOM_COLOR_FORMATTYPE
     QOMX_COLOR_FormatYUV420PackedSemiPlanar16m2ka,
     QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka,
     QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
+    QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
     QOMX_COLOR_FormatAndroidOpaque = (OMX_COLOR_FORMATTYPE) OMX_COLOR_FormatVendorStartUnused  + 0x789,
 };
 
@@ -285,7 +291,8 @@ enum OMX_QCOM_VIDEO_CODINGTYPE
     QOMX_VIDEO_CodingSpark = 0x7FA30C03,     /**< Value when coding is Sorenson Spark */
     QOMX_VIDEO_CodingVp = 0x7FA30C04,
     QOMX_VIDEO_CodingVp8 = 0x7FA30C05,
-    QOMX_VIDEO_CodingHevc = 0x7FA30C06
+    QOMX_VIDEO_CodingHevc = 0x7FA30C06,
+    QOMX_VIDEO_CodingMVC = 0x7FA30C07,
 };
 
 enum OMX_QCOM_EXTN_INDEXTYPE
@@ -340,6 +347,7 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     OMX_QcomIndexParamVideoDecoderPictureOrder = 0x7F000010,
 
+    /* "OMX.QCOM.index.config.video.FramePackingInfo" */
     OMX_QcomIndexConfigVideoFramePackingArrangement = 0x7F000011,
 
     OMX_QcomIndexParamConcealMBMapExtraData = 0x7F000012,
@@ -375,6 +383,7 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     OMX_QcomIndexEnableSliceDeliveryMode = 0x7F00001F,
 
+    /* "OMX.QCOM.index.param.video.ExtnUserExtraData" */
     OMX_QcomIndexEnableExtnUserData = 0x7F000020,
 
     /*"OMX.QCOM.index.param.video.EnableSmoothStreaming"*/
@@ -403,12 +412,95 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /*"OMX.QCOM.index.config.video.LTRMark"*/
     QOMX_IndexConfigVideoLTRMark = 0x7F000029,
 
+    /* OMX.google.android.index.prependSPSPPSToIDRFrames */
     OMX_QcomIndexParamSequenceHeaderWithIDR = 0x7F00002A,
 
-    OMX_QcomIndexParamEnableVUIStreamRestrictFlag = 0x7F00002B,
+    /* backwards compatibility */
+    OMX_QcomIndexParamEnableVUIStreamRestrictFlag = 0x7F10002B,
 
-    OMX_GoogleAndroidIndexPrepareForAdaptivePlayback = 0x7F00002C,
+    OMX_QcomIndexParamH264AUDelimiter = 0x7F00002B,
+
+    OMX_QcomIndexParamVideoDownScalar = 0x7F00002C,
+
+    /* "OMX.QCOM.index.param.video.FramePackingExtradata" */
+    OMX_QcomIndexParamVideoFramePackingExtradata = 0x7F00002D,
+
+    /* "OMX.QCOM.index.config.activeregiondetection" */
+    OMX_QcomIndexConfigActiveRegionDetection = 0x7F00002E,
+
+    /* "OMX.QCOM.index.config.activeregiondetectionstatus" */
+    OMX_QcomIndexConfigActiveRegionDetectionStatus = 0x7F00002F,
+
+    /* "OMX.QCOM.index.config.scalingmode" */
+    OMX_QcomIndexConfigScalingMode = 0x7F000030,
+
+    /* "OMX.QCOM.index.config.noisereduction" */
+    OMX_QcomIndexConfigNoiseReduction = 0x7F000031,
+
+    /* "OMX.QCOM.index.config.imageenhancement" */
+    OMX_QcomIndexConfigImageEnhancement = 0x7F000032,
+
+    /* google smooth-streaming support */
+    OMX_QcomIndexParamVideoAdaptivePlaybackMode = 0x7F000033,
+
+    /* H.264 MVC codec index */
+    QOMX_IndexParamVideoMvc = 0x7F000034,
+
+    /* "OMX.QCOM.index.param.video.QPExtradata" */
+    OMX_QcomIndexParamVideoQPExtraData = 0x7F000035,
+
+    /* "OMX.QCOM.index.param.video.InputBitsInfoExtradata" */
+    OMX_QcomIndexParamVideoInputBitsInfoExtraData = 0x7F000036,
+
+    /* VP8 Hierarchical P support */
+    OMX_QcomIndexHierarchicalStructure = 0x7F000037,
+
+    OMX_QcomIndexParamPerfLevel = 0x7F000038,
+
+    OMX_QcomIndexParamH264VUITimingInfo = 0x7F000039,
+
+    OMX_QcomIndexParamPeakBitrate = 0x7F00003A,
+
+    /*"OMX.QCOM.index.config.video.LTRMark"*/
+    OMX_QcomIndexConfigVideoLTRMark = QOMX_IndexConfigVideoLTRMark,
+
+    /* Enable InitialQP index */
+    QOMX_IndexParamVideoInitialQp = 0x7F00003B,
+
+    OMX_QcomIndexParamSetMVSearchrange = 0x7F00003C,
 };
+
+/**
+ * Initial QP parameter.  This structure is used to enable
+ * vendor specific extension to let client enable setting
+ * initial QP values to I P B Frames
+ *
+ * STRUCT MEMBERS:
+ *  nSize              : Size of Structure in bytes
+ *  nVersion           : OpenMAX IL specification version information
+ *  nPortIndex         : Index of the port to which this structure applies
+ *  OMX_U32 nQpI       : First Iframe QP
+ *  OMX_U32 nQpP       : First Pframe QP
+ *  OMX_U32 nQpB       : First Bframe QP
+ *  OMX_U32 bEnableInitQp : Bit field indicating which frame type(s) shall
+ *                             use the specified initial QP.
+ *                          Bit 0: Enable initial QP for I/IDR
+ *                                 and use value specified in nInitQpI
+ *                          Bit 1: Enable initial QP for P
+ *                                 and use value specified in nInitQpP
+ *                          Bit 2: Enable initial QP for B
+ *                                 and use value specified in nInitQpB
+ */
+
+typedef struct QOMX_EXTNINDEX_VIDEO_INITIALQP {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nQpI;
+    OMX_U32 nQpP;
+    OMX_U32 nQpB;
+    OMX_U32 bEnableInitQp;
+} QOMX_EXTNINDEX_VIDEO_INITIALQP;
 
 /**
  * Extension index parameter.  This structure is used to enable
@@ -707,6 +799,56 @@ typedef struct OMX_QCOM_VIDEO_CONFIG_QPRANGE
    OMX_U32 nMaxQP;          /** The number for maximum quantization parameter */
 } OMX_QCOM_VIDEO_CONFIG_QPRANGE;
 
+/**
+ * This structure describes the parameters for the
+ * OMX_QcomIndexParamH264AUDelimiter extension.  It enables/disables
+ * the AU delimiters in the H264 stream, which is used by WFD.
+ */
+typedef struct OMX_QCOM_VIDEO_CONFIG_H264_AUD
+{
+   OMX_U32 nSize;           /** Size of the structure in bytes */
+   OMX_VERSIONTYPE nVersion;/** OMX specification version information */
+   OMX_BOOL bEnable;        /** Enable/disable the setting */
+} OMX_QCOM_VIDEO_CONFIG_H264_AUD;
+
+typedef enum QOMX_VIDEO_PERF_LEVEL
+{
+    OMX_QCOM_PerfLevelNominal,
+    OMX_QCOM_PerfLevelTurbo
+} QOMX_VIDEO_PERF_LEVEL;
+
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QcomIndexParamPerfLevel extension. It will set
+ * the performance mode specified as QOMX_VIDEO_PERF_LEVEL.
+ */
+typedef struct OMX_QCOM_VIDEO_PARAM_PERF_LEVEL {
+    OMX_U32 nSize;                      /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;           /** OMX specification version information */
+    QOMX_VIDEO_PERF_LEVEL ePerfLevel;   /** Performance level */
+} OMX_QCOM_VIDEO_PARAM_PERF_LEVEL;
+
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QcomIndexParamH264VUITimingInfo extension. It
+ * will enable/disable the VUI timing info.
+ */
+typedef struct OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO {
+    OMX_U32 nSize;              /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;   /** OMX specification version information */
+    OMX_BOOL bEnable;           /** Enable/disable the setting */
+} OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO;
+
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QcomIndexParamPeakBitrate extension. It will
+ * set the peak bitrate specified by nPeakBitrate.
+ */
+typedef struct OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE {
+    OMX_U32 nSize;              /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;   /** OMX specification version information */
+    OMX_U32 nPeakBitrate;       /** Peak bitrate value */
+} OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE;
 
 typedef struct OMX_VENDOR_EXTRADATATYPE  {
     OMX_U32 nPortIndex;
@@ -818,6 +960,22 @@ typedef struct OMX_QCOM_FRAME_PACK_ARRANGEMENT
   OMX_U32 extension_flag;
 } OMX_QCOM_FRAME_PACK_ARRANGEMENT;
 
+typedef struct OMX_QCOM_EXTRADATA_QP
+{
+   OMX_U32        nQP;
+} OMX_QCOM_EXTRADATA_QP;
+
+typedef struct OMX_QCOM_EXTRADATA_BITS_INFO
+{
+   OMX_U32 header_bits;
+   OMX_U32 frame_bits;
+} OMX_QCOM_EXTRADATA_BITS_INFO;
+
+typedef struct OMX_QCOM_EXTRADATA_USERDATA {
+   OMX_U32 type;
+   OMX_U32 data[1];
+} OMX_QCOM_EXTRADATA_USERDATA;
+
 typedef struct OMX_QCOM_EXTRADATA_FRAMEINFO
 {
    // common frame meta data. interlace related info removed
@@ -828,6 +986,7 @@ typedef struct OMX_QCOM_EXTRADATA_FRAMEINFO
    OMX_QCOM_DISPLAY_ASPECT_RATIO displayAspectRatio;
    OMX_U32                nConcealedMacroblocks;
    OMX_U32                nFrameRate;
+   OMX_TICKS              nTimeStamp;
 } OMX_QCOM_EXTRADATA_FRAMEINFO;
 
 typedef struct OMX_QCOM_EXTRADATA_FRAMEDIMENSION
@@ -858,6 +1017,13 @@ typedef union OMX_QCOM_EXTRADATA_CODEC_DATA
    OMX_QCOM_VC1EXTRADATA vc1ExtraData;
 } OMX_QCOM_EXTRADATA_CODEC_DATA;
 
+typedef struct OMX_QCOM_EXTRADATA_MBINFO
+{
+   OMX_U32 nFormat;
+   OMX_U32 nDataSize;
+   OMX_U8  data[0];
+} OMX_QCOM_EXTRADATA_MBINFO;
+
 typedef enum OMX_QCOM_EXTRADATATYPE
 {
    OMX_ExtraDataFrameInfo = 0x7F000001,
@@ -871,6 +1037,10 @@ typedef enum OMX_QCOM_EXTRADATATYPE
    OMX_ExtraDataMP2ExtnData = 0x7F000009,
    OMX_ExtraDataMP2UserData = 0x7F00000a,
    OMX_ExtraDataVideoLTRInfo = 0x7F00000b,
+    OMX_ExtraDataFramePackingArrangement = 0x7F00000c,
+    OMX_ExtraDataQP =                      0x7F00000d,
+    OMX_ExtraDataInputBitsInfo =           0x7F00000e,
+    OMX_ExtraDataVideoEncoderMBInfo =      0x7F00000f,
 } OMX_QCOM_EXTRADATATYPE;
 
 typedef struct  OMX_STREAMINTERLACEFORMATTYPE {
@@ -892,6 +1062,59 @@ typedef enum OMX_INTERLACETYPE
 
 
 #define OMX_EXTRADATA_HEADER_SIZE 20
+
+/**
+ * AVC profile types, each profile indicates support for various
+ * performance bounds and different annexes.
+ */
+typedef enum QOMX_VIDEO_AVCPROFILETYPE {
+    QOMX_VIDEO_AVCProfileBaseline      = OMX_VIDEO_AVCProfileBaseline,
+    QOMX_VIDEO_AVCProfileMain          = OMX_VIDEO_AVCProfileMain,
+    QOMX_VIDEO_AVCProfileExtended      = OMX_VIDEO_AVCProfileExtended,
+    QOMX_VIDEO_AVCProfileHigh          = OMX_VIDEO_AVCProfileHigh,
+    QOMX_VIDEO_AVCProfileHigh10        = OMX_VIDEO_AVCProfileHigh10,
+    QOMX_VIDEO_AVCProfileHigh422       = OMX_VIDEO_AVCProfileHigh422,
+    QOMX_VIDEO_AVCProfileHigh444       = OMX_VIDEO_AVCProfileHigh444,
+    /* QCom specific profile indexes */
+    QOMX_VIDEO_AVCProfileConstrainedBaseline   = OMX_VIDEO_AVCProfileVendorStartUnused + 1,
+} QOMX_VIDEO_AVCPROFILETYPE;
+
+
+/**
+ * H.264 MVC Profiles
+  */
+typedef enum QOMX_VIDEO_MVCPROFILETYPE {
+    QOMX_VIDEO_MVCProfileStereoHigh = 0x1,
+    QOMX_VIDEO_MVCProfileMultiViewHigh = 0x2,
+    QOMX_VIDEO_MVCProfileKhronosExtensions = 0x6F000000,
+    QOMX_VIDEO_MVCProfileVendorStartUnused = 0x7F000000,
+    QOMX_VIDEO_MVCProfileMax = 0x7FFFFFFF
+} QOMX_VIDEO_MVCPROFILETYPE;
+
+/**
+ * H.264 MVC Levels
+  */
+typedef enum QOMX_VIDEO_MVCLEVELTYPE {
+    QOMX_VIDEO_MVCLevel1   = 0x01,     /**< Level 1 */
+    QOMX_VIDEO_MVCLevel1b  = 0x02,     /**< Level 1b */
+    QOMX_VIDEO_MVCLevel11  = 0x04,     /**< Level 1.1 */
+    QOMX_VIDEO_MVCLevel12  = 0x08,     /**< Level 1.2 */
+    QOMX_VIDEO_MVCLevel13  = 0x10,     /**< Level 1.3 */
+    QOMX_VIDEO_MVCLevel2   = 0x20,     /**< Level 2 */
+    QOMX_VIDEO_MVCLevel21  = 0x40,     /**< Level 2.1 */
+    QOMX_VIDEO_MVCLevel22  = 0x80,     /**< Level 2.2 */
+    QOMX_VIDEO_MVCLevel3   = 0x100,    /**< Level 3 */
+    QOMX_VIDEO_MVCLevel31  = 0x200,    /**< Level 3.1 */
+    QOMX_VIDEO_MVCLevel32  = 0x400,    /**< Level 3.2 */
+    QOMX_VIDEO_MVCLevel4   = 0x800,    /**< Level 4 */
+    QOMX_VIDEO_MVCLevel41  = 0x1000,   /**< Level 4.1 */
+    QOMX_VIDEO_MVCLevel42  = 0x2000,   /**< Level 4.2 */
+    QOMX_VIDEO_MVCLevel5   = 0x4000,   /**< Level 5 */
+    QOMX_VIDEO_MVCLevel51  = 0x8000,   /**< Level 5.1 */
+    QOMX_VIDEO_MVCLevelKhronosExtensions = 0x6F000000,
+    QOMX_VIDEO_MVCLevelVendorStartUnused = 0x7F000000,
+    QOMX_VIDEO_MVCLevelMax = 0x7FFFFFFF
+} QOMX_VIDEO_MVCLEVELTYPE;
 
 /**
  * DivX Versions
@@ -1060,9 +1283,22 @@ typedef struct QOMX_INDEXTIMESTAMPREORDER {
 	OMX_BOOL bEnable;
 } QOMX_INDEXTIMESTAMPREORDER;
 
+typedef struct QOMX_INDEXDOWNSCALAR {
+        OMX_U32 nSize;
+        OMX_VERSIONTYPE nVersion;
+        OMX_U32 nPortIndex;
+        OMX_BOOL bEnable;
+} QOMX_INDEXDOWNSCALAR;
+
+
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SYNCFRAMEDECODINGMODE "OMX.QCOM.index.param.video.SyncFrameDecodingMode"
 #define OMX_QCOM_INDEX_PARAM_INDEXEXTRADATA "OMX.QCOM.index.param.IndexExtraData"
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SLICEDELIVERYMODE "OMX.QCOM.index.param.SliceDeliveryMode"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_FRAMEPACKING_EXTRADATA "OMX.QCOM.index.param.video.FramePackingExtradata"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_QP_EXTRADATA "OMX.QCOM.index.param.video.QPExtradata"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_INPUTBITSINFO_EXTRADATA "OMX.QCOM.index.param.video.InputBitsInfoExtradata"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_EXTNUSER_EXTRADATA "OMX.QCOM.index.param.video.ExtnUserExtraData"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_FRAMEPACKING_INFO "OMX.QCOM.index.config.video.FramePackingInfo"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,
@@ -1099,6 +1335,116 @@ typedef struct QOMX_VUI_BITSTREAM_RESTRICT {
 typedef enum QOMX_VIDEO_PICTURETYPE {
     QOMX_VIDEO_PictureTypeIDR = OMX_VIDEO_PictureTypeVendorStartUnused + 0x1000
 } QOMX_VIDEO_PICTURETYPE;
+
+#define OMX_QCOM_INDEX_CONFIG_ACTIVE_REGION_DETECTION           "OMX.QCOM.index.config.activeregiondetection"
+#define OMX_QCOM_INDEX_CONFIG_ACTIVE_REGION_DETECTION_STATUS    "OMX.QCOM.index.config.activeregiondetectionstatus"
+#define OMX_QCOM_INDEX_CONFIG_SCALING_MODE                      "OMX.QCOM.index.config.scalingmode"
+#define OMX_QCOM_INDEX_CONFIG_NOISEREDUCTION                    "OMX.QCOM.index.config.noisereduction"
+#define OMX_QCOM_INDEX_CONFIG_IMAGEENHANCEMENT                  "OMX.QCOM.index.config.imageenhancement"
+#define OMX_QCOM_INDEX_PARAM_HELDBUFFERCOUNT                    "OMX.QCOM.index.param.HeldBufferCount" /**< reference: QOMX_HELDBUFFERCOUNTTYPE */
+
+
+typedef struct QOMX_RECTTYPE {
+    OMX_S32 nLeft;
+    OMX_S32 nTop;
+    OMX_U32 nWidth;
+    OMX_U32 nHeight;
+} QOMX_RECTTYPE;
+
+typedef struct QOMX_ACTIVEREGIONDETECTIONTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bEnable;
+    QOMX_RECTTYPE sROI;
+    OMX_U32 nNumExclusionRegions;
+    QOMX_RECTTYPE sExclusionRegions[1];
+} QOMX_ACTIVEREGIONDETECTIONTYPE;
+
+typedef struct QOMX_ACTIVEREGIONDETECTION_STATUSTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bDetected;
+    QOMX_RECTTYPE sDetectedRegion;
+} QOMX_ACTIVEREGIONDETECTION_STATUSTYPE;
+
+typedef enum QOMX_SCALE_MODETYPE {
+    QOMX_SCALE_MODE_Normal,
+    QOMX_SCALE_MODE_Anamorphic,
+    QOMX_SCALE_MODE_Max = 0x7FFFFFFF
+} QOMX_SCALE_MODETYPE;
+
+typedef struct QOMX_SCALINGMODETYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    QOMX_SCALE_MODETYPE  eScaleMode;
+} QOMX_SCALINGMODETYPE;
+
+typedef struct QOMX_NOISEREDUCTIONTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bEnable;
+    OMX_BOOL bAutoMode;
+    OMX_S32 nNoiseReduction;
+} QOMX_NOISEREDUCTIONTYPE;
+
+typedef struct QOMX_IMAGEENHANCEMENTTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_BOOL bEnable;
+    OMX_BOOL bAutoMode;
+    OMX_S32 nImageEnhancement;
+} QOMX_IMAGEENHANCEMENTTYPE;
+
+/*
+ * these are part of OMX1.2 but JB MR2 branch doesn't have them defined
+ * OMX_IndexParamInterlaceFormat
+ * OMX_INTERLACEFORMATTYPE
+ */
+#ifndef OMX_IndexParamInterlaceFormat
+#define OMX_IndexParamInterlaceFormat (0x7FF00000)
+typedef struct OMX_INTERLACEFORMATTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nFormat;
+    OMX_TICKS nTimeStamp;
+} OMX_INTERLACEFORMATTYPE;
+#endif
+
+/**
+ * This structure is used to indicate the maximum number of buffers
+ * that a port will hold during data flow.
+ *
+ * STRUCT MEMBERS:
+ *  nSize              : Size of the structure in bytes
+ *  nVersion           : OMX specification version info
+ *  nPortIndex         : Port that this structure applies to
+ *  nHeldBufferCount   : Read-only, maximum number of buffers that will be held
+ */
+typedef struct QOMX_HELDBUFFERCOUNTTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nHeldBufferCount;
+} QOMX_HELDBUFFERCOUNTTYPE;
+
+typedef enum QOMX_VIDEO_HIERARCHICALCODINGTYPE {
+    QOMX_HIERARCHICALCODING_P = 0x01,
+    QOMX_HIERARCHICALCODING_B = 0x02,
+} QOMX_VIDEO_HIERARCHICALCODINGTYPE;
+
+typedef struct QOMX_VIDEO_HIERARCHICALLAYERS {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nNumLayers;
+    QOMX_VIDEO_HIERARCHICALCODINGTYPE eHierarchicalCodingType;
+} QOMX_VIDEO_HIERARCHICALLAYERS;
+
 
 #ifdef __cplusplus
 }

@@ -39,7 +39,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "qc_omx_common.h"        // OMX API
 #include <string.h>
 
-#define OMX_COMP_MAX_INST 4
+#define OMX_COMP_MAX_INST 16
 
 typedef struct _omx_core_cb_type
 {

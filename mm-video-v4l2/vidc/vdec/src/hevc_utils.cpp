@@ -47,6 +47,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ========================================================================== */
 #include "hevc_utils.h"
+#include "vidc_debug.h"
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -54,9 +55,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef _ANDROID_
 #include <cutils/properties.h>
 #endif
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_ERROR ALOGE
 
 
 /* =======================================================================
@@ -185,7 +183,7 @@ bool HEVC_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
 
     nalu_type = (buffer[pos] & 0x7E)>>1 ;      //=== nal_unit_type
 
-    DEBUG_PRINT_LOW("\n@#@# Pos = %x NalType = %x buflen = %d", pos-1, nalu_type, buffer_length);
+    DEBUG_PRINT_LOW("@#@# Pos = %x NalType = %x buflen = %u", pos-1, nalu_type, (unsigned int) buffer_length);
 
     isNewFrame =  OMX_FALSE;
 
@@ -193,7 +191,7 @@ bool HEVC_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
             nalu_type == NAL_UNIT_SPS ||
             nalu_type == NAL_UNIT_PPS ||
             nalu_type == NAL_UNIT_SEI) {
-        DEBUG_PRINT_LOW("\n Non-AU boundary with NAL type %d", nalu_type);
+        DEBUG_PRINT_LOW("Non-AU boundary with NAL type %d", nalu_type);
 
         if (m_au_data) {
             isNewFrame = OMX_TRUE;
@@ -202,7 +200,7 @@ bool HEVC_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
 
         m_forceToStichNextNAL = true;
     } else if (nalu_type <= NAL_UNIT_RESERVED_23) {
-        DEBUG_PRINT_LOW("\n AU Boundary with NAL type %d ", nalu_type);
+        DEBUG_PRINT_LOW("AU Boundary with NAL type %d ", nalu_type);
 
         if (!m_forceToStichNextNAL) {
             bFirstSliceInPic = ((buffer[pos+2] & 0x80)>>7);
@@ -217,7 +215,7 @@ bool HEVC_Utils::isNewFrame(OMX_BUFFERHEADERTYPE *p_buf_hdr,
         m_forceToStichNextNAL = false;
     }
 
-    DEBUG_PRINT_LOW("get_HEVC_nal_type - newFrame value %d\n",isNewFrame);
+    DEBUG_PRINT_LOW("get_HEVC_nal_type - newFrame value %d",isNewFrame);
     return true;
 }
 

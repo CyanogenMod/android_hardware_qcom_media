@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -174,13 +174,44 @@ const uint16 crc_16_l_table[ 256 ] = {
     0x7bc7, 0x6a4e, 0x58d5, 0x495c, 0x3de3, 0x2c6a, 0x1ef1, 0x0f78
 };
 
+#ifdef ANDROID_JELLYBEAN_MR1
+//Since this is unavailable on Android 4.2.2, defining it in terms of base 10
+static inline float log2f(const float& x)
+{
+    return log(x) / log(2);
+}
+#endif
+
+/* fwrite doesn't necessarily write the entire buffer in one shot hence a helper
+ * function to make sure the entire buffer is written */
+size_t fwrite_helper(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+    size_t written = 0, to_write = size * nmemb;
+    const char *ptr2 = (char *)ptr;
+
+    while (written < to_write) {
+        /* XXX: Ideally we'd like to do fwrite(..., size, 1, ...) as it makes
+         * more sense, but fwrite(..., 1, size, ...) seems to give better perf.
+         * for some reason.  Seems contrary to what one would expect */
+        size_t temp = fwrite(ptr2 + written, 1, to_write - written, stream);
+
+        if (!temp && ferror(stream)) {
+            printf("Error while writing\n");
+            return temp;
+        }
+        written += temp;
+    }
+
+    return written;
+}
+
 uint16 crc_16_l_step_nv12 (uint16 seed, const void *buf_ptr,
         unsigned int byte_len, unsigned int height, unsigned int width)
 {
     uint16 crc_16 = ~seed;
     char *buf = (char *)buf_ptr;
     char *byte_ptr = buf;
-    int i, j;
+    unsigned int i, j;
     const unsigned int width_align = 32;
     const unsigned int height_align = 32;
     unsigned int stride = (width + width_align -1) & (~(width_align-1));
@@ -216,6 +247,8 @@ typedef enum {
 #ifdef _MSM8974_
     CODEC_FORMAT_VP8,
     CODEC_FORMAT_HEVC,
+    CODEC_FORMAT_HEVC_HYBRID,
+    CODEC_FORMAT_MVC,
 #endif
     CODEC_FORMAT_MAX
 } codec_format;
@@ -246,7 +279,9 @@ typedef enum {
 #ifdef _MSM8974_
     FILE_TYPE_START_OF_VP8_SPECIFIC = 60,
     FILE_TYPE_VP8_START_CODE = FILE_TYPE_START_OF_VP8_SPECIFIC,
-    FILE_TYPE_VP8
+    FILE_TYPE_VP8,
+
+    FILE_TYPE_MVC = 5,
 #endif
 
 } file_type;
@@ -391,7 +426,7 @@ static unsigned use_buf_virt_addr[32];
 OMX_QCOM_PLATFORM_PRIVATE_LIST      *pPlatformList = NULL;
 OMX_QCOM_PLATFORM_PRIVATE_ENTRY     *pPlatformEntry = NULL;
 OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pPMEMInfo = NULL;
-OMX_CONFIG_RECTTYPE crop_rect = {0,0,0,0};
+OMX_CONFIG_RECTTYPE crop_rect = {0, {{0, 0, 0, 0}}, 0, 0, 0, 0, 0};
 
 static int bHdrflag = 0;
 
@@ -421,6 +456,7 @@ static int Read_Buffer_From_RCV_File_Seq_Layer(OMX_BUFFERHEADERTYPE  *pBufHdr);
 static int Read_Buffer_From_RCV_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
 #ifdef _MSM8974_
 static int Read_Buffer_From_VP8_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
+static int Read_Buffer_From_MVC_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
 #endif
 static int Read_Buffer_From_VC1_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
 static int Read_Buffer_From_DivX_4_5_6_File(OMX_BUFFERHEADERTYPE  *pBufHdr);
@@ -605,42 +641,48 @@ int process_current_command(const char *seq_command)
 
 void PrintFramePackArrangement(OMX_QCOM_FRAME_PACK_ARRANGEMENT framePackingArrangement)
 {
-    printf("id (%d)\n",
-            framePackingArrangement.id);
-    printf("cancel_flag (%d)\n",
-            framePackingArrangement.cancel_flag);
-    printf("type (%d)\n",
-            framePackingArrangement.type);
-    printf("quincunx_sampling_flag (%d)\n",
-            framePackingArrangement.quincunx_sampling_flag);
-    printf("content_interpretation_type (%d)\n",
-            framePackingArrangement.content_interpretation_type);
-    printf("spatial_flipping_flag (%d)\n",
-            framePackingArrangement.spatial_flipping_flag);
-    printf("frame0_flipped_flag (%d)\n",
-            framePackingArrangement.frame0_flipped_flag);
-    printf("field_views_flag (%d)\n",
-            framePackingArrangement.field_views_flag);
-    printf("current_frame_is_frame0_flag (%d)\n",
-            framePackingArrangement.current_frame_is_frame0_flag);
-    printf("frame0_self_contained_flag (%d)\n",
-            framePackingArrangement.frame0_self_contained_flag);
-    printf("frame1_self_contained_flag (%d)\n",
-            framePackingArrangement.frame1_self_contained_flag);
-    printf("frame0_grid_position_x (%d)\n",
-            framePackingArrangement.frame0_grid_position_x);
-    printf("frame0_grid_position_y (%d)\n",
-            framePackingArrangement.frame0_grid_position_y);
-    printf("frame1_grid_position_x (%d)\n",
-            framePackingArrangement.frame1_grid_position_x);
-    printf("frame1_grid_position_y (%d)\n",
-            framePackingArrangement.frame1_grid_position_y);
-    printf("reserved_byte (%d)\n",
-            framePackingArrangement.reserved_byte);
-    printf("repetition_period (%d)\n",
-            framePackingArrangement.repetition_period);
-    printf("extension_flag (%d)\n",
-            framePackingArrangement.extension_flag);
+    if (framePackingArrangement.cancel_flag == 1) {
+        /* Not worth printing out because the struct doesn't contain
+         * valid or useful data */
+        return;
+    }
+
+    printf("id (%u)\n",
+            (unsigned int)framePackingArrangement.id);
+    printf("cancel_flag (%u)\n",
+            (unsigned int)framePackingArrangement.cancel_flag);
+    printf("type (%u)\n",
+            (unsigned int)framePackingArrangement.type);
+    printf("quincunx_sampling_flag (%u)\n",
+            (unsigned int)framePackingArrangement.quincunx_sampling_flag);
+    printf("content_interpretation_type (%u)\n",
+            (unsigned int)framePackingArrangement.content_interpretation_type);
+    printf("spatial_flipping_flag (%u)\n",
+            (unsigned int)framePackingArrangement.spatial_flipping_flag);
+    printf("frame0_flipped_flag (%u)\n",
+            (unsigned int)framePackingArrangement.frame0_flipped_flag);
+    printf("field_views_flag (%u)\n",
+            (unsigned int)framePackingArrangement.field_views_flag);
+    printf("current_frame_is_frame0_flag (%u)\n",
+            (unsigned int)framePackingArrangement.current_frame_is_frame0_flag);
+    printf("frame0_self_contained_flag (%u)\n",
+            (unsigned int)framePackingArrangement.frame0_self_contained_flag);
+    printf("frame1_self_contained_flag (%u)\n",
+            (unsigned int)framePackingArrangement.frame1_self_contained_flag);
+    printf("frame0_grid_position_x (%u)\n",
+            (unsigned int)framePackingArrangement.frame0_grid_position_x);
+    printf("frame0_grid_position_y (%u)\n",
+            (unsigned int)framePackingArrangement.frame0_grid_position_y);
+    printf("frame1_grid_position_x (%u)\n",
+            (unsigned int)framePackingArrangement.frame1_grid_position_x);
+    printf("frame1_grid_position_y (%u)\n",
+            (unsigned int)framePackingArrangement.frame1_grid_position_y);
+    printf("reserved_byte (%u)\n",
+            (unsigned int)framePackingArrangement.reserved_byte);
+    printf("repetition_period (%u)\n",
+            (unsigned int)framePackingArrangement.repetition_period);
+    printf("extension_flag (%u)\n",
+            (unsigned int)framePackingArrangement.extension_flag);
 }
 void* ebd_thread(void* pArg)
 {
@@ -664,7 +706,7 @@ void* ebd_thread(void* pArg)
             continue;
         }
 
-        if (num_frames_to_decode && (etb_count >= num_frames_to_decode)) {
+        if (num_frames_to_decode && (etb_count >= (unsigned int)num_frames_to_decode)) {
             printf("\n Signal EOS %d frames decoded \n", num_frames_to_decode);
             signal_eos = 1;
         }
@@ -724,8 +766,9 @@ void* fbd_thread(void* pArg)
                     DEBUG_PRINT_ERROR("Error in enqueueing fbd_data\n");
                 else
                     sem_post(&fbd_sem);
-                pPrevBuff = NULL;
             }
+            pPrevBuff = NULL;
+            pBuffer = NULL;
             if (free_op_buf_cnt == portFmt.nBufferCountActual)
                 free_output_buffers();
             pthread_mutex_unlock(&fbd_lock);
@@ -801,27 +844,43 @@ void* fbd_thread(void* pArg)
             }
 
             if (takeYuvLog) {
-                if (color_fmt == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
-                    printf("\n width: %d height: %d\n", crop_rect.nWidth, crop_rect.nHeight);
+                bytes_written = 0;
+                if (color_fmt == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m ||
+                    color_fmt == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView) {
+                    unsigned int i = 0;
+                    unsigned int nViewsDone = 0;
                     unsigned int stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, portFmt.format.video.nFrameWidth);
                     unsigned int scanlines = VENUS_Y_SCANLINES(COLOR_FMT_NV12, portFmt.format.video.nFrameHeight);
-                    char *temp = (char *) pBuffer->pBuffer;
-                    int i = 0;
-
-                    temp += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
+                    char *frame_pos = (char *) pBuffer->pBuffer;
+                    char *view2 = color_fmt == (OMX_COLOR_FORMATTYPE)
+                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView?
+                            (char *) pBuffer->pBuffer +
+                                VENUS_VIEW2_OFFSET(COLOR_FMT_NV12_MVTB,
+                                    portFmt.format.video.nFrameWidth,
+                                    portFmt.format.video.nFrameHeight):
+                             NULL;
+                    do {
+                        frame_pos += (stride * (int)crop_rect.nTop) + (int)crop_rect.nLeft;
                     for (i = 0; i < crop_rect.nHeight; i++) {
-                        bytes_written = fwrite(temp, crop_rect.nWidth, 1, outputBufferFile);
-                        temp += stride;
+                            bytes_written += fwrite_helper(frame_pos, crop_rect.nWidth, 1, outputBufferFile);
+                            frame_pos += stride;
                     }
 
-                    temp = (char *)pBuffer->pBuffer + stride * scanlines;
-                    temp += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
+                        frame_pos = (nViewsDone == 0 ?
+                            (char *) pBuffer->pBuffer:
+                            view2) + stride * scanlines;
+                        frame_pos += (stride * (int)crop_rect.nTop) +  (int)crop_rect.nLeft;
                     for (i = 0; i < crop_rect.nHeight/2; i++) {
-                        bytes_written += fwrite(temp, crop_rect.nWidth, 1, outputBufferFile);
-                        temp += stride;
+                            bytes_written += fwrite_helper(frame_pos, crop_rect.nWidth, 1, outputBufferFile);
+                            frame_pos += stride;
+                        }
+                        nViewsDone++;
+                        if (view2 != NULL) {
+                            frame_pos = view2;
                     }
+                    } while (view2 != NULL && nViewsDone < 2);
                 } else {
-                    bytes_written = fwrite((const char *)pBuffer->pBuffer,
+                    bytes_written = fwrite_helper((const char *)pBuffer->pBuffer,
                             pBuffer->nFilledLen,1,outputBufferFile);
                 }
                 if (bytes_written < 0) {
@@ -836,7 +895,7 @@ void* fbd_thread(void* pArg)
                 uint16 crc_val;
                 crc_val = crc_16_l_step_nv12(CRC_INIT, pBuffer->pBuffer,
                         pBuffer->nFilledLen, height, width);
-                int num_bytes = fwrite(&crc_val, 1, sizeof(crc_val), crcFile);
+                unsigned int num_bytes = fwrite_helper(&crc_val, 1, sizeof(crc_val), crcFile);
                 if (num_bytes < sizeof(crc_val)) {
                     printf("Failed to write CRC value into file\n");
                 }
@@ -844,7 +903,7 @@ void* fbd_thread(void* pArg)
 #endif
             if (pBuffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
                 OMX_OTHER_EXTRADATATYPE *pExtra;
-                DEBUG_PRINT(">> BUFFER WITH EXTRA DATA RCVD <<<");
+                DEBUG_PRINT_ERROR(">> BUFFER WITH EXTRA DATA RCVD <<<");
                 pExtra = (OMX_OTHER_EXTRADATATYPE *)
                     ((unsigned)(pBuffer->pBuffer + pBuffer->nOffset +
                         pBuffer->nFilledLen + 3)&(~3));
@@ -853,7 +912,7 @@ void* fbd_thread(void* pArg)
                         pExtra->eType != OMX_ExtraDataNone ) {
                     DEBUG_PRINT("ExtraData : pBuf(%p) BufTS(%lld) Type(%x) DataSz(%u)",
                             pBuffer, pBuffer->nTimeStamp, pExtra->eType, pExtra->nDataSize);
-                    switch (pExtra->eType) {
+                    switch ((int)pExtra->eType) {
                         case OMX_ExtraDataInterlaceFormat:
                             {
                                 OMX_STREAMINTERLACEFORMAT *pInterlaceFormat = (OMX_STREAMINTERLACEFORMAT *)pExtra->data;
@@ -865,26 +924,26 @@ void* fbd_thread(void* pArg)
                         case OMX_ExtraDataFrameInfo:
                             {
                                 OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info = (OMX_QCOM_EXTRADATA_FRAMEINFO *)pExtra->data;
-                                DEBUG_PRINT("OMX_ExtraDataFrameInfo: Buf(%p) TSmp(%lld) PicType(%u) IntT(%u) ConMB(%u)",
+                                DEBUG_PRINT_ERROR("OMX_ExtraDataFrameInfo: Buf(%p) TSmp(%lld) PicType(%u) IntT(%d) ConMB(%u)",
                                         pBuffer->pBuffer, pBuffer->nTimeStamp, frame_info->ePicType,
-                                        frame_info->interlaceType, frame_info->nConcealedMacroblocks);
+                                        frame_info->interlaceType, (unsigned int)frame_info->nConcealedMacroblocks);
                                 if (aspectratio_prop)
                                     DEBUG_PRINT_ERROR(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) DispWidth(%u) DispHeight(%u)",
-                                            frame_info->nFrameRate, frame_info->aspectRatio.aspectRatioX,
-                                            frame_info->aspectRatio.aspectRatioY, frame_info->displayAspectRatio.displayHorizontalSize,
-                                            frame_info->displayAspectRatio.displayVerticalSize);
+                                            (unsigned int)frame_info->nFrameRate, (unsigned int)frame_info->aspectRatio.aspectRatioX,
+                                            (unsigned int)frame_info->aspectRatio.aspectRatioY, (unsigned int)frame_info->displayAspectRatio.displayHorizontalSize,
+                                            (unsigned int)frame_info->displayAspectRatio.displayVerticalSize);
                                 else
-                                    DEBUG_PRINT(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) DispWidth(%u) DispHeight(%u)",
-                                            frame_info->nFrameRate, frame_info->aspectRatio.aspectRatioX,
-                                            frame_info->aspectRatio.aspectRatioY, frame_info->displayAspectRatio.displayHorizontalSize,
-                                            frame_info->displayAspectRatio.displayVerticalSize);
-                                DEBUG_PRINT("PANSCAN numWindows(%d)", frame_info->panScan.numWindows);
-                                for (int i = 0; i < frame_info->panScan.numWindows; i++) {
-                                    DEBUG_PRINT("WINDOW Lft(%d) Tp(%d) Rgt(%d) Bttm(%d)",
-                                            frame_info->panScan.window[i].x,
-                                            frame_info->panScan.window[i].y,
-                                            frame_info->panScan.window[i].dx,
-                                            frame_info->panScan.window[i].dy);
+                                    DEBUG_PRINT_ERROR(" FrmRate(%u), AspRatioX(%u), AspRatioY(%u) DispWidth(%u) DispHeight(%u)",
+                                            (unsigned int)frame_info->nFrameRate, (unsigned int)frame_info->aspectRatio.aspectRatioX,
+                                            (unsigned int)frame_info->aspectRatio.aspectRatioY, (unsigned int)frame_info->displayAspectRatio.displayHorizontalSize,
+                                            (unsigned int)frame_info->displayAspectRatio.displayVerticalSize);
+                                DEBUG_PRINT_ERROR("PANSCAN numWindows(%u)", (unsigned int)frame_info->panScan.numWindows);
+                                for (unsigned int i = 0; i < frame_info->panScan.numWindows; i++) {
+                                    DEBUG_PRINT_ERROR("WINDOW Lft(%d) Tp(%d) Rgt(%d) Bttm(%d)",
+                                            (int)frame_info->panScan.window[i].x,
+                                            (int)frame_info->panScan.window[i].y,
+                                            (int)frame_info->panScan.window[i].dx,
+                                            (int)frame_info->panScan.window[i].dy);
                                 }
                                 break;
                             }
@@ -902,17 +961,17 @@ void* fbd_thread(void* pArg)
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
-                                DEBUG_PRINT("OMX_ExtraDataConcealMB: Buf(%p) TSmp(%lld) ConcealMB(%u)",
-                                        pBuffer->pBuffer, pBuffer->nTimeStamp, concealMBnum);
+                                DEBUG_PRINT_ERROR("OMX_ExtraDataConcealMB: Buf(%p) TSmp(%lld) ConcealMB(%u)",
+                                        pBuffer->pBuffer, pBuffer->nTimeStamp, (unsigned int)concealMBnum);
                             }
                             break;
                         case OMX_ExtraDataMP2ExtnData:
                             {
-                                DEBUG_PRINT("\nOMX_ExtraDataMP2ExtnData");
+                                DEBUG_PRINT_ERROR("\nOMX_ExtraDataMP2ExtnData");
                                 OMX_U8 data = 0, *data_ptr = (OMX_U8 *)pExtra->data;
                                 OMX_U32 bytes_cnt = 0;
                                 while (bytes_cnt < pExtra->nDataSize) {
-                                    DEBUG_PRINT("\n MPEG-2 Extension Data Values[%d] = 0x%x", bytes_cnt, *data_ptr);
+                                    DEBUG_PRINT_ERROR("\n MPEG-2 Extension Data Values[%u] = 0x%x", (unsigned int)bytes_cnt, *data_ptr);
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
@@ -920,14 +979,29 @@ void* fbd_thread(void* pArg)
                             break;
                         case OMX_ExtraDataMP2UserData:
                             {
-                                DEBUG_PRINT("\nOMX_ExtraDataMP2UserData");
+                                DEBUG_PRINT_ERROR("\nOMX_ExtraDataMP2UserData");
                                 OMX_U8 data = 0, *data_ptr = (OMX_U8 *)pExtra->data;
                                 OMX_U32 bytes_cnt = 0;
                                 while (bytes_cnt < pExtra->nDataSize) {
-                                    DEBUG_PRINT("\n MPEG-2 User Data Values[%d] = 0x%x", bytes_cnt, *data_ptr);
+                                    DEBUG_PRINT_ERROR("\n MPEG-2 User Data Values[%u] = 0x%x", (unsigned int)bytes_cnt, *data_ptr);
                                     data_ptr++;
                                     bytes_cnt++;
                                 }
+                            }
+                            break;
+                        case OMX_ExtraDataQP:
+                            {
+                                DEBUG_PRINT("\nOMX_ExtraDataQP\n");
+                                OMX_QCOM_EXTRADATA_QP *qp_info = (OMX_QCOM_EXTRADATA_QP *)pExtra->data;
+                                DEBUG_PRINT("Input frame QP = %lu\n", qp_info->nQP);
+                            }
+                            break;
+                        case OMX_ExtraDataInputBitsInfo:
+                            {
+                                DEBUG_PRINT("\nOMX_ExtraDataInputBitsInfo\n");
+                                OMX_QCOM_EXTRADATA_BITS_INFO *bits_info = (OMX_QCOM_EXTRADATA_BITS_INFO *)pExtra->data;
+                                DEBUG_PRINT("Input header bits size = %lu\n", bits_info->header_bits);
+                                DEBUG_PRINT("Input frame bits size = %lu\n", bits_info->frame_bits);
                             }
                             break;
                         default:
@@ -1014,7 +1088,7 @@ void* fbd_thread(void* pArg)
             }
         }
         pthread_mutex_unlock(&enable_lock);
-        if (cmd_data <= fbd_cnt) {
+        if (cmd_data <= (unsigned)fbd_cnt) {
             sem_post(&seq_sem);
             printf("\n Posted seq_sem Frm(%d) Req(%d)", fbd_cnt, cmd_data);
             cmd_data = ~(unsigned)0;
@@ -1086,12 +1160,15 @@ OMX_ERRORTYPE EventHandler(OMX_IN OMX_HANDLETYPE hComponent,
                         sem_post(&seq_sem);
                         printf("\n Posted seq_sem in ERROR");
                     }
+                    event_complete();
                 }
             }
             if (waitForPortSettingsChanged) {
                 waitForPortSettingsChanged = 0;
                 event_complete();
             }
+            sem_post(&etb_sem);
+            sem_post(&fbd_sem);
             break;
         case OMX_EventPortSettingsChanged:
             DEBUG_PRINT("OMX_EventPortSettingsChanged port[%d]\n", nData1);
@@ -1302,10 +1379,12 @@ int main(int argc, char **argv)
 #ifdef _MSM8974_
         printf(" 7--> VP8\n");
         printf(" 8--> HEVC\n");
+        printf(" 9--> HYBRID\n");
+        printf(" 10-> MVC\n");
 #endif
         fflush(stdin);
         fgets(tempbuf,sizeof(tempbuf),stdin);
-        sscanf(tempbuf,"%d",&codec_format_option);
+        sscanf(tempbuf,"%d",(int *)&codec_format_option);
         fflush(stdin);
         if (codec_format_option > CODEC_FORMAT_MAX) {
             printf(" Wrong test case...[%d] \n", codec_format_option);
@@ -1333,16 +1412,20 @@ int main(int argc, char **argv)
             printf(" 3--> MPEG2 START CODE CLIP (.m2v)\n");
         }
 #ifdef _MSM8974_
-        else if (codec_format_option == CODEC_FORMAT_VP8) {
+        else if (codec_format_option == CODEC_FORMAT_MVC) {
+            printf(" 5--> MVC clip (.264)\n");
+        } else if (codec_format_option == CODEC_FORMAT_VP8) {
             printf(" 61--> VP8 START CODE CLIP (.ivf)\n");
         }
 #endif
         fflush(stdin);
         fgets(tempbuf,sizeof(tempbuf),stdin);
-        sscanf(tempbuf,"%d",&file_type_option);
+        sscanf(tempbuf,"%d",(int *)&file_type_option);
 #ifdef _MSM8974_
         if (codec_format_option == CODEC_FORMAT_VP8) {
             file_type_option = FILE_TYPE_VP8;
+        } else if (codec_format_option == CODEC_FORMAT_MVC) {
+            file_type_option = FILE_TYPE_MVC;
         }
 #endif
         fflush(stdin);
@@ -1365,7 +1448,7 @@ int main(int argc, char **argv)
         printf(" 3 --> Display YUV and take YUV log\n");
         fflush(stdin);
         fgets(tempbuf,sizeof(tempbuf),stdin);
-        sscanf(tempbuf,"%d",&outputOption);
+        sscanf(tempbuf,"%d",(int *)&outputOption);
         fflush(stdin);
 
         printf(" *********************************************\n");
@@ -1477,6 +1560,7 @@ int main(int argc, char **argv)
                 break;
 #ifdef _MSM8974_
             case CODEC_FORMAT_VP8:
+            case CODEC_FORMAT_MVC:
                 break;
 #endif
             default:
@@ -1516,7 +1600,7 @@ int main(int argc, char **argv)
         printf(" 4 --> Call Free Handle at the OMX_StatePause\n");
         fflush(stdin);
         fgets(tempbuf,sizeof(tempbuf),stdin);
-        sscanf(tempbuf,"%d",&freeHandle_option);
+        sscanf(tempbuf,"%d",(int *)&freeHandle_option);
         fflush(stdin);
     } else {
         freeHandle_option = (freeHandle_test)0;
@@ -1639,6 +1723,8 @@ int run_tests()
 #ifdef _MSM8974_
     else if (file_type_option == FILE_TYPE_VP8) {
         Read_Buffer = Read_Buffer_From_VP8_File;
+    } else if (codec_format_option == CODEC_FORMAT_MVC) {
+        Read_Buffer = Read_Buffer_From_MVC_File;
     }
 #endif
     else if (file_type_option == FILE_TYPE_VC1) {
@@ -1658,6 +1744,7 @@ int run_tests()
         case FILE_TYPE_VC1:
 #ifdef _MSM8974_
         case FILE_TYPE_VP8:
+        case FILE_TYPE_MVC:
 #endif
         case FILE_TYPE_DIVX_4_5_6:
 #ifdef MAX_RES_1080P
@@ -1725,11 +1812,12 @@ int Init_Decoder()
     OMX_U32 total = 0;
     char vdecCompNames[50];
     typedef OMX_U8* OMX_U8_PTR;
-    char *role ="video_decoder";
+    char role[strlen("video_decoder") + 1];
+    strcpy(role, "video_decoder");
 
     static OMX_CALLBACKTYPE call_back = {&EventHandler, &EmptyBufferDone, &FillBufferDone};
 
-    int i = 0;
+    unsigned int i = 0;
     long bufCnt = 0;
 
     /* Init. the OpenMAX Core */
@@ -1793,9 +1881,17 @@ int Init_Decoder()
     else if (codec_format_option == CODEC_FORMAT_VP8) {
         strlcpy(vdecCompNames, "OMX.qcom.video.decoder.vp8", 27);
     }
+    else if (codec_format_option == CODEC_FORMAT_MVC) {
+        strlcpy(vdecCompNames, "OMX.qcom.video.decoder.mvc", 27);
+    }
 #endif
     else if (codec_format_option == CODEC_FORMAT_HEVC) {
         strlcpy(vdecCompNames, "OMX.qcom.video.decoder.hevc", 28);
+        DEBUG_PRINT_ERROR("vdecCompNames: %s\n", vdecCompNames);
+    }
+    else if (codec_format_option == CODEC_FORMAT_HEVC_HYBRID) {
+        strlcpy(vdecCompNames, "OMX.qcom.video.decoder.hevchybrid", 34);
+        DEBUG_PRINT_ERROR("vdecCompNames: %s\n", vdecCompNames);
     }
 #ifdef MAX_RES_1080P
     else if (file_type_option == FILE_TYPE_DIVX_311) {
@@ -1811,6 +1907,11 @@ int Init_Decoder()
             (OMX_STRING)vdecCompNames, NULL, &call_back);
     if (FAILED(omxresult)) {
         DEBUG_PRINT_ERROR("\nFailed to Load the component:%s\n", vdecCompNames);
+        if (!strncmp(vdecCompNames, "OMX.qcom.video.decoder.mvc", 27)) {
+            char platform_name[PROPERTY_VALUE_MAX] = {0};
+            property_get("ro.product.name", platform_name, "Name not available");
+            printf("Error: MVC not listed as supported codec in this platform: %s\n", platform_name);
+        }
         return -1;
     } else {
         DEBUG_PRINT("\nComponent %s is in LOADED state\n", vdecCompNames);
@@ -1839,6 +1940,8 @@ int Init_Decoder()
     /* Set the compression format on i/p port */
     if (codec_format_option == CODEC_FORMAT_H264) {
         portFmt.format.video.eCompressionFormat = OMX_VIDEO_CodingAVC;
+    } else if (codec_format_option == CODEC_FORMAT_MVC) {
+        portFmt.format.video.eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingMVC;
     } else if (codec_format_option == CODEC_FORMAT_MP4) {
         portFmt.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG4;
     } else if (codec_format_option == CODEC_FORMAT_H263) {
@@ -1850,7 +1953,8 @@ int Init_Decoder()
             (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingDivx;
     } else if (codec_format_option == CODEC_FORMAT_MPEG2) {
         portFmt.format.video.eCompressionFormat = OMX_VIDEO_CodingMPEG2;
-    } else if (codec_format_option == CODEC_FORMAT_HEVC) {
+    } else if (codec_format_option == CODEC_FORMAT_HEVC ||
+        codec_format_option == CODEC_FORMAT_HEVC_HYBRID) {
         portFmt.format.video.eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingHevc;
     } else {
         DEBUG_PRINT_ERROR("Error: Unsupported codec %d\n", codec_format_option);
@@ -1869,7 +1973,8 @@ int Init_Decoder()
 
 int Play_Decoder()
 {
-    OMX_VIDEO_PARAM_PORTFORMATTYPE videoportFmt = {0};
+    OMX_VIDEO_PARAM_PORTFORMATTYPE videoportFmt;
+    memset(&videoportFmt, 0, sizeof(OMX_VIDEO_PARAM_PORTFORMATTYPE));
     int i, bufCnt, index = 0;
     int frameSize=0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
@@ -1941,32 +2046,45 @@ int Play_Decoder()
 #endif
     QOMX_ENABLETYPE extra_data;
     extra_data.bEnable = OMX_TRUE;
-#if 0
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamInterlaceExtraData,
-            (OMX_PTR)&extra_data);
-#endif
-#if 0
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamConcealMBMapExtraData,
-            (OMX_PTR)&extra_data);
-#endif
-#if 1
+
+    char frameinfo_value[PROPERTY_VALUE_MAX] = {0};
+    char interlace_value[PROPERTY_VALUE_MAX] = {0};
+    char h264info_value[PROPERTY_VALUE_MAX] = {0};
+    char video_qp_value[PROPERTY_VALUE_MAX] = {0};
+    char videoinput_bitsinfo_value[PROPERTY_VALUE_MAX] = {0};
+
+    OMX_U32 frameinfo = 0,interlace = 0,h264info =0, video_qp =0, videoinput_bitsinfo =0;
+    property_get("vidc.vdec.debug.frameinfo", frameinfo_value, "0");
+    frameinfo = atoi(frameinfo_value);
+    if (frameinfo) {
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamFrameInfoExtraData,
             (OMX_PTR)&extra_data);
-#endif
-#ifdef TEST_TS_FROM_SEI
+    }
+    property_get("vidc.vdec.debug.interlace", interlace_value, "0");
+    interlace = atoi(interlace_value);
+    if (interlace) {
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamInterlaceExtraData,
+            (OMX_PTR)&extra_data);
+    }
+    property_get("vidc.vdec.debug.h264info", h264info_value, "0");
+    h264info = atoi(h264info_value);
+    if (h264info) {
     OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamH264TimeInfo,
             (OMX_PTR)&extra_data);
-#endif
-#if 0
-    extra_data.bEnable = OMX_FALSE;
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamConcealMBMapExtraData,
+    }
+    property_get("vidc.vdec.debug.video_qp_value", video_qp_value, "0");
+    video_qp = atoi(video_qp_value);
+    if (video_qp) {
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoQPExtraData,
             (OMX_PTR)&extra_data);
-#endif
-#if 0
-    extra_data.bEnable = OMX_TRUE;
-    OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexEnableExtnUserData,
+    }
+    property_get("vidc.vdec.debug.input_bitsinfo", videoinput_bitsinfo_value, "0");
+    videoinput_bitsinfo = atoi(videoinput_bitsinfo_value);
+    if (videoinput_bitsinfo) {
+        OMX_SetParameter(dec_handle,(OMX_INDEXTYPE)OMX_QcomIndexParamVideoInputBitsInfoExtraData,
             (OMX_PTR)&extra_data);
-#endif
+    }
+
     /* Query the decoder outport's min buf requirements */
     CONFIG_VERSION_SIZE(portFmt);
 
@@ -2056,6 +2174,10 @@ int Play_Decoder()
             QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka;
     }
 #elif _MSM8974_
+    if (codec_format_option == CODEC_FORMAT_MVC)
+        color_fmt = (OMX_COLOR_FORMATTYPE)
+            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView;
+    else
     color_fmt = (OMX_COLOR_FORMATTYPE)
         QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
 #else
@@ -2099,7 +2221,9 @@ int Play_Decoder()
             portFmt.format.video.nFrameWidth,
             portFmt.format.video.nFrameHeight);
     if (codec_format_option == CODEC_FORMAT_H264 ||
-            codec_format_option == CODEC_FORMAT_HEVC) {
+       codec_format_option == CODEC_FORMAT_HEVC ||
+       codec_format_option == CODEC_FORMAT_HEVC_HYBRID)
+    {
         OMX_VIDEO_CONFIG_NALSIZE naluSize;
         naluSize.nNaluBytes = nalSize;
         DEBUG_PRINT("\n Nal length is %d index %d",nalSize,OMX_IndexConfigVideoNalSize);
@@ -2229,7 +2353,7 @@ int Play_Decoder()
         DEBUG_PRINT_ERROR("Error - pOutYUVBufHdrs is NULL\n");
         return -1;
     }
-    for (bufCnt=0; bufCnt < portFmt.nBufferCountActual; ++bufCnt) {
+    for (bufCnt=0; bufCnt < (int)portFmt.nBufferCountActual; ++bufCnt) {
         DEBUG_PRINT("OMX_FillThisBuffer on output buf no.%d\n",bufCnt);
         if (pOutYUVBufHdrs[bufCnt] == NULL) {
             DEBUG_PRINT_ERROR("Error - pOutYUVBufHdrs[%d] is NULL\n", bufCnt);
@@ -2263,7 +2387,7 @@ int Play_Decoder()
             pInputBufHdrs[0]->nFilledLen = Read_Buffer(pInputBufHdrs[0]);
             bHdrflag = 0;
             DEBUG_PRINT_ERROR("After 1st Read_Buffer for VC1, "
-                    "pInputBufHdrs[0]->nFilledLen %d\n", pInputBufHdrs[0]->nFilledLen);
+                    "pInputBufHdrs[0]->nFilledLen %u\n", (unsigned int)pInputBufHdrs[0]->nFilledLen);
         } else {
             pInputBufHdrs[0]->nFilledLen = Read_Buffer(pInputBufHdrs[0]);
             DEBUG_PRINT("After Read_Buffer pInputBufHdrs[0]->nFilledLen %d\n",
@@ -2340,8 +2464,11 @@ int Play_Decoder()
         do_freeHandle_and_clean_up(true);
         return -1;
     } else if (currentStatus == PORT_SETTING_CHANGE_STATE) {
-        if (output_port_reconfig() != 0)
+        if (output_port_reconfig() != 0) {
+            DEBUG_PRINT("output_port_reconfig - ERROR_STATE\n");
+            do_freeHandle_and_clean_up(true);
             return -1;
+    }
     }
 
     if (freeHandle_option == FREE_HANDLE_AT_EXECUTING) {
@@ -2383,6 +2510,9 @@ static OMX_ERRORTYPE Allocate_Buffer ( OMX_COMPONENTTYPE *dec_handle,
     OMX_ERRORTYPE error=OMX_ErrorNone;
     long bufCnt=0;
 
+    if (currentStatus == ERROR_STATE)  {
+        return OMX_ErrorInvalidState;
+    }
     DEBUG_PRINT("pBufHdrs = %x,bufCntMin = %d\n", pBufHdrs, bufCntMin);
     *pBufHdrs= (OMX_BUFFERHEADERTYPE **)
         malloc(sizeof(OMX_BUFFERHEADERTYPE)*bufCntMin);
@@ -2474,10 +2604,10 @@ static OMX_ERRORTYPE use_output_buffer ( OMX_COMPONENTTYPE *dec_handle,
         align_pmem_buffers(p_eglHeaders[bufCnt]->pmem_fd, bufSize,
                 8192);
 #endif
-        DEBUG_PRINT_ERROR("\n allocation size %d pmem fd %d",bufSize,p_eglHeaders[bufCnt]->pmem_fd);
+        DEBUG_PRINT_ERROR("\n allocation size %u pmem fd %d",(unsigned int)bufSize,p_eglHeaders[bufCnt]->pmem_fd);
         pvirt = (unsigned char *)mmap(NULL,bufSize,PROT_READ|PROT_WRITE,
                 MAP_SHARED,p_eglHeaders[bufCnt]->pmem_fd,0);
-        DEBUG_PRINT_ERROR("\n Virtaul Address %p Size %d",pvirt,bufSize);
+        DEBUG_PRINT_ERROR("\n Virtaul Address %p Size %u",pvirt,(unsigned int)bufSize);
         if (pvirt == MAP_FAILED) {
             DEBUG_PRINT_ERROR("\n mmap failed for buffers");
             return OMX_ErrorInsufficientResources;
@@ -2542,7 +2672,7 @@ static OMX_ERRORTYPE use_output_buffer_multiple_fd ( OMX_COMPONENTTYPE *dec_hand
         pPlatformList[bufCnt].entryList   = &pPlatformEntry[bufCnt];
         pPMEMInfo[bufCnt].offset          =  0;
         pPMEMInfo[bufCnt].pmem_fd = open(PMEM_DEVICE,O_RDWR);;
-        if (pPMEMInfo[bufCnt].pmem_fd < 0) {
+        if ((int)pPMEMInfo[bufCnt].pmem_fd < 0) {
             DEBUG_PRINT_ERROR("\n open failed %s",PMEM_DEVICE);
             return OMX_ErrorInsufficientResources;
         }
@@ -2574,7 +2704,11 @@ static void do_freeHandle_and_clean_up(bool isDueToError)
     if (state == OMX_StateExecuting || state == OMX_StatePause) {
         DEBUG_PRINT("Requesting transition to Idle");
         OMX_SendCommand(dec_handle, OMX_CommandStateSet, OMX_StateIdle, 0);
+        do {
         wait_for_event();
+            OMX_GetState(dec_handle, &state);
+            DEBUG_PRINT("returned state %d", state);
+        } while ((state != OMX_StateIdle) && (state != OMX_StateInvalid));
     }
     OMX_GetState(dec_handle, &state);
     if (state == OMX_StateIdle) {
@@ -2592,7 +2726,7 @@ static void do_freeHandle_and_clean_up(bool isDueToError)
             free(pInputBufHdrs);
             pInputBufHdrs = NULL;
         }
-        for (bufCnt = 0; bufCnt < portFmt.nBufferCountActual; ++bufCnt) {
+        for (bufCnt = 0; bufCnt < (int)portFmt.nBufferCountActual; ++bufCnt) {
             if (output_use_buffer && p_eglHeaders) {
                 if (p_eglHeaders[bufCnt]) {
                     munmap (pOutYUVBufHdrs[bufCnt]->pBuffer,
@@ -2700,7 +2834,7 @@ static int Read_Buffer_From_DAT_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     char c = '1'; //initialize to anything except '\0'(0)
     char inputFrameSize[12];
     int count =0;
-    char cnt =0;
+    int cnt = 0;
     memset(temp_buffer, 0, sizeof(temp_buffer));
 
     DEBUG_PRINT("Inside %s \n", __FUNCTION__);
@@ -2990,7 +3124,7 @@ static int Read_Buffer_From_Size_Nal(OMX_BUFFERHEADERTYPE  *pBufHdr)
 
     // now read the data
     bytes_read = read(inputBufferFileFd, pBufHdr->pBuffer + pBufHdr->nOffset + nalSize, size);
-    if (bytes_read != size) {
+    if (bytes_read != (int)size) {
         DEBUG_PRINT_ERROR("Failed to read frame\n");
     }
 
@@ -3101,7 +3235,7 @@ static int Read_Buffer_From_RCV_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     }
 
     if (len > pBufHdr->nAllocLen) {
-        DEBUG_PRINT_ERROR("Error in sufficient buffer framesize %d, allocalen %d noffset %d\n",len,pBufHdr->nAllocLen, pBufHdr->nOffset);
+        DEBUG_PRINT_ERROR("Error in sufficient buffer framesize %u, allocalen %u noffset %u\n",len,(unsigned int)pBufHdr->nAllocLen, (unsigned int)pBufHdr->nOffset);
         readOffset = read(inputBufferFileFd, pBufHdr->pBuffer+pBufHdr->nOffset,
                 pBufHdr->nAllocLen - pBufHdr->nOffset);
 
@@ -3235,7 +3369,7 @@ static int Read_Buffer_From_DivX_4_5_6_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
 #define FRM_ARRAY_SIZE (MAX_NO_B_FRMS + N_PREV_FRMS_B)
     char *p_buffer = NULL;
     unsigned int offset_array[FRM_ARRAY_SIZE];
-    int byte_cntr, pckt_end_idx;
+    int byte_cntr, pckt_end_idx = 0;
     unsigned int read_code = 0, bytes_read, byte_pos = 0, frame_type;
     unsigned int i, b_frm_idx, b_frames_found = 0, vop_set_cntr = 0;
     bool pckt_ready = false;
@@ -3253,11 +3387,11 @@ static int Read_Buffer_From_DivX_4_5_6_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
 
         bytes_read = read(inputBufferFileFd, p_buffer, NUMBER_OF_ARBITRARYBYTES_READ);
         byte_pos += bytes_read;
-        for (byte_cntr = 0; byte_cntr < bytes_read && !pckt_ready; byte_cntr++) {
+        for (byte_cntr = 0; byte_cntr < (int)bytes_read && !pckt_ready; byte_cntr++) {
             read_code <<= 8;
             ((char*)&read_code)[0] = p_buffer[byte_cntr];
             if (read_code == VOP_START_CODE) {
-                if (++byte_cntr < bytes_read) {
+                if (++byte_cntr < (int)bytes_read) {
                     frame_type = p_buffer[byte_cntr];
                     frame_type &= 0x000000C0;
 #ifdef __DEBUG_DIVX__
@@ -3282,7 +3416,7 @@ static int Read_Buffer_From_DivX_4_5_6_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
                             // Try to packet N_PREV_FRMS_B previous frames
                             // with the next consecutive B frames
                             i = N_PREV_FRMS_B;
-                            while ((vop_set_cntr - i) < 0 && i > 0) i--;
+                            while (((int)vop_set_cntr - (int)i) < 0 && i > 0) i--;
                             b_frm_idx = vop_set_cntr - i;
                             if (b_frm_idx > 0) {
                                 pckt_end_idx = b_frm_idx;
@@ -3454,6 +3588,73 @@ static int Read_Buffer_From_VP8_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     pBufHdr->nTimeStamp = time_stamp;
     return n_offset;
 }
+
+static int Read_Buffer_From_MVC_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
+{
+    int newFrame = 0;
+    int bytes_read = 0;
+    int cnt = 0;
+    int naluType = 0;
+    unsigned int code = 0;
+    char *pBuffer = NULL;
+
+    if (pBufHdr == NULL || pBufHdr->pBuffer == NULL) {
+        DEBUG_PRINT("\n ERROR: %s: input is NULL\n", __FUNCTION__);
+        return 0;
+    }
+    pBuffer = (char *)pBufHdr->pBuffer;
+    pBufHdr->nFilledLen = 0;
+
+    do {
+        naluType = 0;
+        cnt = 0;
+        code = 0;
+        newFrame = 0;
+        do {
+            bytes_read = read(inputBufferFileFd, &pBuffer[cnt], 1);
+            if (!bytes_read) {
+                DEBUG_PRINT("\n%s: Bytes read Zero\n", __FUNCTION__);
+                break;
+            } else if (cnt == 4) {
+                naluType = pBuffer[cnt] & 0x1F;
+                DEBUG_PRINT("%s: Found NALU type = %d\n", __FUNCTION__, naluType);
+            }
+            code <<= 8;
+            code |= (0x000000FF & pBuffer[cnt]);
+            cnt++;
+            if ((cnt == 4) && (code != H264_START_CODE)) {
+                DEBUG_PRINT_ERROR("\n%s: ERROR: Invalid start code found 0x%x\n", __FUNCTION__, code);
+                lseek64(inputBufferFileFd, -4, SEEK_CUR);
+                cnt = 0;
+                bytes_read = 0;
+                break;
+            } else if ((cnt > 4) && (code == H264_START_CODE)) {
+                DEBUG_PRINT("%s: Found next H264_START_CODE\n", __FUNCTION__);
+                lseek64(inputBufferFileFd, -4, SEEK_CUR);
+                cnt -= 4;
+                break;
+            }
+            if (pBufHdr->nAllocLen <= pBufHdr->nFilledLen + cnt) {
+                DEBUG_PRINT_ERROR("\n%s: ERROR: Invalid input file for MVC codec", __FUNCTION__);
+                cnt = 0;
+                bytes_read = 0;
+                break;
+            }
+        } while (1);
+        pBufHdr->nFilledLen += cnt;
+        pBuffer += cnt;
+    }while (naluType != 20 && bytes_read != 0);
+
+    pBufHdr->nTimeStamp = 0;
+    pBufHdr->nOffset = 0;
+
+    DEBUG_PRINT("%s: Return: pBuffer = %p, FilledLen= %ld, TS=[%Lu]\n",
+            __FUNCTION__,
+            pBufHdr->pBuffer,
+            pBufHdr->nFilledLen,
+            pBufHdr->nTimeStamp);
+    return pBufHdr->nFilledLen;
+}
 #endif
 static int open_video_file ()
 {
@@ -3505,7 +3706,7 @@ void swap_byte(char *pByte, int nbyte)
 int drawBG(void)
 {
     int result;
-    int i;
+    unsigned int i;
 #ifdef FRAMEBUFFER_32
     long * p;
 #else
@@ -3574,7 +3775,7 @@ void overlay_set()
     overlayp->src_rect.w = width;
     overlayp->src_rect.h = height;
 
-    if (width >= vinfo.xres) {
+    if (width >= (int)vinfo.xres) {
         overlayp->dst_rect.x = 0;
         overlayp->dst_rect.w = vinfo.xres;
     } else {
@@ -3582,7 +3783,7 @@ void overlay_set()
         overlayp->dst_rect.w = width;
     }
 
-    if (height >= vinfo.yres) {
+    if (height >= (int)vinfo.yres) {
         overlayp->dst_rect.h = (overlayp->dst_rect.w * height)/width;
         overlayp->dst_rect.y = 0;
         if (overlayp->dst_rect.h < vinfo.yres)
@@ -3754,13 +3955,13 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     // read to the end of existing extra data sections
     pExtraData = (OMX_OTHER_EXTRADATATYPE*)addr;
 
-    while (addr < end && pExtraData->eType != OMX_ExtraDataFrameInfo) {
+    while (addr < end && (int)pExtraData->eType != (int)OMX_ExtraDataFrameInfo) {
         addr += pExtraData->nSize;
         pExtraData = (OMX_OTHER_EXTRADATATYPE*)addr;
     }
 
-    if (pExtraData->eType != OMX_ExtraDataFrameInfo) {
-        DEBUG_PRINT_ERROR("pExtraData->eType %d pExtraData->nSize %d\n",pExtraData->eType,pExtraData->nSize);
+    if ((int)pExtraData->eType != (int)OMX_ExtraDataFrameInfo) {
+        DEBUG_PRINT_ERROR("pExtraData->eType %d pExtraData->nSize %u\n",pExtraData->eType, (unsigned int)pExtraData->nSize);
     }
     pExtraFrameInfo = (OMX_QCOM_EXTRADATA_FRAMEINFO *)pExtraData->data;
 
@@ -3772,8 +3973,8 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
 #endif
 
 
-    DEBUG_PRINT_ERROR("DecWidth %d DecHeight %d\n",portFmt.format.video.nStride,portFmt.format.video.nSliceHeight);
-    DEBUG_PRINT_ERROR("DispWidth %d DispHeight %d\n",portFmt.format.video.nFrameWidth,portFmt.format.video.nFrameHeight);
+    DEBUG_PRINT_ERROR("DecWidth %u DecHeight %u\n",(unsigned int)portFmt.format.video.nStride,(unsigned int)portFmt.format.video.nSliceHeight);
+    DEBUG_PRINT_ERROR("DispWidth %u DispHeight %u\n",(unsigned int)portFmt.format.video.nFrameWidth,(unsigned int)portFmt.format.video.nFrameHeight);
 
 
 
@@ -3914,9 +4115,14 @@ int disable_output_port()
 
 int enable_output_port()
 {
-    int bufCnt = 0;
+    unsigned int bufCnt = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     DEBUG_PRINT("ENABLING OP PORT\n");
+
+    if (currentStatus == ERROR_STATE) {
+        DEBUG_PRINT("ENABLING OP PORT in ERROR_STATE not allowed\n");
+        return -1;
+    }
     // Send Enable command
     OMX_SendCommand(dec_handle, OMX_CommandPortEnable, 1, 0);
 #ifndef USE_EGL_IMAGE_TEST_APP

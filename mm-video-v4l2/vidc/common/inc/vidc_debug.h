@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -25,69 +25,43 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
-#include "camera_test.h"
-// #include "camera_class.h"
 
-EXTERN_C_START
+#ifndef __VIDC_DEBUG_H__
+#define __VIDC_DEBUG_H__
 
-// static android::Camera* pCamera = NULL;
+#ifdef _ANDROID_
+#include <cstdio>
 
-int CameraTest_Initialize(int nFrameRate,
-        int nFrameWidth,
-        int nFrameHeight,
-        CameraPreviewCallback pfnPreviewCallback)
-{
-    int result = 0;
+enum {
+   PRIO_ERROR=0x1,
+   PRIO_INFO=0x1,
+   PRIO_HIGH=0x2,
+   PRIO_LOW=0x4
+};
 
-    //    pCamera = new android::Camera;
-    //    if (!pCamera)
-    //       return 1;
+extern int debug_level;
 
-    //    pCamera->init_camera(nFrameWidth,
-    //                         nFrameHeight,
-    //                         nFrameRate,
-    //                         pfnPreviewCallback);
+#undef DEBUG_PRINT_ERROR
+#define DEBUG_PRINT_ERROR(fmt, args...) \
+      if (debug_level & PRIO_ERROR) \
+          ALOGE(fmt,##args)
+#undef DEBUG_PRINT_INFO
+#define DEBUG_PRINT_INFO(fmt, args...) \
+      if (debug_level & PRIO_INFO) \
+          ALOGI(fmt,##args)
+#undef DEBUG_PRINT_LOW
+#define DEBUG_PRINT_LOW(fmt, args...) \
+      if (debug_level & PRIO_LOW) \
+          ALOGD(fmt,##args)
+#undef DEBUG_PRINT_HIGH
+#define DEBUG_PRINT_HIGH(fmt, args...) \
+      if (debug_level & PRIO_HIGH) \
+          ALOGD(fmt,##args)
+#else
+#define DEBUG_PRINT_ERROR printf
+#define DEBUG_PRINT_INFO printf
+#define DEBUG_PRINT_LOW printf
+#define DEBUG_PRINT_HIGH printf
+#endif
 
-    return result;
-}
-
-int CameraTest_Run()
-{
-    int result = 0;
-
-    //    if (pCamera)
-    //       pCamera->startPreview();
-    //    else
-    //       return 1;
-
-    return result;
-}
-
-int CameraTest_ReleaseFrame(void* pPhys, void* pVirt)
-{
-    int result = 0;
-
-    //    if (pCamera)
-    //       pCamera->releaseFrame(pPhys, pVirt);
-    //    else
-    //       return 1;
-
-    return result;
-}
-
-int CameraTest_Exit()
-{
-    int result = 0;
-
-    //    if (pCamera)
-    //    {
-    //       pCamera->stopPreview();
-    //       delete pCamera;
-    //    }
-    //    pCamera = NULL;
-
-    return result;
-}
-
-
-EXTERN_C_END
+#endif
