@@ -8,7 +8,8 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
     $(TOP)/frameworks/av/include/media/stagefright \
     $(TOP)/frameworks/native/include/media/openmax \
-    $(TOP)/hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libcopybit
+    $(TARGET_OUT_HEADERS)/adreno \
+    $(TARGET_OUT_HEADERS)/adreno200
 
 LOCAL_SHARED_LIBRARIES := liblog libdl
 
