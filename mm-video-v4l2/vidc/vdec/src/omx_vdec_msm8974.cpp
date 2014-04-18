@@ -1273,10 +1273,12 @@ int omx_vdec::update_resolution(int width, int height, int stride, int scan_line
     drv_ctx.video_resolution.frame_width = width;
     drv_ctx.video_resolution.scan_lines = scan_lines;
     drv_ctx.video_resolution.stride = stride;
-    rectangle.nLeft = 0;
-    rectangle.nTop = 0;
-    rectangle.nWidth = drv_ctx.video_resolution.frame_width;
-    rectangle.nHeight = drv_ctx.video_resolution.frame_height;
+    if(!is_down_scalar_enabled) {
+        rectangle.nLeft = 0;
+        rectangle.nTop = 0;
+        rectangle.nWidth = drv_ctx.video_resolution.frame_width;
+        rectangle.nHeight = drv_ctx.video_resolution.frame_height;
+    }
     return format_changed;
 }
 
@@ -3074,6 +3076,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                        (int)portDefn->format.video.nFrameWidth);
                                if (OMX_DirOutput == portDefn->eDir) {
                                    DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port");
+                                   bool port_format_changed = false;
                                    m_display_id = portDefn->format.video.pNativeWindow;
                                    unsigned int buffer_size;
                                    /* update output port resolution with client supplied dimensions
@@ -3085,13 +3088,34 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                (unsigned int)portDefn->format.video.nFrameHeight);
                                        if (portDefn->format.video.nFrameHeight != 0x0 &&
                                                portDefn->format.video.nFrameWidth != 0x0) {
+                                           memset(&fmt, 0x0, sizeof(struct v4l2_format));
+                                           fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+                                           fmt.fmt.pix_mp.pixelformat = capture_capability;
+                                           ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+                                           if (ret) {
+                                               DEBUG_PRINT_ERROR("Get Resolution failed");
+                                               eRet = OMX_ErrorHardware;
+                                               break;
+                                           }
+                                           if ((portDefn->format.video.nFrameHeight != (unsigned int)fmt.fmt.pix_mp.height) ||
+                                               (portDefn->format.video.nFrameWidth != (unsigned int)fmt.fmt.pix_mp.width)) {
+                                                   port_format_changed = true;
+                                           }
                                            update_resolution(portDefn->format.video.nFrameWidth,
                                                    portDefn->format.video.nFrameHeight,
                                                    portDefn->format.video.nFrameWidth,
                                                    portDefn->format.video.nFrameHeight);
+
+                                           /* set crop info */
+                                           rectangle.nLeft = 0;
+                                           rectangle.nTop = 0;
+                                           rectangle.nWidth = portDefn->format.video.nFrameWidth;
+                                           rectangle.nHeight = portDefn->format.video.nFrameHeight;
+
                                            eRet = is_video_session_supported();
                                            if (eRet)
                                                break;
+                                           memset(&fmt, 0x0, sizeof(struct v4l2_format));
                                            fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
                                            fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
                                            fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -3109,7 +3133,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    if (!client_buffers.get_buffer_req(buffer_size)) {
                                        DEBUG_PRINT_ERROR("Error in getting buffer requirements");
                                        eRet = OMX_ErrorBadParameter;
-                                   } else {
+                                   } else if (!port_format_changed) {
                                        if ( portDefn->nBufferCountActual >= drv_ctx.op_buf.mincount &&
                                                portDefn->nBufferSize >=  drv_ctx.op_buf.buffer_size ) {
                                            drv_ctx.op_buf.actualcount = portDefn->nBufferCountActual;
@@ -3195,6 +3219,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            eRet = is_video_session_supported();
                                            if (eRet)
                                                break;
+                                           memset(&fmt, 0x0, sizeof(struct v4l2_format));
                                            fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
                                            fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
                                            fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -3204,8 +3229,10 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            if (ret) {
                                                DEBUG_PRINT_ERROR("Set Resolution failed");
                                                eRet = OMX_ErrorUnsupportedSetting;
-                                           } else
-                                               eRet = get_buffer_req(&drv_ctx.op_buf);
+                                           } else {
+                                               if (!is_down_scalar_enabled)
+                                                   eRet = get_buffer_req(&drv_ctx.op_buf);
+                                           }
                                        }
                                    }
                                    if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
@@ -6880,8 +6907,13 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         OMX_U32 buf_index = buffer - m_out_mem_ptr;
         BufferDim_t dim;
         private_handle_t *private_handle = NULL;
-        dim.sliceWidth = drv_ctx.video_resolution.frame_width;
-        dim.sliceHeight = drv_ctx.video_resolution.frame_height;
+        if (is_down_scalar_enabled) {
+             dim.sliceWidth = drv_ctx.video_resolution.stride;
+             dim.sliceHeight = drv_ctx.video_resolution.scan_lines;
+        } else {
+             dim.sliceWidth = drv_ctx.video_resolution.frame_width;
+             dim.sliceHeight = drv_ctx.video_resolution.frame_height;
+        }
         if (native_buffer[buf_index].privatehandle)
             private_handle = native_buffer[buf_index].privatehandle;
         if (private_handle) {
@@ -8326,6 +8358,7 @@ OMX_ERRORTYPE omx_vdec::update_picture_resolution()
 OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
+    struct v4l2_format fmt;
     if (!portDefn) {
         return OMX_ErrorBadParameter;
     }
@@ -8340,6 +8373,7 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
         DEBUG_PRINT_ERROR("Error: Divide by zero");
         return OMX_ErrorBadParameter;
     }
+    memset(&fmt, 0x0, sizeof(struct v4l2_format));
     if (0 == portDefn->nPortIndex) {
         portDefn->eDir =  OMX_DirInput;
         portDefn->nBufferCountActual = drv_ctx.ip_buf.actualcount;
@@ -8349,6 +8383,9 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
         portDefn->format.video.eCompressionFormat = eCompressionFormat;
         portDefn->bEnabled   = m_inp_bEnabled;
         portDefn->bPopulated = m_inp_bPopulated;
+
+        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+        fmt.fmt.pix_mp.pixelformat = output_capability;
     } else if (1 == portDefn->nPortIndex) {
         unsigned int buf_size = 0;
         if (!client_buffers.update_buffer_req()) {
@@ -8370,16 +8407,33 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
             DEBUG_PRINT_ERROR("Error in getting color format");
             return OMX_ErrorHardware;
         }
+        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+        fmt.fmt.pix_mp.pixelformat = capture_capability;
     } else {
         portDefn->eDir = OMX_DirMax;
         DEBUG_PRINT_LOW(" get_parameter: Bad Port idx %d",
                 (int)portDefn->nPortIndex);
         eRet = OMX_ErrorBadPortIndex;
     }
-    portDefn->format.video.nFrameHeight =  drv_ctx.video_resolution.frame_height;
-    portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
-    portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
-    portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
+    if (is_down_scalar_enabled) {
+        int ret = 0;
+        ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+        if (ret) {
+            DEBUG_PRINT_ERROR("update_portdef : Error in getting port resolution");
+            return OMX_ErrorHardware;
+        } else {
+            portDefn->format.video.nFrameWidth = fmt.fmt.pix_mp.width;
+            portDefn->format.video.nFrameHeight = fmt.fmt.pix_mp.height;
+            portDefn->format.video.nStride = fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
+            portDefn->format.video.nSliceHeight = fmt.fmt.pix_mp.plane_fmt[0].reserved[0];
+        }
+    } else {
+        portDefn->format.video.nFrameHeight =  drv_ctx.video_resolution.frame_height;
+        portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
+        portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
+        portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
+    }
+
     if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
        (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
         portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
