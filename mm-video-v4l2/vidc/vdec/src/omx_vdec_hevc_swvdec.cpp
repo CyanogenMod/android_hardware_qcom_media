@@ -607,6 +607,8 @@ omx_vdec::omx_vdec():
     property_get("vidc.debug.level", property_value, "1");
     debug_level = atoi(property_value);
 
+    DEBUG_PRINT_HIGH("In OMX vdec Constructor");
+
     property_value[0] = '\0';
     property_get("vidc.dec.debug.perf", property_value, "0");
     perf_flag = atoi(property_value);
