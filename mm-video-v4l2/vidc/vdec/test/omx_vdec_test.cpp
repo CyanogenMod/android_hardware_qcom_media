@@ -3716,7 +3716,11 @@ int drawBG(void)
 #else
     short * p;
 #endif
-    void *fb_buf = mmap (NULL, finfo.smem_len,PROT_READ|PROT_WRITE, MAP_SHARED, fb_fd, 0);
+    int mapsize;
+
+    mapsize = finfo.line_length * vinfo.yres_virtual;
+
+    void *fb_buf = mmap (NULL, mapsize,PROT_READ|PROT_WRITE, MAP_SHARED, fb_fd, 0);
 
     if (fb_buf == MAP_FAILED) {
         printf("ERROR: Framebuffer MMAP failed!\n");
