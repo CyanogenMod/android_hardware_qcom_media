@@ -3343,6 +3343,8 @@ OMX_ERRORTYPE omx_vdec::enable_smoothstreaming() {
             return OMX_ErrorUnsupportedSetting;
         }
     }
+    DEBUG_PRINT_LOW("Smooth Streaming enabled.");
+    m_smoothstreaming_mode = true;
     return OMX_ErrorNone;
 }
 
