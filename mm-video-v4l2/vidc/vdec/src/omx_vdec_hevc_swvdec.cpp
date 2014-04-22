@@ -3502,6 +3502,14 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         }
                         update_resolution(frameWidth, frameHeight,
                                 frameWidth, frameHeight);
+                        if (m_swvdec_mode == SWVDEC_MODE_PARSE_DECODE)
+                        {
+                            /* update the stride info */
+                            drv_ctx.video_resolution.stride =
+                               (frameWidth + DEFAULT_WIDTH_ALIGNMENT - 1) & (~(DEFAULT_WIDTH_ALIGNMENT - 1));
+                            drv_ctx.video_resolution.scan_lines =
+                               (frameHeight + DEFAULT_HEIGHT_ALIGNMENT - 1) & (~(DEFAULT_HEIGHT_ALIGNMENT - 1));
+                        }
 
                         eRet = is_video_session_supported();
                         if (eRet)
@@ -10722,6 +10730,11 @@ void omx_vdec::swvdec_handle_event(SWVDEC_EVENTHANDLER *pEvent)
         break;
 
     case SWVDEC_ERROR:
+        {
+            DEBUG_PRINT_ERROR("swvdec fatal error");
+            post_event ((unsigned)NULL, VDEC_S_SUCCESS,\
+                OMX_COMPONENT_GENERATE_HARDWARE_ERROR);
+        }
         break;
 
     case SWVDEC_RELEASE_BUFFER_REFERENCE:
