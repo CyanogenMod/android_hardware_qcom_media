@@ -471,7 +471,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         }
     }
 
-    DEBUG_PRINT_HIGH("Component_init return value = 0x%x", eRet);
+    DEBUG_PRINT_INFO("Component_init : %s : return = 0x%x", m_nkind, eRet);
     return eRet;
 }
 
@@ -561,7 +561,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 DEBUG_PRINT_ERROR("C2D init failed");
                                 return OMX_ErrorUnsupportedSetting;
                             }
-                            DEBUG_PRINT_ERROR("C2D init is successful");
+                            DEBUG_PRINT_HIGH("C2D init is successful");
                         }
                         mUseProxyColorFormat = true;
                         m_input_msg_id = OMX_COMPONENT_GENERATE_ETB_OPQ;
@@ -643,7 +643,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 DEBUG_PRINT_ERROR("C2D init failed");
                                 return OMX_ErrorUnsupportedSetting;
                             }
-                            DEBUG_PRINT_ERROR("C2D init is successful");
+                            DEBUG_PRINT_HIGH("C2D init is successful");
                         }
                         mUseProxyColorFormat = true;
                         m_input_msg_id = OMX_COMPONENT_GENERATE_ETB_OPQ;
@@ -1737,7 +1737,7 @@ OMX_ERRORTYPE  omx_venc::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     handle->venc_close();
     DEBUG_PRINT_HIGH("Deleting HANDLE[%p]", handle);
     delete (handle);
-    DEBUG_PRINT_HIGH("OMX_Venc:Component Deinit");
+    DEBUG_PRINT_INFO("Component Deinit");
     return OMX_ErrorNone;
 }
 
