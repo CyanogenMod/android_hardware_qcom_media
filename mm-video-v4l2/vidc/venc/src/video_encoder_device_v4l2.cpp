@@ -1622,7 +1622,8 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
             {
                 OMX_CONFIG_FRAMERATETYPE *frame_rate = (OMX_CONFIG_FRAMERATETYPE *)
                     configData;
-                DEBUG_PRINT_LOW("venc_set_config: OMX_IndexConfigVideoFramerate");
+                DEBUG_PRINT_LOW("venc_set_config: OMX_IndexConfigVideoFramerate: %d",
+								frame_rate->xEncodeFramerate);
 
                 if (frame_rate->nPortIndex == (OMX_U32)PORT_INDEX_OUT) {
                     if (venc_set_encode_framerate(frame_rate->xEncodeFramerate, 1) == false) {
@@ -1637,10 +1638,10 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
             }
         case QOMX_IndexConfigVideoIntraperiod:
             {
-                DEBUG_PRINT_LOW("venc_set_param:QOMX_IndexConfigVideoIntraperiod");
-                QOMX_VIDEO_INTRAPERIODTYPE *intraperiod =
+				QOMX_VIDEO_INTRAPERIODTYPE *intraperiod =
                     (QOMX_VIDEO_INTRAPERIODTYPE *)configData;
-
+                DEBUG_PRINT_LOW("venc_set_config:QOMX_IndexConfigVideoIntraperiod: %d: %d",
+								intraperiod->nPFrames, intraperiod->nBFrames);
                 if (intraperiod->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     if (venc_set_intra_period(intraperiod->nPFrames, intraperiod->nBFrames) == false) {
                         DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
@@ -2889,10 +2890,9 @@ bool venc_dev::venc_set_voptiming_cfg( OMX_U32 TimeIncRes)
 bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
 {
 
-    DEBUG_PRINT_LOW("venc_set_intra_period: nPFrames = %u, nBFrames: %lu", nPFrames, nBFrames);
+    DEBUG_PRINT_LOW("venc_set_intra_period: nPFrames = %lu, nBFrames: %lu", nPFrames, nBFrames);
     int rc;
     struct v4l2_control control;
-    int pframe = 0, bframe = 0;
 
     if ((codec_profile.profile != V4L2_MPEG_VIDEO_MPEG4_PROFILE_ADVANCED_SIMPLE) &&
             (codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_MAIN) &&
@@ -2901,7 +2901,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
     }
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
-    control.value = (m_sVenc_cfg.fps_num /m_sVenc_cfg.fps_den) - (nBFrames+1);
+    control.value = nPFrames;
 
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 
@@ -2960,8 +2960,7 @@ bool venc_dev::venc_set_idr_period(OMX_U32 nPFrames, OMX_U32 nIDRPeriod)
         return false;
     }
 
-    if (!intra_period.num_bframes)
-        intra_period.num_pframes = nPFrames;
+    intra_period.num_pframes = nPFrames;
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_IDR_PERIOD;
     control.value = nIDRPeriod;
 
