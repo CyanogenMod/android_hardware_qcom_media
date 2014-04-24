@@ -1096,7 +1096,9 @@ status_t DashCodec::configureCodec(
       mEnableDynamicBuffering = atoi(property_value) > 0 ? true: false;
       ALOGE("DynamicBuffering is set to [%d]", mEnableDynamicBuffering);
     }
-      if (!encoder && video && haveNativeWindow) {
+      // Do not use Dynamic Buffer or Adaptive playback for HEVC, the HEVC decoder hybrid solution
+      // that is being used doesnt support these mode , so just use port reconfig mode
+      if (!encoder && video && haveNativeWindow && (strcmp(mime,"video/hevc")!= 0)) {
 
         if (mEnableDynamicBuffering)
         {
@@ -1176,6 +1178,8 @@ status_t DashCodec::configureCodec(
                     width = MAX_WIDTH;
                     height = MAX_HEIGHT;
                 }
+                ALOGE("[%s] setupVideoDecoder with width %d, height %d",
+                      mComponentName.c_str(),width,height);
                 err = setupVideoDecoder(mime, width, height);
             }
         }
@@ -3457,8 +3461,18 @@ bool DashCodec::UninitializedState::onAllocateComponent(const sp<AMessage> &msg)
     for (size_t matchIndex = 0; matchIndex < matchingCodecs.size();
             ++matchIndex) {
         componentName = matchingCodecs.itemAt(matchIndex).mName.string();
+        if (mime.compare("video/hevc") == 0) {
+            // for targets where there is only one decoder component, then dont look
+            // for hybrid solution
+            if ((matchingCodecs.size() > 1) &&
+                (componentName.compare("OMX.qcom.video.decoder.hevchybrid") !=0)) {
+                ALOGE("Ignoring Codec Component %s for mimeTye %s",
+                      componentName.c_str(),mime.c_str());
+                continue;
+            }
+        }
         quirks = matchingCodecs.itemAt(matchIndex).mQuirks;
-
+        ALOGE("using Codec Component %s for mimeTye %s",componentName.c_str(),mime.c_str());
         pid_t tid = androidGetTid();
         int prevPriority = androidGetThreadPriority(tid);
         androidSetThreadPriority(tid, ANDROID_PRIORITY_FOREGROUND);
