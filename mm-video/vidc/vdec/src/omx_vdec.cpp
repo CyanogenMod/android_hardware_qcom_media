@@ -7158,7 +7158,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
   }
 
  // update buffer stride so display can interpret the buffer correctly
- if (m_use_smoothstreaming) {
+ if (m_use_smoothstreaming && !output_flush_progress) {
     OMX_U32 buf_index = buffer - m_out_mem_ptr;
     private_handle_t * handle = NULL;
     BufferDim_t dim;
