@@ -240,7 +240,8 @@ omx_video::omx_video():
     m_flags(0),
     m_etb_count(0),
     m_fbd_count(0),
-    m_event_port_settings_sent(false)
+    m_event_port_settings_sent(false),
+    hw_overload(false)
 {
     DEBUG_PRINT_HIGH("omx_video(): Inside Constructor()");
     memset(&m_cmp,0,sizeof(m_cmp));
@@ -405,12 +406,17 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
                         pThis->omx_report_error ();
                     }
                     break;
-                case OMX_COMPONENT_GENERATE_ETB:
-                    DEBUG_PRINT_LOW("OMX_COMPONENT_GENERATE_ETB");
-                    if (pThis->empty_this_buffer_proxy((OMX_HANDLETYPE)p1,\
-                                (OMX_BUFFERHEADERTYPE *)p2) != OMX_ErrorNone) {
-                        DEBUG_PRINT_ERROR("ERROR: ETBProxy() failed!");
-                        pThis->omx_report_error ();
+                case OMX_COMPONENT_GENERATE_ETB: {
+                        OMX_ERRORTYPE iret;
+                        DEBUG_PRINT_LOW("OMX_COMPONENT_GENERATE_ETB");
+                        iret = pThis->empty_this_buffer_proxy((OMX_HANDLETYPE)p1, (OMX_BUFFERHEADERTYPE *)p2);
+                        if (iret == OMX_ErrorInsufficientResources) {
+                            DEBUG_PRINT_ERROR("empty_this_buffer_proxy failure due to HW overload");
+                            pThis->omx_report_hw_overload ();
+                        } else if (iret != OMX_ErrorNone) {
+                            DEBUG_PRINT_ERROR("empty_this_buffer_proxy failure");
+                            pThis->omx_report_error ();
+                        }
                     }
                     break;
 
@@ -3457,6 +3463,9 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
         post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_EBD);
         /*Generate an async error and move to invalid state*/
         pending_input_buffers--;
+        if (hw_overload) {
+            return OMX_ErrorInsufficientResources;
+        }
         return OMX_ErrorBadParameter;
     }
     return ret;
