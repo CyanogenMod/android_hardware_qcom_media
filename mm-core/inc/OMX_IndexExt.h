@@ -67,6 +67,7 @@ typedef enum OMX_INDEXEXTTYPE {
     OMX_IndexParamVideoVp8,                             /**< reference: OMX_VIDEO_PARAM_VP8TYPE */
     OMX_IndexConfigVideoVp8ReferenceFrame,              /**< reference: OMX_VIDEO_VP8REFERENCEFRAMETYPE */
     OMX_IndexConfigVideoVp8ReferenceFrameType,          /**< reference: OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE */
+    OMX_IndexParamVideoHevc,                             /**< reference: OMX_VIDEO_PARAM_HEVCTYPE */
 
     /* Image & Video common configurations */
     OMX_IndexExtCommonStartUnused = OMX_IndexKhronosExtensions + 0x00700000,
