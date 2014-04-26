@@ -634,6 +634,9 @@ int venc_dev::venc_output_log_buffers(const char *buffer_addr, int buffer_len)
         } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
            size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%lu_%lu_%p.264",
                            m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+           size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%ld_%ld_%p.265",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
         } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263) {
            size = snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX, "%s/output_enc_%lu_%lu_%p.263",
                            m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
@@ -669,6 +672,9 @@ int venc_dev::venc_extradata_log_buffers(char *buffer_addr)
                            m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
         } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
            size = snprintf(m_debug.extradatafile_name, PROPERTY_VALUE_MAX, "%s/extradata_enc_%lu_%lu_%p.264",
+                           m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
+        } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+           size = snprintf(m_debug.extradatafile_name, PROPERTY_VALUE_MAX, "%s/extradata_enc_%lu_%lu_%p.265",
                            m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
         } else if(m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263) {
            size = snprintf(m_debug.extradatafile_name, PROPERTY_VALUE_MAX, "%s/extradata_enc_%lu_%lu_%p.263",
@@ -830,6 +836,10 @@ bool venc_dev::venc_open(OMX_U32 codec)
         profile_level.level = V4L2_MPEG_VIDC_VIDEO_VP8_VERSION_0;
         session_qp_range.minqp = 1;
         session_qp_range.maxqp = 128;
+    } else if (codec == OMX_VIDEO_CodingHEVC) {
+        m_sVenc_cfg.codectype = V4L2_PIX_FMT_HEVC;
+        session_qp_range.minqp = 1;
+        session_qp_range.maxqp = 51;
     }
     session_qp_values.minqp = session_qp_range.minqp;
     session_qp_values.maxqp = session_qp_range.maxqp;
@@ -1491,6 +1501,21 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                      }
                  }
 
+                break;
+            }
+            case (OMX_INDEXTYPE)OMX_IndexParamVideoHevc:
+            {
+                DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoHevc");
+                OMX_VIDEO_PARAM_HEVCTYPE* pParam = (OMX_VIDEO_PARAM_HEVCTYPE*)paramData;
+                if (!venc_set_profile_level (pParam->eProfile, pParam->eLevel)) {
+                    DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level %d, %d",
+                                        pParam->eProfile, pParam->eLevel);
+                    return false;
+                }
+                if(!venc_set_ltrmode(1, 1)) {
+                   DEBUG_PRINT_ERROR("ERROR: Failed to enable ltrmode");
+                   return false;
+                }
                 break;
             }
         case OMX_IndexParamVideoIntraRefresh:

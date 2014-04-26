@@ -580,6 +580,7 @@ class omx_video: public qc_omx_component
         OMX_VIDEO_PARAM_H263TYPE m_sParamH263;
         OMX_VIDEO_PARAM_AVCTYPE m_sParamAVC;
         OMX_VIDEO_PARAM_VP8TYPE m_sParamVP8;
+        OMX_VIDEO_PARAM_HEVCTYPE m_sParamHEVC;
         OMX_PORT_PARAM_TYPE m_sPortParam_img;
         OMX_PORT_PARAM_TYPE m_sPortParam_audio;
         OMX_VIDEO_CONFIG_BITRATETYPE m_sConfigBitrate;

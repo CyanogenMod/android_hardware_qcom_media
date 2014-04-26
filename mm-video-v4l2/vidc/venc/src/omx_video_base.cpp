@@ -1560,6 +1560,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_sParamVP8, sizeof(m_sParamVP8));
                 break;
             }
+        case (OMX_INDEXTYPE)OMX_IndexParamVideoHevc:
+            {
+                OMX_VIDEO_PARAM_HEVCTYPE* pParam = (OMX_VIDEO_PARAM_HEVCTYPE*)paramData;
+                DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoHevc");
+                memcpy(pParam, &m_sParamHEVC, sizeof(m_sParamHEVC));
+                break;
+            }
         case OMX_IndexParamVideoProfileLevelQuerySupported:
             {
                 OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam = (OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
@@ -3711,6 +3718,15 @@ OMX_ERRORTYPE  omx_video::component_role_enum(OMX_IN OMX_HANDLETYPE hComp,
         }
     }
 #endif
+    else if (!strncmp((char*)m_nkind, "OMX.qcom.video.encoder.hevc", OMX_MAX_STRINGNAME_SIZE)) {
+        if ((0 == index) && role) {
+            strlcpy((char *)role, "video_encoder.hevc", OMX_MAX_STRINGNAME_SIZE);
+            DEBUG_PRINT_LOW("component_role_enum: role %s", role);
+        } else {
+            DEBUG_PRINT_ERROR("ERROR: No more roles");
+            eRet = OMX_ErrorNoMore;
+        }
+    }
     else {
         DEBUG_PRINT_ERROR("ERROR: Querying Role on Unknown Component");
         eRet = OMX_ErrorInvalidComponentName;
