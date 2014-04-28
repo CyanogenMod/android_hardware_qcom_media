@@ -123,13 +123,12 @@ libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
-libmm-vdec-inc          += hardware/qcom/display/libgralloc
+libmm-vdec-inc          += $(TARGET_OUT_HEADERS)/qcom/display
+libmm-vdec-inc          += $(TARGET_OUT_HEADERS)/adreno
 libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
 libmm-vdec-inc          += $(vdec-inc)
-libmm-vdec-inc          += hardware/qcom/display/libqdutils
 libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
-libmm-vdec-inc      += hardware/qcom/display/libcopybit
 libmm-vdec-inc      += frameworks/av/include/media/stagefright
 libmm-vdec-inc      += $(TARGET_OUT_HEADERS)/mm-video/SwVdec
 
@@ -164,7 +163,6 @@ ifneq (,$(filter msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze msm8916 msm8
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
 else
 LOCAL_SHARED_LIBRARIES  += libhardware
-libmm-vdec-inc          += hardware/qcom/display/libhwcomposer
 LOCAL_SRC_FILES         += src/power_module.cpp
 LOCAL_SRC_FILES         += src/omx_vdec.cpp
 endif
