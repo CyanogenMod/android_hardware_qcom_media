@@ -796,9 +796,9 @@ int alloc_map_ion_memory(__u32 buffer_size,
 	if ((secure_mode) && (flag & ION_SECURE))
 		alloc_data->flags |= ION_SECURE;
 
-	alloc_data->heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
+	alloc_data->heap_id_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
 	if (secure_mode)
-		alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
+		alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
 	rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
 	if (rc || !alloc_data->handle) {
 		E("ION ALLOC memory failed \n");
