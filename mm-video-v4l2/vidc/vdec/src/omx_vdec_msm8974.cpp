@@ -5966,13 +5966,13 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
             streaming[OUTPUT_PORT] = true;
         } else if (errno == EBUSY) {
             DEBUG_PRINT_ERROR("Failed to call stream on OUTPUT due to HW_OVERLOAD");
-            post_event ((unsigned int)buffer, VDEC_S_SUCCESS,
+            post_event ((unsigned long)buffer, VDEC_S_SUCCESS,
                     OMX_COMPONENT_GENERATE_EBD);
             return OMX_ErrorInsufficientResources;
         } else {
             DEBUG_PRINT_ERROR("Failed to call streamon on OUTPUT");
             DEBUG_PRINT_LOW("If Stream on failed no buffer should be queued");
-            post_event ((unsigned int)buffer, VDEC_S_SUCCESS,
+            post_event ((unsigned long)buffer, VDEC_S_SUCCESS,
                     OMX_COMPONENT_GENERATE_EBD);
             return OMX_ErrorBadParameter;
         }
