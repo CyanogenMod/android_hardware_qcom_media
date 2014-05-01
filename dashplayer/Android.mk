@@ -42,9 +42,17 @@ LOCAL_C_INCLUDES := \
 	$(TOP)/frameworks/av/media/libstagefright/mpeg2ts             \
 	$(TOP)/frameworks/av/media/libstagefright/rtsp                \
 	$(TOP)/hardware/qcom/media/mm-core/inc                        \
+	$(TOP)/hardware/qcom/display/libgralloc                       \
+	$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+
+LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 ifeq ($(PLATFORM_SDK_VERSION), 18)
   LOCAL_CFLAGS += -DANDROID_JB_MR2
+endif
+
+ifneq (,$(filter msm8974 msm8226 apq8084 mpq8092 msm8610 msm_bronze msm8916_32,$(TARGET_BOARD_PLATFORM)))
+  LOCAL_CFLAGS += -DBFAMILY_TARGET
 endif
 
 LOCAL_MODULE:= libdashplayer

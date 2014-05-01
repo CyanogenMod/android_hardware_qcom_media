@@ -71,8 +71,10 @@ public class QCTimedText
     public static final int KEY_DURATION                      = 19;
     public static final int KEY_START_OFFSET                  = 20;
     public static final int KEY_SUBS_ATOM                     = 21;
+    //The type of text - SMPTE, CEA, WebVTT, SRT or Unknown
+    public static final int KEY_TEXT_FORMAT                   = 22;
 
-    private static final int LAST_PUBLIC_KEY                  = 21;
+    private static final int LAST_PUBLIC_KEY                  = 22;
 
     private static final int FIRST_PRIVATE_KEY                = 101;
 
@@ -121,7 +123,8 @@ public class QCTimedText
 
         public static final int TIMED_TEXT_FLAG_FRAME          = 0; // int
         public static final int TIMED_TEXT_FLAG_CODEC_CONFIG   = 1; // int
-        public static final int TIMED_TEXT_FLAG_EOS            = 2; // int
+        public static final int TIMED_TEXT_FLAG_DISCONTINUITY  = 2; // int
+        public static final int TIMED_TEXT_FLAG_EOS            = 3; // int
 
         /**
          * The byte-count of this text sample
@@ -131,6 +134,10 @@ public class QCTimedText
          * The flags associated with frame
          */
         public int flags;
+        /**
+         * The discontinuity in samples
+         */
+        public boolean discontinuity = false;
 
         /**
          * The text sample
@@ -368,26 +375,63 @@ public class QCTimedText
     private boolean parseParcel(Parcel mParcel) {
         mParcel.setDataPosition(0);
         if (mParcel.dataAvail() == 0) {
-            Log.e(TAG, "mParcel.dataAvail()");
+            Log.e(TAG, "Invalid mParcel.dataAvail()");
             return false;
         }
 
         int type = mParcel.readInt();
+
         if (type == KEY_LOCAL_SETTING) {
+
+            mTextStruct = new Text();
+
             type = mParcel.readInt();
-            if (type == KEY_TEXT_EOS)
+            if (type != KEY_TEXT_FORMAT) {
+                Log.e(TAG, "Invalid KEY_TEXT_FORMAT key");
+                return false;
+            }
+
+            String format = mParcel.readString();
+            mKeyObjectMap.put(type, format);
+
+            type = mParcel.readInt();
+            if (type == Text.TIMED_TEXT_FLAG_EOS)
             {
-                mKeyObjectMap.put(KEY_START_TIME, 0);
-                mTextStruct = new Text();
+                mTextStruct.flags = type;
                 mTextStruct.textLen = 0;  //Zero length buffer in case of EOS
                 mKeyObjectMap.put(KEY_STRUCT_TEXT, mTextStruct);
+                mKeyObjectMap.put(KEY_START_TIME, 0);
                 mKeyObjectMap.put(KEY_HEIGHT, 0);
                 mKeyObjectMap.put(KEY_WIDTH, 0);
                 mKeyObjectMap.put(KEY_DURATION, 0);
                 mKeyObjectMap.put(KEY_START_OFFSET, 0);
-                mTextStruct.flags = Text.TIMED_TEXT_FLAG_EOS;
+
                 return true;
             }
+
+            if(type != Text.TIMED_TEXT_FLAG_FRAME && type != Text.TIMED_TEXT_FLAG_CODEC_CONFIG) {
+                Log.e(TAG, "Invalid TIMED_TEXT_FLAG_FRAME key");
+                return false;
+            }
+            mTextStruct.flags = type;
+
+            type = mParcel.readInt();
+            if(type == Text.TIMED_TEXT_FLAG_DISCONTINUITY) {
+                mTextStruct.discontinuity = true;
+                type = mParcel.readInt();
+            }
+
+            if (type != KEY_STRUCT_TEXT) {
+                Log.e(TAG, "Invalid KEY_STRUCT_TEXT key");
+                return false;
+            }
+
+            mTextStruct.textLen = mParcel.readInt();
+            mTextStruct.text = mParcel.createByteArray();
+
+            mKeyObjectMap.put(type, mTextStruct);
+
+            type = mParcel.readInt();
             if (type != KEY_START_TIME) {
                 Log.e(TAG, "Invalid KEY_START_TIME key");
                 return false;
@@ -395,69 +439,10 @@ public class QCTimedText
             int mStartTimeMs = mParcel.readInt();
             mKeyObjectMap.put(type, mStartTimeMs);
 
-            type = mParcel.readInt();
-            if (type != KEY_STRUCT_TEXT) {
-                Log.e(TAG, "Invalid KEY_STRUCT_TEXT key");
-                return false;
-            }
-
-            mTextStruct = new Text();
-            mTextStruct.flags = mParcel.readInt();
-            mTextStruct.textLen = mParcel.readInt();
-
-            mTextStruct.text = mParcel.createByteArray();
-            mKeyObjectMap.put(type, mTextStruct);
-
-            type = mParcel.readInt();
-            if (type != KEY_HEIGHT) {
-                Log.e(TAG, "Invalid KEY_HEIGHT key");
-                return false;
-            }
-            int mHeight = mParcel.readInt();
-            Log.e(TAG, "mHeight: " + mHeight);
-            mKeyObjectMap.put(type, mHeight);
-
-            type = mParcel.readInt();
-            if (type != KEY_WIDTH) {
-                Log.e(TAG, "Invalid KEY_WIDTH key");
-                return false;
-            }
-            int mWidth = mParcel.readInt();
-            Log.e(TAG, "mWidth: " + mWidth);
-            mKeyObjectMap.put(type, mWidth);
-
-            type = mParcel.readInt();
-            if (type != KEY_DURATION) {
-                Log.e(TAG, "Invalid KEY_DURATION key");
-                return false;
-            }
-            int mDuration = mParcel.readInt();
-            Log.e(TAG, "mDuration: " + mDuration);
-            mKeyObjectMap.put(type, mDuration);
-
-            type = mParcel.readInt();
-            if (type != KEY_START_OFFSET) {
-                Log.e(TAG, "Invalid KEY_START_OFFSET key");
-                return false;
-            }
-
-            int mStartOffset = mParcel.readInt();
-            Log.e(TAG, "mStartOffset: " + mStartOffset);
-            mKeyObjectMap.put(type, mStartOffset);
-
-            //Parse SubsAtom
-            type = mParcel.readInt();
-            if (type == KEY_SUBS_ATOM) {
-                mSubsAtomStruct = new SubsAtom();
-                mSubsAtomStruct.subsAtomLen =  mParcel.readInt();
-                mSubsAtomStruct.subsAtomData = mParcel.createByteArray();
-                mKeyObjectMap.put(type, mSubsAtomStruct);
-                return true;
-            }
         } else if (type != KEY_GLOBAL_SETTING) {
-            Log.w(TAG, "Invalid timed text key found: " + type);
-            return false;
-        }
+            Log.e(TAG, "Invalid timed text key found: " + type);
+                return false;
+            }
 
         while (mParcel.dataAvail() > 0) {
             int key = mParcel.readInt();
@@ -469,6 +454,43 @@ public class QCTimedText
             Object object = null;
 
             switch (key) {
+                case KEY_HEIGHT: {
+            int mHeight = mParcel.readInt();
+            Log.e(TAG, "mHeight: " + mHeight);
+                    mKeyObjectMap.put(key, mHeight);
+                    break;
+            }
+
+                case KEY_WIDTH: {
+            int mWidth = mParcel.readInt();
+            Log.e(TAG, "mWidth: " + mWidth);
+                    mKeyObjectMap.put(key, mWidth);
+                    break;
+            }
+
+                case KEY_DURATION: {
+            int mDuration = mParcel.readInt();
+            Log.e(TAG, "mDuration: " + mDuration);
+                    mKeyObjectMap.put(key, mDuration);
+                    break;
+            }
+
+                case KEY_START_OFFSET: {
+            int mStartOffset = mParcel.readInt();
+            Log.e(TAG, "mStartOffset: " + mStartOffset);
+                    mKeyObjectMap.put(key, mStartOffset);
+                    break;
+                }
+
+            //Parse SubsAtom
+                case KEY_SUBS_ATOM: {
+                mSubsAtomStruct = new SubsAtom();
+                mSubsAtomStruct.subsAtomLen =  mParcel.readInt();
+                mSubsAtomStruct.subsAtomData = mParcel.createByteArray();
+                    mKeyObjectMap.put(key, mSubsAtomStruct);
+                    break;
+            }
+
                 case KEY_STRUCT_STYLE_LIST: {
                     readStyle(mParcel);
                     object = mStyleList;
