@@ -5965,6 +5965,12 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         //Store private handle from GraphicBuffer
         native_buffer[nPortIndex].privatehandle = handle;
         native_buffer[nPortIndex].nativehandle = handle;
+
+        //buffer->nAllocLen will be sizeof(struct VideoDecoderOutputMetaData). Overwrite
+        //this with a more sane size so that we don't compensate in rest of code
+        //We'll restore this size later on, so that it's transparent to client
+        buffer->nFilledLen = 0;
+        buffer->nAllocLen = drv_ctx.op_buf.buffer_size;
     }
 
 
@@ -6760,6 +6766,15 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
 
     }
 
+    /* Since we're passing around handles, adjust nFilledLen and nAllocLen
+     * to size of the handle.  Do it _after_ handle_extradata() which
+     * requires the respective sizes to be accurate. */
+    if (dynamic_buf_mode) {
+        buffer->nAllocLen = sizeof(struct VideoDecoderOutputMetaData);
+        buffer->nFilledLen = buffer->nFilledLen ?
+            sizeof(struct VideoDecoderOutputMetaData) : 0;
+    }
+
     if (m_cb.FillBufferDone) {
         if (buffer->nFilledLen > 0) {
             if (arbitrary_bytes)
@@ -7021,10 +7036,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                     ((omxhdr - omx->m_out_mem_ptr) < (int)omx->drv_ctx.op_buf.actualcount) &&
                     (((struct vdec_output_frameinfo *)omxhdr->pOutputPortPrivate
                       - omx->drv_ctx.ptr_respbuffer) < (int)omx->drv_ctx.op_buf.actualcount)) {
-                if (omx->dynamic_buf_mode && vdec_msg->msgdata.output_frame.len) {
-                    vdec_msg->msgdata.output_frame.len = omxhdr->nAllocLen;
-                }
-                if ( vdec_msg->msgdata.output_frame.len <=  omxhdr->nAllocLen) {
+                if (vdec_msg->msgdata.output_frame.len <=  omxhdr->nAllocLen) {
                     omxhdr->nFilledLen = vdec_msg->msgdata.output_frame.len;
                     omxhdr->nOffset = vdec_msg->msgdata.output_frame.offset;
                     omxhdr->nTimeStamp = vdec_msg->msgdata.output_frame.time_stamp;
