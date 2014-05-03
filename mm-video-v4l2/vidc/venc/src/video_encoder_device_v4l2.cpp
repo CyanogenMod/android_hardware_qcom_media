@@ -3228,10 +3228,14 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
             (codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_HIGH)) {
         nBFrames=0;
     }
-    if ((display_info.w * display_info.h > OMX_CORE_720P_WIDTH * OMX_CORE_720P_HEIGHT)
+    if (nBFrames && (display_info.w * display_info.h > OMX_CORE_720P_WIDTH * OMX_CORE_720P_HEIGHT)
         && enable_mv_narrow_searchrange && (m_sVenc_cfg.input_width * m_sVenc_cfg.input_height >=
         OMX_CORE_1080P_WIDTH * OMX_CORE_1080P_HEIGHT || is_searchrange_set)) {
-        nBFrames=0;
+        int pframes = ((nPFrames + 1) * (nBFrames + 1)) - 1;
+        DEBUG_PRINT_HIGH("Warning: Increased nPFrames from %d to %d as B-frames not supported",
+            (int)nPFrames, pframes);
+        nPFrames = pframes;
+        nBFrames = 0;
     }
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
