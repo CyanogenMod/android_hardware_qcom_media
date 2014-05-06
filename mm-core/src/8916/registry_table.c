@@ -165,7 +165,7 @@ omx_core_cb_type core[] =
       NULL
     },
     NULL,   // Shared object library handle
-    "libOmxVdecHevc.so",
+    "libOmxVdec.so",
     {
       "video_decoder.hevc"
     }
