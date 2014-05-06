@@ -966,6 +966,7 @@ private:
     bool m_use_android_native_buffers;
     bool m_debug_extradata;
     bool m_debug_concealedmb;
+    bool m_disable_dynamic_buf_mode;
 #endif
 #ifdef MAX_RES_1080P
     MP4_Utils mp4_headerparser;
