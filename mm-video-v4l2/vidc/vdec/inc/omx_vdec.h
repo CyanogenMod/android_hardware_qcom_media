@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -47,7 +47,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <inttypes.h>
 #include <cstddef>
-#include <cutils/atomic.h>
 
 static ptrdiff_t x;
 
@@ -72,9 +71,19 @@ extern "C" {
 }
 #include <linux/videodev2.h>
 #include <poll.h>
-#include "hevc_utils.h"
 #define TIMEOUT 5000
+
+#else //_ANDROID_
+#define DEBUG_PRINT_LOW printf
+#define DEBUG_PRINT_HIGH printf
+#define DEBUG_PRINT_ERROR printf
 #endif // _ANDROID_
+
+#ifdef _MSM8974_
+#define DEBUG_PRINT_LOW
+#define DEBUG_PRINT_HIGH printf
+#define DEBUG_PRINT_ERROR printf
+#endif
 
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
 #include <media/hardware/HardwareAPI.h>
@@ -102,12 +111,6 @@ extern "C" {
 #include "extra_data_handler.h"
 #include "ts_parser.h"
 #include "vidc_color_converter.h"
-#include "vidc_debug.h"
-#ifdef _ANDROID_
-#include <cutils/properties.h>
-#else
-#define PROPERTY_VALUE_MAX 92
-#endif
 extern "C" {
     OMX_API void * get_omx_component_factory_fn(void);
 }
@@ -139,9 +142,6 @@ class VideoHeap : public MemoryHeapBase
 //////////////////////////////////////////////////////////////////////////////
 #define OMX_SPEC_VERSION  0x00000101
 
-//PC:TODO------------ kernel update ----------
-#define V4L2_PIX_FMT_H264_MVC v4l2_fourcc('M', '2', '6', '4') /* H264 MVC */
-//-----------
 
 //////////////////////////////////////////////////////////////////////////////
 //               Macros
@@ -189,10 +189,6 @@ class VideoHeap : public MemoryHeapBase
 #define OMX_TIMEINFO_EXTRADATA  0x00040000
 #define OMX_PORTDEF_EXTRADATA   0x00080000
 #define OMX_EXTNUSER_EXTRADATA  0x00100000
-#define OMX_FRAMEDIMENSION_EXTRADATA  0x00200000
-#define OMX_FRAMEPACK_EXTRADATA 0x00400000
-#define OMX_QP_EXTRADATA        0x00800000
-#define OMX_BITSINFO_EXTRADATA  0x01000000
 #define DRIVER_EXTRADATA_MASK   0x0000FFFF
 
 #define OMX_INTERLACE_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
@@ -201,16 +197,6 @@ class VideoHeap : public MemoryHeapBase
             sizeof(OMX_QCOM_EXTRADATA_FRAMEINFO) + 3)&(~3))
 #define OMX_PORTDEF_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
             sizeof(OMX_PARAM_PORTDEFINITIONTYPE) + 3)&(~3))
-#define OMX_FRAMEDIMENSION_EXTRADATA_SIZE (sizeof(OMX_OTHER_EXTRADATATYPE) +\
-            sizeof(OMX_QCOM_EXTRADATA_FRAMEDIMENSION) + 3)&(~3)
-#define OMX_FRAMEPACK_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
-            sizeof(OMX_QCOM_FRAME_PACK_ARRANGEMENT) + 3)&(~3))
-#define OMX_QP_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
-            sizeof(OMX_QCOM_EXTRADATA_QP) + 3)&(~3))
-#define OMX_BITSINFO_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
-            sizeof(OMX_QCOM_EXTRADATA_BITS_INFO) + 3)&(~3))
-#define OMX_USERDATA_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
-            ((8*1024) + 3))&(~3)) /* 8 KB is the size that driver/FW considers as worst case size for userdata */
 
 //  Define next macro with required values to enable default extradata,
 //    VDEC_EXTRADATA_MB_ERROR_MAP
@@ -234,7 +220,7 @@ struct vdec_ion {
 
 #ifdef _MSM8974_
 struct extradata_buffer_info {
-    unsigned long buffer_size;
+    int buffer_size;
     char* uaddr;
     int count;
     int size;
@@ -284,16 +270,6 @@ struct video_decoder_capability {
     unsigned int max_width;
     unsigned int min_height;
     unsigned int max_height;
-};
-
-struct debug_cap {
-    bool in_buffer_log;
-    bool out_buffer_log;
-    char infile_name[PROPERTY_VALUE_MAX + 36];
-    char outfile_name[PROPERTY_VALUE_MAX + 36];
-    char log_loc[PROPERTY_VALUE_MAX];
-    FILE *infile;
-    FILE *outfile;
 };
 
 struct dynamic_buf_list {
@@ -521,21 +497,21 @@ class omx_vdec: public qc_omx_component
 #endif
 
         struct omx_event {
-            unsigned long param1;
-            unsigned long param2;
-            unsigned long id;
+            unsigned param1;
+            unsigned param2;
+            unsigned id;
         };
 
         struct omx_cmd_queue {
             omx_event m_q[OMX_CORE_CONTROL_CMDQ_SIZE];
-            unsigned long m_read;
-            unsigned long m_write;
-            unsigned long m_size;
+            unsigned m_read;
+            unsigned m_write;
+            unsigned m_size;
 
             omx_cmd_queue();
             ~omx_cmd_queue();
-            bool insert_entry(unsigned long p1, unsigned long p2, unsigned long id);
-            bool pop_entry(unsigned long *p1,unsigned long *p2, unsigned long *id);
+            bool insert_entry(unsigned p1, unsigned p2, unsigned id);
+            bool pop_entry(unsigned *p1,unsigned *p2, unsigned *id);
             // get msgtype of the first ele from the queue
             unsigned get_q_msg_type();
 
@@ -624,7 +600,6 @@ class omx_vdec: public qc_omx_component
         OMX_ERRORTYPE push_input_buffer (OMX_HANDLETYPE hComp);
         OMX_ERRORTYPE push_input_sc_codec (OMX_HANDLETYPE hComp);
         OMX_ERRORTYPE push_input_h264 (OMX_HANDLETYPE hComp);
-        OMX_ERRORTYPE push_input_hevc (OMX_HANDLETYPE hComp);
         OMX_ERRORTYPE push_input_vc1 (OMX_HANDLETYPE hComp);
 
         OMX_ERRORTYPE fill_this_buffer_proxy(OMX_HANDLETYPE       hComp,
@@ -645,14 +620,13 @@ class omx_vdec: public qc_omx_component
         void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
 #ifdef _MSM8974_
         void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                OMX_U32 interlaced_format_type, bool is_mbaff);
+                OMX_U32 interlaced_format_type);
         OMX_ERRORTYPE enable_extradata(OMX_U32 requested_extradata, bool is_internal,
                 bool enable = true);
         void append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
                 OMX_U32 num_conceal_mb,
                 OMX_U32 picture_type,
                 OMX_U32 frame_rate,
-                OMX_TICKS time_stamp,
                 struct msm_vidc_panscan_window_payload *panscan_payload,
                 struct vdec_aspectratioinfo *aspect_ratio_info);
 #else
@@ -671,17 +645,8 @@ class omx_vdec: public qc_omx_component
         void append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra);
         OMX_ERRORTYPE update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn);
         void append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra);
-        void append_frame_dimension_extradata(OMX_OTHER_EXTRADATATYPE *extra);
         void append_extn_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_extn);
         void append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_user);
-        void append_concealmb_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                OMX_OTHER_EXTRADATATYPE *p_concealmb, OMX_U8 *conceal_mb_data);
-        void append_framepack_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload);
-        void append_qp_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                struct msm_vidc_frame_qp_payload *qp_payload);
-        void append_bitsinfo_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                struct msm_vidc_frame_bits_info_payload *bits_payload);
         void insert_demux_addr_offset(OMX_U32 address_offset);
         void extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr);
         OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
@@ -701,9 +666,9 @@ class omx_vdec: public qc_omx_component
                 OMX_COMMANDTYPE cmd,
                 OMX_U32         param1,
                 OMX_PTR         cmdData);
-        bool post_event( unsigned long p1,
-                unsigned long p2,
-                unsigned long id
+        bool post_event( unsigned int p1,
+                unsigned int p2,
+                unsigned int id
                    );
         inline int clip2(int x) {
             x = x -1;
@@ -755,15 +720,28 @@ class omx_vdec: public qc_omx_component
         nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
 
-
+        class auto_lock {
+            public:
+            auto_lock(pthread_mutex_t *lock)
+                : mLock(lock) {
+                if (mLock)
+                    pthread_mutex_lock(mLock);
+            }
+            ~auto_lock() {
+                if (mLock)
+                    pthread_mutex_unlock(mLock);
+            }
+            private:
+            pthread_mutex_t *mLock;
+        };
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
         pthread_mutex_t       m_lock;
         pthread_mutex_t       c_lock;
+        pthread_mutex_t       e_lock;
         //sem to handle the minimum procesing of commands
         sem_t                 m_cmd_lock;
-        sem_t                 m_safe_flush;
         bool              m_error_propogated;
         // compression format
         OMX_VIDEO_CODINGTYPE eCompressionFormat;
@@ -836,10 +814,6 @@ class omx_vdec: public qc_omx_component
 
         /*Variables for arbitrary Byte parsing support*/
         frame_parse m_frame_parser;
-        h264_stream_parser *h264_parser;
-        MP4_Utils mp4_headerparser;
-        HEVC_Utils m_hevc_utils;
-
         omx_cmd_queue m_input_pending_q;
         omx_cmd_queue m_input_free_q;
         bool arbitrary_bytes;
@@ -875,6 +849,7 @@ class omx_vdec: public qc_omx_component
         struct vdec_allocatorproperty op_buf_rcnfg;
         bool in_reconfig;
         OMX_NATIVE_WINDOWTYPE m_display_id;
+        h264_stream_parser *h264_parser;
         OMX_U32 client_extradata;
 #ifdef _ANDROID_
         bool m_debug_timestamp;
@@ -882,13 +857,14 @@ class omx_vdec: public qc_omx_component
         OMX_U32 proc_frms, latency;
         perf_metrics fps_metrics;
         perf_metrics dec_time;
-        bool m_reject_avc_1080p_mp;
         bool m_enable_android_native_buffers;
         bool m_use_android_native_buffers;
         bool m_debug_extradata;
         bool m_debug_concealedmb;
-        bool m_disable_dynamic_buf_mode;
-        OMX_U32 m_conceal_color;
+        bool m_reject_avc_1080p_mp;
+#endif
+#ifdef MAX_RES_1080P
+        MP4_Utils mp4_headerparser;
 #endif
 
         struct h264_mv_buffer {
@@ -914,14 +890,12 @@ class omx_vdec: public qc_omx_component
         DivXDrmDecrypt* iDivXDrmDecrypt;
 #endif //_ANDROID_
         OMX_PARAM_PORTDEFINITIONTYPE m_port_def;
-        OMX_QCOM_FRAME_PACK_ARRANGEMENT m_frame_pack_arrangement;
         omx_time_stamp_reorder time_stamp_dts;
         desc_buffer_hdr *m_desc_buffer_ptr;
         bool secure_mode;
         bool external_meta_buffer;
         bool external_meta_buffer_iommu;
         OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
-        OMX_OTHER_EXTRADATATYPE *m_other_extradata;
         bool codec_config_flag;
 #ifdef _MSM8974_
         int capture_capability;
@@ -929,10 +903,8 @@ class omx_vdec: public qc_omx_component
         bool streaming[MAX_PORT];
         OMX_CONFIG_RECTTYPE rectangle;
         int prev_n_filled_len;
-        bool is_down_scalar_enabled;
 #endif
         bool m_power_hinted;
-        bool is_q6_platform;
         OMX_ERRORTYPE power_module_register();
         OMX_ERRORTYPE power_module_deregister();
         bool msg_thread_created;
@@ -944,10 +916,9 @@ class omx_vdec: public qc_omx_component
         //variables to handle dynamic buffer mode
         bool dynamic_buf_mode;
         struct dynamic_buf_list *out_dynamic_list;
-        bool m_smoothstreaming_mode;
-        OMX_U32 m_smoothstreaming_width;
-        OMX_U32 m_smoothstreaming_height;
-        OMX_ERRORTYPE enable_smoothstreaming();
+
+        //added for smoothstreaming
+        bool mInSmoothstreamingMode;
 
         unsigned int m_fill_output_msg;
         bool client_set_fps;
@@ -991,7 +962,7 @@ class omx_vdec: public qc_omx_component
                 struct vdec_ion op_buf_ion_info[MAX_COUNT];
 #endif
                 unsigned char *pmem_baseaddress[MAX_COUNT];
-                unsigned long pmem_fd[MAX_COUNT];
+                int pmem_fd[MAX_COUNT];
                 struct vidc_heap {
                     sp<MemoryHeapBase>    video_heap_ptr;
                 };
@@ -1001,59 +972,9 @@ class omx_vdec: public qc_omx_component
         allocate_color_convert_buf client_buffers;
 #endif
         struct video_decoder_capability m_decoder_capability;
-        struct debug_cap m_debug;
-        int log_input_buffers(const char *, int);
-        int log_output_buffers(OMX_BUFFERHEADERTYPE *);
 #ifdef _MSM8974_
         void send_codec_config();
 #endif
-        OMX_TICKS m_last_rendered_TS;
-
-        class perf_control {
-            // 2 cores will be requested if framerate is beyond 45 fps
-            static const int MIN_FRAME_DURATION_FOR_PERF_REQUEST_US = (1e6 / 45);
-            typedef int (*perf_lock_acquire_t)(int, int, int*, int);
-            typedef int (*perf_lock_release_t)(int);
-
-            public:
-                perf_control();
-                ~perf_control();
-                void request_cores(int frame_duration_us);
-            private:
-                void *m_perf_lib;
-                int m_perf_handle;
-                perf_lock_acquire_t m_perf_lock_acquire;
-                perf_lock_release_t m_perf_lock_release;
-                //void (*perf_cpu_boost)(int ntasks);
-                void load_lib();
-        };
-        perf_control m_perf_control;
-
-        volatile int32_t m_queued_codec_config_count;
-        static OMX_COLOR_FORMATTYPE getPreferredColorFormatNonSurfaceMode(OMX_U32 index) {
-            //On Android, we default to standard YUV formats for non-surface use-cases
-            //where apps prefer known color formats.
-            OMX_COLOR_FORMATTYPE formatsNonSurfaceMode[] = {
-                [0] = OMX_COLOR_FormatYUV420SemiPlanar,
-                [1] = OMX_COLOR_FormatYUV420Planar,
-                [2] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
-                [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
-            };
-            return (index < sizeof(formatsNonSurfaceMode) / sizeof(OMX_COLOR_FORMATTYPE)) ?
-                formatsNonSurfaceMode[index] : OMX_COLOR_FormatMax;
-        }
-
-        static OMX_COLOR_FORMATTYPE getPreferredColorFormatDefaultMode(OMX_U32 index) {
-            //for surface mode (normal playback), advertise native/accelerated formats first
-            OMX_COLOR_FORMATTYPE formatsDefault[] = {
-                [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
-                [1] = OMX_COLOR_FormatYUV420Planar,
-                [2] = OMX_COLOR_FormatYUV420SemiPlanar,
-                [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
-            };
-            return (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?
-                formatsDefault[index] : OMX_COLOR_FormatMax;
-        }
 };
 
 #ifdef _MSM8974_
