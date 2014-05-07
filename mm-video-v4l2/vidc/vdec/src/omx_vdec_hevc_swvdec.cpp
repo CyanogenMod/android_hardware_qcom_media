@@ -651,6 +651,10 @@ omx_vdec::omx_vdec():
     property_get("vidc.log.loc", property_value, "");
     if (*property_value)
         strlcpy(m_debug.log_loc, property_value, PROPERTY_VALUE_MAX);
+
+    property_value[0] = '\0';
+    property_get("vidc.dec.debug.dyn.disabled", property_value, "0");
+    m_disable_dynamic_buf_mode = atoi(property_value);
 #endif
     memset(&m_cmp,0,sizeof(m_cmp));
     memset(&m_cb,0,sizeof(m_cb));
@@ -3988,6 +3992,12 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         break;
     case OMX_QcomIndexParamVideoMetaBufferMode:
         {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoMetaBufferMode");
+            if (m_disable_dynamic_buf_mode) {
+                DEBUG_PRINT_HIGH("Dynamic buffer mode disabled by setprop");
+                eRet = OMX_ErrorUnsupportedSetting;
+                break;
+            }
             StoreMetaDataInBuffersParams *metabuffer =
                 (StoreMetaDataInBuffersParams *)paramData;
             if (!metabuffer) {
