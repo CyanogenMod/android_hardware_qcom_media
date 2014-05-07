@@ -958,6 +958,7 @@ class omx_vdec: public qc_omx_component
         OMX_U32 m_smoothstreaming_width;
         OMX_U32 m_smoothstreaming_height;
         OMX_ERRORTYPE enable_smoothstreaming();
+        OMX_ERRORTYPE enable_adaptive_playback(unsigned long width, unsigned long height);
 
         unsigned int m_fill_output_msg;
         bool client_set_fps;
