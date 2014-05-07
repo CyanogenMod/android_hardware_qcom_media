@@ -45,6 +45,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -58,6 +61,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -71,6 +77,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -84,6 +93,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -97,6 +109,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -110,6 +125,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -123,6 +141,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -136,6 +157,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -149,6 +173,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -162,6 +189,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -175,6 +205,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -188,6 +221,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -201,6 +237,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -214,6 +253,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -227,6 +269,9 @@ omx_core_cb_type core[] =
       NULL,   // Create instance function
       // Unique instance handle
       {
+        NULL,
+        NULL,
+        NULL,
         NULL
       },
       NULL,   // Shared object library handle
@@ -240,6 +285,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -253,6 +301,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -266,6 +317,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -279,6 +333,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -292,6 +349,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -305,6 +365,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -318,6 +381,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+     NULL,
+     NULL,
+     NULL,
      NULL
     },
     NULL,   // Shared object library handle
@@ -331,6 +397,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+     NULL,
+     NULL,
+     NULL,
      NULL
     },
     NULL,   // Shared object library handle
@@ -344,6 +413,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -357,6 +429,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,  // Shared object library handle
@@ -370,6 +445,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -383,6 +461,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -396,6 +477,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -409,6 +493,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -422,6 +509,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -435,6 +525,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,  // Shared object library handle
@@ -448,6 +541,9 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle

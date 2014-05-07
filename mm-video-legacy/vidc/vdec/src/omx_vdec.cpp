@@ -3581,10 +3581,10 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
       break;
 
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
-    case OMX_QcomIndexParamVideoAdaptivePlaybackMode:
+    case OMX_GoogleAndroidIndexPrepareForAdaptivePlayback:
         {
             DEBUG_PRINT_LOW("set_parameter: "
-                    "OMX_QcomIndexParamVideoAdaptivePlaybackMode");
+                    "OMX_GoogleAndroidIndexPrepareForAdaptivePlayback");
             PrepareForAdaptivePlaybackParams* adaptivePlaybackParams =
                     (PrepareForAdaptivePlaybackParams *) paramData;
             if (adaptivePlaybackParams->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
@@ -3986,7 +3986,7 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     }
     else if (!strncmp(paramName,"OMX.google.android.index.prepareForAdaptivePlayback",
             sizeof("OMX.google.android.index.prepareForAdaptivePlayback") - 1)) {
-        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoAdaptivePlaybackMode;
+        *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexPrepareForAdaptivePlayback;
     }
 #endif
 	else {

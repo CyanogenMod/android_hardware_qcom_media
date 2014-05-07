@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -26,47 +26,26 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 /*============================================================================
-                            O p e n M A X   w r a p p e r s
-                             O p e n  M A X   C o r e
+                    V E N C _ U T I L. C
 
- This module contains the definitions of the OpenMAX core.
+DESCRIPTION
 
-*//*========================================================================*/
 
-#ifndef QC_OMX_CORE_H
-#define QC_OMX_CORE_H
+REFERENCES
 
-#include "qc_omx_common.h"        // OMX API
-#include <string.h>
+============================================================================*/
 
-#define OMX_COMP_MAX_INST 4
+#include "venc_util.h"
+#include <time.h>
+#include <sys/time.h>
 
-typedef struct _omx_core_cb_type
+long long GetTimeStamp()
 {
-  char*                         name;// Component name
-  create_qc_omx_component     fn_ptr;// create instance fn ptr
-  void*                         inst[OMX_COMP_MAX_INST];// Instance handle
-  void*                so_lib_handle;// So Library handle
-  char*                  so_lib_name;// so directory
-  char* roles[OMX_CORE_MAX_CMP_ROLES];// roles played
-}omx_core_cb_type;
+    struct timeval tv;
+    long long microsec;
+    gettimeofday(&tv, NULL);
+    microsec = (tv.tv_sec * 1000000) + (tv.tv_usec);
+    return microsec;
 
-typedef struct
-{
-    OMX_U32 width;
-    OMX_U32 height;
-    OMX_U32 profile;
-    OMX_U32 level;
-} VideoOMXConfigParserOutputs;
-
-
-typedef struct
-{
-    OMX_U8* inPtr;             //pointer to codec configuration header
-    OMX_U32 inBytes;           //length of codec configuration header
-    OMX_STRING cComponentRole; //OMX component codec type
-    OMX_STRING cComponentName;  //OMX component name
-} OMXConfigParserInputs;
-
-#endif
+}
 
