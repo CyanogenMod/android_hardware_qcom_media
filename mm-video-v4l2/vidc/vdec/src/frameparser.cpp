@@ -43,21 +43,13 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 
 #include "frameparser.h"
-//#include "omx_vdec.h"
+#include "vidc_debug.h"
 
 #ifdef _ANDROID_
 extern "C" {
 #include<utils/Log.h>
 }
 #endif//_ANDROID_
-
-#undef DEBUG_PRINT_LOW
-#undef DEBUG_PRINT_HIGH
-#undef DEBUG_PRINT_ERROR
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_HIGH ALOGV
-#define DEBUG_PRINT_ERROR ALOGE
 
 static unsigned char H264_mask_code[4] = {0xFF,0xFF,0xFF,0xFF};
 static unsigned char H264_start_code[4] = {0x00,0x00,0x00,0x01};
@@ -171,15 +163,15 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
     /*Need Minimum Start Code size for destination to copy atleast Start code*/
     if ((start_code == H263_start_code && dest_len < 3) ||
             (start_code != H263_start_code && dest_len < 4) || (source_len == 0)) {
-        DEBUG_PRINT_LOW("\n FrameParser: dest_len %d source_len %d",dest_len,source_len);
+        DEBUG_PRINT_LOW("FrameParser: dest_len %u source_len %u",(unsigned int)dest_len, (unsigned int)source_len);
 
         if (source_len == 0 && (source->nFlags & 0x01)) {
-            DEBUG_PRINT_LOW("\n FrameParser: EOS rxd!! Notify it as a complete frame");
+            DEBUG_PRINT_LOW("FrameParser: EOS rxd!! Notify it as a complete frame");
             *partialframe = 0;
             return 1;
         }
 
-        DEBUG_PRINT_LOW("\n FrameParser: Bitstream Parsing error");
+        DEBUG_PRINT_LOW("FrameParser: Bitstream Parsing error");
         return -1;
     }
 
@@ -215,7 +207,7 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
     while ( source->nFilledLen > 0 && parse_state != A0
             && parse_state != A4 && parse_state != A5 && dest_len > 0
           ) {
-        //printf ("\n In the Entry Loop");
+        //printf ("In the Entry Loop");
         switch (parse_state) {
             case A3:
                 parse_additional_start_code(psource,&parsed_length);
@@ -325,7 +317,7 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
     if (parse_state == A4 || parse_state == A5) {
         *partialframe = 0;
         check_skip_frame_boundary(partialframe);
-        DEBUG_PRINT_LOW("\n FrameParser: Parsed Len = %d", dest->nFilledLen);
+        DEBUG_PRINT_LOW("FrameParser: Parsed Len = %u", (unsigned int)dest->nFilledLen);
         return 1;
     }
 
@@ -427,7 +419,7 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
 
     /*Exit State Machine*/
     psource = source->pBuffer + source->nOffset;
-    int bytes_to_skip = 0;
+    OMX_U32 bytes_to_skip = 0;
     switch (parse_state) {
         case A5:
             *partialframe = 0;
@@ -466,7 +458,7 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
     }
 
     if (source->nFilledLen < parsed_length) {
-        printf ("\n FATAL Error");
+        DEBUG_PRINT_ERROR ("FATAL Error");
         return -1;
     }
 
@@ -497,10 +489,24 @@ int frame_parse::parse_h264_nallength (OMX_BUFFERHEADERTYPE *source,
     dest_len = dest->nAllocLen - (dest->nFilledLen + dest->nOffset);
     source_len = source->nFilledLen;
 
-    if (dest_len < 4 || source_len == 0 || nal_length == 0) {
-        DEBUG_PRINT_LOW("\n FrameParser: NAL Parsing Error! dest_len %d "
-                "source_len %d nal_length %d", dest_len, source_len, nal_length);
+    if (dest_len < 4 || nal_length == 0) {
+        DEBUG_PRINT_LOW("FrameParser: NAL Parsing Error! dest_len %u "
+                "nal_length %u", (unsigned int)dest_len, nal_length);
         return -1;
+    }
+
+    if (source_len == 0 ) {
+        if (source->nFlags & OMX_BUFFERFLAG_EOS) {
+            DEBUG_PRINT_LOW("FrameParser: EOS rxd for nallength!!"
+                " Notify it as a complete frame");
+            *partialframe = 0;
+            return 1;
+        } else {
+            DEBUG_PRINT_ERROR("FrameParser: NAL Parsing Error!"
+                "Buffer recieved with source_len = %u and with"
+                "flags %u", (unsigned int)source_len, (unsigned int)source->nFlags);
+            return -1;
+        }
     }
 
     *partialframe = 1;

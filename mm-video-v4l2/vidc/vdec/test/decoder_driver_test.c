@@ -1101,7 +1101,7 @@ static int Read_Buffer_From_DAT_File(unsigned char *dataptr, unsigned int length
     char c = '1'; //initialize to anything except '\0'(0)
     char inputFrameSize[12];
     int count =0;
-    char cnt =0;
+    unsigned int cnt =0;
     memset(temp_buffer, 0, sizeof(temp_buffer));
 
     while (cnt < 10)
@@ -1118,7 +1118,7 @@ static int Read_Buffer_From_DAT_File(unsigned char *dataptr, unsigned int length
     inputFrameSize[cnt]='\0';
     frameSize = atoi(inputFrameSize);
     //length = 0;
-    DEBUG_PRINT ("\n Frame Size is %d",frameSize);
+    DEBUG_PRINT ("\n Frame Size is %ld",frameSize);
 
     /* get the frame length */
     fseek(inputBufferFile, -1, SEEK_CUR);

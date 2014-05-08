@@ -1,6 +1,7 @@
 ifneq ($(BUILD_TINY_ANDROID),true)
 
 ROOT_DIR := $(call my-dir)
+OMX_VIDEO_PATH := $(ROOT_DIR)/..
 
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
@@ -23,6 +24,7 @@ libOmxVdec-def += -DENABLE_DEBUG_HIGH
 libOmxVdec-def += -DENABLE_DEBUG_ERROR
 libOmxVdec-def += -UINPUT_BUFFER_LOG
 libOmxVdec-def += -UOUTPUT_BUFFER_LOG
+libOmxVdec-def += -Wno-parentheses
 ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
@@ -104,7 +106,7 @@ libmm-vdec-inc      += frameworks/av/include/media/stagefright
 
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
-LOCAL_CFLAGS                    := $(libOmxVdec-def)
+LOCAL_CFLAGS                    := $(libOmxVdec-def) -Werror
 LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
 
 LOCAL_PRELINK_MODULE    := false
@@ -117,6 +119,7 @@ LOCAL_SRC_FILES         := vdec/src/frameparser.cpp
 LOCAL_SRC_FILES         += vdec/src/h264_utils.cpp
 LOCAL_SRC_FILES         += vdec/src/ts_parser.cpp
 LOCAL_SRC_FILES         += vdec/src/mp4_utils.cpp
+LOCAL_SRC_FILES         += vdec/src/hevc_utils.cpp
 ifneq ($(filter msm8974 msm8610 msm8226 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
 LOCAL_SRC_FILES         += vdec/src/omx_vdec_msm8974.cpp
 else
@@ -163,7 +166,7 @@ LOCAL_SRC_FILES         += vdec/src/hevc_utils.cpp
 LOCAL_SRC_FILES         += common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += common/src/vidc_color_converter.cpp
 
-include $(BUILD_SHARED_LIBRARY)
+#include $(BUILD_SHARED_LIBRARY)
 
 endif
 
@@ -187,7 +190,7 @@ LOCAL_SHARED_LIBRARIES    := libutils libOmxCore libOmxVdec libbinder libcutils
 LOCAL_SRC_FILES           := vdec/src/queue.c
 LOCAL_SRC_FILES           += vdec/test/omx_vdec_test.cpp
 
-include $(BUILD_EXECUTABLE)
+#include $(BUILD_EXECUTABLE)
 
 # ---------------------------------------------------------------------------------
 # 			Make the driver-test (mm-video-driver-test)
@@ -207,7 +210,7 @@ LOCAL_PRELINK_MODULE            := false
 LOCAL_SRC_FILES                 := vdec/src/message_queue.c
 LOCAL_SRC_FILES                 += vdec/test/decoder_driver_test.c
 
-include $(BUILD_EXECUTABLE)
+#include $(BUILD_EXECUTABLE)
 
 endif #BUILD_TINY_ANDROID
 

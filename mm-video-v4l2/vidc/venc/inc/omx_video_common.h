@@ -38,6 +38,12 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <linux/msm_ion.h>
 #endif
 
+#ifdef _ANDROID_
+#include <cutils/properties.h>
+#else
+#define PROPERTY_VALUE_MAX 92
+#endif
+
 #define OMX_VIDEO_DEC_NUM_INPUT_BUFFERS   2
 #define OMX_VIDEO_DEC_NUM_OUTPUT_BUFFERS  2
 
@@ -54,6 +60,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OMX_CORE_VGA_WIDTH           640
 #define OMX_CORE_WVGA_HEIGHT         480
 #define OMX_CORE_WVGA_WIDTH          800
+#define OMX_CORE_720P_WIDTH          1280
+#define OMX_CORE_720P_HEIGHT          720
+#define OMX_CORE_1080P_WIDTH         1920
+#define OMX_CORE_1080P_HEIGHT        1080
 
 enum PortIndexType {
     PORT_INDEX_IN = 0,
@@ -67,6 +77,19 @@ struct pmem {
     int fd;
     unsigned offset;
     unsigned size;
+};
+
+struct venc_debug_cap {
+    bool in_buffer_log;
+    bool out_buffer_log;
+    bool extradata_log;
+    char infile_name[PROPERTY_VALUE_MAX];
+    char outfile_name[PROPERTY_VALUE_MAX];
+    char extradatafile_name[PROPERTY_VALUE_MAX];
+    char log_loc[PROPERTY_VALUE_MAX];
+    FILE *infile;
+    FILE *outfile;
+    FILE *extradatafile;
 };
 #ifdef USE_ION
 struct venc_ion {

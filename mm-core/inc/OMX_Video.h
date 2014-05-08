@@ -799,6 +799,7 @@ typedef enum OMX_VIDEO_AVCLEVELTYPE {
     OMX_VIDEO_AVCLevel42  = 0x2000,   /**< Level 4.2 */
     OMX_VIDEO_AVCLevel5   = 0x4000,   /**< Level 5 */
     OMX_VIDEO_AVCLevel51  = 0x8000,   /**< Level 5.1 */
+    OMX_VIDEO_AVCLevel52  = 0x10000,   /**< Level 5.2 */
     OMX_VIDEO_AVCLevelKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
     OMX_VIDEO_AVCLevelVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
     OMX_VIDEO_AVCLevelMax = 0x7FFFFFFF
@@ -1049,6 +1050,23 @@ typedef struct OMX_VIDEO_CONFIG_NALSIZE {
     OMX_U32 nPortIndex;
     OMX_U32 nNaluBytes;
 } OMX_VIDEO_CONFIG_NALSIZE;
+
+
+/**
+ * Deinterlace Config
+ *
+ * STRUCT MEMBERS:
+ *  nSize      : Size of the structure in bytes
+ *  nVersion   : OMX specification version information
+ *  nPortIndex : Port that this structure applies to
+ *  nEnable : Specifies to enable deinterlace
+ */
+typedef struct OMX_VIDEO_CONFIG_DEINTERLACE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nEnable;
+} OMX_VIDEO_CONFIG_DEINTERLACE;
 
 /** @} */
 

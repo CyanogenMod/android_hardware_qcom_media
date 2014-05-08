@@ -70,6 +70,7 @@ typedef enum QOMX_AUDIO_EXTENSIONS_INDEXTYPE
     QOMX_IndexConfigAudioDualMono       = 0x7F200004, /**< "OMX.Qualcomm.index.audio.dualmono" */
     QOMX_IndexParamAudioAc3             = 0x7F200005, /**< "OMX.Qualcomm.index.audio.ac3" */
     QOMX_IndexParamAudioAc3PostProc     = 0x7F200006, /**< "OMX.Qualcomm.index.audio.postproc.ac3" */
+    QOMX_IndexParamAudioAacSelectMixCoef = 0x7F200007, /** "OMX.Qualcomm.index.audio.aac_sel_mix_coef**/
     QOMX_IndexParamAudioUnused          = 0x7F2FFFFF
 } QOMX_AUDIO_EXTENSIONS_INDEXTYPE;
 

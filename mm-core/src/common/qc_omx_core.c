@@ -401,9 +401,9 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
   int cmp_index = -1;
   int hnd_index = -1;
 
-  DEBUG_PRINT("OMXCORE API :  Get Handle %x %s %x\n",(unsigned) handle,
+  DEBUG_PRINT("OMXCORE API :  Get Handle %p %s %p\n", handle,
                                                      componentName,
-                                                     (unsigned) appData);
+                                                     appData);
   pthread_mutex_lock(&lock_core);
   if(handle)
   {
@@ -451,7 +451,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
             pthread_mutex_unlock(&lock_core);
             return OMX_ErrorInsufficientResources;
           }
-          DEBUG_PRINT("Component %x Successfully created\n",(unsigned)*handle);
+          DEBUG_PRINT("Component %p Successfully created\n",*handle);
         }
         else
         {
@@ -498,7 +498,7 @@ OMX_FreeHandle(OMX_IN OMX_HANDLETYPE hComp)
 {
   OMX_ERRORTYPE eRet = OMX_ErrorNone;
   int err = 0, i = 0;
-  DEBUG_PRINT("OMXCORE API :  Free Handle %x\n",(unsigned) hComp);
+  DEBUG_PRINT("OMXCORE API :  Free Handle %p\n", hComp);
 
   // 0. Check that we have an active instance
   if((i=is_cmp_handle_exists(hComp)) >=0)
@@ -508,7 +508,7 @@ OMX_FreeHandle(OMX_IN OMX_HANDLETYPE hComp)
     {
         pthread_mutex_lock(&lock_core);
         /* Unload component library */
-    if( (i < SIZE_OF_CORE) && core[i].so_lib_handle)
+    if( (i < (int)SIZE_OF_CORE) && core[i].so_lib_handle)
     {
            if(check_lib_unload(i))
            {
@@ -528,7 +528,7 @@ OMX_FreeHandle(OMX_IN OMX_HANDLETYPE hComp)
     }
     else
     {
-    DEBUG_PRINT(" OMX_FreeHandle failed on %x\n",(unsigned) hComp);
+    DEBUG_PRINT(" OMX_FreeHandle failed on %p\n", hComp);
         return eRet;
     }
   }
@@ -557,6 +557,7 @@ OMX_SetupTunnel(OMX_IN OMX_HANDLETYPE outputComponent,
                 OMX_IN OMX_HANDLETYPE  inputComponent,
                 OMX_IN OMX_U32              inputPort)
 {
+  (void) outputComponent, (void) outputPort, (void) inputComponent, (void) inputPort;
   /* Not supported right now */
   DEBUG_PRINT("OMXCORE API: OMX_SetupTunnel Not implemented \n");
   return OMX_ErrorNotImplemented;
@@ -578,6 +579,7 @@ OMX_API OMX_ERRORTYPE
 OMX_GetContentPipe(OMX_OUT OMX_HANDLETYPE* pipe,
                    OMX_IN OMX_STRING        uri)
 {
+  (void) pipe, (void) uri;
   /* Not supported right now */
   DEBUG_PRINT("OMXCORE API: OMX_GetContentPipe Not implemented \n");
   return OMX_ErrorNotImplemented;
@@ -602,7 +604,7 @@ OMX_ComponentNameEnum(OMX_OUT OMX_STRING componentName,
                       OMX_IN  OMX_U32            index)
 {
   OMX_ERRORTYPE eRet = OMX_ErrorNone;
-  DEBUG_PRINT("OMXCORE API - OMX_ComponentNameEnum %x %d %d\n",(unsigned) componentName
+  DEBUG_PRINT("OMXCORE API - OMX_ComponentNameEnum %p %d %d\n", componentName
                                                               ,(unsigned)nameLen
                                                               ,(unsigned)index);
   if(index < SIZE_OF_CORE)

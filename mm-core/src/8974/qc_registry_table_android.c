@@ -44,9 +44,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -60,41 +57,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
-      NULL
-    },
-    NULL,   // Shared object library handle
-    "libOmxVdec.so",
-    {
-      "video_decoder.avc"
-    }
-  },
-  {
-    "OMX.qcom.video.decoder.avc.smoothstreaming",
-    NULL, // Create instance function
-    // Unique instance handle
-    {
-      NULL,
-      NULL,
-      NULL,
-      NULL
-    },
-    NULL,   // Shared object library handle
-    "libOmxVdec.so",
-    {
-      "video_decoder.avc"
-    }
-  },
-  {
-    "OMX.qcom.video.decoder.avc.smoothstreaming.secure",
-    NULL, // Create instance function
-    // Unique instance handle
-    {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -105,12 +67,9 @@ omx_core_cb_type core[] =
   },
   {
     "OMX.qcom.video.decoder.divx4",
-    NULL,   // Create instance function
+    NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -121,12 +80,9 @@ omx_core_cb_type core[] =
   },
   {
     "OMX.qcom.video.decoder.divx",
-    NULL,   // Create instance function
+    NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -140,9 +96,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -153,12 +106,9 @@ omx_core_cb_type core[] =
   },
   {
     "OMX.qcom.video.decoder.mpeg4",
-    NULL, // Create instance function
+    NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -169,12 +119,22 @@ omx_core_cb_type core[] =
   },
   {
     "OMX.qcom.video.decoder.mpeg2",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVdec.so",
+    {
+      "video_decoder.mpeg2"
+    }
+  },
+  {
+    "OMX.qcom.video.decoder.mpeg2.secure",
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -188,9 +148,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -204,9 +161,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -220,9 +174,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -231,14 +182,24 @@ omx_core_cb_type core[] =
       "video_decoder.h263"
     }
   },
-{
+  {
     "OMX.qcom.video.decoder.hevc",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVdecHevc.so",
+    {
+      "video_decoder.hevc"
+    }
+  },
+{
+    "OMX.qcom.video.decoder.hevchybrid",
     NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -248,13 +209,23 @@ omx_core_cb_type core[] =
     }
   },
    {
+    "OMX.qcom.video.decoder.hevcswvdec",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVdecHevc.so",
+    {
+      "video_decoder.hevcswvdec"
+    }
+  },
+  {
     "OMX.qcom.video.decoder.vp8",
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -268,9 +239,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -284,9 +252,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -300,9 +265,19 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVenc.so",
+    {
+      "video_encoder.avc"
+    }
+  },
+   {
+    "OMX.qcom.video.encoder.avc.secure",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
       NULL
     },
     NULL,   // Shared object library handle
@@ -316,9 +291,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -332,9 +304,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -348,9 +317,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -364,9 +330,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -380,9 +343,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-     NULL,
-     NULL,
-     NULL,
      NULL
     },
     NULL,   // Shared object library handle
@@ -396,9 +356,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-     NULL,
-     NULL,
-     NULL,
      NULL
     },
     NULL,   // Shared object library handle
@@ -412,9 +369,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-     NULL,
-     NULL,
-     NULL,
      NULL
     },
     NULL,   // Shared object library handle
@@ -428,9 +382,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-     NULL,
-     NULL,
-     NULL,
      NULL
     },
     NULL,   // Shared object library handle
@@ -444,9 +395,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -460,9 +408,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,  // Shared object library handle
@@ -476,9 +421,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -492,9 +434,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -508,9 +447,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -524,9 +460,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -540,9 +473,6 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -556,9 +486,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,  // Shared object library handle
@@ -572,9 +499,6 @@ omx_core_cb_type core[] =
     NULL, // Create instance function
     // Unique instance handle
     {
-      NULL,
-      NULL,
-      NULL,
       NULL
     },
     NULL,   // Shared object library handle

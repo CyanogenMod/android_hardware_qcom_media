@@ -28,7 +28,6 @@
  */
 
 #include <C2DColorConverter.h>
-#include <arm_neon.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <linux/msm_kgsl.h>
@@ -69,7 +68,7 @@ private:
     virtual size_t calcYSize(ColorConvertFormat format, size_t width, size_t height);
     virtual size_t calcSize(ColorConvertFormat format, size_t width, size_t height);
     virtual void *getMappedGPUAddr(int bufFD, void *bufPtr, size_t bufLen);
-    virtual bool unmapGPUAddr(uint32_t gAddr);
+    virtual bool unmapGPUAddr(unsigned long gAddr);
     virtual size_t calcLumaAlign(ColorConvertFormat format);
     virtual size_t calcSizeAlign(ColorConvertFormat format);
 
@@ -232,16 +231,16 @@ int C2DColorConverter::convertC2D(int srcFd, void *srcBase, void * srcData, int 
 
     bool unmappedSrcSuccess;
     if (isYUVSurface(mSrcFormat)) {
-        unmappedSrcSuccess = unmapGPUAddr((uint32_t)((C2D_YUV_SURFACE_DEF *)mSrcSurfaceDef)->phys0);
+        unmappedSrcSuccess = unmapGPUAddr((unsigned long)((C2D_YUV_SURFACE_DEF *)mSrcSurfaceDef)->phys0);
     } else {
-        unmappedSrcSuccess = unmapGPUAddr((uint32_t)((C2D_RGB_SURFACE_DEF *)mSrcSurfaceDef)->phys);
+        unmappedSrcSuccess = unmapGPUAddr((unsigned long)((C2D_RGB_SURFACE_DEF *)mSrcSurfaceDef)->phys);
     }
 
     bool unmappedDstSuccess;
     if (isYUVSurface(mDstFormat)) {
-        unmappedDstSuccess = unmapGPUAddr((uint32_t)((C2D_YUV_SURFACE_DEF *)mDstSurfaceDef)->phys0);
+        unmappedDstSuccess = unmapGPUAddr((unsigned long)((C2D_YUV_SURFACE_DEF *)mDstSurfaceDef)->phys0);
     } else {
-        unmappedDstSuccess = unmapGPUAddr((uint32_t)((C2D_RGB_SURFACE_DEF *)mDstSurfaceDef)->phys);
+        unmappedDstSuccess = unmapGPUAddr((unsigned long)((C2D_RGB_SURFACE_DEF *)mDstSurfaceDef)->phys);
     }
 
     if (ret != C2D_STATUS_OK) {
@@ -318,7 +317,7 @@ C2D_STATUS C2DColorConverter::updateYUVSurfaceDef(int fd, void *base, void *data
     if (isSource) {
         C2D_YUV_SURFACE_DEF * srcSurfaceDef = (C2D_YUV_SURFACE_DEF *)mSrcSurfaceDef;
         srcSurfaceDef->plane0 = data;
-        srcSurfaceDef->phys0  = (char*)getMappedGPUAddr(fd, data, mSrcSize) + ((uint8_t *)data - (uint8_t *)base);
+        srcSurfaceDef->phys0  = (uint8_t *)getMappedGPUAddr(fd, data, mSrcSize) + ((uint8_t *)data - (uint8_t *)base);
         srcSurfaceDef->plane1 = (uint8_t *)data + mSrcYSize;
         srcSurfaceDef->phys1  = (uint8_t *)srcSurfaceDef->phys0 + mSrcYSize;
         srcSurfaceDef->plane2 = (uint8_t *)srcSurfaceDef->plane1 + mSrcYSize/4;
@@ -330,7 +329,7 @@ C2D_STATUS C2DColorConverter::updateYUVSurfaceDef(int fd, void *base, void *data
     } else {
         C2D_YUV_SURFACE_DEF * dstSurfaceDef = (C2D_YUV_SURFACE_DEF *)mDstSurfaceDef;
         dstSurfaceDef->plane0 = data;
-        dstSurfaceDef->phys0  = (char*)getMappedGPUAddr(fd, data, mDstSize) + ((uint8_t *)data - (uint8_t *)base);
+        dstSurfaceDef->phys0  = (uint8_t *)getMappedGPUAddr(fd, data, mDstSize) + ((uint8_t *)data - (uint8_t *)base);
         dstSurfaceDef->plane1 = (uint8_t *)data + mDstYSize;
         dstSurfaceDef->phys1  = (uint8_t *)dstSurfaceDef->phys0 + mDstYSize;
         dstSurfaceDef->plane2 = (uint8_t *)dstSurfaceDef->plane1 + mDstYSize/4;
@@ -398,7 +397,7 @@ size_t C2DColorConverter::calcStride(ColorConvertFormat format, size_t width)
         case YCbCr420Tile:
             return ALIGN(width, ALIGN128);
         case YCbCr420SP:
-            return ALIGN(width, ALIGN32);
+            return ALIGN(width, ALIGN16);
         case NV12_2K:
             return ALIGN(width, ALIGN16);
         case NV12_128m:
@@ -416,7 +415,7 @@ size_t C2DColorConverter::calcYSize(ColorConvertFormat format, size_t width, siz
 {
     switch (format) {
         case YCbCr420SP:
-            return (ALIGN(width, ALIGN32) * height);
+            return (ALIGN(width, ALIGN16) * height);
         case YCbCr420P:
             return width * height;
         case YCrCb420P:
@@ -454,7 +453,7 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
             size = ALIGN(size, ALIGN4K);
             break;
         case YCbCr420SP:
-            alignedw = ALIGN(width, ALIGN32);
+            alignedw = ALIGN(width, ALIGN16);
             size = ALIGN((alignedw * height) + (ALIGN(width/2, ALIGN32) * (height/2) * 2), ALIGN4K);
             break;
         case YCbCr420P:
@@ -508,13 +507,13 @@ void * C2DColorConverter::getMappedGPUAddr(int bufFD, void *bufPtr, size_t bufLe
     return gpuaddr;
 }
 
-bool C2DColorConverter::unmapGPUAddr(uint32_t gAddr)
+bool C2DColorConverter::unmapGPUAddr(unsigned long gAddr)
 {
 
     C2D_STATUS status = mC2DUnMapAddr((void*)gAddr);
 
     if (status != C2D_STATUS_OK)
-        ALOGE("c2dUnMapAddr failed: status %d gpuaddr %08x\n", status, gAddr);
+        ALOGE("c2dUnMapAddr failed: status %d gpuaddr %08lx\n", status, gAddr);
 
     return (status == C2D_STATUS_OK);
 }
@@ -555,6 +554,8 @@ size_t C2DColorConverter::calcLumaAlign(ColorConvertFormat format) {
         case NV12_2K:
           return ALIGN2K;
         case NV12_128m:
+        case YCbCr420SP: //OR NV12
+        case YCbCr420P:
           return 1;
         default:
           ALOGE("unknown format passed for luma alignment number");
@@ -644,8 +645,8 @@ int32_t C2DColorConverter::dumpOutput(char * filename, char mode) {
       sliceHeight = dstSurfaceDef->height;
 
       printf("rgb surface base is %p", base);
-      printf("rgb surface dumpsslice height is %d\n", sliceHeight);
-      printf("rgb surface dump stride is %d\n", stride);
+      printf("rgb surface dumpsslice height is %lu\n", (unsigned long)sliceHeight);
+      printf("rgb surface dump stride is %lu\n", (unsigned long)stride);
 
       int bpp = 1; //bytes per pixel
       if (mDstFormat == RGB565) {
