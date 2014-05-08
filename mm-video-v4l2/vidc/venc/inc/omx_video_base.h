@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -42,7 +42,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //                             Include Files
 //////////////////////////////////////////////////////////////////////////////
 
-#define LOG_TAG "OMX-VENC"
+#define LOG_TAG "OMX-VENC-720p"
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/mman.h>
@@ -65,7 +65,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <linux/videodev2.h>
 #include <dlfcn.h>
 #include "C2DColorConverter.h"
-#include "vidc_debug.h"
 
 #ifdef _ANDROID_
 using namespace android;
@@ -79,6 +78,10 @@ class VideoHeap : public MemoryHeapBase
 
 #include <utils/Log.h>
 
+#else //_ANDROID_
+#define DEBUG_PRINT_LOW
+#define DEBUG_PRINT_HIGH
+#define DEBUG_PRINT_ERROR
 #endif // _ANDROID_
 
 #ifdef USE_ION
@@ -139,6 +142,11 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 #define MAX_NUM_INPUT_BUFFERS 32
 #endif
 void* message_thread(void *);
+#ifdef USE_ION
+int alloc_map_ion_memory(int size,struct ion_allocation_data *alloc_data,
+        struct ion_fd_data *fd_data,int flag);
+void free_ion_memory(struct venc_ion *buf_ion_info);
+#endif
 
 // OMX video class
 class omx_video: public qc_omx_component
@@ -155,7 +163,6 @@ class omx_video: public qc_omx_component
         bool get_syntaxhdr_enable;
         OMX_BUFFERHEADERTYPE  *psource_frame;
         OMX_BUFFERHEADERTYPE  *pdest_frame;
-        bool secure_session;
         //intermediate conversion buffer queued to encoder in case of invalid EOS input
         OMX_BUFFERHEADERTYPE  *mEmptyEosBuffer;
 
@@ -215,29 +222,22 @@ class omx_video: public qc_omx_component
         virtual bool dev_empty_buf(void *, void *,unsigned,unsigned) = 0;
         virtual bool dev_fill_buf(void *buffer, void *,unsigned,unsigned) = 0;
         virtual bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32) = 0;
-        virtual bool dev_get_seq_hdr(void *, unsigned, OMX_U32 *) = 0;
+        virtual bool dev_get_seq_hdr(void *, unsigned, unsigned *) = 0;
         virtual bool dev_loaded_start(void) = 0;
         virtual bool dev_loaded_stop(void) = 0;
         virtual bool dev_loaded_start_done(void) = 0;
         virtual bool dev_loaded_stop_done(void) = 0;
-        virtual bool is_secure_session(void) = 0;
 #ifdef _MSM8974_
         virtual int dev_handle_extradata(void*, int) = 0;
         virtual int dev_set_format(int) = 0;
 #endif
         virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
         virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
-        virtual bool dev_get_performance_level(OMX_U32 *) = 0;
-        virtual bool dev_get_vui_timing_info(OMX_U32 *) = 0;
-        virtual bool dev_get_peak_bitrate(OMX_U32 *) = 0;
 #ifdef _ANDROID_ICS_
         void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif
         virtual bool dev_color_align(OMX_BUFFERHEADERTYPE *buffer, OMX_U32 width,
                         OMX_U32 height) = 0;
-        virtual bool dev_get_output_log_flag() = 0;
-        virtual int dev_output_log_buffers(const char *buffer_addr, int buffer_len) = 0;
-        virtual int dev_extradata_log_buffers(char *buffer_addr) = 0;
         OMX_ERRORTYPE component_role_enum(
                 OMX_HANDLETYPE hComp,
                 OMX_U8 *role,
@@ -418,21 +418,21 @@ class omx_video: public qc_omx_component
         };
 
         struct omx_event {
-            unsigned long param1;
-            unsigned long param2;
-            unsigned long id;
+            unsigned param1;
+            unsigned param2;
+            unsigned id;
         };
 
         struct omx_cmd_queue {
             omx_event m_q[OMX_CORE_CONTROL_CMDQ_SIZE];
-            unsigned long m_read;
-            unsigned long m_write;
-            unsigned long m_size;
+            unsigned m_read;
+            unsigned m_write;
+            unsigned m_size;
 
             omx_cmd_queue();
             ~omx_cmd_queue();
-            bool insert_entry(unsigned long p1, unsigned long p2, unsigned long id);
-            bool pop_entry(unsigned long *p1,unsigned long *p2, unsigned long *id);
+            bool insert_entry(unsigned p1, unsigned p2, unsigned id);
+            bool pop_entry(unsigned *p1,unsigned *p2, unsigned *id);
             // get msgtype of the first ele from the queue
             unsigned get_q_msg_type();
 
@@ -492,7 +492,7 @@ class omx_video: public qc_omx_component
                 OMX_BUFFERHEADERTYPE *buffer);
         OMX_ERRORTYPE push_input_buffer(OMX_HANDLETYPE hComp);
         OMX_ERRORTYPE convert_queue_buffer(OMX_HANDLETYPE hComp,
-                struct pmem &Input_pmem_info,unsigned long &index);
+                struct pmem &Input_pmem_info,unsigned &index);
         OMX_ERRORTYPE queue_meta_buffer(OMX_HANDLETYPE hComp,
                 struct pmem &Input_pmem_info);
         OMX_ERRORTYPE push_empty_eos_buffer(OMX_HANDLETYPE hComp,
@@ -508,9 +508,9 @@ class omx_video: public qc_omx_component
                 OMX_COMMANDTYPE cmd,
                 OMX_U32         param1,
                 OMX_PTR         cmdData);
-        bool post_event( unsigned long p1,
-                unsigned long p2,
-                unsigned long id
+        bool post_event( unsigned int p1,
+                unsigned int p2,
+                unsigned int id
                    );
         OMX_ERRORTYPE get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
         inline void omx_report_error () {
@@ -530,13 +530,6 @@ class omx_video: public qc_omx_component
         }
 
         void complete_pending_buffer_done_cbs();
-
-#ifdef USE_ION
-        int alloc_map_ion_memory(int size,
-                                 struct ion_allocation_data *alloc_data,
-                                 struct ion_fd_data *fd_data,int flag);
-        void free_ion_memory(struct venc_ion *buf_ion_info);
-#endif
 
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
@@ -590,10 +583,6 @@ class omx_video: public qc_omx_component
         QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE m_sConfigLTRPeriod;
         QOMX_VIDEO_CONFIG_LTRUSE_TYPE m_sConfigLTRUse;
         OMX_VIDEO_CONFIG_AVCINTRAPERIOD m_sConfigAVCIDRPeriod;
-        OMX_VIDEO_CONFIG_DEINTERLACE m_sConfigDeinterlace;
-        OMX_VIDEO_VP8REFERENCEFRAMETYPE m_sConfigVp8ReferenceFrame;
-        QOMX_VIDEO_HIERARCHICALLAYERS m_sHierLayers;
-        QOMX_EXTNINDEX_VIDEO_INITIALQP m_sParamInitqp;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
 

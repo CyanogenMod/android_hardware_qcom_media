@@ -21,7 +21,6 @@ libmm-venc-def += -DENABLE_DEBUG_ERROR
 libmm-venc-def += -UINPUT_BUFFER_LOG
 libmm-venc-def += -UOUTPUT_BUFFER_LOG
 libmm-venc-def += -USINGLE_ENCODER_INSTANCE
-libmm-venc-def += -Werror
 ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
 libmm-venc-def += -DMAX_RES_1080P
 libmm-venc-def += -UENABLE_GET_SYNTAX_HDR
@@ -97,7 +96,7 @@ LOCAL_C_INCLUDES                := $(libmm-venc-inc)
 
 LOCAL_PRELINK_MODULE      := false
 LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
-                             libc2dcolorconvert libdl libgui
+                             libc2dcolorconvert libdl
 
 LOCAL_SRC_FILES   := venc/src/omx_video_base.cpp
 LOCAL_SRC_FILES   += venc/src/omx_video_encoder.cpp
@@ -110,6 +109,55 @@ endif
 LOCAL_SRC_FILES   += common/src/extra_data_handler.cpp
 
 include $(BUILD_SHARED_LIBRARY)
+
+# -----------------------------------------------------------------------------
+#  #                       Make the apps-test (mm-venc-omx-test720p)
+# -----------------------------------------------------------------------------
+
+include $(CLEAR_VARS)
+
+mm-venc-test720p-inc            := $(TARGET_OUT_HEADERS)/mm-core
+mm-venc-test720p-inc            += $(LOCAL_PATH)/venc/inc
+mm-venc-test720p-inc            += $(OMX_VIDEO_PATH)/vidc/common/inc
+mm-venc-test720p-inc            += hardware/qcom/media/mm-core/inc
+mm-venc-test720p-inc            += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
+mm-venc-test720p-inc            += $(venc-inc)
+
+LOCAL_MODULE                    := mm-venc-omx-test720p
+LOCAL_MODULE_TAGS               := optional
+LOCAL_CFLAGS                    := $(libmm-venc-def)
+LOCAL_C_INCLUDES                := $(mm-venc-test720p-inc)
+LOCAL_PRELINK_MODULE            := false
+LOCAL_SHARED_LIBRARIES          := libmm-omxcore libOmxVenc libbinder liblog
+
+LOCAL_SRC_FILES                 := venc/test/venc_test.cpp
+LOCAL_SRC_FILES                 += venc/test/camera_test.cpp
+LOCAL_SRC_FILES                 += venc/test/venc_util.c
+LOCAL_SRC_FILES                 += venc/test/fb_test.c
+
+include $(BUILD_EXECUTABLE)
+
+# -----------------------------------------------------------------------------
+# 			Make the apps-test (mm-video-driver-test)
+# -----------------------------------------------------------------------------
+
+include $(CLEAR_VARS)
+
+venc-test-inc                   += $(LOCAL_PATH)/venc/inc
+venc-test-inc                   += hardware/qcom/display/$(TARGET_BOARD_PLATFORM)/libgralloc
+venc-test-inc                   += $(venc-inc)
+
+LOCAL_MODULE                    := mm-video-encdrv-test
+LOCAL_MODULE_TAGS               := optional
+LOCAL_C_INCLUDES                := $(venc-test-inc)
+LOCAL_C_INCLUDES                += hardware/qcom/media/mm-core/inc
+
+LOCAL_PRELINK_MODULE            := false
+
+LOCAL_SRC_FILES                 := venc/test/video_encoder_test.c
+LOCAL_SRC_FILES                 += venc/test/queue.c
+
+include $(BUILD_EXECUTABLE)
 
 endif #BUILD_TINY_ANDROID
 

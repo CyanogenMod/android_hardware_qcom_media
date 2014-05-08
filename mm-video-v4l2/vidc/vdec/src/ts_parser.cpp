@@ -26,10 +26,8 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #include "ts_parser.h"
-#include "vidc_debug.h"
 
-#define DEBUG DEBUG_PRINT_ERROR
-
+#define DEBUG ALOGE
 void omx_time_stamp_reorder::set_timestamp_reorder_mode(bool mode)
 {
     reorder_ts = mode;
@@ -147,7 +145,7 @@ bool omx_time_stamp_reorder::insert_timestamp(OMX_BUFFERHEADERTYPE *header)
 
     if (!reorder_ts || error || !header) {
         if (error || !header)
-            DEBUG("Invalid condition in insert_timestamp %p", header);
+            DEBUG("\n Invalid condition in insert_timestamp %p", header);
 
         return false;
     }
@@ -158,7 +156,7 @@ bool omx_time_stamp_reorder::insert_timestamp(OMX_BUFFERHEADERTYPE *header)
     }
 
     if (pcurrent->entries_filled > (TIME_SZ - 1)) {
-        DEBUG("Table full return error");
+        DEBUG("\n Table full return error");
         handle_error();
         return false;
     }
@@ -168,7 +166,7 @@ bool omx_time_stamp_reorder::insert_timestamp(OMX_BUFFERHEADERTYPE *header)
     }
 
     if ((header->nFlags & OMX_BUFFERFLAG_EOS) && !header->nFilledLen) {
-        DEBUG("EOS with zero length recieved");
+        DEBUG("\n EOS with zero length recieved");
 
         if (!add_new_list()) {
             handle_error();
@@ -187,7 +185,7 @@ bool omx_time_stamp_reorder::insert_timestamp(OMX_BUFFERHEADERTYPE *header)
     }
 
     if (!table_entry) {
-        DEBUG("All entries in use");
+        DEBUG("\n All entries in use");
         handle_error();
         return false;
     }
@@ -212,7 +210,7 @@ bool omx_time_stamp_reorder::remove_time_stamp(OMX_TICKS ts, bool is_interlaced 
     unsigned int num_ent_remove = (is_interlaced)?2:1;
 
     if (!reorder_ts || error) {
-        DEBUG("not in avi mode");
+        DEBUG("\n not in avi mode");
         return false;
     }
 
@@ -251,7 +249,7 @@ bool omx_time_stamp_reorder::get_next_timestamp(OMX_BUFFERHEADERTYPE *header, bo
 
     if (!reorder_ts || error || !header) {
         if (error || !header)
-            DEBUG("Invalid condition in insert_timestamp %p", header);
+            DEBUG("\n Invalid condition in insert_timestamp %p", header);
 
         return false;
     }

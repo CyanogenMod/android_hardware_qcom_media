@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
-#include "message_queue.h"
+#include "queue.h"
 
 int check_if_queue_empty ( unsigned int queuetocheck, void* queuecontext )
 {
@@ -107,8 +107,6 @@ int queue_post_cmdq ( void* queuecontext,
 
     if ((ptr_q->write_comq + 1) % ptr_q->commandq_size == ptr_q->read_comq) {
         printf("\n QUEUE is FULL");
-        /* Unlock the mutex to release the critical section */
-        pthread_mutex_unlock(&ptr_q->mutex);
         return 0;
     } else {
         /* Store the command in the Message Queue & increment write offset */
@@ -143,8 +141,6 @@ int queue_post_dataq ( void *queuecontext,
 
     if ((ptr_q->write_dataq + 1) % ptr_q->dataq_size == ptr_q->read_dataq) {
         printf("\n QUEUE is FULL");
-        /* Unlock the mutex to release the critical section */
-        pthread_mutex_unlock(&ptr_q->mutex);
         return 0;
     } else {
         /* Store the command in the Message Queue & increment write offset */
