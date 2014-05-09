@@ -2305,6 +2305,10 @@ int Play_Decoder()
 
     //QPERF_START(client_decode);
     if (codec_format_option == CODEC_FORMAT_VC1) {
+        if (!pInputBufHdrs || !pInputBufHdrs[0]) {
+            DEBUG_PRINT("Invalid pInputBufHdrs \n");
+            return -1;
+        }
         pInputBufHdrs[0]->nOffset = 0;
         if (file_type_option == FILE_TYPE_RCV) {
             frameSize = Read_Buffer_From_RCV_File_Seq_Layer(pInputBufHdrs[0]);
@@ -2346,6 +2350,10 @@ int Play_Decoder()
     }
 
     for (i; i < used_ip_buf_cnt; i++) {
+         if (!pInputBufHdrs || !pInputBufHdrs[i]) {
+            DEBUG_PRINT("Invalid pInputBufHdrs! \n");
+            return -1;
+        }
         pInputBufHdrs[i]->nInputPortIndex = 0;
         pInputBufHdrs[i]->nOffset = 0;
         if ((frameSize = Read_Buffer(pInputBufHdrs[i])) <= 0 ) {
@@ -2445,6 +2453,11 @@ static OMX_ERRORTYPE Allocate_Buffer ( OMX_COMPONENTTYPE *dec_handle,
     DEBUG_PRINT("pBufHdrs = %x,bufCntMin = %d\n", pBufHdrs, bufCntMin);
     *pBufHdrs= (OMX_BUFFERHEADERTYPE **)
         malloc(sizeof(OMX_BUFFERHEADERTYPE)*bufCntMin);
+
+    if (*pBufHdrs == NULL) {
+        DEBUG_PRINT_ERROR("allocate_buffer: *pBufHdrs alloc failed");
+        return OMX_ErrorInsufficientResources;
+    }
 
     for (bufCnt=0; bufCnt < bufCntMin; ++bufCnt) {
         DEBUG_PRINT("OMX_AllocateBuffer No %d \n", bufCnt);
@@ -3438,11 +3451,9 @@ static int Read_Buffer_From_DivX_311_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     unsigned int frame_size = 0;
     unsigned int num_bytes_size = 4;
     unsigned int num_bytes_frame_type = 1;
-    unsigned int n_offset = pBufHdr->nOffset;
+    unsigned int n_offset = 0;
 
     DEBUG_PRINT("Inside %s \n", __FUNCTION__);
-
-    pBufHdr->nTimeStamp = timeStampLfile;
 
     if (pBufHdr != NULL) {
         p_buffer = (char *)pBufHdr->pBuffer + pBufHdr->nOffset;
@@ -3450,6 +3461,8 @@ static int Read_Buffer_From_DivX_311_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
         DEBUG_PRINT("\n ERROR:Read_Buffer_From_DivX_311_File: pBufHdr is NULL\n");
         return 0;
     }
+    n_offset = pBufHdr->nOffset;
+    pBufHdr->nTimeStamp = timeStampLfile;
 
     if (p_buffer == NULL) {
         DEBUG_PRINT("\n ERROR:Read_Buffer_From_DivX_311_File: p_bufhdr is NULL\n");
@@ -3487,7 +3500,7 @@ static int Read_Buffer_From_VP8_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     unsigned int num_bytes_size = 4;
     unsigned int num_bytes_frame_type = 1;
     unsigned long long time_stamp;
-    unsigned int n_offset = pBufHdr->nOffset;
+    unsigned int n_offset = 0;
     static int ivf_header_read;
 
     if (pBufHdr != NULL) {
@@ -3496,6 +3509,7 @@ static int Read_Buffer_From_VP8_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
         DEBUG_PRINT("\n ERROR:Read_Buffer_From_DivX_311_File: pBufHdr is NULL\n");
         return 0;
     }
+    n_offset = pBufHdr->nOffset;
 
     if (p_buffer == NULL) {
         DEBUG_PRINT("\n ERROR:Read_Buffer_From_DivX_311_File: p_bufhdr is NULL\n");
