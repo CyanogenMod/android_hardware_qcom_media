@@ -122,7 +122,7 @@ void omx_c2d_conv::close()
 
 void omx_c2d_conv::destroy()
 {
-    DEBUG_PRINT_ERROR("Destroy C2D instance");
+    DEBUG_PRINT_HIGH("Destroy C2D instance");
 
     if (mLibHandle) {
         if (mConvertClose && c2dcc)

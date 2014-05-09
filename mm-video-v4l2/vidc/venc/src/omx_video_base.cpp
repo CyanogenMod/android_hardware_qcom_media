@@ -1572,7 +1572,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam = (OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported");
                 eRet = get_supported_profile_level(pParam);
-                if (eRet)
+                if (eRet && eRet != OMX_ErrorNoMore)
                     DEBUG_PRINT_ERROR("Invalid entry returned from get_supported_profile_level %u, %u",
                             (unsigned int)pParam->eProfile, (unsigned int)pParam->eLevel);
                 break;
@@ -4143,7 +4143,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
             }
         }
     } else {
-        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported should be queries on Input port only %d", (int)profileLevelType->nPortIndex);
+        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported should be queried on Input port only %d", (int)profileLevelType->nPortIndex);
         eRet = OMX_ErrorBadPortIndex;
     }
     DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported for Input port returned Profile:%d, Level:%d",
@@ -4237,7 +4237,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
             eRet = OMX_ErrorNoMore;
         }
     } else {
-        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported should be queries on Input port only %u", (unsigned int)profileLevelType->nPortIndex);
+        DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported should be queried on Input port only %u", (unsigned int)profileLevelType->nPortIndex);
         eRet = OMX_ErrorBadPortIndex;
     }
     DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported for Input port returned Profile:%u, Level:%u",
@@ -4541,7 +4541,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         if (!c2d_opened) {
             if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888) {
                 mUsesColorConversion = true;
-                DEBUG_PRINT_ERROR("open Color conv for RGBA888 W: %u, H: %u",
+                DEBUG_PRINT_INFO("open Color conv for RGBA888 W: %u, H: %u",
                         (unsigned int)m_sInPortDef.format.video.nFrameWidth,
                         (unsigned int)m_sInPortDef.format.video.nFrameHeight);
                 if (!c2d_conv.open(m_sInPortDef.format.video.nFrameHeight,

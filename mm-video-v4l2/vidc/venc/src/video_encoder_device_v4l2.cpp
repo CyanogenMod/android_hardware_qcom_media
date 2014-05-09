@@ -3697,7 +3697,7 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
     } else if ((int)color_format == (int)QOMX_COLOR_FormatYVU420SemiPlanar) {
         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV21;
     } else {
-        DEBUG_PRINT_ERROR("WARNING: Unsupported Color format [%d]", color_format);
+        DEBUG_PRINT_HIGH("WARNING: Unsupported Color format [%d]", color_format);
         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
         DEBUG_PRINT_HIGH("Default color format YUV420SemiPlanar is set");
     }
