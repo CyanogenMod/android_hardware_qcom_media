@@ -271,7 +271,7 @@ typedef struct inputparam {
 
 static int parse_args(int argc, char **argv);
 int parse_cfg(const char *filename);
-int parse_param_file(const char * filename, const param * tptab, const int tptab_size);
+int parse_param_file(const char * filename, const param * tptab, const unsigned int tptab_size);
 int parse_sequences(struct arguments *input_args);
 static status search_for_preset_param(const param * tptab, const char * param_name, int * pTableIndex, const int table_size);
 static size_t find_first_non_whitespace_reverse(const char * str, size_t start_pos);
@@ -2104,7 +2104,7 @@ int parse_sequences(struct arguments *input_args)
 }
 
 
-int parse_param_file(const char * filename, const param * tptab, const int tptab_size)
+int parse_param_file(const char * filename, const param * tptab, const unsigned int tptab_size)
 {
 	FILE * fp;
 	char line[MAX_LINE], param_name[128],arr_seps[]=" ,\t\n", * token, * str_wbuf;
@@ -2319,7 +2319,7 @@ static int get_format(int fd, enum v4l2_buf_type buf_type)
 	struct v4l2_format fmt;
 	int port;
 	int rc;
-	int extra_idx = 0;
+	unsigned int extra_idx = 0;
 	int extra_data_size = 0;
 	memset(&fmt, 0, sizeof(fmt));
 	fmt.type = buf_type;
@@ -3162,8 +3162,6 @@ fail_config_session:
 	for (i = 0; i < MAX_PORTS; i++) {
 		pthread_mutex_destroy(&video_inst.q_lock[i]);
 	}
-	if (video_inst.buf_file)
-		fclose(video_inst.buf_file);
 	if (video_inst.pts_fd)
 		fclose(video_inst.pts_fd);
 fail_pts_file:
@@ -3481,9 +3479,10 @@ int read_mpeg2_chunk_parse_key_frame(FILE * bits, unsigned char * pBuf)
 			} else {
 					length++;
 			}
-		} while(curr_ptr < read_size);
+		} while(curr_ptr < (read_size - 1));
 
-		if ((keyFrame == 1) && (seqFound == 1)) {
+		if ((keyFrame == 1) && (seqFound == 1) &&
+			(curr_ptr <= (read_max + keyFrame_ptr))) {
 			memcpy(pBuf + next_ptr, temp_buf+keyFrame_ptr, curr_ptr-keyFrame_ptr);
 			next_ptr += (curr_ptr-keyFrame_ptr);
 		}
@@ -3908,7 +3907,7 @@ struct timeval get_pts(void)
 	if (strncmp(input_args->pts_filename, "beefbeef", 8)) {
 		if(fgets(line, MAX_LINE-1, video_inst.pts_fd)){
 			num[0] = '\0';
-			for (i = 0; i < MAX_LINE; i++) {
+			for (i = 0; i < MAX_LINE-1; i++) {
 				num[i] = line[i];
 				if (line[i+1] == '-' || line[i+1] == ' ') {
 					num[++i] = '\0';

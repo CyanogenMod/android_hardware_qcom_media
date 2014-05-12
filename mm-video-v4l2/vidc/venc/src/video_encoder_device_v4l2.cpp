@@ -1139,7 +1139,7 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
 #endif
         *buff_size = m_sInput_buff_property.datasize;
     } else {
-        int extra_idx = 0;
+        unsigned int extra_idx = 0;
         fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
         fmt.fmt.pix_mp.height = m_sVenc_cfg.dvs_height;
         fmt.fmt.pix_mp.width = m_sVenc_cfg.dvs_width;
@@ -2249,7 +2249,8 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
     struct pmem *pmem_tmp;
     struct v4l2_buffer buf;
     struct v4l2_plane plane[VIDEO_MAX_PLANES];
-    int rc = 0, extra_idx;
+    int rc = 0;
+    unsigned int extra_idx;
 
     pmem_tmp = (struct pmem *)buf_addr;
     DEBUG_PRINT_LOW("venc_use_buf:: pmem_tmp = %p", pmem_tmp);
@@ -2565,7 +2566,8 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,un
     struct venc_buffer  frameinfo;
     struct v4l2_buffer buf;
     struct v4l2_plane plane[VIDEO_MAX_PLANES];
-    int rc = 0, extra_idx;
+    int rc = 0;
+    unsigned int extra_idx;
     struct OMX_BUFFERHEADERTYPE *bufhdr;
 
     if (buffer == NULL)
