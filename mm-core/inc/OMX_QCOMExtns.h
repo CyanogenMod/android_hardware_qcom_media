@@ -94,6 +94,17 @@ struct OMX_QCOM_PARAM_MEMMAPENTRYTYPE
  */
 #define QOMX_ErrorLTRUseFailed        (OMX_ErrorVendorStartUnused + 1)
 
+/* This error event is used by component to notify OMX client if a new instance
+ * overloads the video hardware.
+ */
+#define OMX_ErrorHardwareOverload     (OMX_ErrorVendorStartUnused + 2)
+
+/* This error event is used by component to notify OMX client if video hardware
+ *  is not able to start encoding/decoding for the last instance sent to it because
+ * it has reached it's maximum limit of concurrent instances.
+ */
+#define OMX_ErrorMaxClientsReached     (OMX_ErrorVendorStartUnused + 3)
+
 #define QOMX_VIDEO_BUFFERFLAG_BFRAME 0x00100000
 
 #define QOMX_VIDEO_BUFFERFLAG_EOSEQ  0x00200000
