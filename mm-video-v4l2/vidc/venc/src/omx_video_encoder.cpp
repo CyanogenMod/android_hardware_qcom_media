@@ -269,6 +269,9 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     } else if (codec_type == OMX_VIDEO_CodingVP8) {
         m_sParamProfileLevel.eProfile = (OMX_U32) OMX_VIDEO_VP8ProfileMain;
         m_sParamProfileLevel.eLevel = (OMX_U32) OMX_VIDEO_VP8Level_Version0;
+    } else if (codec_type == OMX_VIDEO_CodingHEVC) {
+        m_sParamProfileLevel.eProfile = (OMX_U32) OMX_VIDEO_HEVCProfileMain;
+        m_sParamProfileLevel.eLevel = (OMX_U32) OMX_VIDEO_HEVCMainTierLevel1;
     }
 
     // Initialize the video parameters for input port
@@ -317,6 +320,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingAVC;
     } else if (codec_type == OMX_VIDEO_CodingVP8) {
         m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingVP8;
+    } else if (codec_type == OMX_VIDEO_CodingHEVC) {
+        m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingHEVC;
     }
 
     if (dev_get_buf_req(&m_sOutPortDef.nBufferCountMin,
@@ -348,8 +353,9 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingAVC;
     } else if (codec_type == OMX_VIDEO_CodingVP8) {
         m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingVP8;
+    } else if (codec_type == OMX_VIDEO_CodingHEVC) {
+        m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingHEVC;
     }
-
 
     // mandatory Indices for kronos test suite
     OMX_INIT_STRUCT(&m_sPriorityMgmt, OMX_PRIORITYMGMTTYPE);
@@ -426,6 +432,12 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sParamVP8.eLevel = OMX_VIDEO_VP8Level_Version0;
     m_sParamVP8.nDCTPartitions = 0;
     m_sParamVP8.bErrorResilientMode = OMX_FALSE;
+
+    // HEVC specific init
+    OMX_INIT_STRUCT(&m_sParamHEVC, OMX_VIDEO_PARAM_HEVCTYPE);
+    m_sParamHEVC.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sParamHEVC.eProfile =  OMX_VIDEO_HEVCProfileMain;
+    m_sParamHEVC.eLevel =  OMX_VIDEO_HEVCMainTierLevel1;
 
     OMX_INIT_STRUCT(&m_sParamLTRMode, QOMX_VIDEO_PARAM_LTRMODE_TYPE);
     m_sParamLTRMode.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
@@ -822,6 +834,19 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     return OMX_ErrorUnsupportedSetting;
                 }
                 memcpy(&m_sParamVP8,pParam, sizeof(struct OMX_VIDEO_PARAM_VP8TYPE));
+                break;
+            }
+        case (OMX_INDEXTYPE)OMX_IndexParamVideoHevc:
+            {
+                OMX_VIDEO_PARAM_HEVCTYPE* pParam = (OMX_VIDEO_PARAM_HEVCTYPE*)paramData;
+                OMX_VIDEO_PARAM_HEVCTYPE hevc_param;
+                DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoHevc");
+                memcpy(&hevc_param, pParam, sizeof( struct OMX_VIDEO_PARAM_HEVCTYPE));
+                if (handle->venc_set_param(&hevc_param, (OMX_INDEXTYPE)OMX_IndexParamVideoHevc) != true) {
+                    DEBUG_PRINT_ERROR("Failed : set_parameter: OMX_IndexParamVideoHevc");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                memcpy(&m_sParamHEVC, pParam, sizeof(struct OMX_VIDEO_PARAM_HEVCTYPE));
                 break;
             }
         case OMX_IndexParamVideoProfileLevelCurrent:
