@@ -716,7 +716,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     mRenderer->queueEOS(track, UNKNOWN_ERROR);
                 }
                   else{
-                    ALOGE("EOS not queued for %s track", track);
+                    ALOGE("EOS not queued for %d track", track);
                   }
                 }
             } else if (what == DashCodec::kWhatDrainThisBuffer) {
