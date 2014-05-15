@@ -184,6 +184,12 @@ class VideoHeap : public MemoryHeapBase
 #define MAX_NUM_INPUT_OUTPUT_BUFFERS 32
 #endif
 
+#ifdef _ION_HEAP_MASK_COMPATIBILITY_WA
+    #define ION_HEAP_MASK heap_mask
+#else
+    #define ION_HEAP_MASK heap_id_mask
+#endif
+
 #define OMX_FRAMEINFO_EXTRADATA 0x00010000
 #define OMX_INTERLACE_EXTRADATA 0x00020000
 #define OMX_TIMEINFO_EXTRADATA  0x00040000

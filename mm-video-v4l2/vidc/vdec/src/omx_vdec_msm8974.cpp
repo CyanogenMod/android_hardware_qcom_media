@@ -7948,9 +7948,9 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
     if ((secure_mode) && (flag & ION_SECURE))
         alloc_data->flags |= ION_SECURE;
 
-    alloc_data->heap_id_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
+    alloc_data->ION_HEAP_MASK = ION_HEAP(ION_IOMMU_HEAP_ID);
     if (secure_mode && (alloc_data->flags & ION_SECURE))
-        alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
+        alloc_data->ION_HEAP_MASK = ION_HEAP(MEM_HEAP_ID);
     rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
     if (rc || !alloc_data->handle) {
         DEBUG_PRINT_ERROR("ION ALLOC memory failed");
@@ -9873,7 +9873,7 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::allocate_buffers_color_conve
     }
     m_heap_ptr[i].video_heap_ptr = new VideoHeap (
             op_buf_ion_info[i].ion_device_fd,buffer_size_req,
-            pmem_baseaddress[i],op_buf_ion_info[i].ion_alloc_data.handle,pmem_fd[i]);
+            pmem_baseaddress[i],(ion_handle*)op_buf_ion_info[i].ion_alloc_data.handle,pmem_fd[i]);
 #endif
     m_pmem_info_client[i].pmem_fd = (unsigned long)m_heap_ptr[i].video_heap_ptr.get();
     m_pmem_info_client[i].offset = 0;
