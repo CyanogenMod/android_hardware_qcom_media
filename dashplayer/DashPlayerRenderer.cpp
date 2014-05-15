@@ -233,6 +233,21 @@ void DashPlayer::Renderer::signalAudioSinkChanged() {
 
 bool DashPlayer::Renderer::onDrainAudioQueue() {
     uint32_t numFramesPlayed;
+
+    // Check if first frame is EOS, process EOS and return
+    if(1 == mAudioQueue.size())
+    {
+       QueueEntry *entry = &*mAudioQueue.begin();
+       if (entry->mBuffer == NULL) {
+        ALOGE("onDrainAudioQueue process EOS");
+        notifyEOS(true /* audio */, entry->mFinalResult);
+
+        mAudioQueue.erase(mAudioQueue.begin());
+        entry = NULL;
+        return false;
+      }
+    }
+
     if (mAudioSink->getPosition(&numFramesPlayed) != OK) {
         return false;
     }
