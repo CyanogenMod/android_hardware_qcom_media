@@ -2597,7 +2597,8 @@ OMX_ERRORTYPE omx_video::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
                         m_pOutput_pmem[index].size);
             } else {
                 char *data = (char*) m_pOutput_pmem[index].buffer;
-                native_handle_t *handle = (native_handle_t*) data + 4;
+                native_handle_t *handle = NULL;
+                memcpy(&handle, data + sizeof(OMX_U32), sizeof(native_handle_t*));
                 native_handle_delete(handle);
                 free(m_pOutput_pmem[index].buffer);
             }
@@ -2977,8 +2978,8 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                 handle->data[0] = m_pOutput_pmem[i].fd;
                 char *data = (char*) m_pOutput_pmem[i].buffer;
                 OMX_U32 type = 1;
-                memcpy(data, &type, 4);
-                memcpy(data + 4, &handle, sizeof(native_handle_t*));
+                memcpy(data, &type, sizeof(OMX_U32));
+                memcpy(data + sizeof(OMX_U32), &handle, sizeof(native_handle_t*));
             }
 
             *bufferHdr = (m_out_mem_ptr + i );
