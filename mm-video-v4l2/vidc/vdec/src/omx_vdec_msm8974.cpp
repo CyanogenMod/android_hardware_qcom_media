@@ -6757,13 +6757,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                     }
                 }
             }
-        } else {
-            time_stamp_dts.remove_time_stamp(
-                    buffer->nTimeStamp,
-                    is_interlaced && is_duplicate_ts_valid);
         }
-
-
     }
 
     /* Since we're passing around handles, adjust nFilledLen and nAllocLen
