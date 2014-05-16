@@ -8170,7 +8170,7 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
     struct v4l2_requestbuffers bufreq;
-    unsigned int buf_size = 0, extra_data_size = 0, client_extra_data_size = 0;
+    unsigned int buf_size = 0, extra_data_size = 0, default_extra_data_size = 0;
     unsigned int final_extra_data_size = 0;
     struct v4l2_format fmt;
     int ret = 0;
@@ -8239,14 +8239,18 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
             return OMX_ErrorBadParameter;
         }
 
-        /* The output buffer already contains 9K of space (see VENUS_BUFFER_SIZE())
-         * for extradata.  That might be more than enough */
-        final_extra_data_size = extra_data_size > 9*1024 ? extra_data_size : 9*1024;
+        default_extra_data_size = VENUS_EXTRADATA_SIZE(
+                drv_ctx.video_resolution.frame_height,
+                drv_ctx.video_resolution.frame_width);
+        final_extra_data_size = extra_data_size > default_extra_data_size ?
+            extra_data_size : default_extra_data_size;
+
+        final_extra_data_size = (final_extra_data_size + buffer_prop->alignment - 1) &
+            (~(buffer_prop->alignment - 1));
 
         drv_ctx.extradata_info.size = buffer_prop->actualcount * final_extra_data_size;
         drv_ctx.extradata_info.count = buffer_prop->actualcount;
         drv_ctx.extradata_info.buffer_size = final_extra_data_size;
-        buf_size += client_extra_data_size;
         buf_size = (buf_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
         DEBUG_PRINT_LOW("GetBufReq UPDATE: ActCnt(%d) Size(%d) BufSize(%d)",
                 buffer_prop->actualcount, buffer_prop->buffer_size, buf_size);
