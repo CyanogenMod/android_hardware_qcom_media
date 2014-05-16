@@ -775,14 +775,12 @@ bool venc_dev::venc_open(OMX_U32 codec)
     unsigned int alignment = 0,buffer_size = 0, temp =0;
     struct v4l2_control control;
     OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_enc";
+    char narrow_searchrange[PROPERTY_VALUE_MAX] = {0};
+    char platform_name[PROPERTY_VALUE_MAX] = {0};
 
-    char platform_name[PROPERTY_VALUE_MAX];
     property_get("ro.board.platform", platform_name, "0");
-
-    if (!strncmp(platform_name, "msm8610", 7)) {
-        device_name = (OMX_STRING)"/dev/video/q6_enc";
-    }
-    if (!strncmp(platform_name, "msm8916", 7)) {
+    property_get("vidc.enc.narrow.searchrange", narrow_searchrange, "0");
+    if (atoi(narrow_searchrange) && (!strncmp(platform_name, "msm8916", 7))) {
         enable_mv_narrow_searchrange = true;
         sp<IBinder> display(SurfaceComposerClient::getBuiltInDisplay(
                         ISurfaceComposer::eDisplayIdMain));
@@ -790,19 +788,21 @@ bool venc_dev::venc_open(OMX_U32 codec)
         DEBUG_PRINT_LOW("Display panel resolution %dX%d",
             display_info.w, display_info.h);
     }
-    m_nDriver_fd = open (device_name, O_RDWR);
 
+    if (!strncmp(platform_name, "msm8610", 7)) {
+        device_name = (OMX_STRING)"/dev/video/q6_enc";
+    }
+    m_nDriver_fd = open (device_name, O_RDWR);
     if (m_nDriver_fd == 0) {
         DEBUG_PRINT_ERROR("ERROR: Got fd as 0 for msm_vidc_enc, Opening again");
         m_nDriver_fd = open (device_name, O_RDWR);
     }
-
     if ((int)m_nDriver_fd < 0) {
         DEBUG_PRINT_ERROR("ERROR: Omx_venc::Comp Init Returning failure");
         return false;
     }
-
     DEBUG_PRINT_LOW("m_nDriver_fd = %u", (unsigned int)m_nDriver_fd);
+
     // set the basic configuration of the video encoder driver
     m_sVenc_cfg.input_width = OMX_CORE_QCIF_WIDTH;
     m_sVenc_cfg.input_height= OMX_CORE_QCIF_HEIGHT;
