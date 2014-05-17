@@ -114,6 +114,7 @@ private:
         kWhatConfigureComponent      = 'conf',
         kWhatStart                   = 'star',
         kWhatRequestIDRFrame         = 'ridr',
+        kWhatWaitForPortEnable       = 'wfpe',
     };
 
     enum {
