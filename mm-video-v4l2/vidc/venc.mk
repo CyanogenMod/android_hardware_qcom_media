@@ -50,7 +50,7 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
 libmm-venc-def += -DMAX_RES_1080P
 libmm-venc-def += -D_MSM8974_
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
+ifeq ($(TARGET_BOARD_PLATFORM),msm8084)
 libmm-venc-def += -DMAX_RES_1080P
 libmm-venc-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
@@ -101,7 +101,7 @@ LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
 
 LOCAL_SRC_FILES   := venc/src/omx_video_base.cpp
 LOCAL_SRC_FILES   += venc/src/omx_video_encoder.cpp
-ifneq ($(filter msm8974 msm8610 msm8226 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
+ifneq ($(filter msm8974 msm8610 msm8226 msm8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
 LOCAL_SRC_FILES   += venc/src/video_encoder_device_v4l2.cpp
 else
 LOCAL_SRC_FILES   += venc/src/video_encoder_device.cpp
