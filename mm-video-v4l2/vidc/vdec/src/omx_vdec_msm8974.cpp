@@ -8097,6 +8097,7 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
     struct v4l2_requestbuffers bufreq;
+    unsigned int final_extra_data_size = 0;
     unsigned int buf_size = 0, extra_data_size = 0, client_extra_data_size = 0;
     struct v4l2_format fmt;
     int ret = 0;
@@ -8164,45 +8165,12 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
             DEBUG_PRINT_ERROR("Extradata index is more than allowed: %d", extra_idx);
             return OMX_ErrorBadParameter;
         }
-        if (client_extradata & OMX_FRAMEINFO_EXTRADATA) {
-            DEBUG_PRINT_HIGH("Frame info extra data enabled!");
-            client_extra_data_size += OMX_FRAMEINFO_EXTRADATA_SIZE;
-        }
-        if (client_extradata & OMX_INTERLACE_EXTRADATA) {
-            client_extra_data_size += OMX_INTERLACE_EXTRADATA_SIZE;
-        }
-        if (client_extradata & OMX_PORTDEF_EXTRADATA) {
-            client_extra_data_size += OMX_PORTDEF_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("Smooth streaming enabled extra_data_size=%d",
-                    client_extra_data_size);
-        }
-        if ((client_extradata & OMX_FRAMEDIMENSION_EXTRADATA)) {
-            client_extra_data_size += OMX_FRAMEDIMENSION_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("Frame dimension enabled extra_data_size = %d\n",
-                    client_extra_data_size);
-        }
-        if (client_extradata & OMX_FRAMEPACK_EXTRADATA) {
-            client_extra_data_size += OMX_FRAMEPACK_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("framepack extradata enabled");
-        }
-        if (client_extradata & OMX_QP_EXTRADATA) {
-            client_extra_data_size += OMX_QP_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("QP extradata enabled");
-        }
-        if (client_extradata & OMX_BITSINFO_EXTRADATA) {
-            client_extra_data_size += OMX_BITSINFO_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("Input bits info extradata enabled");
-        }
-        if (client_extradata & OMX_EXTNUSER_EXTRADATA) {
-            client_extra_data_size += OMX_USERDATA_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("Userdata extradata enabled");
-        }
 
-        if (client_extra_data_size) {
-            client_extra_data_size += sizeof(OMX_OTHER_EXTRADATATYPE); //Space for terminator
-            buf_size = ((buf_size + 3)&(~3)); //Align extradata start address to 64Bit
-        }
-        drv_ctx.extradata_info.size = buffer_prop->actualcount * extra_data_size;
+        /* The output buffer already contains 9K of space (see VENUS_BUFFER_SIZE())
+         * for extradata.  That might be more than enough */
+        final_extra_data_size = extra_data_size > 9*1024 ? extra_data_size : 9*1024;
+
+        drv_ctx.extradata_info.size = buffer_prop->actualcount * final_extra_data_size;
         drv_ctx.extradata_info.count = buffer_prop->actualcount;
         drv_ctx.extradata_info.buffer_size = extra_data_size;
         buf_size += client_extra_data_size;
@@ -9321,7 +9289,7 @@ void omx_vdec::append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     userdata_payload =
         (struct msm_vidc_stream_userdata_payload *)p_user->data;
     userdata_size = p_user->nDataSize;
-    extra->nSize = OMX_USERDATA_EXTRADATA_SIZE;
+    extra->nSize = OMX_USERDATA_EXTRADATA_SIZE + p_user->nSize;
     extra->nVersion.nVersion = OMX_SPEC_VERSION;
     extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
     extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMP2UserData;
