@@ -4351,6 +4351,8 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                 return OMX_ErrorBadParameter;
             }
 
+            drv_ctx.op_buf.buffer_size = handle->size;
+
             if (!m_use_android_native_buffers) {
                 if (!secure_mode) {
                     buff =  (OMX_U8*)mmap(0, handle->size,
@@ -5970,7 +5972,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         //this with a more sane size so that we don't compensate in rest of code
         //We'll restore this size later on, so that it's transparent to client
         buffer->nFilledLen = 0;
-        buffer->nAllocLen = drv_ctx.op_buf.buffer_size;
+        buffer->nAllocLen = handle->size;
     }
 
 
