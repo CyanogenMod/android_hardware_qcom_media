@@ -6649,20 +6649,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             buffer, buffer->pBuffer);
     pending_output_buffers --;
 
-    if (dynamic_buf_mode) {
-        unsigned int nPortIndex = 0;
-        nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
-
-        if (!secure_mode) {
-            munmap(drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr,
-                            drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size);
-        }
-
-        //Clear graphic buffer handles in dynamic mode
-        native_buffer[nPortIndex].privatehandle = NULL;
-        native_buffer[nPortIndex].nativehandle = NULL;
-    }
-
     if (buffer->nFlags & OMX_BUFFERFLAG_EOS) {
         DEBUG_PRINT_HIGH("Output EOS has been reached");
         if (!output_flush_progress)
@@ -6680,9 +6666,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             pdest_frame = NULL;
         }
     }
-
-    DEBUG_PRINT_LOW("In fill Buffer done call address %p ",buffer);
-    log_output_buffers(buffer);
 
     if (!output_flush_progress && (buffer->nFilledLen > 0)) {
         DEBUG_PRINT_LOW("Processing extradata");
@@ -6825,6 +6808,20 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         }
 
         if (il_buffer) {
+            log_output_buffers(il_buffer);
+            if (dynamic_buf_mode) {
+                unsigned int nPortIndex = 0;
+                nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
+
+                if (!secure_mode) {
+                    munmap(drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr,
+                        drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size);
+                }
+
+                //Clear graphic buffer handles in dynamic mode
+                native_buffer[nPortIndex].privatehandle = NULL;
+                native_buffer[nPortIndex].nativehandle = NULL;
+            }
             m_cb.FillBufferDone (hComp,m_app_data,il_buffer);
         } else {
             DEBUG_PRINT_ERROR("Invalid buffer address from get_il_buf_hdr");
