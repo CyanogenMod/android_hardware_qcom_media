@@ -4312,6 +4312,10 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                 handle = (private_handle_t *)buff;
                 privateAppData = appData;
             }
+            if (!handle) {
+                DEBUG_PRINT_ERROR("handle is invalid");
+                return OMX_ErrorBadParameter;
+            }
 
             if ((OMX_U32)handle->size < drv_ctx.op_buf.buffer_size) {
                 DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
@@ -4416,7 +4420,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                 OMX_QCOM_PLATFORM_PRIVATE_LIST *pmem_list;
                 OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pmem_info;
                 pmem_list = (OMX_QCOM_PLATFORM_PRIVATE_LIST*) appData;
-                if (!pmem_list->entryList || !pmem_list->entryList->entry ||
+                if (!pmem_list || !pmem_list->entryList || !pmem_list->entryList->entry ||
                         !pmem_list->nEntries ||
                         pmem_list->entryList->type != OMX_QCOM_PLATFORM_PRIVATE_PMEM) {
                     DEBUG_PRINT_ERROR("Pmem info not valid in use buffer");
@@ -4586,11 +4590,9 @@ OMX_ERRORTYPE  omx_vdec::use_buffer(
     OMX_ERRORTYPE error = OMX_ErrorNone;
     struct vdec_setbuffer_cmd setbuffers;
 
-    if (bufferHdr == NULL || bytes == 0) {
-        if (!secure_mode && buffer == NULL) {
+    if (bufferHdr == NULL || bytes == 0 || (!secure_mode && buffer == NULL)) {
             DEBUG_PRINT_ERROR("bad param 0x%p %ld 0x%p",bufferHdr, bytes, buffer);
             return OMX_ErrorBadParameter;
-        }
     }
     if (m_state == OMX_StateInvalid) {
         DEBUG_PRINT_ERROR("Use Buffer in Invalid State");
@@ -4770,8 +4772,8 @@ OMX_ERRORTYPE omx_vdec::allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
                   calloc( (sizeof(OMX_BUFFERHEADERTYPE*)),
                           drv_ctx.ip_buf.actualcount);
 
-        if (m_inp_heap_ptr == NULL) {
-            DEBUG_PRINT_ERROR("m_inp_heap_ptr Allocation failed ");
+        if (m_inp_heap_ptr == NULL || m_phdr_pmem_ptr == NULL) {
+            DEBUG_PRINT_ERROR("m_inp_heap_ptr or m_phdr_pmem_ptr Allocation failed ");
             return OMX_ErrorInsufficientResources;
         }
     }
@@ -5133,10 +5135,19 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         drv_ctx.ptr_respbuffer = (struct vdec_output_frameinfo  *)\
                      calloc (sizeof (struct vdec_output_frameinfo),
                              drv_ctx.op_buf.actualcount);
+        if (!drv_ctx.ptr_outputbuffer || !drv_ctx.ptr_respbuffer) {
+            DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.ptr_outputbuffer or drv_ctx.ptr_respbuffer ");
+            return OMX_ErrorInsufficientResources;
+        }
+
 #ifdef USE_ION
         drv_ctx.op_buf_ion_info = (struct vdec_ion *)\
                       calloc (sizeof(struct vdec_ion),
                               drv_ctx.op_buf.actualcount);
+        if (!drv_ctx.op_buf_ion_info) {
+            DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.op_buf_ion_info");
+            return OMX_ErrorInsufficientResources;
+        }
 #endif
 
         if (m_out_mem_ptr && pPtr && drv_ctx.ptr_outputbuffer
@@ -5915,7 +5926,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         unsigned int nPortIndex = 0;
 
         if (!buffer || !buffer->pBuffer) {
-            DEBUG_PRINT_ERROR("%s: invalid params: %p %p", __FUNCTION__, buffer, buffer->pBuffer);
+            DEBUG_PRINT_ERROR("%s: invalid params: %p", __FUNCTION__, buffer);
             return OMX_ErrorBadParameter;
         }
 
@@ -6045,7 +6056,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
     struct v4l2_plane plane[VIDEO_MAX_PLANES];
     memset( (void *)&buf, 0, sizeof(buf));
     memset( (void *)plane, 0, (sizeof(struct v4l2_plane)*VIDEO_MAX_PLANES));
-    int extra_idx = 0;
+    unsigned int extra_idx = 0;
 
     buf.index = nPortIndex;
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -6069,7 +6080,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
         plane[extra_idx].reserved[1] = nPortIndex * drv_ctx.extradata_info.buffer_size;
         plane[extra_idx].data_offset = 0;
     } else if (extra_idx >= VIDEO_MAX_PLANES) {
-        DEBUG_PRINT_ERROR("Extradata index higher than expected: %d", extra_idx);
+        DEBUG_PRINT_ERROR("Extradata index higher than expected: %u", extra_idx);
         return OMX_ErrorBadParameter;
     }
     buf.m.planes = plane;
@@ -8356,9 +8367,18 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
         drv_ctx.ptr_respbuffer = (struct vdec_output_frameinfo  *)\
                      calloc (sizeof (struct vdec_output_frameinfo),
                              drv_ctx.op_buf.actualcount);
+        if (!drv_ctx.ptr_outputbuffer || !drv_ctx.ptr_respbuffer) {
+            DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.ptr_outputbuffer or drv_ctx.ptr_respbuffer");
+            return OMX_ErrorInsufficientResources;
+        }
+
 #ifdef USE_ION
         drv_ctx.op_buf_ion_info = (struct vdec_ion * ) \
                       calloc (sizeof(struct vdec_ion),drv_ctx.op_buf.actualcount);
+        if (!drv_ctx.op_buf_ion_info) {
+            DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.op_buf_ion_info");
+            return OMX_ErrorInsufficientResources;
+        }
 #endif
         if (dynamic_buf_mode) {
             out_dynamic_list = (struct dynamic_buf_list *) \
