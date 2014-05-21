@@ -43,6 +43,10 @@
 #include <cutils/properties.h>
 #include "avc_utils.h"
 
+#ifdef BFAMILY_TARGET /* Venus macros and dynamic mode support present only for B-family targets.*/
+#include <media/msm_media_info.h>
+#endif
+
 //Smmoth streaming settings
 //Max resolution 1080p
 #define MAX_WIDTH 1920;
@@ -386,6 +390,8 @@ DashCodec::DashCodec()
       mDequeueCounter(0),
       mStoreMetaDataInOutputBuffers(false),
       mMetaDataBuffersToSubmit(0),
+      mCurrentWidth(0),
+      mCurrentHeight(0),
       mAdaptivePlayback(false) {
     mUninitializedState = new UninitializedState(this);
     mLoadedState = new LoadedState(this);
@@ -1188,6 +1194,24 @@ status_t DashCodec::configureCodec(
                 ALOGE("[%s] setupVideoDecoder with width %d, height %d",
                       mComponentName.c_str(),width,height);
                 err = setupVideoDecoder(mime, width, height);
+
+                //Enable component support to extract SEI extradata if present in AVC stream
+                QOMX_ENABLETYPE extra_data;
+                extra_data.bEnable = OMX_TRUE;
+
+                status_t errVal = mOMX->setParameter(
+                        mNode, (OMX_INDEXTYPE)OMX_QcomIndexEnableExtnUserData,
+                        (OMX_PTR)&extra_data, sizeof(extra_data));
+
+                if (errVal != OK) {
+                        ALOGE("[%s] setting OMX_QcomIndexEnableExtnUserData failed: %d",
+                                mComponentName.c_str(), err);
+                    }
+                else
+                {
+                  ALOGE("[%s] setting OMX_QcomIndexEnableExtnUserData success",
+                                mComponentName.c_str());
+                }
             }
         }
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AAC)) {
@@ -2451,7 +2475,15 @@ void DashCodec::sendFormatChange() {
             notify->setInt32("stride", videoDef->nStride);
             notify->setInt32("slice-height", videoDef->nSliceHeight);
             notify->setInt32("color-format", videoDef->eColorFormat);
-            ALOGE("sendformatchange: %d %d", videoDef->nFrameWidth, videoDef->nFrameHeight);
+            ALOGV("sendformatchange: %lu %lu", videoDef->nFrameWidth, videoDef->nFrameHeight);
+
+            //If dynamic buffering mode cache the latest width and height. Will be used for VENUS macors to calculate filledLen in fbd's.
+            if(mStoreMetaDataInOutputBuffers)
+            {
+              mCurrentWidth = videoDef->nFrameWidth;
+              mCurrentHeight = videoDef->nFrameHeight;
+            }
+
             OMX_CONFIG_RECTTYPE* rect;
             bool hasValidCrop = true;
             if (useCachedConfig) {
@@ -3253,6 +3285,55 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
             notify->setPointer("buffer-id", info->mBufferID);
             notify->setBuffer("buffer", info->mData);
             notify->setInt32("flags", flags);
+
+            if (flags & OMX_BUFFERFLAG_EXTRADATA)
+            {
+              OMX_U8* bufferHandle = NULL;
+              int64_t nFilledLen = 0;
+              int64_t nAllocLen = 0;
+              int64_t nStartOffset = 0;
+
+              OMX_BUFFERHEADERTYPE *pBufHdr = (OMX_BUFFERHEADERTYPE *)bufferID;
+
+              nStartOffset = pBufHdr->nOffset;
+
+              if(mCodec->mStoreMetaDataInOutputBuffers)
+              {
+                VideoDecoderOutputMetaData *metaData =
+                              reinterpret_cast<VideoDecoderOutputMetaData *>(
+                              pBufHdr->pBuffer);
+
+                bufferHandle = const_cast<OMX_U8*>(
+                           reinterpret_cast<const OMX_U8*>(metaData->pHandle));
+
+#ifdef BFAMILY_TARGET /* Venus macros and dynamic mode support present only for B-family targets.*/
+                nFilledLen = (VENUS_Y_STRIDE(COLOR_FMT_NV12, mCodec->mCurrentWidth)
+                              * VENUS_Y_SCANLINES(COLOR_FMT_NV12, mCodec->mCurrentHeight))
+                                    +  (VENUS_UV_STRIDE(COLOR_FMT_NV12, mCodec->mCurrentWidth)
+                                        * VENUS_UV_SCANLINES(COLOR_FMT_NV12, mCodec->mCurrentHeight));
+
+                nAllocLen = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, mCodec->mCurrentWidth, mCodec->mCurrentHeight);
+#endif
+              }
+              else
+              {
+                bufferHandle = const_cast<OMX_U8*>(
+                           reinterpret_cast<const OMX_U8*>(pBufHdr->pBuffer));
+
+                nFilledLen = pBufHdr->nFilledLen;
+                nAllocLen = pBufHdr->nAllocLen;
+              }
+
+              ALOGV("[%s] Extradata present in decoded buffer."
+                  "gralloc handle = %p, filled length = %llu, allocated length = %llu, start offset = %llu",
+                  mCodec->mComponentName.c_str(), bufferHandle, nFilledLen, nAllocLen, nStartOffset);
+
+              notify->setPointer("gralloc-handle", bufferHandle);
+              notify->setInt64("filled-length", nFilledLen);
+              notify->setInt64("alloc-length", nAllocLen);
+              notify->setInt64("start-offset", nStartOffset);
+            }
+
             sp<AMessage> reply =
                 new AMessage(kWhatOutputBufferDrained, mCodec->id());
 
