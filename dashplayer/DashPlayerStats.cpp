@@ -70,6 +70,7 @@ DashPlayerStats::~DashPlayerStats() {
     }
     if(mMIME) {
         delete[] mMIME;
+        mMIME = NULL;
     }
 }
 
@@ -89,6 +90,7 @@ void DashPlayerStats::setMime(const char* mime) {
         int mimeLen = strlen(mime);
         if(mMIME) {
           delete[] mMIME;
+          mMIME = NULL;
         }
 
         mMIME = new char[mimeLen+1];
