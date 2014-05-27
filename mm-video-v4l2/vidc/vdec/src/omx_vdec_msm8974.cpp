@@ -7169,6 +7169,19 @@ int omx_vdec::async_message_process (void *context, void* message)
                             omx->drv_ctx.video_resolution.frame_height = vdec_msg->msgdata.output_frame.framesize.bottom;
                             omx->drv_ctx.video_resolution.frame_width = vdec_msg->msgdata.output_frame.framesize.right;
                             format_notably_changed = 1;
+
+                            struct v4l2_format fmt;
+                            fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+                            fmt.fmt.pix_mp.pixelformat = omx->capture_capability;
+                            fmt.fmt.pix_mp.height = omx->drv_ctx.video_resolution.frame_height;
+                            fmt.fmt.pix_mp.width = omx->drv_ctx.video_resolution.frame_width;
+
+                            if (!ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt)) {
+                                omx->update_resolution(fmt.fmt.pix_mp.width,
+                                        fmt.fmt.pix_mp.height,
+                                        fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
+                                        fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
+                            }
                         }
                     }
                     if (omxhdr->nFilledLen && (((unsigned)omx->rectangle.nLeft !=
