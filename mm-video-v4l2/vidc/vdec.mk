@@ -143,7 +143,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
-ifneq ($(filter msm8974 msm8610 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
+ifneq ($(filter msm8974 msm8610 msm8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
 
 LOCAL_MODULE                    := libOmxVdecHevc
 LOCAL_MODULE_TAGS               := optional
