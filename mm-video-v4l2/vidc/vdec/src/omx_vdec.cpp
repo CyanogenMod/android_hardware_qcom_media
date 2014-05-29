@@ -7323,20 +7323,20 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
 
     if (secure_mode) {
         if (external_meta_buffer) {
-            alloc_data->heap_mask = ION_HEAP(ION_CP_MFC_HEAP_ID);
+            alloc_data->heap_id_mask = ION_HEAP(ION_CP_MFC_HEAP_ID);
             alloc_data->flags |= ION_SECURE;
         } else if (external_meta_buffer_iommu) {
-            alloc_data->heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
+            alloc_data->heap_id_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
         } else {
-            alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
+            alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
             alloc_data->flags |= ION_SECURE;
         }
     } else {
 #ifdef MAX_RES_720P
         alloc_data->len = (buffer_size + (alloc_data->align - 1)) & ~(alloc_data->align - 1);
-        alloc_data->heap_mask = ION_HEAP(MEM_HEAP_ID);
+        alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
 #else
-        alloc_data->heap_mask = (ION_HEAP(MEM_HEAP_ID) | ION_HEAP(ION_IOMMU_HEAP_ID));
+        alloc_data->heap_id_mask = (ION_HEAP(MEM_HEAP_ID) | ION_HEAP(ION_IOMMU_HEAP_ID));
 #endif
     }
 

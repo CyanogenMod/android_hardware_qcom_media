@@ -8102,12 +8102,12 @@ struct ion_fd_data *fd_data, int flag, int heap_id)
     if ((secure_mode) && (flag & ION_SECURE))
         alloc_data->flags |= ION_SECURE;
 
-    alloc_data->heap_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
+    alloc_data->heap_id_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
     if (!secure_mode && heap_id)
-        alloc_data->heap_mask = ION_HEAP(heap_id);
+        alloc_data->heap_id_mask = ION_HEAP(heap_id);
 
     DEBUG_PRINT_LOW("ION ALLOC memory heap_id %d mask %0xx size %d align %d",
-        heap_id, (unsigned int)alloc_data->heap_mask, alloc_data->len, alloc_data->align);
+        heap_id, (unsigned int)alloc_data->heap_id_mask, alloc_data->len, alloc_data->align);
     rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
     if (rc || !alloc_data->handle) {
         DEBUG_PRINT_ERROR("ION ALLOC memory failed ");
