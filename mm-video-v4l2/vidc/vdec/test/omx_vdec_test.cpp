@@ -907,7 +907,7 @@ void* fbd_thread(void* pArg)
                 OMX_OTHER_EXTRADATATYPE *pExtra;
                 DEBUG_PRINT_ERROR(">> BUFFER WITH EXTRA DATA RCVD <<<");
                 pExtra = (OMX_OTHER_EXTRADATATYPE *)
-                    ((unsigned)(pBuffer->pBuffer + pBuffer->nOffset +
+                    ((uintptr_t)(pBuffer->pBuffer + pBuffer->nOffset +
                         pBuffer->nFilledLen + 3)&(~3));
                 while (pExtra &&
                         (OMX_U8*)pExtra < (pBuffer->pBuffer + pBuffer->nAllocLen) &&
@@ -1009,8 +1009,8 @@ void* fbd_thread(void* pArg)
                         default:
                             DEBUG_PRINT_ERROR("Unknown Extrata!");
                     }
-                    if (pExtra->nSize < (pBuffer->nAllocLen - (OMX_U32)pExtra))
-                        pExtra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) pExtra) + pExtra->nSize);
+                    if (pExtra->nSize < (pBuffer->nAllocLen - (uintptr_t)pExtra))
+                        pExtra = (OMX_OTHER_EXTRADATATYPE *) (((uintptr_t *) pExtra) + pExtra->nSize);
                     else {
                         DEBUG_PRINT_ERROR("ERROR: Extradata pointer overflow buffer(%p) extra(%p)",
                                 pBuffer, pExtra);
@@ -2627,7 +2627,7 @@ static OMX_ERRORTYPE use_output_buffer ( OMX_COMPONENTTYPE *dec_handle,
             DEBUG_PRINT_ERROR("\n mmap failed for buffers");
             return OMX_ErrorInsufficientResources;
         }
-        use_buf_virt_addr[bufCnt] = (unsigned)pvirt;
+        use_buf_virt_addr[bufCnt] = (intptr_t)pvirt;
         error = OMX_UseEGLImage(dec_handle, &((*pBufHdrs)[bufCnt]),
                 nPortIndex, pvirt,(void *)p_eglHeaders[bufCnt]);
     }
@@ -2705,7 +2705,7 @@ static OMX_ERRORTYPE use_output_buffer_multiple_fd ( OMX_COMPONENTTYPE *dec_hand
             DEBUG_PRINT_ERROR("\n mmap failed for buffers");
             return OMX_ErrorInsufficientResources;
         }
-        use_buf_virt_addr[bufCnt] = (unsigned)pvirt;
+        use_buf_virt_addr[bufCnt] = (uintptr_t)pvirt;
         error = OMX_UseBuffer(dec_handle, &((*pBufHdrs)[bufCnt]),
                 nPortIndex, &pPlatformList[bufCnt], bufSize, pvirt);
     }
@@ -3953,7 +3953,7 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     MemoryHeapBase *vheap = NULL;
 #endif
 
-    unsigned int end = (unsigned int)(pBufHdr->pBuffer + pBufHdr->nAllocLen);
+    unsigned int end = (uintptr_t)(pBufHdr->pBuffer + pBufHdr->nAllocLen);
 
     struct mdp_blit_req *e;
     union {
@@ -3970,7 +3970,7 @@ void render_fb(struct OMX_BUFFERHEADERTYPE *pBufHdr)
     img.list.count = 1;
     e = &img.list.req[0];
 
-    addr = (unsigned int)(pBufHdr->pBuffer + pBufHdr->nFilledLen);
+    addr = (uintptr_t)(pBufHdr->pBuffer + pBufHdr->nFilledLen);
     // align to a 4 byte boundary
     addr = (addr + 3) & (~3);
 
