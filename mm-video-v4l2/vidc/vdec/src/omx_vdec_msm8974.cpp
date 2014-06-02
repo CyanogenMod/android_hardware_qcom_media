@@ -1364,6 +1364,10 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
                 sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.ivf",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         }
+        else {
+               sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.divx",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
         m_debug.infile = fopen (m_debug.infile_name, "ab");
         if (!m_debug.infile) {
             DEBUG_PRINT_HIGH("Failed to open input file: %s for logging", m_debug.infile_name);
