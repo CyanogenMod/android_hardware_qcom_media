@@ -55,7 +55,7 @@ endif
 
 libmm-venc-inc      := bionic/libc/include
 libmm-venc-inc      += bionic/libstdc++/include
-libmm-venc-inc      += $(LOCAL_PATH)/inc
+libmm-venc-inc      := $(LOCAL_PATH)/venc/inc
 libmm-venc-inc      += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-venc-inc      += hardware/qcom/media/mm-core/inc
@@ -78,16 +78,16 @@ LOCAL_PRELINK_MODULE      := false
 LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
                              libc2dcolorconvert libdl
 
-LOCAL_SRC_FILES   := src/omx_video_base.cpp
-LOCAL_SRC_FILES   += src/omx_video_encoder.cpp
+LOCAL_SRC_FILES   := venc/src/omx_video_base.cpp
+LOCAL_SRC_FILES   += venc/src/omx_video_encoder.cpp
 ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
-LOCAL_SRC_FILES   += src/video_encoder_device_copper.cpp
+LOCAL_SRC_FILES   += venc/src/video_encoder_device_copper.cpp
 else
-LOCAL_SRC_FILES   += src/video_encoder_device.cpp
+LOCAL_SRC_FILES   += venc/src/video_encoder_device.cpp
 endif
 
 
-LOCAL_SRC_FILES   += ../common/src/extra_data_handler.cpp
+LOCAL_SRC_FILES   += common/src/extra_data_handler.cpp
 
 include $(BUILD_SHARED_LIBRARY)
 
@@ -98,7 +98,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 
 mm-venc-test720p-inc            := $(TARGET_OUT_HEADERS)/mm-core
-mm-venc-test720p-inc            += $(LOCAL_PATH)/inc
+mm-venc-test720p-inc            += $(LOCAL_PATH)/venc/inc
 mm-venc-test720p-inc            += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 mm-venc-test720p-inc            += $(OMX_VIDEO_PATH)/vidc/common/inc
 mm-venc-test720p-inc            += hardware/qcom/media/mm-core/inc
@@ -112,10 +112,10 @@ LOCAL_ADDITIONAL_DEPENDENCIES   := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 LOCAL_PRELINK_MODULE            := false
 LOCAL_SHARED_LIBRARIES          := libmm-omxcore libOmxVenc libbinder
 
-LOCAL_SRC_FILES                 := test/venc_test.cpp
-LOCAL_SRC_FILES                 += test/camera_test.cpp
-LOCAL_SRC_FILES                 += test/venc_util.c
-LOCAL_SRC_FILES                 += test/fb_test.c
+LOCAL_SRC_FILES                 := venc/test/venc_test.cpp
+LOCAL_SRC_FILES                 += venc/test/camera_test.cpp
+LOCAL_SRC_FILES                 += venc/test/venc_util.c
+LOCAL_SRC_FILES                 += venc/test/fb_test.c
 
 include $(BUILD_EXECUTABLE)
 
@@ -125,7 +125,7 @@ include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
 
-venc-test-inc                   += $(LOCAL_PATH)/inc
+venc-test-inc                   += $(LOCAL_PATH)/venc/inc
 venc-test-inc                   += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 LOCAL_MODULE                    := mm-video-encdrv-test
@@ -135,8 +135,8 @@ LOCAL_C_INCLUDES                += hardware/qcom/media/mm-core/inc
 LOCAL_ADDITIONAL_DEPENDENCIES   := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 LOCAL_PRELINK_MODULE            := false
 
-LOCAL_SRC_FILES                 := test/video_encoder_test.c
-LOCAL_SRC_FILES                 += test/queue.c
+LOCAL_SRC_FILES                 := venc/test/video_encoder_test.c
+LOCAL_SRC_FILES                 += venc/test/queue.c
 
 include $(BUILD_EXECUTABLE)
 
@@ -145,4 +145,3 @@ endif #BUILD_TINY_ANDROID
 # ---------------------------------------------------------------------------------
 # 					END
 # ---------------------------------------------------------------------------------
-

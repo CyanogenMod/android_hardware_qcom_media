@@ -9,10 +9,8 @@ LOCAL_PATH:= $(ROOT_DIR)
 # 				Common definitons
 # ---------------------------------------------------------------------------------
 
-libOmxVdec-def := -D__alignx\(x\)=__attribute__\(\(__aligned__\(x\)\)\)
 libOmxVdec-def += -D__align=__alignx
 libOmxVdec-def += -Dinline=__inline
-libOmxVdec-def += -g -O3
 libOmxVdec-def += -DIMAGE_APPS_PROC
 libOmxVdec-def += -D_ANDROID_
 libOmxVdec-def += -DCDECL
@@ -32,52 +30,19 @@ ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libOmxVdec-def += -D_MSM8960_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libOmxVdec-def += -D_MSM8974_
-libOmxVdec-def += -D_HEVC_USE_ADSP_HEAP_
+libOmxVdec-def += -D_COPPER_
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
-libOmxVdec-def += -DMAX_RES_720P
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm7630_surf)
-libOmxVdec-def += -DMAX_RES_720P
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
-libOmxVdec-def += -DMAX_RES_1080P
-libOmxVdec-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libOmxVdec-def += -DSMOOTH_STREAMING_DISABLED
-libOmxVdec-def += -DH264_PROFILE_LEVEL_CHECK
-libOmxVdec-def += -D_MSM8974_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
-libOmxVdec-def += -DMAX_RES_1080P
-libOmxVdec-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libOmxVdec-def += -D_MSM8974_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
-libOmxVdec-def += -DMAX_RES_1080P
-libOmxVdec-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libOmxVdec-def += -D_MSM8974_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),mpq8092)
-libOmxVdec-def += -DMAX_RES_1080P
-libOmxVdec-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libOmxVdec-def += -D_MSM8974_
-endif
+
 libOmxVdec-def += -D_ANDROID_ICS_
 
-ifeq ($(TARGET_USES_ION),true)
+#ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
-endif
+#endif
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
@@ -92,14 +57,15 @@ libOmxVdec-def += -DDISPLAYCAF
 else
 DISPLAY := display/$(TARGET_BOARD_PLATFORM)
 # Fix the header inclusions for platform variants without an explicit path
-ifneq ($(filter msm8610 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
-  DISPLAY := display/msm8974
+ifneq ($(filter msm8660 ,$(TARGET_BOARD_PLATFORM)),)
+   DISPLAY := display/msm8960
 endif
 endif
 
+
 libmm-vdec-inc          := bionic/libc/include
 libmm-vdec-inc          += bionic/libstdc++/include
-libmm-vdec-inc          += $(LOCAL_PATH)/inc
+libmm-vdec-inc          += $(LOCAL_PATH)/vdec/inc
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
 libmm-vdec-inc          += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
@@ -108,12 +74,13 @@ libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libgralloc
 libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
-libmm-vdec-inc          += $(vdec-inc)
+libmm-vdec-inc          += hardware/qcom/media/libc2dcolorconvert
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libcopybit
+libmm-vdec-inc          += frameworks/av/include/media/stagefright
+libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqservice
 libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libqdutils
-libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
-libmm-vdec-inc      += hardware/qcom/$(DISPLAY)/libcopybit
-libmm-vdec-inc      += frameworks/av/include/media/stagefright
-
+libmm-vdec-inc          += frameworks/av/media/libmediaplayerservice
+libmm-vdec-inc          += frameworks/native/include/binder
 
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
@@ -124,63 +91,20 @@ LOCAL_PRELINK_MODULE    := false
 LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
 
 LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
-LOCAL_SHARED_LIBRARIES  += libqdMetaData
+LOCAL_SHARED_LIBRARIES += libqservice
+LOCAL_SHARED_LIBRARIES += libqdMetaData
 
-LOCAL_SRC_FILES         := src/frameparser.cpp
-LOCAL_SRC_FILES         += src/h264_utils.cpp
-LOCAL_SRC_FILES         += src/ts_parser.cpp
-LOCAL_SRC_FILES         += src/mp4_utils.cpp
-ifneq ($(filter msm8974 msm8610 msm8226 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
-LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
-else
-LOCAL_SHARED_LIBRARIES  += libhardware
-libmm-vdec-inc          += hardware/qcom/$(DISPLAY)/libhwcomposer
-LOCAL_SRC_FILES         += src/power_module.cpp
-LOCAL_SRC_FILES         += src/omx_vdec.cpp
-endif
-
-LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
-LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
+LOCAL_SRC_FILES         := vdec/src/frameparser.cpp
+LOCAL_SRC_FILES         += vdec/src/h264_utils.cpp
+LOCAL_SRC_FILES         += vdec/src/ts_parser.cpp
+LOCAL_SRC_FILES         += vdec/src/mp4_utils.cpp
+LOCAL_SRC_FILES         += vdec/src/omx_vdec.cpp
+LOCAL_SRC_FILES         += common/src/extra_data_handler.cpp
+LOCAL_SRC_FILES         += common/src/vidc_color_converter.cpp
 
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
-
-
-# ---------------------------------------------------------------------------------
-# 			Make the Shared library (libOmxVdecHevc)
-# ---------------------------------------------------------------------------------
-
-include $(CLEAR_VARS)
-LOCAL_PATH:= $(ROOT_DIR)
-
-ifneq ($(filter msm8974 msm8610 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
-
-LOCAL_MODULE                    := libOmxVdecHevc
-LOCAL_MODULE_TAGS               := optional
-LOCAL_CFLAGS                    := $(libOmxVdec-def)
-LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
-
-LOCAL_PRELINK_MODULE    := false
-LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
-
-LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
-LOCAL_SHARED_LIBRARIES  += libqdMetaData
-
-LOCAL_SRC_FILES         := src/frameparser.cpp
-LOCAL_SRC_FILES         += src/h264_utils.cpp
-LOCAL_SRC_FILES         += src/ts_parser.cpp
-LOCAL_SRC_FILES         += src/mp4_utils.cpp
-
-LOCAL_SRC_FILES         += src/omx_vdec_hevc.cpp
-LOCAL_SRC_FILES         += src/hevc_utils.cpp
-
-LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
-LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
-
-include $(BUILD_SHARED_LIBRARY)
-
-endif
 
 # ---------------------------------------------------------------------------------
 # 			Make the apps-test (mm-vdec-omx-test)
@@ -188,9 +112,8 @@ endif
 include $(CLEAR_VARS)
 
 mm-vdec-test-inc    := hardware/qcom/media/mm-core/inc
-mm-vdec-test-inc    += $(LOCAL_PATH)/inc
+mm-vdec-test-inc    += $(LOCAL_PATH)/vdec/inc
 mm-vdec-test-inc    += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
-mm-vdec-test-inc    += $(vdec-inc)
 
 LOCAL_MODULE                    := mm-vdec-omx-test
 LOCAL_MODULE_TAGS               := optional
@@ -198,10 +121,10 @@ LOCAL_CFLAGS                    := $(libOmxVdec-def)
 LOCAL_C_INCLUDES                := $(mm-vdec-test-inc)
 
 LOCAL_PRELINK_MODULE      := false
-LOCAL_SHARED_LIBRARIES    := libutils libOmxCore libOmxVdec libbinder libcutils
+LOCAL_SHARED_LIBRARIES    := libutils liblog libOmxCore libOmxVdec libbinder libcutils
 
-LOCAL_SRC_FILES           := src/queue.c
-LOCAL_SRC_FILES           += test/omx_vdec_test.cpp
+LOCAL_SRC_FILES           := vdec/src/queue.c
+LOCAL_SRC_FILES           += vdec/test/omx_vdec_test.cpp
 
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
@@ -213,9 +136,8 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 mm-vdec-drv-test-inc    := hardware/qcom/media/mm-core/inc
-mm-vdec-drv-test-inc    += $(LOCAL_PATH)/inc
+mm-vdec-drv-test-inc    += $(LOCAL_PATH)/vdec/inc
 mm-vdec-drv-test-inc    += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
-mm-vdec-drv-test-inc    += $(vdec-inc)
 
 LOCAL_MODULE                    := mm-video-driver-test
 LOCAL_MODULE_TAGS               := optional
@@ -223,8 +145,8 @@ LOCAL_CFLAGS                    := $(libOmxVdec-def)
 LOCAL_C_INCLUDES                := $(mm-vdec-drv-test-inc)
 LOCAL_PRELINK_MODULE            := false
 
-LOCAL_SRC_FILES                 := src/message_queue.c
-LOCAL_SRC_FILES                 += test/decoder_driver_test.c
+LOCAL_SRC_FILES                 := vdec/src/message_queue.c
+LOCAL_SRC_FILES                 += vdec/test/decoder_driver_test.c
 
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
