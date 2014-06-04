@@ -1215,7 +1215,7 @@ status_t DashCodec::configureCodec(
             }
         }
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AAC)) {
-        int32_t numChannels, sampleRate;
+        int32_t numChannels = 0, sampleRate = 0;
         if (!msg->findInt32("channel-count", &numChannels)
                 || !msg->findInt32("sample-rate", &sampleRate)) {
             err = INVALID_OPERATION;
@@ -1240,14 +1240,14 @@ status_t DashCodec::configureCodec(
         // These are PCM-like formats with a fixed sample rate but
         // a variable number of channels.
 
-        int32_t numChannels;
+        int32_t numChannels = 0;
         if (!msg->findInt32("channel-count", &numChannels)) {
             err = INVALID_OPERATION;
         } else {
             err = setupG711Codec(encoder, numChannels);
         }
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_FLAC)) {
-        int32_t numChannels, sampleRate, compressionLevel = -1;
+        int32_t numChannels = 0, sampleRate = 0, compressionLevel = -1;
         if (encoder &&
                 (!msg->findInt32("channel-count", &numChannels)
                         || !msg->findInt32("sample-rate", &sampleRate))) {
@@ -1268,7 +1268,7 @@ status_t DashCodec::configureCodec(
             err = setupFlacCodec(encoder, numChannels, sampleRate, compressionLevel);
         }
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW)) {
-        int32_t numChannels, sampleRate;
+        int32_t numChannels =0 , sampleRate = 0;
         if (encoder
                 || !msg->findInt32("channel-count", &numChannels)
                 || !msg->findInt32("sample-rate", &sampleRate)) {
