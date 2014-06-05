@@ -1,10 +1,8 @@
 ifneq ($(BUILD_TINY_ANDROID),true)
 
-ROOT_DIR := $(call my-dir)
-OMX_VIDEO_PATH := $(ROOT_DIR)/../..
-
+LOCAL_PATH := $(call my-dir)
+OMX_VIDEO_PATH := $(TOP)/hardware/qcom/media/mm-video-v4l2
 include $(CLEAR_VARS)
-LOCAL_PATH:= $(ROOT_DIR)
 
 # ---------------------------------------------------------------------------------
 # 				Common definitons
@@ -116,25 +114,24 @@ vdec-inc          = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 # ---------------------------------------------------------------------------------
 
 include $(CLEAR_VARS)
-LOCAL_PATH:= $(ROOT_DIR)
 
 libmm-vdec-inc          += $(LOCAL_PATH)/inc 
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
-libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
+libmm-vdec-inc          += $(TOP)/hardware/qcom/media/mm-core/inc
 #DRM include - Interface which loads the DRM library
 libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
 libmm-vdec-inc          += $(TARGET_OUT_HEADERS)/qcom/display
 libmm-vdec-inc          += $(TARGET_OUT_HEADERS)/adreno
-libmm-vdec-inc          += frameworks/native/include/media/openmax
-libmm-vdec-inc          += frameworks/native/include/media/hardware
+libmm-vdec-inc          += $(TOP)/frameworks/native/include/media/openmax
+libmm-vdec-inc          += $(TOP)/frameworks/native/include/media/hardware
 libmm-vdec-inc          += $(vdec-inc)
-libmm-vdec-inc      += hardware/qcom/media/libc2dcolorconvert
-libmm-vdec-inc      += frameworks/av/include/media/stagefright
+libmm-vdec-inc      += $(TOP)/hardware/qcom/media/libc2dcolorconvert
+libmm-vdec-inc      += $(TOP)/frameworks/av/include/media/stagefright
 libmm-vdec-inc      += $(TARGET_OUT_HEADERS)/mm-video/SwVdec
 
 ifeq ($(PLATFORM_SDK_VERSION), 18)  #JB_MR2
 libOmxVdec-def += -DANDROID_JELLYBEAN_MR2=1
-libmm-vdec-inc += hardware/qcom/media/libstagefrighthw
+libmm-vdec-inc += $(TOP)/hardware/qcom/media/libstagefrighthw
 endif
 
 ifeq ($(call is-platform-sdk-version-at-least, 19),true)
@@ -179,12 +176,12 @@ include $(BUILD_SHARED_LIBRARY)
 # ---------------------------------------------------------------------------------
 
 include $(CLEAR_VARS)
-LOCAL_PATH:= $(ROOT_DIR)
 
 # libOmxVdecHevc library is not built for OSS builds as QCPATH is null in OSS builds.
 
 ifneq "$(wildcard $(QCPATH) )" ""
 ifneq (,$(filter msm8974 msm8610 msm8226 msm_bronze msm8916,$(TARGET_BOARD_PLATFORM)))
+ifeq (,$(filter aarch64 arm64, $(TARGET_ARCH)))
 
 LOCAL_MODULE                    := libOmxVdecHevc
 LOCAL_ADDITIONAL_DEPENDENCIES   := libOmxVenc
@@ -220,13 +217,14 @@ include $(BUILD_SHARED_LIBRARY)
 
 endif
 endif
+endif
 
 # ---------------------------------------------------------------------------------
 # 			Make the apps-test (mm-vdec-omx-test)
 # ---------------------------------------------------------------------------------
 include $(CLEAR_VARS)
 
-mm-vdec-test-inc    := hardware/qcom/media/mm-core/inc
+mm-vdec-test-inc    := $(TOP)/hardware/qcom/media/mm-core/inc
 mm-vdec-test-inc    += $(LOCAL_PATH)/inc
 mm-vdec-test-inc    += $(vdec-inc)
 
@@ -241,7 +239,7 @@ LOCAL_SHARED_LIBRARIES    := libutils libOmxCore libOmxVdec libbinder libcutils
 LOCAL_SRC_FILES           := src/queue.c
 LOCAL_SRC_FILES           += test/omx_vdec_test.cpp
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
-
+LOCAL_32_BIT_ONLY         := true
 include $(BUILD_EXECUTABLE)
 
 # ---------------------------------------------------------------------------------
@@ -249,7 +247,7 @@ include $(BUILD_EXECUTABLE)
 # ---------------------------------------------------------------------------------
 include $(CLEAR_VARS)
 
-mm-vdec-drv-test-inc    := hardware/qcom/media/mm-core/inc
+mm-vdec-drv-test-inc    := $(TOP)/hardware/qcom/media/mm-core/inc
 mm-vdec-drv-test-inc    += $(LOCAL_PATH)/inc
 mm-vdec-drv-test-inc    += $(vdec-inc)
 
