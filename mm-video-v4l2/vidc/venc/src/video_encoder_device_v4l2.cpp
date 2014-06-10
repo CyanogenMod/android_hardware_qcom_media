@@ -1829,7 +1829,12 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 OMX_CONFIG_ROTATIONTYPE *config_rotation =
                     reinterpret_cast<OMX_CONFIG_ROTATIONTYPE*>(configData);
                 OMX_U32 nFrameWidth;
-                if (config_rotation && config_rotation->nRotation && deinterlace_enabled) {
+
+                if (!config_rotation) {
+                   return false;
+                }
+
+                if (config_rotation->nRotation && deinterlace_enabled) {
                     DEBUG_PRINT_ERROR("ERROR: Rotation is not supported with deinterlacing");
                     return false;
                 }
