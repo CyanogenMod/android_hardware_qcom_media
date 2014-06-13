@@ -8281,6 +8281,8 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
         drv_ctx.extradata_info.size = buffer_prop->actualcount * final_extra_data_size;
         drv_ctx.extradata_info.count = buffer_prop->actualcount;
         drv_ctx.extradata_info.buffer_size = final_extra_data_size;
+        if (!secure_mode)
+            buf_size += final_extra_data_size;
         buf_size = (buf_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
         DEBUG_PRINT_LOW("GetBufReq UPDATE: ActCnt(%d) Size(%u) BufSize(%d)",
                 buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size, buf_size);
@@ -8776,6 +8778,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 
     if (!secure_mode && ((OMX_U8*)p_extra > (pBuffer + p_buf_hdr->nAllocLen))) {
         p_extra = NULL;
+        DEBUG_PRINT_ERROR("Error: out of bound memory access by p_extra");
         return;
     }
     OMX_OTHER_EXTRADATATYPE *data = (struct OMX_OTHER_EXTRADATATYPE *)p_extradata;
