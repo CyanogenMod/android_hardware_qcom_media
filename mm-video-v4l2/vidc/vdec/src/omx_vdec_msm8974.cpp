@@ -1421,7 +1421,7 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
 }
 
 int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer) {
-    if (m_debug.out_buffer_log && !m_debug.outfile) {
+    if (m_debug.out_buffer_log && !m_debug.outfile && buffer->nFilledLen) {
         sprintf(m_debug.outfile_name, "%s/output_%d_%d_%p.yuv",
                 m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         m_debug.outfile = fopen (m_debug.outfile_name, "ab");
