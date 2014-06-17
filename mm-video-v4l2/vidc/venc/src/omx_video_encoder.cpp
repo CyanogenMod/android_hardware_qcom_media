@@ -762,9 +762,6 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     if (pParam->nBFrames || bframes) {
                         avc_param.nBFrames = (pParam->nBFrames > (unsigned int) bframes)? pParam->nBFrames : bframes;
                         avc_param.nRefFrames = avc_param.nBFrames + 1;
-                    } else {
-                        avc_param.nBFrames = 1;
-                        avc_param.nRefFrames = 2;
                     }
                     if (avc_param.nBFrames > 3) {
                         avc_param.nBFrames = 3;
