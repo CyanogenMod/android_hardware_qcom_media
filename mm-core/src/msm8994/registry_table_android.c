@@ -152,6 +152,22 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.qcom.video.decoder.mpeg2.secure",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVdec.so",
+    {
+      "video_decoder.mpeg2"
+    }
+  },
+  {
     "OMX.qcom.video.decoder.vc1",
     NULL, // Create instance function
     // Unique instance handle
@@ -199,7 +215,7 @@ omx_core_cb_type core[] =
       "video_decoder.h263"
     }
   },
-{
+  {
     "OMX.qcom.video.decoder.hevc",
     NULL,   // Create instance function
     // Unique instance handle
@@ -215,7 +231,23 @@ omx_core_cb_type core[] =
       "video_decoder.hevc"
     }
   },
-   {
+  {
+    "OMX.qcom.video.decoder.hevc.secure",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVdec.so",
+    {
+      "video_decoder.hevc"
+    }
+  },
+  {
     "OMX.qcom.video.decoder.vp8",
     NULL, // Create instance function
     // Unique instance handle
@@ -231,7 +263,7 @@ omx_core_cb_type core[] =
       "video_decoder.vp8"
     }
   },
-   {
+  {
     "OMX.qcom.video.encoder.mpeg4",
     NULL, // Create instance function
     // Unique instance handle
@@ -247,7 +279,7 @@ omx_core_cb_type core[] =
       "video_encoder.mpeg4"
     }
   },
-   {
+  {
     "OMX.qcom.video.encoder.h263",
     NULL, // Create instance function
     // Unique instance handle
@@ -313,6 +345,22 @@ omx_core_cb_type core[] =
   },
   {
     "OMX.qcom.video.encoder.hevc",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVenc.so",
+    {
+      "video_encoder.hevc"
+    }
+  },
+  {
+    "OMX.qcom.video.encoder.hevc.secure",
     NULL,   // Create instance function
     // Unique instance handle
     {
