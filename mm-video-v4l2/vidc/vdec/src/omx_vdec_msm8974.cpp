@@ -5350,7 +5350,12 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
 
             *bufferHdr = (m_out_mem_ptr + i );
             if (secure_mode) {
+#ifdef USE_ION
+                drv_ctx.ptr_outputbuffer[i].bufferaddr =
+                    (OMX_U8 *)drv_ctx.op_buf_ion_info[i].fd_ion_data.fd;
+#else
                 drv_ctx.ptr_outputbuffer[i].bufferaddr = *bufferHdr;
+#endif
             }
             drv_ctx.ptr_outputbuffer[i].mmaped_size = drv_ctx.op_buf.buffer_size;
 
