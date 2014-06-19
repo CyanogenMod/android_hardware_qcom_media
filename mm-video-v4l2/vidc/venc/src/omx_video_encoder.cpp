@@ -216,7 +216,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sConfigIntraRefreshVOP.IntraRefreshVOP = OMX_FALSE;
 
     OMX_INIT_STRUCT(&m_sConfigFrameRotation, OMX_CONFIG_ROTATIONTYPE);
-    m_sConfigFrameRotation.nPortIndex = (OMX_U32) PORT_INDEX_IN;
+    m_sConfigFrameRotation.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sConfigFrameRotation.nRotation = 0;
 
     OMX_INIT_STRUCT(&m_sSessionQuantization, OMX_VIDEO_PARAM_QUANTIZATIONTYPE);
@@ -1579,7 +1579,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                     reinterpret_cast<OMX_CONFIG_ROTATIONTYPE*>(configData);
                 OMX_S32 nRotation;
 
-                if (pParam->nPortIndex != PORT_INDEX_IN) {
+                if (pParam->nPortIndex != PORT_INDEX_OUT) {
                     DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", (unsigned int)pParam->nPortIndex);
                     return OMX_ErrorBadPortIndex;
                 }
@@ -1603,18 +1603,14 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                         return OMX_ErrorUnsupportedSetting;
                     } else {
                         OMX_U32 nFrameWidth;
+                        OMX_U32 nFrameHeight;
 
                         DEBUG_PRINT_HIGH("set_config: updating port Dims");
 
-                        nFrameWidth = m_sInPortDef.format.video.nFrameWidth;
-                        m_sInPortDef.format.video.nFrameWidth =
-                            m_sInPortDef.format.video.nFrameHeight;
-                        m_sInPortDef.format.video.nFrameHeight = nFrameWidth;
-
-                        m_sOutPortDef.format.video.nFrameWidth  =
-                            m_sInPortDef.format.video.nFrameWidth;
-                        m_sOutPortDef.format.video.nFrameHeight =
-                            m_sInPortDef.format.video.nFrameHeight;
+                        nFrameWidth = m_sOutPortDef.format.video.nFrameWidth;
+                        nFrameHeight = m_sOutPortDef.format.video.nFrameHeight;
+                        m_sOutPortDef.format.video.nFrameWidth  = nFrameHeight;
+                        m_sOutPortDef.format.video.nFrameHeight = nFrameWidth;
                         m_sConfigFrameRotation.nRotation = pParam->nRotation;
                     }
                 } else {
