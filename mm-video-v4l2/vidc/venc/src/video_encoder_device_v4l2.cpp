@@ -1488,7 +1488,10 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                                         pParam->eProfile, pParam->eLevel);
                     return false;
                 }
-
+                if(venc_set_vpx_error_resilience(pParam->bErrorResilientMode) == false) {
+                    DEBUG_PRINT_ERROR("ERROR: Failed to set vpx error resilience");
+                    return false;
+                 }
                 if(!venc_set_ltrmode(1, 1)) {
                    DEBUG_PRINT_ERROR("ERROR: Failed to enable ltrmode");
                    return false;
@@ -2195,9 +2198,11 @@ void venc_dev::venc_config_print()
     DEBUG_PRINT_HIGH("ENC_CONFIG: IntraMB/Frame: %ld, HEC: %ld, IDR Period: %ld",
             intra_refresh.mbcount, hec.header_extension, idrperiod.idrperiod);
 
-    DEBUG_PRINT_HIGH("ENC_CONFIG: Hier-P layers: %d", hier_p_layers.numlayers);
     DEBUG_PRINT_HIGH("ENC_CONFIG: LTR Enabled: %d, Count: %d",
             ltrinfo.enabled, ltrinfo.count);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Hier-P layers: %d, VPX_ErrorResilience: %d",
+            hier_p_layers.numlayers, vpx_err_resilience.enable);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: Performace level: %d", performance_level.perflevel);
 
@@ -4118,6 +4123,31 @@ bool venc_dev::venc_set_peak_bitrate(OMX_U32 nPeakBitrate)
 
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
 
+    return true;
+}
+
+bool venc_dev::venc_set_vpx_error_resilience(OMX_BOOL enable)
+{
+    struct v4l2_control control;
+    int rc = 0;
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_VPX_ERROR_RESILIENCE;
+
+    if (enable)
+        control.value = 1;
+    else
+        control.value = 0;
+
+    DEBUG_PRINT_LOW("venc_set_vpx_error_resilience: %d", control.value);
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d", control.id, control.value);
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set VPX Error Resilience");
+        return false;
+    }
+    vpx_err_resilience.enable = 1;
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
     return true;
 }
 
