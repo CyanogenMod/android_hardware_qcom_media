@@ -3479,10 +3479,12 @@ int read_mpeg2_chunk_parse_key_frame(FILE * bits, unsigned char * pBuf)
 			} else {
 					length++;
 			}
-		} while(curr_ptr < (read_size - 1));
+		} while(curr_ptr < (read_size - 2));
 
 		if ((keyFrame == 1) && (seqFound == 1) &&
-			(curr_ptr <= (read_max + keyFrame_ptr))) {
+			(curr_ptr > keyFrame_ptr) &&
+			(keyFrame_ptr < read_max) &&
+			(curr_ptr  <= read_max )) {
 			memcpy(pBuf + next_ptr, temp_buf+keyFrame_ptr, curr_ptr-keyFrame_ptr);
 			next_ptr += (curr_ptr-keyFrame_ptr);
 		}

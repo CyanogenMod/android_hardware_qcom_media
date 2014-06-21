@@ -4347,6 +4347,9 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
         eRet = OMX_ErrorInsufficientResources;
     }
 
+    if (eRet != OMX_ErrorNone)
+       return eRet;
+
     if (dynamic_buf_mode) {
         *bufferHdr = (m_out_mem_ptr + i );
         (*bufferHdr)->pBuffer = NULL;
@@ -6131,6 +6134,10 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 
     pending_output_buffers++;
     buffer = client_buffers.get_dr_buf_hdr(bufferAdd);
+    if (!buffer) {
+       DEBUG_PRINT_ERROR("err: client_buffer ptr invalid");
+       return OMX_ErrorBadParameter;
+    }
     ptr_respbuffer = (struct vdec_output_frameinfo*)buffer->pOutputPortPrivate;
     if (ptr_respbuffer) {
         ptr_outputbuffer =  (struct vdec_bufferpayload*)ptr_respbuffer->client_data;
