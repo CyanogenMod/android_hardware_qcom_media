@@ -4275,8 +4275,9 @@ int omx_video::alloc_map_ion_memory(int size,
         alloc_data->align = SZ_1M;
         alloc_data->flags = ION_SECURE;
         alloc_data->heap_id_mask = ION_HEAP(ION_CP_MM_HEAP_ID);
-        DEBUG_PRINT_HIGH("ION ALLOC sec buf: size %d align %d flags %x",
-                alloc_data->len, alloc_data->align,alloc_data->flags);
+        DEBUG_PRINT_HIGH("ION ALLOC sec buf: size %u align %u flags %x",
+                (unsigned int)alloc_data->len, (unsigned int)alloc_data->align,
+                alloc_data->flags);
     } else {
         alloc_data->len = (size + (SZ_4K - 1)) & ~(SZ_4K - 1);
         alloc_data->align = SZ_4K;
@@ -4287,8 +4288,9 @@ int omx_video::alloc_map_ion_memory(int size,
         alloc_data->heap_id_mask = (ION_HEAP(MEM_HEAP_ID) |
                                  ION_HEAP(ION_IOMMU_HEAP_ID));
 #endif
-        DEBUG_PRINT_HIGH("ION ALLOC unsec buf: size %d align %d flags %x",
-                alloc_data->len, alloc_data->align,alloc_data->flags);
+        DEBUG_PRINT_HIGH("ION ALLOC unsec buf: size %u align %u flags %x",
+                (unsigned int)alloc_data->len, (unsigned int)alloc_data->align,
+                alloc_data->flags);
     }
 
     rc = ioctl(ion_device_fd,ION_IOC_ALLOC,alloc_data);

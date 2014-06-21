@@ -581,7 +581,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_queued_codec_config_count(0)
 {
     /* Assumption is that , to begin with , we have all the frames with decoder */
-    DEBUG_PRINT_HIGH("In %d bit OMX vdec Constructor", sizeof(long) * 8);
+    DEBUG_PRINT_HIGH("In %u bit OMX vdec Constructor", (unsigned int)sizeof(long) * 8);
     memset(&m_debug,0,sizeof(m_debug));
 #ifdef _ANDROID_
     char property_value[PROPERTY_VALUE_MAX] = {0};
@@ -1858,7 +1858,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
                 enable_extradata(DEFAULT_EXTRADATA, true, true);
 #endif
         eRet = get_buffer_req(&drv_ctx.ip_buf);
-        DEBUG_PRINT_HIGH("Input Buffer Size =%d",drv_ctx.ip_buf.buffer_size);
+        DEBUG_PRINT_HIGH("Input Buffer Size =%u",(unsigned int)drv_ctx.ip_buf.buffer_size);
         get_buffer_req(&drv_ctx.op_buf);
         if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264 ||
                 drv_ctx.decoder_format == VDEC_CODECTYPE_HEVC ||
@@ -3176,7 +3176,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                m_port_def = *portDefn;
                                        } else {
                                            DEBUG_PRINT_ERROR("ERROR: OP Requirements(#%d: %u) Requested(#%u: %u)",
-                                                   drv_ctx.op_buf.mincount, drv_ctx.op_buf.buffer_size,
+                                                   drv_ctx.op_buf.mincount, (unsigned int)drv_ctx.op_buf.buffer_size,
                                                    (unsigned int)portDefn->nBufferCountActual, (unsigned int)portDefn->nBufferSize);
                                            eRet = OMX_ErrorBadParameter;
                                        }
@@ -3276,7 +3276,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    }
                                    if (false == port_format_changed) {
                                        DEBUG_PRINT_ERROR("ERROR: IP Requirements(#%d: %u) Requested(#%u: %u)",
-                                               drv_ctx.ip_buf.mincount, drv_ctx.ip_buf.buffer_size,
+                                               drv_ctx.ip_buf.mincount, (unsigned int)drv_ctx.ip_buf.buffer_size,
                                                (unsigned int)portDefn->nBufferCountActual, (unsigned int)portDefn->nBufferSize);
                                        eRet = OMX_ErrorBadParameter;
                                    }
@@ -4389,7 +4389,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
             if ((OMX_U32)handle->size < drv_ctx.op_buf.buffer_size) {
                 DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
                         " expected %u, got %u",
-                        drv_ctx.op_buf.buffer_size, (unsigned int)handle->size);
+                        (unsigned int)drv_ctx.op_buf.buffer_size, (unsigned int)handle->size);
                 return OMX_ErrorBadParameter;
             }
 
@@ -4736,8 +4736,8 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
             if (!secure_mode) {
                 DEBUG_PRINT_LOW("unmap the input buffer fd=%d",
                         drv_ctx.ptr_inputbuffer[index].pmem_fd);
-                DEBUG_PRINT_LOW("unmap the input buffer size=%d  address = %p",
-                        drv_ctx.ptr_inputbuffer[index].mmaped_size,
+                DEBUG_PRINT_LOW("unmap the input buffer size=%u  address = %p",
+                        (unsigned int)drv_ctx.ptr_inputbuffer[index].mmaped_size,
                         drv_ctx.ptr_inputbuffer[index].bufferaddr);
                 munmap (drv_ctx.ptr_inputbuffer[index].bufferaddr,
                         drv_ctx.ptr_inputbuffer[index].mmaped_size);
@@ -4795,8 +4795,8 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
                     if (!secure_mode) {
                         DEBUG_PRINT_LOW("unmap the output buffer fd = %d",
                                 drv_ctx.ptr_outputbuffer[0].pmem_fd);
-                        DEBUG_PRINT_LOW("unmap the ouput buffer size=%d  address = %p",
-                                drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
+                        DEBUG_PRINT_LOW("unmap the ouput buffer size=%u  address = %p",
+                                (unsigned int)drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
                                 drv_ctx.ptr_outputbuffer[0].bufferaddr);
                         munmap (drv_ctx.ptr_outputbuffer[0].bufferaddr,
                                 drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount);
@@ -4926,15 +4926,15 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
 
 
     if (bytes != drv_ctx.ip_buf.buffer_size) {
-        DEBUG_PRINT_LOW("Requested Size is wrong %u epected is %d",
-                (unsigned int)bytes, drv_ctx.ip_buf.buffer_size);
+        DEBUG_PRINT_LOW("Requested Size is wrong %u epected is %u",
+                (unsigned int)bytes, (unsigned int)drv_ctx.ip_buf.buffer_size);
         return OMX_ErrorBadParameter;
     }
 
     if (!m_inp_mem_ptr) {
-        DEBUG_PRINT_HIGH("Allocate i/p buffer Header: Cnt(%d) Sz(%d)",
+        DEBUG_PRINT_HIGH("Allocate i/p buffer Header: Cnt(%d) Sz(%u)",
                 drv_ctx.ip_buf.actualcount,
-                drv_ctx.ip_buf.buffer_size);
+                (unsigned int)drv_ctx.ip_buf.buffer_size);
 
         m_inp_mem_ptr = (OMX_BUFFERHEADERTYPE*) \
                 calloc( (sizeof(OMX_BUFFERHEADERTYPE)), drv_ctx.ip_buf.actualcount);
@@ -5118,9 +5118,9 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     struct ion_fd_data fd_ion_data;
 #endif
     if (!m_out_mem_ptr) {
-        DEBUG_PRINT_HIGH("Allocate o/p buffer Header: Cnt(%d) Sz(%d)",
+        DEBUG_PRINT_HIGH("Allocate o/p buffer Header: Cnt(%d) Sz(%u)",
                 drv_ctx.op_buf.actualcount,
-                drv_ctx.op_buf.buffer_size);
+                (unsigned int)drv_ctx.op_buf.buffer_size);
         int nBufHdrSize        = 0;
         int nPlatformEntrySize = 0;
         int nPlatformListSize  = 0;
@@ -5144,8 +5144,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         nPlatformEntrySize = drv_ctx.op_buf.actualcount *
             sizeof(OMX_QCOM_PLATFORM_PRIVATE_ENTRY);
 
-        DEBUG_PRINT_LOW("TotalBufHdr %d BufHdrSize %d PMEM %d PL %d",nBufHdrSize,
-                sizeof(OMX_BUFFERHEADERTYPE),
+        DEBUG_PRINT_LOW("TotalBufHdr %d BufHdrSize %u PMEM %d PL %d",nBufHdrSize,
+                (unsigned int)sizeof(OMX_BUFFERHEADERTYPE),
                 nPMEMInfoSize,
                 nPlatformListSize);
         DEBUG_PRINT_LOW("PE %d OutputBuffer Count %d",nPlatformEntrySize,
@@ -5192,8 +5192,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
                      drv_ctx.op_buf.actualcount),
                     PROT_READ|PROT_WRITE,MAP_SHARED,pmem_fd,0);
             if (pmem_baseaddress == MAP_FAILED) {
-                DEBUG_PRINT_ERROR("MMAP failed for Size %d",
-                        drv_ctx.op_buf.buffer_size);
+                DEBUG_PRINT_ERROR("MMAP failed for Size %u",
+                        (unsigned int)drv_ctx.op_buf.buffer_size);
                 close(pmem_fd);
 #ifdef USE_ION
                 free_ion_memory(&drv_ctx.op_buf_ion_info[i]);
@@ -5290,8 +5290,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
                 m_pmem_info[i].mapped_size = drv_ctx.ptr_outputbuffer[i].mmaped_size;
                 m_pmem_info[i].buffer = drv_ctx.ptr_outputbuffer[i].bufferaddr;
 
-                DEBUG_PRINT_LOW("pmem_fd = %d offset = %d address = %p",
-                        pmem_fd, drv_ctx.ptr_outputbuffer[i].offset,
+                DEBUG_PRINT_LOW("pmem_fd = %d offset = %u address = %p",
+                        pmem_fd, (unsigned int)drv_ctx.ptr_outputbuffer[i].offset,
                         drv_ctx.ptr_outputbuffer[i].bufferaddr);
                 // Move the buffer and buffer header pointers
                 bufHdr++;
@@ -5352,7 +5352,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
             if (secure_mode) {
 #ifdef USE_ION
                 drv_ctx.ptr_outputbuffer[i].bufferaddr =
-                    (OMX_U8 *)drv_ctx.op_buf_ion_info[i].fd_ion_data.fd;
+                    (OMX_U8 *)(intptr_t)drv_ctx.op_buf_ion_info[i].fd_ion_data.fd;
 #else
                 drv_ctx.ptr_outputbuffer[i].bufferaddr = *bufferHdr;
 #endif
@@ -5987,8 +5987,9 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
             return OMX_ErrorBadParameter;
         }
     }
-    DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%d)",
-            frameinfo.bufferaddr, frameinfo.timestamp, frameinfo.datalen);
+    DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%u)",
+            frameinfo.bufferaddr, (long long)frameinfo.timestamp,
+            (unsigned int)frameinfo.datalen);
     time_stamp_dts.insert_timestamp(buffer);
 
     return ret;
@@ -7099,16 +7100,16 @@ int omx_vdec::async_message_process (void *context, void* message)
                 omx->post_event ((unsigned long)timestamp, vdec_msg->status_code,
                         OMX_COMPONENT_GENERATE_INFO_FIELD_DROPPED);
                 DEBUG_PRINT_HIGH("Field dropped time stamp is %lld",
-                        vdec_msg->msgdata.output_frame.time_stamp);
+                        (long long)vdec_msg->msgdata.output_frame.time_stamp);
             }
             break;
         case VDEC_MSG_RESP_OUTPUT_FLUSHED:
         case VDEC_MSG_RESP_OUTPUT_BUFFER_DONE:
 
             v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.output_frame.client_data;
-            omxhdr=omx->m_out_mem_ptr+v4l2_buf_ptr->index;
+            omxhdr = omx->m_out_mem_ptr+v4l2_buf_ptr->index;
             DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) Pic_type(%u)",
-                    omxhdr, vdec_msg->msgdata.output_frame.time_stamp,
+                    omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
                     vdec_msg->msgdata.output_frame.pic_type);
 
             if (omxhdr && omxhdr->pOutputPortPrivate &&
@@ -8203,8 +8204,8 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
     unsigned int final_extra_data_size = 0;
     struct v4l2_format fmt;
     int ret = 0;
-    DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d)",
-            buffer_prop->actualcount, buffer_prop->buffer_size);
+    DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%u)",
+            buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size);
     bufreq.memory = V4L2_MEMORY_USERPTR;
     bufreq.count = 1;
     if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_INPUT) {
@@ -8231,8 +8232,8 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
         buffer_prop->mincount = bufreq.count;
         DEBUG_PRINT_HIGH("Count = %d",bufreq.count);
     }
-    DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d)",
-            buffer_prop->actualcount, buffer_prop->buffer_size);
+    DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%u)",
+            buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size);
 
     fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
     fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -8281,8 +8282,8 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
         drv_ctx.extradata_info.count = buffer_prop->actualcount;
         drv_ctx.extradata_info.buffer_size = final_extra_data_size;
         buf_size = (buf_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
-        DEBUG_PRINT_LOW("GetBufReq UPDATE: ActCnt(%d) Size(%d) BufSize(%d)",
-                buffer_prop->actualcount, buffer_prop->buffer_size, buf_size);
+        DEBUG_PRINT_LOW("GetBufReq UPDATE: ActCnt(%d) Size(%u) BufSize(%d)",
+                buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size, buf_size);
         if (extra_data_size)
             DEBUG_PRINT_LOW("GetBufReq UPDATE: extradata: TotalSize(%d) BufferSize(%lu)",
                 drv_ctx.extradata_info.size, drv_ctx.extradata_info.buffer_size);
@@ -8294,8 +8295,8 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
             eRet = set_buffer_req(buffer_prop);
         }
     }
-    DEBUG_PRINT_LOW("GetBufReq OUT: ActCnt(%d) Size(%d)",
-            buffer_prop->actualcount, buffer_prop->buffer_size);
+    DEBUG_PRINT_LOW("GetBufReq OUT: ActCnt(%d) Size(%u)",
+            buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size);
     return eRet;
 }
 
@@ -8306,12 +8307,12 @@ OMX_ERRORTYPE omx_vdec::set_buffer_req(vdec_allocatorproperty *buffer_prop)
     struct v4l2_format fmt;
     struct v4l2_requestbuffers bufreq;
     int ret;
-    DEBUG_PRINT_LOW("SetBufReq IN: ActCnt(%d) Size(%d)",
-            buffer_prop->actualcount, buffer_prop->buffer_size);
+    DEBUG_PRINT_LOW("SetBufReq IN: ActCnt(%d) Size(%u)",
+            buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size);
     buf_size = (buffer_prop->buffer_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
     if (buf_size != buffer_prop->buffer_size) {
-        DEBUG_PRINT_ERROR("Buffer size alignment error: Requested(%d) Required(%d)",
-                buffer_prop->buffer_size, buf_size);
+        DEBUG_PRINT_ERROR("Buffer size alignment error: Requested(%u) Required(%d)",
+                (unsigned int)buffer_prop->buffer_size, buf_size);
         eRet = OMX_ErrorBadParameter;
     } else {
         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
@@ -8500,8 +8501,8 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
         nPlatformEntrySize = drv_ctx.op_buf.actualcount *
             sizeof(OMX_QCOM_PLATFORM_PRIVATE_ENTRY);
 
-        DEBUG_PRINT_LOW("TotalBufHdr %d BufHdrSize %d PMEM %d PL %d",nBufHdrSize,
-                sizeof(OMX_BUFFERHEADERTYPE),
+        DEBUG_PRINT_LOW("TotalBufHdr %d BufHdrSize %u PMEM %d PL %d",nBufHdrSize,
+                (unsigned int)sizeof(OMX_BUFFERHEADERTYPE),
                 nPMEMInfoSize,
                 nPlatformListSize);
         DEBUG_PRINT_LOW("PE %d bmSize %d",nPlatformEntrySize,
@@ -9687,8 +9688,9 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
         if (!src_size || src_size > omx->drv_ctx.op_buf.buffer_size ||
                 !destination_size) {
             DEBUG_PRINT_ERROR("ERROR: Size mismatch in C2D src_size %d"
-                    "driver size %d destination size %d",
-                    src_size,omx->drv_ctx.op_buf.buffer_size,destination_size);
+                    "driver size %u destination size %d",
+                    src_size, (unsigned int)omx->drv_ctx.op_buf.buffer_size,
+                    destination_size);
             status = false;
             c2d.close();
             buffer_size_req = 0;
@@ -9915,8 +9917,8 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::allocate_buffers_color_conve
     }
     if ((temp_bufferHdr - omx->m_out_mem_ptr) >=
             (int)omx->drv_ctx.op_buf.actualcount) {
-        DEBUG_PRINT_ERROR("Invalid header index %d",
-                (temp_bufferHdr - omx->m_out_mem_ptr));
+        DEBUG_PRINT_ERROR("Invalid header index %ld",
+               (long int)(temp_bufferHdr - omx->m_out_mem_ptr));
         return OMX_ErrorUndefined;
     }
     unsigned int i = allocated_count;
@@ -10229,7 +10231,7 @@ OMX_ERRORTYPE omx_vdec::enable_adaptive_playback(unsigned long nMaxFrameWidth,
          return eRet;
      }
      DEBUG_PRINT_LOW("enable adaptive - upper limit buffer size = %u",
-                     drv_ctx.op_buf.buffer_size);
+                     (unsigned int)drv_ctx.op_buf.buffer_size);
 
      drv_ctx.op_buf.mincount = min_res_buf_count;
      drv_ctx.op_buf.actualcount = min_res_buf_count;
@@ -10245,6 +10247,6 @@ OMX_ERRORTYPE omx_vdec::enable_adaptive_playback(unsigned long nMaxFrameWidth,
          return eRet;
      }
      DEBUG_PRINT_HIGH("adaptive playback enabled, buf count = %u bufsize = %u",
-                      drv_ctx.op_buf.mincount, drv_ctx.op_buf.buffer_size);
+                      drv_ctx.op_buf.mincount, (unsigned int)drv_ctx.op_buf.buffer_size);
      return eRet;
 }
