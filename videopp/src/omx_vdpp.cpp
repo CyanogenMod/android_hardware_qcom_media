@@ -3923,6 +3923,11 @@ OMX_ERRORTYPE  omx_vdpp::use_output_buffer(
             privateAppData = appData;
         }
 
+        if(!handle) {
+            DEBUG_PRINT_ERROR("Native Buffer handle is NULL");
+            return OMX_ErrorBadParameter;
+        }
+
         if ((OMX_U32)handle->size < drv_ctx.op_buf.buffer_size) {
             DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
                               " expected %u, got %lu",
@@ -3934,10 +3939,6 @@ OMX_ERRORTYPE  omx_vdpp::use_output_buffer(
         native_buffer[i].nativehandle = handle;
         native_buffer[i].privatehandle = handle;
 #endif
-        if(!handle) {
-            DEBUG_PRINT_ERROR("Native Buffer handle is NULL");
-            return OMX_ErrorBadParameter;
-        }
         drv_ctx.ptr_outputbuffer[i].pmem_fd = handle->fd;
         drv_ctx.ptr_outputbuffer[i].offset = 0;
         drv_ctx.ptr_outputbuffer[i].bufferaddr = NULL;
@@ -4010,7 +4011,7 @@ OMX_ERRORTYPE  omx_vdpp::use_output_buffer(
         OMX_QCOM_PLATFORM_PRIVATE_LIST *pmem_list;
         OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pmem_info;
         pmem_list = (OMX_QCOM_PLATFORM_PRIVATE_LIST*) appData;
-        if (!pmem_list->entryList || !pmem_list->entryList->entry ||
+        if (!pmem_list || !pmem_list->entryList || !pmem_list->entryList->entry ||
             !pmem_list->nEntries ||
             pmem_list->entryList->type != OMX_QCOM_PLATFORM_PRIVATE_PMEM) {
           DEBUG_PRINT_ERROR(" Pmem info not valid in use buffer");
@@ -4145,6 +4146,11 @@ OMX_ERRORTYPE  omx_vdpp::use_input_heap_buffers(
             //DEBUG_PRINT_LOW("omx_vdpp::use_input_heap_buffers 3\n");
         }
 
+        if(!handle) {
+            DEBUG_PRINT_ERROR("Native Buffer handle is NULL");
+            return OMX_ErrorBadParameter;
+        }
+
         if ((OMX_U32)handle->size < drv_ctx.ip_buf.buffer_size) {
             DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
                               " expected %u, got %lu",
@@ -4167,11 +4173,6 @@ OMX_ERRORTYPE  omx_vdpp::use_input_heap_buffers(
         //native_buffer[i].nativehandle = handle;
         //native_buffer[i].privatehandle = handle;
 #endif
-        if(!handle) {
-            DEBUG_PRINT_ERROR("Native Buffer handle is NULL");
-            return OMX_ErrorBadParameter;
-        }
-
         m_inp_heap_ptr[m_in_alloc_cnt].pPlatformPrivate = buff;
         //DEBUG_PRINT_LOW("omx_vdpp::use_input_heap_buffers 5 m_inp_heap_ptr = %p, m_inp_heap_ptr[%lu].pPlatformPrivate = %p, m_inp_heap_ptr[%lu].pBuffer = %p\n",
         //    m_inp_heap_ptr, m_in_alloc_cnt, m_inp_heap_ptr[m_in_alloc_cnt].pPlatformPrivate, m_in_alloc_cnt, m_inp_heap_ptr[m_in_alloc_cnt].pBuffer);
@@ -4282,6 +4283,11 @@ OMX_ERRORTYPE  omx_vdpp::use_input_buffers(
             DEBUG_PRINT_LOW("omx_vdpp::use_input_heap_buffers 3\n");
         }
 
+        if(!handle) {
+            DEBUG_PRINT_ERROR("Native Buffer handle is NULL");
+            return OMX_ErrorBadParameter;
+        }
+
         if ((OMX_U32)handle->size < drv_ctx.ip_buf.buffer_size) {
             DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
                               " expected %u, got %lu",
@@ -4307,11 +4313,6 @@ OMX_ERRORTYPE  omx_vdpp::use_input_buffers(
         //native_buffer[i].nativehandle = handle;
         //native_buffer[i].privatehandle = handle;
 #endif
-        if(!handle) {
-            DEBUG_PRINT_ERROR("Native Buffer handle is NULL");
-            return OMX_ErrorBadParameter;
-        }
-
         m_inp_heap_ptr[m_in_alloc_cnt].pPlatformPrivate = buff;
         //DEBUG_PRINT_LOW("omx_vdpp::use_input_heap_buffers 5 m_inp_heap_ptr = %p, m_inp_heap_ptr[%lu].pPlatformPrivate = %p, m_inp_heap_ptr[%lu].pBuffer = %p\n",
         //    m_inp_heap_ptr, m_in_alloc_cnt, m_inp_heap_ptr[m_in_alloc_cnt].pPlatformPrivate, m_in_alloc_cnt, m_inp_heap_ptr[m_in_alloc_cnt].pBuffer);
@@ -4428,12 +4429,10 @@ OMX_ERRORTYPE  omx_vdpp::use_buffer(
   OMX_ERRORTYPE error = OMX_ErrorNone;
   struct vdpp_setbuffer_cmd setbuffers;
 
-  if (bufferHdr == NULL || bytes == 0)
+  if ((bufferHdr == NULL) || (bytes == 0) || (/*!secure_mode && */buffer == NULL))
   {
-      if(buffer == NULL) {
-          DEBUG_PRINT_ERROR("bad param 0x%p %ld 0x%p",bufferHdr, bytes, buffer);
-          return OMX_ErrorBadParameter;
-      }
+      DEBUG_PRINT_ERROR("bad param 0x%p %ld 0x%p",bufferHdr, bytes, buffer);
+      return OMX_ErrorBadParameter;
   }
   if(m_state == OMX_StateInvalid)
   {
@@ -4623,7 +4622,7 @@ OMX_ERRORTYPE omx_vdpp::allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
                      calloc( (sizeof(OMX_BUFFERHEADERTYPE*)),
                      drv_ctx.ip_buf.actualcount);
 
-    if (m_inp_heap_ptr == NULL)
+    if ((m_inp_heap_ptr == NULL) || (m_phdr_pmem_ptr == NULL))
     {
       DEBUG_PRINT_ERROR(" m_inp_heap_ptr Allocation failed ");
       return OMX_ErrorInsufficientResources;
@@ -4913,6 +4912,11 @@ OMX_ERRORTYPE  omx_vdpp::allocate_output_buffer(
     drv_ctx.op_buf_ion_info = (struct vdpp_ion *)\
       calloc (sizeof(struct vdpp_ion),
       drv_ctx.op_buf.actualcount);
+
+      if (!drv_ctx.op_buf_ion_info) {
+          DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.op_buf_ion_info");
+          return OMX_ErrorInsufficientResources;
+      }
 #endif
 
     if(m_out_mem_ptr /*&& pPtr*/ && drv_ctx.ptr_outputbuffer
@@ -5593,7 +5597,7 @@ OMX_ERRORTYPE  omx_vdpp::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     plane[0].m.userptr = temp_buffer->pmem_fd;
     plane[0].reserved[0] = 0;
     extra_idx = EXTRADATA_IDX(drv_ctx.input_num_planes);
-    if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
+    if ((extra_idx > 0) && (extra_idx < VIDEO_MAX_PLANES)) {
     plane[extra_idx].bytesused = drv_ctx.video_resolution_input.frame_width *
                                  drv_ctx.video_resolution_input.frame_height *
                                  drv_ctx.input_bytesperpixel[extra_idx];
@@ -5795,7 +5799,7 @@ OMX_ERRORTYPE  omx_vdpp::fill_this_buffer_proxy(
   plane[0].m.userptr = drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd;
   plane[0].reserved[0] = 0;
   extra_idx = EXTRADATA_IDX(drv_ctx.output_num_planes);
-  if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
+  if ((extra_idx > 0) && (extra_idx < VIDEO_MAX_PLANES)) {
     plane[extra_idx].bytesused = drv_ctx.video_resolution_output.frame_width *
                                     drv_ctx.video_resolution_output.frame_height *
                                     drv_ctx.output_bytesperpixel[extra_idx];
@@ -6945,7 +6949,7 @@ OMX_ERRORTYPE omx_vdpp::get_buffer_req(vdpp_allocatorproperty *buffer_prop)
         extra_idx = EXTRADATA_IDX(drv_ctx.output_num_planes);
     }
 
-    if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
+    if ((extra_idx > 0) && (extra_idx < VIDEO_MAX_PLANES)) {
       extra_data_size =  fmt.fmt.pix_mp.plane_fmt[extra_idx].sizeimage;
       DEBUG_PRINT_HIGH("omx_vdpp::get_buffer_req extra_data_size: %d\n", extra_data_size);
     } else if (extra_idx >= VIDEO_MAX_PLANES) {
@@ -7206,6 +7210,11 @@ OMX_ERRORTYPE omx_vdpp::allocate_output_headers()
 #ifdef USE_ION
     drv_ctx.op_buf_ion_info = (struct vdpp_ion * ) \
       calloc (sizeof(struct vdpp_ion),drv_ctx.op_buf.actualcount);
+
+      if (!drv_ctx.op_buf_ion_info) {
+          DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.op_buf_ion_info");
+          return OMX_ErrorInsufficientResources;
+      }
 #endif
 
     if(m_out_mem_ptr && drv_ctx.ptr_outputbuffer
