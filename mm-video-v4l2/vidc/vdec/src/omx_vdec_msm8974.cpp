@@ -1514,8 +1514,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     arbitrary_bytes = false;
 #endif
 
-    if (!strncmp(role, "OMX.qcom.video.decoder.avc.secure",OMX_MAX_STRINGNAME_SIZE)) {
-        struct v4l2_control control;
+    if (!strncmp(role, "OMX.qcom.video.decoder.avc.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
         secure_mode = true;
         arbitrary_bytes = false;
         role = (OMX_STRING)"OMX.qcom.video.decoder.avc";
@@ -1529,6 +1529,16 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         secure_mode = true;
         arbitrary_bytes = false;
         role = (OMX_STRING)"OMX.qcom.video.decoder.hevc";
+    } else if (!strncmp(role, "OMX.qcom.video.decoder.vc1.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
+        secure_mode = true;
+        arbitrary_bytes = false;
+        role = (OMX_STRING)"OMX.qcom.video.decoder.vc1";
+    } else if (!strncmp(role, "OMX.qcom.video.decoder.wmv.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
+        secure_mode = true;
+        arbitrary_bytes = false;
+        role = (OMX_STRING)"OMX.qcom.video.decoder.wmv";
     }
 
     drv_ctx.video_driver_fd = open(device_name, O_RDWR);
