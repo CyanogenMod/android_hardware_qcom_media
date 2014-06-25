@@ -30,7 +30,7 @@ struct DashPlayerDriver : public MediaPlayerInterface {
 
     virtual status_t setUID(uid_t uid);
 
-    virtual status_t setDataSource(
+    virtual status_t setDataSource(const sp<IMediaHTTPService> &httpService,
             const char *url, const KeyedVector<String8, String8> *headers);
 
     virtual status_t setDataSource(int fd, int64_t offset, int64_t length);
