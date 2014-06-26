@@ -88,7 +88,9 @@ public class QCTimedText
     private static final int KEY_FONT_SIZE                    = 106;
     private static final int KEY_TEXT_COLOR_RGBA              = 107;
     private static final int KEY_TEXT_EOS                     = 108;
-    private static final int LAST_PRIVATE_KEY                 = 108;
+    private static final int KEY_TEXT_FLAG_TYPE               = 109;
+    private static final int KEY_TEXT_DISCONTINUITY           = 110;
+    private static final int LAST_PRIVATE_KEY                 = 110;
 
 
     private static final String TAG = "QCTimedText";
@@ -123,8 +125,7 @@ public class QCTimedText
 
         public static final int TIMED_TEXT_FLAG_FRAME          = 0; // int
         public static final int TIMED_TEXT_FLAG_CODEC_CONFIG   = 1; // int
-        public static final int TIMED_TEXT_FLAG_DISCONTINUITY  = 2; // int
-        public static final int TIMED_TEXT_FLAG_EOS            = 3; // int
+        public static final int TIMED_TEXT_FLAG_EOS            = 2; // int
 
         /**
          * The byte-count of this text sample
@@ -385,6 +386,7 @@ public class QCTimedText
 
             mTextStruct = new Text();
 
+            //PARSE TIMEDTEXT SAMPLE TYPE
             type = mParcel.readInt();
             if (type != KEY_TEXT_FORMAT) {
                 Log.e(TAG, "Invalid KEY_TEXT_FORMAT key");
@@ -393,6 +395,13 @@ public class QCTimedText
 
             String format = mParcel.readString();
             mKeyObjectMap.put(type, format);
+
+            //PARSE TIMEDTEXT SAMPLE FLAGS
+            type = mParcel.readInt();
+            if (type != KEY_TEXT_FLAG_TYPE) {
+                Log.e(TAG, "Invalid KEY_TEXT_FLAG_TYPE key");
+                return false;
+            }
 
             type = mParcel.readInt();
             if (type == Text.TIMED_TEXT_FLAG_EOS)
@@ -416,11 +425,12 @@ public class QCTimedText
             mTextStruct.flags = type;
 
             type = mParcel.readInt();
-            if(type == Text.TIMED_TEXT_FLAG_DISCONTINUITY) {
+            if(type == KEY_TEXT_DISCONTINUITY) {
                 mTextStruct.discontinuity = true;
                 type = mParcel.readInt();
             }
 
+            //PARSE TIMEDTEXT SAMPLE TEXT DATA
             if (type != KEY_STRUCT_TEXT) {
                 Log.e(TAG, "Invalid KEY_STRUCT_TEXT key");
                 return false;
@@ -431,6 +441,7 @@ public class QCTimedText
 
             mKeyObjectMap.put(type, mTextStruct);
 
+            //PARSE TIMEDTEXT SAMPLE PROPERTIES
             type = mParcel.readInt();
             if (type != KEY_START_TIME) {
                 Log.e(TAG, "Invalid KEY_START_TIME key");
