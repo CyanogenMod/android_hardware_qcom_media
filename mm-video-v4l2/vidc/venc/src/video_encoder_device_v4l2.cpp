@@ -2218,8 +2218,8 @@ void venc_dev::venc_config_print()
             m_sVenc_cfg.dvs_width, m_sVenc_cfg.dvs_height,
             m_sVenc_cfg.fps_num/m_sVenc_cfg.fps_den);
 
-    DEBUG_PRINT_HIGH("ENC_CONFIG: Bitrate: %ld, RC: %ld, I-Period: %ld",
-            bitrate.target_bitrate, rate_ctrl.rcmode, intra_period.num_pframes);
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Bitrate: %ld, RC: %ld, P - Frames : %ld, B - Frames = %ld",
+            bitrate.target_bitrate, rate_ctrl.rcmode, intra_period.num_pframes, intra_period.num_bframes);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: qpI: %ld, qpP: %ld, qpb: %ld",
             session_qp.iframeqp, session_qp.pframeqp, session_qp.bframeqp);
@@ -3390,6 +3390,15 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
         nPFrames = pframes;
         nBFrames = 0;
     }
+    if (nBFrames) {
+        int ratio = nPFrames ? nBFrames / nPFrames : 1;
+        if (ratio * nPFrames != nBFrames) {
+            DEBUG_PRINT_HIGH("Warning: nPFrames and nBFrames ratio is not integer. Ratio is floored = %d "
+                "nPFrames = %d nBFrames = %d", ratio, nPFrames, nBFrames);
+            nBFrames = ratio * nPFrames;
+            DEBUG_PRINT_HIGH("Updated nPFrames = %d nBFrames = %d", nPFrames, nBFrames);
+        }
+    }
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
     control.value = nPFrames;
@@ -3413,7 +3422,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
         return false;
     }
 
-    intra_period.num_bframes = nBFrames;
+    intra_period.num_bframes = control.value;
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%lu", control.id, intra_period.num_bframes);
 
     if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
