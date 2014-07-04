@@ -2744,13 +2744,24 @@ bool venc_dev::venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type,
     struct v4l2_control control;
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_HIER_P_NUM_LAYERS;
     if (type == QOMX_HIERARCHICALCODING_P) {
-        control.value = num_layers;
+        // Reduce layer count by 1 before sending to driver. This avoids
+        // driver doing the same in multiple places.
+        control.value = num_layers - 1;
         DEBUG_PRINT_HIGH("Set Hier P num layers: %u", (unsigned int)num_layers);
         if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
             DEBUG_PRINT_ERROR("Request to set Hier P num layers failed");
             return false;
         }
         hier_p_layers.numlayers = num_layers;
+        if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
+            DEBUG_PRINT_LOW("Set H264_SVC_NAL");
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC;
+            control.value = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC_ENABLED;
+            if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+                DEBUG_PRINT_ERROR("Failed to enable SVC_NAL");
+                return false;
+            }
+        }
     } else {
         DEBUG_PRINT_ERROR("Request to set hier num layers failed for type: %d", type);
         return false;
@@ -4842,17 +4853,23 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
 
     mb_per_sec = mb_per_frame * m_sVenc_cfg.fps_num / m_sVenc_cfg.fps_den;
 
+    bool h264, ltr, hierp;
+    h264 = m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264;
+    ltr = ltrinfo.enabled && ((ltrinfo.count + 2) <= MIN((unsigned int) (profile_tbl[5] / mb_per_frame), MAXDPB));
+    hierp = hier_p_layers.numlayers && ((intra_period.num_bframes + ltrinfo.count +
+                        hier_p_layers.numlayers + 1) <= (unsigned int) (profile_tbl[5] / profile_tbl[0]));
+
     do {
         if (mb_per_frame <= (unsigned int)profile_tbl[0]) {
             if (mb_per_sec <= (unsigned int)profile_tbl[1]) {
                 if (m_sVenc_cfg.targetbitrate <= (unsigned int)profile_tbl[2]) {
-                    if ((m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) && (ltrinfo.enabled) &&
-                        (ltrinfo.count + 2) <= MIN((unsigned int) (profile_tbl[5] / mb_per_frame), MAXDPB)) {
+                    if (h264 && (ltr || hierp)) {
+                        // Update profile and level to adapt to the LTR and Hier-p settings
                         new_level = (int)profile_tbl[3];
                         new_profile = (int)profile_tbl[4];
                         profile_level_found = true;
-                        DEBUG_PRINT_LOW("Appropriate profile/level for LTR count: %u is %u/%u, maxDPB: %u",
-                                        ltrinfo.count, (int)new_profile, (int)new_level,
+                        DEBUG_PRINT_LOW("Appropriate profile/level for LTR count: %u/ Hier-p: %u is %u/%u, maxDPB: %u",
+                                        ltrinfo.count, hier_p_layers.numlayers, (int)new_profile, (int)new_level,
                                         MIN((unsigned int) (profile_tbl[5] / mb_per_frame), MAXDPB));
                         break;
                     } else {
