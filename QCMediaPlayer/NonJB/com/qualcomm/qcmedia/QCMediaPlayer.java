@@ -35,7 +35,10 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.Parcel;
 import java.util.HashSet;
-
+import java.io.IOException;
+import android.content.Context;
+import android.net.Uri;
+import java.util.Map;
 
 /**
 * QCMediaPlayer extends MediaPlayer from package android.media and provides
@@ -50,7 +53,14 @@ public class QCMediaPlayer extends MediaPlayer
   private QCMediaEventHandler mEventHandler;
 
   //Stores the supported keys for getParameter invoke call
-  public static final HashSet<Integer> mValidGetParameterKeys = new HashSet<Integer>();
+  public static final HashSet<Integer> VALID_GET_PARAM_KEYS = new HashSet<Integer>();
+  static
+  {
+    VALID_GET_PARAM_KEYS.add(new Integer(OnMPDAttributeListener.ATTRIBUTES_WHOLE_MPD));
+    VALID_GET_PARAM_KEYS.add(new Integer(OnMPDAttributeListener.INVOKE_ID_GET_ATTRIBUTES_TYPE_MPD));
+    VALID_GET_PARAM_KEYS.add(new Integer(OnQOEEventListener.ATTRIBUTES_QOE_EVENT_PERIODIC));
+    VALID_GET_PARAM_KEYS.add(new Integer(QCMediaPlayer.KEY_DASH_REPOSITION_RANGE));
+  }
 
   public QCMediaPlayer()
   {
@@ -69,16 +79,55 @@ public class QCMediaPlayer extends MediaPlayer
        mEventHandler = null;
     }
 
-    mValidGetParameterKeys.add(new Integer(OnMPDAttributeListener.ATTRIBUTES_WHOLE_MPD));
-    mValidGetParameterKeys.add(new Integer(OnMPDAttributeListener.INVOKE_ID_GET_ATTRIBUTES_TYPE_MPD));
-    mValidGetParameterKeys.add(new Integer(OnQOEEventListener.ATTRIBUTES_QOE_EVENT_PERIODIC));
-    mValidGetParameterKeys.add(new Integer(KEY_DASH_REPOSITION_RANGE));
+    ePlayerState = MediaPlayerState.PLAYER_IDLE;
 
     Log.d(TAG, "QCMediaPlayer::QCMediaPlayer");
   }
 
+  public void setDataSource(Context context, Uri uri)
+          throws IOException, IllegalArgumentException, SecurityException, IllegalStateException
+  {
+      Log.d(TAG, "setDataSource");
+      super.setDataSource(context, uri);
+      ePlayerState = MediaPlayerState.PLAYER_INITIALIZED;
+      TurnOnOffTimedTextListener();
+  }
+
+  public void setDataSource(Context context, Uri uri, Map<String, String> headers)
+          throws IOException, IllegalArgumentException, SecurityException, IllegalStateException
+  {
+      Log.d(TAG, "setDataSource");
+      super.setDataSource(context, uri, headers);
+      ePlayerState = MediaPlayerState.PLAYER_INITIALIZED;
+      TurnOnOffTimedTextListener();
+  }
+
+  public void setDataSource(String path)
+          throws IOException, IllegalArgumentException, SecurityException, IllegalStateException
+  {
+      Log.d(TAG, "setDataSource");
+      super.setDataSource(path);
+      ePlayerState = MediaPlayerState.PLAYER_INITIALIZED;
+      TurnOnOffTimedTextListener();
+  }
+
+  public void setDataSource(String path, Map<String, String> headers)
+        throws IOException, IllegalArgumentException, SecurityException, IllegalStateException
+  {
+      Log.d(TAG, "setDataSource");
+      super.setDataSource(path, headers);
+      ePlayerState = MediaPlayerState.PLAYER_INITIALIZED;
+      TurnOnOffTimedTextListener();
+  }
+
+  public void reset() {
+      Log.d(TAG, "reset");
+      super.reset();
+      ePlayerState = MediaPlayerState.PLAYER_IDLE;
+  }
+
   public void release() {
-      Log.d(TAG, "QCMediaPlayer release");
+      Log.d(TAG, "release");
 
       mQCOnPreparedListener = null;
       mOnMPDAttributeListener = null;
@@ -86,6 +135,21 @@ public class QCMediaPlayer extends MediaPlayer
       mOnQOEEventListener = null;
 
       super.release();
+
+      ePlayerState = MediaPlayerState.PLAYER_IDLE;
+  }
+
+  public void TurnOnOffTimedTextListener()
+  {
+      //Turn on/off timedtext registered flag in dashplayer. setOnQCTimedTextListener can be called
+      //anytime from app. Below qcsetparameter call uses invoke() which needs to be called only
+      //after mediaplayer.cpp transitioned out of IDLE state
+      if(ePlayerState != MediaPlayerState.PLAYER_IDLE)
+      {
+          int val = (mOnQCTimedTextListener == null) ? 0 : 1;
+          Log.d(TAG, "TurnOnOffTimedTextListener set listener flag" + val);
+          QCsetParameter(KEY_QCTIMEDTEXT_LISTENER, val);
+      }
   }
 
   private void callOnPreparedListener()
@@ -148,7 +212,10 @@ public class QCMediaPlayer extends MediaPlayer
   */
   public void setOnQCTimedTextListener(OnQCTimedTextListener listener)
   {
+    Log.d(TAG, "setOnQCTimedTextListener");
+
     mOnQCTimedTextListener = listener;
+    TurnOnOffTimedTextListener();
   }
   private OnQCTimedTextListener mOnQCTimedTextListener;
 
@@ -161,7 +228,7 @@ public class QCMediaPlayer extends MediaPlayer
   public void setOnPreparedListener(OnPreparedListener listener)
   {
     mQCOnPreparedListener = listener;
-    Log.d(TAG, "QCMediaPlayer::setOnPreparedListener");
+    Log.d(TAG, "setOnPreparedListener");
   }
   private OnPreparedListener mQCOnPreparedListener;
 
@@ -316,7 +383,6 @@ public class QCMediaPlayer extends MediaPlayer
         QOEPeriodic
   };*/
 
-
   /**
    * Key to query reposition range. Value needs to be same as defined in DashPlayer.h
    */
@@ -327,6 +393,16 @@ public class QCMediaPlayer extends MediaPlayer
    */
   public static final int KEY_DASH_SEEK_EVENT = 7001;
   public static final int KEY_DASH_PAUSE_EVENT = 7002;
+  public static final int KEY_DASH_RESUME_EVENT = 7003;
+
+  public static final int KEY_QCTIMEDTEXT_LISTENER = 6000;
+
+  enum MediaPlayerState {
+      PLAYER_IDLE,
+      PLAYER_INITIALIZED
+  };
+
+  public MediaPlayerState ePlayerState;
 
   private class QCMediaEventHandler extends Handler
   {
@@ -422,7 +498,7 @@ public class QCMediaPlayer extends MediaPlayer
 
   private String QCgetStringParameter(int key)
   {
-        if(!mValidGetParameterKeys.contains(new Integer(key))) {
+        if(!VALID_GET_PARAM_KEYS.contains(new Integer(key))) {
             Log.d(TAG, "QCgetStringParameter Unsupported key "+key+" Return null");
             return null;
         }
@@ -466,7 +542,7 @@ public class QCMediaPlayer extends MediaPlayer
 
   public Parcel QCgetParcelParameter(int key) {
 
-        if(!mValidGetParameterKeys.contains(new Integer(key))) {
+        if(!VALID_GET_PARAM_KEYS.contains(new Integer(key))) {
             Log.d(TAG, "QCgetParcelParameter Unsupported key "+key+" Return null");
             return null;
         }
