@@ -27,9 +27,10 @@ libmm-vdec-def += -DMAX_RES_1080P
 libmm-vdec-def += -DMAX_RES_1080P_EBI
 
 TARGETS_THAT_USE_HEVC_ADSP_HEAP := msm8226 msm8974
-TARGETS_THAT_HAVE_VENUS_HEVC := apq8084 msm8994
+TARGETS_THAT_HAVE_VENUS_HEVC := apq8084 msm8994 thulium
 TARGETS_THAT_NEED_HEVC_LIB := msm8974 msm8610 msm8226 msm8916
 TARGETS_THAT_NEED_SW_HEVC := msm8974 msm8226 msm8916
+TARGETS_THAT_SUPPORT_UBWC := thulium
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_HEVC_ADSP_HEAP)),true)
 libmm-vdec-def += -D_HEVC_USE_ADSP_HEAP_
@@ -42,6 +43,10 @@ endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 libmm-vdec-def += -DSMOOTH_STREAMING_DISABLED
 libmm-vdec-def += -DH264_PROFILE_LEVEL_CHECK
+endif
+
+ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_SUPPORT_UBWC)),true)
+libmm-vdec-def += -D_UBWC_
 endif
 
 ifeq ($(TARGET_USES_ION),true)
