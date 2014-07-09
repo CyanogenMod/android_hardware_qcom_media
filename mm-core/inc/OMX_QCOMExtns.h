@@ -485,7 +485,26 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /* Max Hierarchical P layers */
     OMX_QcomIndexMaxHierarchicallayers = 0x7F000041,
 
+    /* Set Encoder Performance Index */
+    OMX_QcomIndexConfigVideoVencPerfMode = 0x7F000042,
 };
+
+/**
+ * Encoder Performance Mode.  This structure is used to set
+ * performance mode or power save mode when encoding. The search
+ * range is modified to save power or improve quality.
+ *
+ * STRUCT MEMBERS:
+ * OMX_U32 nPerfMode  : Performance mode:
+ *                                      1: MAX_QUALITY
+ *                                      2: POWER_SAVE
+ */
+
+typedef struct QOMX_EXTNINDEX_VIDEO_PERFMODE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPerfMode;
+} QOMX_EXTNINDEX_VIDEO_PERFMODE;
 
 /**
  * Initial QP parameter.  This structure is used to enable
