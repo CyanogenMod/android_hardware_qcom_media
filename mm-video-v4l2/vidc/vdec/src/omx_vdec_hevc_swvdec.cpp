@@ -6454,6 +6454,7 @@ true/false
 OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
                                           OMX_IN OMX_BUFFERHEADERTYPE* buffer)
 {
+    unsigned int nPortIndex = (unsigned int)(buffer - client_buffers.get_il_buf_hdr());
     if(m_state == OMX_StateInvalid)
     {
         DEBUG_PRINT_ERROR("FTB in Invalid State");
@@ -6466,7 +6467,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorIncorrectStateOperation;
     }
 
-    unsigned int nPortIndex = (unsigned int)(buffer - client_buffers.get_il_buf_hdr());
     if (!buffer || !buffer->pBuffer || nPortIndex >= drv_ctx.op_buf.actualcount)
     {
         DEBUG_PRINT_ERROR("ERROR:FTB invalid bufHdr %p, nPortIndex %u", buffer, nPortIndex);
@@ -10185,8 +10185,11 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy_dsp(
 
     nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)m_interm_mem_ptr);
 
-    if (bufferAdd == NULL || nPortIndex > drv_ctx.interm_op_buf.actualcount)
+    if (bufferAdd == NULL || nPortIndex > drv_ctx.interm_op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("FTBProxyDSP: bufhdr = %p, nPortIndex %u bufCount %u",
+            bufferAdd, nPortIndex, drv_ctx.interm_op_buf.actualcount);
         return OMX_ErrorBadParameter;
+    }
 
     DEBUG_PRINT_LOW("fill_this_buffer_proxy_dsp: bufhdr = %p,pBuffer = %p, idx %d, state %d",
         bufferAdd, bufferAdd->pBuffer, nPortIndex, m_interm_buf_state[nPortIndex]);
