@@ -89,6 +89,12 @@ libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_MSM8974_
 endif
+ifeq ($(TARGET_BOARD_PLATFORM),ferrum)
+libOmxVdec-def += -DMAX_RES_1080P
+libOmxVdec-def += -DMAX_RES_1080P_EBI
+libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libOmxVdec-def += -D_MSM8974_
+endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8994)
 libOmxVdec-def += -DMAX_RES_1080P
 libOmxVdec-def += -DMAX_RES_1080P_EBI
@@ -156,7 +162,7 @@ LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
 LOCAL_SRC_FILES         += src/hevc_utils.cpp
-ifneq (,$(filter msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze msm8916 msm8994,$(TARGET_BOARD_PLATFORM)))
+ifneq (,$(filter msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze msm8916 msm8994 ferrum,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
 else
 LOCAL_SHARED_LIBRARIES  += libhardware
