@@ -816,7 +816,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
         profile_level.level = V4L2_MPEG_VIDEO_H264_LEVEL_1_0;
         session_qp_range.minqp = 1;
         session_qp_range.maxqp = 51;
-    } else if (codec == OMX_VIDEO_CodingVPX) {
+    } else if (codec == OMX_VIDEO_CodingVP8) {
         m_sVenc_cfg.codectype = V4L2_PIX_FMT_VP8;
         codec_profile.profile = V4L2_MPEG_VIDC_VIDEO_VP8_UNUSED;
         profile_level.level = V4L2_MPEG_VIDC_VIDEO_VP8_VERSION_0;
@@ -1470,7 +1470,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
 
                  // For VP8, hier-p and ltr are mutually exclusive features in firmware
                  // Disable hier-p if ltr is enabled.
-                 if (m_codec == OMX_VIDEO_CodingVPX) {
+                 if (m_codec == OMX_VIDEO_CodingVP8) {
                      DEBUG_PRINT_LOW("Disable Hier-P as LTR is being set");
                      if (!venc_set_hier_layers(QOMX_HIERARCHICALCODING_P, 0)) {
                         DEBUG_PRINT_ERROR("Disabling Hier P count failed");
@@ -1676,7 +1676,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
 
                 // For VP8, hier-p and ltr are mutually exclusive features in firmware
                 // Disable ltr if hier-p is enabled.
-                if (m_codec == OMX_VIDEO_CodingVPX) {
+                if (m_codec == OMX_VIDEO_CodingVP8) {
                     DEBUG_PRINT_LOW("Disable LTR as HIER-P is being set");
                     if(!venc_set_ltrmode(0, 1)) {
                          DEBUG_PRINT_ERROR("ERROR: Failed to disable ltrmode");

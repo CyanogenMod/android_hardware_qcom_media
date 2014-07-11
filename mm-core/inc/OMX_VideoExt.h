@@ -39,7 +39,6 @@ extern "C" {
  * for this header file to compile successfully
  */
 #include <OMX_Core.h>
-#include <OMX_Video.h>
 
 /** NALU Formats */
 typedef enum OMX_NALUFORMATSTYPE {
@@ -58,12 +57,6 @@ typedef struct OMX_NALSTREAMFORMATTYPE{
     OMX_U32 nPortIndex;
     OMX_NALUFORMATSTYPE eNaluFormat;
 } OMX_NALSTREAMFORMATTYPE;
-
-/** Enum for standard video codingtype extensions */
-typedef enum OMX_VIDEO_CODINGEXTTYPE {
-    OMX_VIDEO_ExtCodingUnused = OMX_VIDEO_CodingKhronosExtensions,
-    OMX_VIDEO_CodingVP8,        /**< VP8/WebM */
-} OMX_VIDEO_CODINGEXTTYPE;
 
 /** VP8 profiles */
 typedef enum OMX_VIDEO_VP8PROFILETYPE {

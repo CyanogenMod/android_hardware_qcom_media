@@ -301,9 +301,10 @@ enum OMX_QCOM_VIDEO_CODINGTYPE
     QOMX_VIDEO_CodingDivx = 0x7FA30C02,     /**< Value when coding is Divx */
     QOMX_VIDEO_CodingSpark = 0x7FA30C03,     /**< Value when coding is Sorenson Spark */
     QOMX_VIDEO_CodingVp = 0x7FA30C04,
-    QOMX_VIDEO_CodingVp8 = 0x7FA30C05,
-    QOMX_VIDEO_CodingHevc = 0x7FA30C06
+    QOMX_VIDEO_CodingVp8 = OMX_VIDEO_CodingVP8,   /**< keeping old enum for backwards compatibility*/
+    QOMX_VIDEO_CodingHevc = OMX_VIDEO_CodingHEVC, /**< keeping old enum for backwards compatibility*/
 };
+#define OMX_VIDEO_CodingVPX OMX_VIDEO_CodingVP8   /**< keeping old enum for backwards compatibility*/
 
 enum OMX_QCOM_EXTN_INDEXTYPE
 {
