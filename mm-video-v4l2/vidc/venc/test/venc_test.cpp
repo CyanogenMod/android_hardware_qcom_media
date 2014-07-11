@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -625,7 +625,7 @@ OMX_ERRORTYPE ConfigureEncoder()
         }
 
 #ifdef _MSM8974_
-        else if (m_sProfile.eCodec == OMX_VIDEO_CodingVPX) {
+        else if (m_sProfile.eCodec == OMX_VIDEO_CodingVP8) {
             profile_tbl = (unsigned int const *)VP8_profile_level_table;
         }
 
@@ -1185,7 +1185,7 @@ OMX_ERRORTYPE VencTest_Initialize()
     }
 
 #ifdef _MSM8974_
-    else if (m_sProfile.eCodec == OMX_VIDEO_CodingVPX) {
+    else if (m_sProfile.eCodec == OMX_VIDEO_CodingVP8) {
         result = OMX_GetHandle(&m_hHandle,
                 (OMX_STRING)"OMX.qcom.video.encoder.vp8",
                 NULL,
@@ -1893,7 +1893,7 @@ void parseArgs(int argc, char** argv)
 
 #ifdef _MSM8974_
         else if ((!strcmp(argv[3], "VP8")) || (!strcmp(argv[3], "vp8"))) {
-            m_sProfile.eCodec = OMX_VIDEO_CodingVPX;
+            m_sProfile.eCodec = OMX_VIDEO_CodingVP8;
         }
 
 #endif
