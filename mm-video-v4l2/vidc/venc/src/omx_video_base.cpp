@@ -4181,7 +4181,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
                 DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu", profileLevelType->nProfileIndex);
                 eRet = OMX_ErrorNoMore;
             }
-        } else if (m_sOutPortDef.format.video.eCompressionFormat == OMX_VIDEO_CodingVPX) {
+        } else if (m_sOutPortDef.format.video.eCompressionFormat == OMX_VIDEO_CodingVP8) {
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_VP8ProfileMain;
                 profileLevelType->eLevel   = OMX_VIDEO_VP8Level_Version0;

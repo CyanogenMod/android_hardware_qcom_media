@@ -138,7 +138,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     else if (!strncmp((char *)m_nkind, "OMX.qcom.video.encoder.vp8",    \
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_encoder.vp8",OMX_MAX_STRINGNAME_SIZE);
-        codec_type = OMX_VIDEO_CodingVPX;
+        codec_type = OMX_VIDEO_CodingVP8;
     }
 #endif
     else {
@@ -250,7 +250,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     } else if (codec_type == OMX_VIDEO_CodingAVC) {
         m_sParamProfileLevel.eProfile = (OMX_U32) OMX_VIDEO_AVCProfileBaseline;
         m_sParamProfileLevel.eLevel = (OMX_U32) OMX_VIDEO_AVCLevel1;
-    } else if (codec_type == OMX_VIDEO_CodingVPX) {
+    } else if (codec_type == OMX_VIDEO_CodingVP8) {
         m_sParamProfileLevel.eProfile = (OMX_U32) OMX_VIDEO_VP8ProfileMain;
         m_sParamProfileLevel.eLevel = (OMX_U32) OMX_VIDEO_VP8Level_Version0;
     }
@@ -299,8 +299,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingH263;
     } else if (codec_type == OMX_VIDEO_CodingAVC) {
         m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingAVC;
-    } else if (codec_type == OMX_VIDEO_CodingVPX) {
-        m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingVPX;
+    } else if (codec_type == OMX_VIDEO_CodingVP8) {
+        m_sOutPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingVP8;
     }
 
     if (dev_get_buf_req(&m_sOutPortDef.nBufferCountMin,
@@ -330,8 +330,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingH263;
     } else if (codec_type == OMX_VIDEO_CodingAVC) {
         m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingAVC;
-    } else if (codec_type == OMX_VIDEO_CodingVPX) {
-        m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingVPX;
+    } else if (codec_type == OMX_VIDEO_CodingVP8) {
+        m_sOutPortFormat.eCompressionFormat =  OMX_VIDEO_CodingVP8;
     }
 
 
