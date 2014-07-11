@@ -39,7 +39,6 @@ extern "C" {
  * for this header file to compile successfully
  */
 #include <OMX_Core.h>
-#include <OMX_Video.h>
 
 /** NALU Formats */
 typedef enum OMX_NALUFORMATSTYPE {
@@ -58,12 +57,6 @@ typedef struct OMX_NALSTREAMFORMATTYPE{
     OMX_U32 nPortIndex;
     OMX_NALUFORMATSTYPE eNaluFormat;
 } OMX_NALSTREAMFORMATTYPE;
-
-/** Enum for standard video codingtype extensions */
-typedef enum OMX_VIDEO_CODINGEXTTYPE {
-    OMX_VIDEO_ExtCodingUnused = OMX_VIDEO_CodingKhronosExtensions,
-    OMX_VIDEO_CodingVP8,        /**< VP8/WebM */
-} OMX_VIDEO_CODINGEXTTYPE;
 
 /** VP8 profiles */
 typedef enum OMX_VIDEO_VP8PROFILETYPE {
@@ -93,57 +86,6 @@ typedef struct OMX_VIDEO_PARAM_VP8TYPE {
     OMX_BOOL bErrorResilientMode;
 } OMX_VIDEO_PARAM_VP8TYPE;
 
-typedef enum OMX_VIDEO_HEVCPROFILETYPE {
-    OMX_VIDEO_HEVCProfileMain = 0x01,
-    OMX_VIDEO_HEVCProfileMain10 = 0x02,
-    OMX_VIDEO_HEVCProfileUnknown = 0x6EFFFFFF,
-    OMX_VIDEO_HEVCrofileMax = 0x7FFFFFFF
-} OMX_VIDEO_HEVCPROFILETYPE;
-
-/** HEVC levels */
-typedef enum OMX_VIDEO_HEVCLEVELTYPE {
-    OMX_VIDEO_HEVCLevel_Version0  = 0x01,
-    OMX_VIDEO_HEVCMainTierLevel1  = 0x02,
-    OMX_VIDEO_HEVCHighTierLevel1  = 0x03,
-    OMX_VIDEO_HEVCMainTierLevel2  = 0x04,
-    OMX_VIDEO_HEVCHighTierLevel2  = 0x05,
-    OMX_VIDEO_HEVCMainTierLevel21 = 0x06,
-    OMX_VIDEO_HEVCHighTierLevel21 = 0x07,
-    OMX_VIDEO_HEVCMainTierLevel3  = 0x08,
-    OMX_VIDEO_HEVCHighTierLevel3  = 0x09,
-    OMX_VIDEO_HEVCMainTierLevel31 = 0x0A,
-    OMX_VIDEO_HEVCHighTierLevel31 = 0x0B,
-    OMX_VIDEO_HEVCMainTierLevel4  = 0x0C,
-    OMX_VIDEO_HEVCHighTierLevel4  = 0x0D,
-    OMX_VIDEO_HEVCMainTierLevel41 = 0x0E,
-    OMX_VIDEO_HEVCHighTierLevel41 = 0x0F,
-    OMX_VIDEO_HEVCMainTierLevel5  = 0x10,
-    OMX_VIDEO_HEVCHighTierLevel5  = 0x11,
-    OMX_VIDEO_HEVCMainTierLevel51 = 0x12,
-    OMX_VIDEO_HEVCHighTierLevel51 = 0x13,
-    OMX_VIDEO_HEVCMainTierLevel52 = 0x14,
-    OMX_VIDEO_HEVCHighTierLevel52 = 0x15,
-    OMX_VIDEO_HEVCMainTierLevel6  = 0x16,
-    OMX_VIDEO_HEVCHighTierLevel6  = 0x17,
-    OMX_VIDEO_HEVCMainTierLevel61 = 0x18,
-    OMX_VIDEO_HEVCHighTierLevel61 = 0x19,
-    OMX_VIDEO_HEVCMainTierLevel62 = 0x1A,
-    OMX_VIDEO_HEVCLevelUnknown = 0x6EFFFFFF,
-    OMX_VIDEO_HEVCLevelMax = 0x7FFFFFFF
-} OMX_VIDEO_HEVCLEVELTYPE;
-
-/** HEVC Param */
-typedef struct OMX_VIDEO_PARAM_HEVCTYPE {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
-    OMX_U32 nPortIndex;
-    OMX_VIDEO_HEVCPROFILETYPE eProfile;
-    OMX_VIDEO_HEVCLEVELTYPE eLevel;
-} OMX_VIDEO_PARAM_HEVCTYPE;
-
-
-
-
 /** Structure for configuring VP8 reference frames */
 typedef struct OMX_VIDEO_VP8REFERENCEFRAMETYPE {
     OMX_U32 nSize;
@@ -165,6 +107,55 @@ typedef struct OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE {
     OMX_BOOL bIsIntraFrame;
     OMX_BOOL bIsGoldenOrAlternateFrame;
 } OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE;
+
+/** HEVC Profiles */
+typedef enum OMX_VIDEO_HEVCPROFILETYPE {
+    OMX_VIDEO_HEVCProfileMain    = 0x01,
+    OMX_VIDEO_HEVCProfileMain10  = 0x02,
+    OMX_VIDEO_HEVCProfileUnknown = 0x6EFFFFFF,
+    OMX_VIDEO_HEVCProfileMax      = 0x7FFFFFFF
+} OMX_VIDEO_HEVCPROFILETYPE;
+
+/** HEVC levels */
+typedef enum OMX_VIDEO_HEVCLEVELTYPE {
+    OMX_VIDEO_HEVCLevel_Version0  = 0x0,
+    OMX_VIDEO_HEVCMainTierLevel1  = 0x1,
+    OMX_VIDEO_HEVCHighTierLevel1  = 0x2,
+    OMX_VIDEO_HEVCMainTierLevel2  = 0x4,
+    OMX_VIDEO_HEVCHighTierLevel2  = 0x8,
+    OMX_VIDEO_HEVCMainTierLevel21 = 0x10,
+    OMX_VIDEO_HEVCHighTierLevel21 = 0x20,
+    OMX_VIDEO_HEVCMainTierLevel3  = 0x40,
+    OMX_VIDEO_HEVCHighTierLevel3  = 0x80,
+    OMX_VIDEO_HEVCMainTierLevel31 = 0x100,
+    OMX_VIDEO_HEVCHighTierLevel31 = 0x200,
+    OMX_VIDEO_HEVCMainTierLevel4  = 0x400,
+    OMX_VIDEO_HEVCHighTierLevel4  = 0x800,
+    OMX_VIDEO_HEVCMainTierLevel41 = 0x1000,
+    OMX_VIDEO_HEVCHighTierLevel41 = 0x2000,
+    OMX_VIDEO_HEVCMainTierLevel5  = 0x4000,
+    OMX_VIDEO_HEVCHighTierLevel5  = 0x8000,
+    OMX_VIDEO_HEVCMainTierLevel51 = 0x10000,
+    OMX_VIDEO_HEVCHighTierLevel51 = 0x20000,
+    OMX_VIDEO_HEVCMainTierLevel52 = 0x40000,
+    OMX_VIDEO_HEVCHighTierLevel52 = 0x80000,
+    OMX_VIDEO_HEVCMainTierLevel6  = 0x100000,
+    OMX_VIDEO_HEVCHighTierLevel6  = 0x200000,
+    OMX_VIDEO_HEVCMainTierLevel61 = 0x400000,
+    OMX_VIDEO_HEVCHighTierLevel61 = 0x800000,
+    OMX_VIDEO_HEVCMainTierLevel62 = 0x1000000,
+    OMX_VIDEO_HEVCLevelUnknown = 0x6EFFFFFF,
+    OMX_VIDEO_HEVCLevelMax = 0x7FFFFFFF
+} OMX_VIDEO_HEVCLEVELTYPE;
+
+/** HEVC Param */
+typedef struct OMX_VIDEO_PARAM_HEVCTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_VIDEO_HEVCPROFILETYPE eProfile;
+    OMX_VIDEO_HEVCLEVELTYPE eLevel;
+} OMX_VIDEO_PARAM_HEVCTYPE;
 
 
 #ifdef __cplusplus
