@@ -158,10 +158,6 @@ LOCAL_SRC_FILES         += src/mp4_utils.cpp
 LOCAL_SRC_FILES         += src/hevc_utils.cpp
 ifneq (,$(filter msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze msm8916 msm8994,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
-else
-LOCAL_SHARED_LIBRARIES  += libhardware
-LOCAL_SRC_FILES         += src/power_module.cpp
-LOCAL_SRC_FILES         += src/omx_vdec.cpp
 endif
 
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
