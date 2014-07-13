@@ -126,7 +126,7 @@ extern "C" {
 #define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
 
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
-#define DEFAULT_CONCEAL_COLOR "32896" //0x8080, black by default
+#define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
 int debug_level = PRIO_ERROR;
 
