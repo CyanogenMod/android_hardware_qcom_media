@@ -1732,7 +1732,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 OMX_QCOM_VIDEO_PARAM_PERF_LEVEL *pParam =
                         (OMX_QCOM_VIDEO_PARAM_PERF_LEVEL *)paramData;
                 DEBUG_PRINT_LOW("Set perf level: %d", pParam->ePerfLevel);
-                if(!venc_set_perf_level(pParam->ePerfLevel)) {
+                if (!venc_set_perf_level(pParam->ePerfLevel)) {
                     DEBUG_PRINT_ERROR("ERROR: Failed to set perf level to %d", pParam->ePerfLevel);
                     return false;
                 } else {
@@ -1980,6 +1980,19 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                     }
                 }  else {
                     DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_QcomIndexConfigVideoLTRMark");
+                }
+                break;
+            }
+        case OMX_QcomIndexConfigPerfLevel:
+            {
+                OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *perf =
+                        (OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *)configData;
+                DEBUG_PRINT_LOW("Set perf level: %d", perf->ePerfLevel);
+                if (!venc_set_perf_level(perf->ePerfLevel)) {
+                    DEBUG_PRINT_ERROR("ERROR: Failed to set perf level to %d", perf->ePerfLevel);
+                    return false;
+                } else {
+                    performance_level.perflevel = (unsigned int) perf->ePerfLevel;
                 }
                 break;
             }

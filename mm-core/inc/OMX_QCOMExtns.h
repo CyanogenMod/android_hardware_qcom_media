@@ -463,6 +463,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     OMX_QcomIndexParamSetMVSearchrange = 0x7F00003C,
 
+    OMX_QcomIndexConfigPerfLevel = 0x7F00003D,
+
     /*"OMX.QCOM.index.param.video.LTRCount"*/
     OMX_QcomIndexParamVideoLTRCount = QOMX_IndexParamVideoLTRCount,
 
@@ -849,6 +851,17 @@ typedef struct OMX_QCOM_VIDEO_PARAM_PERF_LEVEL {
     OMX_VERSIONTYPE nVersion;           /** OMX specification version information */
     QOMX_VIDEO_PERF_LEVEL ePerfLevel;   /** Performance level */
 } OMX_QCOM_VIDEO_PARAM_PERF_LEVEL;
+
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QcomIndexConfigPerfLevel extension. It will set
+ * the performance mode specified as QOMX_VIDEO_PERF_LEVEL.
+ */
+typedef struct OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL {
+    OMX_U32 nSize;                      /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;           /** OMX specification version information */
+    QOMX_VIDEO_PERF_LEVEL ePerfLevel;   /** Performance level */
+} OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL;
 
 /**
  * This structure describes the parameters corresponding
