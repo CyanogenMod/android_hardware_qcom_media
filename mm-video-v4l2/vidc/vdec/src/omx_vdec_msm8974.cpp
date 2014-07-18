@@ -4001,6 +4001,33 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                                         rectangle.nWidth, rectangle.nHeight);
                                   break;
                               }
+        case OMX_QcomIndexConfigPerfLevel: {
+                struct v4l2_control control;
+                OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *perf =
+                        (OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *)configData;
+
+                control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_G_CTRL, &control) < 0) {
+                    DEBUG_PRINT_ERROR("Failed getting performance level: %d", errno);
+                    eRet = OMX_ErrorHardware;
+                }
+
+                if (eRet == OMX_ErrorNone) {
+                    switch (control.value) {
+                        case V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO:
+                            perf->ePerfLevel = OMX_QCOM_PerfLevelTurbo;
+                            break;
+                        default:
+                            DEBUG_PRINT_HIGH("Unknown perf level %d, reporting Nominal instead", control.value);
+                            /* Fall through */
+                        case V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL:
+                            perf->ePerfLevel = OMX_QCOM_PerfLevelNominal;
+                            break;
+                    }
+                }
+
+                break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("get_config: unknown param %d",configIndex);
                  eRet = OMX_ErrorBadParameter;
@@ -4228,6 +4255,33 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             DEBUG_PRINT_ERROR(" Set_config: Bad Port idx %d",
                     (int)config->nPortIndex);
             ret = OMX_ErrorBadPortIndex;
+        }
+
+        return ret;
+    } else if ((int)configIndex == (int)OMX_QcomIndexConfigPerfLevel) {
+        OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *perf =
+            (OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *)configData;
+        struct v4l2_control control;
+
+        DEBUG_PRINT_LOW("Set perf level: %d", perf->ePerfLevel);
+
+        control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+
+        switch (perf->ePerfLevel) {
+            case OMX_QCOM_PerfLevelNominal:
+                control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL;
+                break;
+            case OMX_QCOM_PerfLevelTurbo:
+                control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO;
+                break;
+            default:
+                ret = OMX_ErrorUnsupportedSetting;
+                break;
+        }
+
+        if (ret == OMX_ErrorNone) {
+            ret = (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control) < 0) ?
+                OMX_ErrorUnsupportedSetting : OMX_ErrorNone;
         }
 
         return ret;
