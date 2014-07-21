@@ -46,7 +46,6 @@
 
 namespace android {
 
-struct DashCodec;
 struct MetaData;
 struct DashPlayerDriver;
 

@@ -11,8 +11,7 @@ LOCAL_SRC_FILES:=                       \
         DashPlayerStats.cpp             \
         DashPlayerDecoder.cpp           \
         DashPacketSource.cpp            \
-        DashFactory.cpp                 \
-        DashCodec.cpp
+        DashFactory.cpp
 
 LOCAL_SHARED_LIBRARIES :=       \
     libbinder                   \
