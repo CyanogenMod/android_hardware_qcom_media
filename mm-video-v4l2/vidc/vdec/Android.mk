@@ -183,7 +183,6 @@ include $(CLEAR_VARS)
 
 ifneq "$(wildcard $(QCPATH) )" ""
 ifneq (,$(filter msm8974 msm8610 msm8226 msm_bronze msm8916,$(TARGET_BOARD_PLATFORM)))
-ifeq (,$(filter aarch64 arm64, $(TARGET_ARCH)))
 
 LOCAL_MODULE                    := libOmxVdecHevc
 LOCAL_ADDITIONAL_DEPENDENCIES   := libOmxVenc
@@ -215,11 +214,13 @@ LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
+LOCAL_32_BIT_ONLY         := true
+
 include $(BUILD_SHARED_LIBRARY)
 
 endif
 endif
-endif
+
 
 endif #BUILD_TINY_ANDROID
 
