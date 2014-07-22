@@ -9237,6 +9237,13 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                 DEBUG_PRINT_LOW("Invalid extra data size");
                 break;
             }
+
+            if (!secure_mode && ((OMX_U8*)p_extra > (pBuffer + p_buf_hdr->nAllocLen))) {
+                p_extra = NULL;
+                DEBUG_PRINT_ERROR("Error: out of bound memory access by p_extra");
+                return;
+            }
+
             DEBUG_PRINT_LOW("handle_extradata: eType = %d", data->eType);
             switch ((unsigned long)data->eType) {
                 case MSM_VIDC_EXTRADATA_INTERLACE_VIDEO:
@@ -9693,6 +9700,10 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 
     if (!(client_extradata & OMX_INTERLACE_EXTRADATA)) {
         return;
+    }
+    if (!extra) {
+       DEBUG_PRINT_ERROR("Error: append_interlace_extradata - invalid input");
+       return;
     }
     extra->nSize = OMX_INTERLACE_EXTRADATA_SIZE;
     extra->nVersion.nVersion = OMX_SPEC_VERSION;
