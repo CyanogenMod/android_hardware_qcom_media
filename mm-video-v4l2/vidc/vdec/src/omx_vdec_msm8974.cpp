@@ -1236,10 +1236,104 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         break;
 
                 case OMX_COMPONENT_GENERATE_PORT_RECONFIG:
-                                        DEBUG_PRINT_HIGH("Rxd OMX_COMPONENT_GENERATE_PORT_RECONFIG");
-
                                         if (p2 == OMX_IndexParamPortDefinition) {
+                                            DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexParamPortDefinition");
                                             pThis->in_reconfig = true;
+
+                                        }  else if (p2 == OMX_IndexConfigCommonOutputCrop) {
+                                            DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexConfigCommonOutputCrop");
+                                            struct v4l2_format fmt;
+
+                                            memset(&fmt, 0, sizeof(struct v4l2_format));
+                                            fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+                                            fmt.fmt.pix_mp.pixelformat = pThis->capture_capability;
+                                            fmt.fmt.pix_mp.height = pThis->drv_ctx.video_resolution.frame_height;
+                                            fmt.fmt.pix_mp.width = pThis->drv_ctx.video_resolution.frame_width;
+
+                                            if (ioctl(pThis->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt)) {
+                                                DEBUG_PRINT_ERROR("VIDIOC_G_FMT failed in port settings changed sufficient event");
+                                                break;
+                                            }
+                                            /* Check if resolution is changed */
+                                            if ((fmt.fmt.pix_mp.width !=
+                                                    pThis->drv_ctx.video_resolution.frame_width)
+                                                || (fmt.fmt.pix_mp.height !=
+                                                    pThis->drv_ctx.video_resolution.frame_height)
+                                                || (fmt.fmt.pix_mp.plane_fmt[0].bytesperline !=
+                                                    pThis->drv_ctx.video_resolution.stride)
+                                                || (fmt.fmt.pix_mp.plane_fmt[0].reserved[0] !=
+                                                    pThis->drv_ctx.video_resolution.scan_lines)) {
+
+                                                DEBUG_PRINT_HIGH("Resolution changed from: wxh = %dx%d, sxsc = %dx%d, to: wxh = %dx%d, sxsc = %dx%d",
+                                                        pThis->drv_ctx.video_resolution.frame_width,
+                                                        pThis->drv_ctx.video_resolution.frame_height,
+                                                        pThis->drv_ctx.video_resolution.stride,
+                                                        pThis->drv_ctx.video_resolution.scan_lines,
+                                                        fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height,
+                                                        fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
+                                                        fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
+
+                                                /* Update new resolution */
+                                                pThis->update_resolution(fmt.fmt.pix_mp.width,
+                                                        fmt.fmt.pix_mp.height,
+                                                        fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
+                                                        fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
+
+                                                /* Update C2D with new resolution */
+                                                if (!pThis->client_buffers.update_buffer_req()) {
+                                                    DEBUG_PRINT_ERROR("Setting C2D buffer requirements failed");
+                                                }
+                                            }
+
+                                            /* Update new crop information */
+                                            pThis->rectangle.nLeft = pThis->drv_ctx.frame_size.left;
+                                            pThis->rectangle.nTop = pThis->drv_ctx.frame_size.top;
+                                            pThis->rectangle.nWidth = pThis->drv_ctx.frame_size.right;
+                                            pThis->rectangle.nHeight = pThis->drv_ctx.frame_size.bottom;
+
+                                            /* Validate the new crop information */
+                                            if (pThis->rectangle.nLeft + pThis->rectangle.nWidth >
+                                                pThis->drv_ctx.video_resolution.frame_width) {
+
+                                                DEBUG_PRINT_HIGH("Crop L[%u] + R[%u] > W[%u]",
+                                                        pThis->rectangle.nLeft, pThis->rectangle.nWidth,
+                                                        pThis->drv_ctx.video_resolution.frame_width);
+                                                pThis->rectangle.nLeft = 0;
+
+                                                if (pThis->rectangle.nWidth >
+                                                    pThis->drv_ctx.video_resolution.frame_width) {
+
+                                                    DEBUG_PRINT_HIGH("Crop R[%u] > W[%u]",
+                                                            pThis->rectangle.nWidth,
+                                                            pThis->drv_ctx.video_resolution.frame_width);
+                                                    pThis->rectangle.nWidth =
+                                                        pThis->drv_ctx.video_resolution.frame_width;
+                                                }
+                                            }
+                                            if (pThis->rectangle.nTop + pThis->rectangle.nHeight >
+                                                pThis->drv_ctx.video_resolution.frame_height) {
+
+                                                DEBUG_PRINT_HIGH("Crop T[%u] + B[%u] > H[%u]",
+                                                    pThis->rectangle.nTop, pThis->rectangle.nHeight,
+                                                    pThis->drv_ctx.video_resolution.frame_height);
+                                                pThis->rectangle.nTop = 0;
+
+                                                if (pThis->rectangle.nHeight >
+                                                    pThis->drv_ctx.video_resolution.frame_height) {
+
+                                                    DEBUG_PRINT_HIGH("Crop B[%u] > H[%u]",
+                                                        pThis->rectangle.nHeight,
+                                                        pThis->drv_ctx.video_resolution.frame_height);
+                                                    pThis->rectangle.nHeight =
+                                                        pThis->drv_ctx.video_resolution.frame_height;
+                                                }
+                                            }
+                                            DEBUG_PRINT_HIGH("Updated Crop Info: L: %u, T: %u, R: %u, B: %u",
+                                                    pThis->rectangle.nLeft, pThis->rectangle.nTop,
+                                                    pThis->rectangle.nWidth, pThis->rectangle.nHeight);
+                                        } else {
+                                            DEBUG_PRINT_ERROR("Rxd Invalid PORT_RECONFIG event (%lu)", p2);
+                                            break;
                                         }
                                         if (pThis->m_cb.EventHandler) {
                                             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
@@ -1247,7 +1341,6 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         } else {
                                             DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
                                         }
-
                                         break;
 
                 case OMX_COMPONENT_GENERATE_EOS_DONE:
@@ -2693,7 +2786,8 @@ bool omx_vdec::post_event(unsigned long p1,
     pthread_mutex_lock(&m_lock);
 
     if (id == m_fill_output_msg ||
-            id == OMX_COMPONENT_GENERATE_FBD) {
+            id == OMX_COMPONENT_GENERATE_FBD ||
+            id == OMX_COMPONENT_GENERATE_PORT_RECONFIG) {
         m_ftb_q.insert_entry(p1,p2,id);
     } else if (id == OMX_COMPONENT_GENERATE_ETB ||
             id == OMX_COMPONENT_GENERATE_EBD ||
@@ -3902,6 +3996,9 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
         case OMX_IndexConfigCommonOutputCrop: {
                                   OMX_CONFIG_RECTTYPE *rect = (OMX_CONFIG_RECTTYPE *) configData;
                                   memcpy(rect, &rectangle, sizeof(OMX_CONFIG_RECTTYPE));
+                                  DEBUG_PRINT_HIGH("get_config: crop info: L: %u, T: %u, R: %u, B: %u",
+                                        rectangle.nLeft, rectangle.nTop,
+                                        rectangle.nWidth, rectangle.nHeight);
                                   break;
                               }
         default: {
@@ -7140,14 +7237,21 @@ int omx_vdec::async_message_process (void *context, void* message)
 
             v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.output_frame.client_data;
             omxhdr = omx->m_out_mem_ptr+v4l2_buf_ptr->index;
-            DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) Pic_type(%u)",
+
+            DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x) FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
                     omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
-                    vdec_msg->msgdata.output_frame.pic_type);
+                    vdec_msg->msgdata.output_frame.pic_type, v4l2_buf_ptr->flags,
+                    (unsigned int)vdec_msg->msgdata.output_frame.len,
+                    vdec_msg->msgdata.output_frame.framesize.left,
+                    vdec_msg->msgdata.output_frame.framesize.top,
+                    vdec_msg->msgdata.output_frame.framesize.right,
+                    vdec_msg->msgdata.output_frame.framesize.bottom);
 
             if (omxhdr && omxhdr->pOutputPortPrivate &&
                     ((omxhdr - omx->m_out_mem_ptr) < (int)omx->drv_ctx.op_buf.actualcount) &&
                     (((struct vdec_output_frameinfo *)omxhdr->pOutputPortPrivate
                       - omx->drv_ctx.ptr_respbuffer) < (int)omx->drv_ctx.op_buf.actualcount)) {
+
                 if (vdec_msg->msgdata.output_frame.len <=  omxhdr->nAllocLen) {
                     omxhdr->nFilledLen = vdec_msg->msgdata.output_frame.len;
                     omxhdr->nOffset = vdec_msg->msgdata.output_frame.offset;
@@ -7203,75 +7307,35 @@ int omx_vdec::async_message_process (void *context, void* message)
                     }
                     vdec_msg->msgdata.output_frame.bufferaddr =
                         omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
-                    int format_notably_changed = 0;
-                    if (omxhdr->nFilledLen &&
-                            (omxhdr->nFilledLen != (unsigned)omx->prev_n_filled_len)) {
-                        if ((vdec_msg->msgdata.output_frame.framesize.bottom != omx->drv_ctx.video_resolution.frame_height) ||
-                                (vdec_msg->msgdata.output_frame.framesize.right != omx->drv_ctx.video_resolution.frame_width)) {
-                            DEBUG_PRINT_HIGH("Height/Width information has changed");
-                            omx->drv_ctx.video_resolution.frame_height = vdec_msg->msgdata.output_frame.framesize.bottom;
-                            omx->drv_ctx.video_resolution.frame_width = vdec_msg->msgdata.output_frame.framesize.right;
-                            format_notably_changed = 1;
-                        }
+
+                    /* Post event if resolution OR crop changed */
+                    /* filled length will be changed if resolution changed */
+                    /* Crop parameters can be changed even without resolution change */
+                    if (omxhdr->nFilledLen
+                        && ((omx->prev_n_filled_len != omxhdr->nFilledLen)
+                        || (omx->drv_ctx.frame_size.left != vdec_msg->msgdata.output_frame.framesize.left)
+                        || (omx->drv_ctx.frame_size.top != vdec_msg->msgdata.output_frame.framesize.top)
+                        || (omx->drv_ctx.frame_size.right != vdec_msg->msgdata.output_frame.framesize.right)
+                        || (omx->drv_ctx.frame_size.bottom != vdec_msg->msgdata.output_frame.framesize.bottom))) {
+
+                        DEBUG_PRINT_HIGH("Paramters Changed From: Len: %u, L: %u, T: %u, R: %u, B: %u --> Len: %u, L: %u, T: %u, R: %u, B: %u",
+                                omx->prev_n_filled_len, omx->drv_ctx.frame_size.left,
+                                omx->drv_ctx.frame_size.top, omx->drv_ctx.frame_size.right,
+                                omx->drv_ctx.frame_size.bottom, omxhdr->nFilledLen,
+                                vdec_msg->msgdata.output_frame.framesize.left,
+                                vdec_msg->msgdata.output_frame.framesize.top,
+                                vdec_msg->msgdata.output_frame.framesize.right,
+                                vdec_msg->msgdata.output_frame.framesize.bottom);
+
+                        memcpy(&omx->drv_ctx.frame_size,
+                                &vdec_msg->msgdata.output_frame.framesize,
+                                sizeof(struct vdec_framesize));
+
+                        omx->post_event(OMX_CORE_OUTPUT_PORT_INDEX,
+                                OMX_IndexConfigCommonOutputCrop,
+                                OMX_COMPONENT_GENERATE_PORT_RECONFIG);
                     }
-                    if (omxhdr->nFilledLen && (((unsigned)omx->rectangle.nLeft !=
-                                    vdec_msg->msgdata.output_frame.framesize.left)
-                                || ((unsigned)omx->rectangle.nTop != vdec_msg->msgdata.output_frame.framesize.top)
-                                || (omx->rectangle.nWidth != vdec_msg->msgdata.output_frame.framesize.right)
-                                || (omx->rectangle.nHeight != vdec_msg->msgdata.output_frame.framesize.bottom))) {
-                        if ((vdec_msg->msgdata.output_frame.framesize.bottom != omx->drv_ctx.video_resolution.frame_height) ||
-                                (vdec_msg->msgdata.output_frame.framesize.right != omx->drv_ctx.video_resolution.frame_width)) {
-                            omx->drv_ctx.video_resolution.frame_height = vdec_msg->msgdata.output_frame.framesize.bottom;
-                            omx->drv_ctx.video_resolution.frame_width = vdec_msg->msgdata.output_frame.framesize.right;
-                            DEBUG_PRINT_HIGH("Height/Width information has changed. W: %d --> %d, H: %d --> %d",
-                                    omx->drv_ctx.video_resolution.frame_width, vdec_msg->msgdata.output_frame.framesize.right,
-                                    omx->drv_ctx.video_resolution.frame_height, vdec_msg->msgdata.output_frame.framesize.bottom);
-                        }
-                        DEBUG_PRINT_HIGH("Crop information changed. W: %u --> %d, H: %u -> %d",
-                                (unsigned int)omx->rectangle.nWidth, vdec_msg->msgdata.output_frame.framesize.right,
-                                (unsigned int)omx->rectangle.nHeight, vdec_msg->msgdata.output_frame.framesize.bottom);
-                        if (vdec_msg->msgdata.output_frame.framesize.left + vdec_msg->msgdata.output_frame.framesize.right >=
-                            omx->drv_ctx.video_resolution.frame_width) {
-                            vdec_msg->msgdata.output_frame.framesize.left = 0;
-                            if (vdec_msg->msgdata.output_frame.framesize.right > omx->drv_ctx.video_resolution.frame_width) {
-                                vdec_msg->msgdata.output_frame.framesize.right =  omx->drv_ctx.video_resolution.frame_width;
-                            }
-                        }
-                        if (vdec_msg->msgdata.output_frame.framesize.top + vdec_msg->msgdata.output_frame.framesize.bottom >=
-                            omx->drv_ctx.video_resolution.frame_height) {
-                            vdec_msg->msgdata.output_frame.framesize.top = 0;
-                            if (vdec_msg->msgdata.output_frame.framesize.bottom > omx->drv_ctx.video_resolution.frame_height) {
-                                vdec_msg->msgdata.output_frame.framesize.bottom =  omx->drv_ctx.video_resolution.frame_height;
-                            }
-                        }
-                        DEBUG_PRINT_LOW("omx_vdec: Adjusted Dim L: %d, T: %d, R: %d, B: %d, W: %d, H: %d",
-                                        vdec_msg->msgdata.output_frame.framesize.left,
-                                        vdec_msg->msgdata.output_frame.framesize.top,
-                                        vdec_msg->msgdata.output_frame.framesize.right,
-                                        vdec_msg->msgdata.output_frame.framesize.bottom,
-                                        omx->drv_ctx.video_resolution.frame_width,
-                                        omx->drv_ctx.video_resolution.frame_height);
-                        omx->rectangle.nLeft = vdec_msg->msgdata.output_frame.framesize.left;
-                        omx->rectangle.nTop = vdec_msg->msgdata.output_frame.framesize.top;
-                        omx->rectangle.nWidth = vdec_msg->msgdata.output_frame.framesize.right;
-                        omx->rectangle.nHeight = vdec_msg->msgdata.output_frame.framesize.bottom;
-                        format_notably_changed = 1;
-                    }
-                    DEBUG_PRINT_HIGH("Left: %d, Right: %d, top: %d, Bottom: %d",
-                                      vdec_msg->msgdata.output_frame.framesize.left,vdec_msg->msgdata.output_frame.framesize.right,
-                                      vdec_msg->msgdata.output_frame.framesize.top, vdec_msg->msgdata.output_frame.framesize.bottom);
-                    if (format_notably_changed) {
-                        if (omx->is_video_session_supported()) {
-                            omx->post_event (0, vdec_msg->status_code,
-                                    OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING);
-                        } else {
-                            if (!omx->client_buffers.update_buffer_req()) {
-                                DEBUG_PRINT_ERROR("Setting c2D buffer requirements failed");
-                            }
-                            omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexConfigCommonOutputCrop,
-                                    OMX_COMPONENT_GENERATE_PORT_RECONFIG);
-                        }
-                    }
+
                     if (omxhdr->nFilledLen)
                         omx->prev_n_filled_len = omxhdr->nFilledLen;
 
@@ -7279,6 +7343,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                              omxhdr->pOutputPortPrivate;
                     output_respbuf->len = vdec_msg->msgdata.output_frame.len;
                     output_respbuf->offset = vdec_msg->msgdata.output_frame.offset;
+
                     if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_KEYFRAME) {
                         output_respbuf->pic_type = PICTURE_TYPE_I;
                     }
@@ -7294,16 +7359,23 @@ int omx_vdec::async_message_process (void *context, void* message)
                                 ((unsigned long)vdec_msg->msgdata.output_frame.bufferaddr +
                                  (unsigned long)vdec_msg->msgdata.output_frame.offset),
                                 vdec_msg->msgdata.output_frame.len);
-                } else
+                } else {
+                    DEBUG_PRINT_ERROR("Invalid filled length = %u, buffer size = %u, prev_length = %u",
+                            (unsigned int)vdec_msg->msgdata.output_frame.len,
+                            omxhdr->nAllocLen, omx->prev_n_filled_len);
                     omxhdr->nFilledLen = 0;
+                }
+
                 omx->post_event ((unsigned long)omxhdr, vdec_msg->status_code,
                         OMX_COMPONENT_GENERATE_FBD);
-            } else if (vdec_msg->msgdata.output_frame.flags & OMX_BUFFERFLAG_EOS)
+
+            } else if (vdec_msg->msgdata.output_frame.flags & OMX_BUFFERFLAG_EOS) {
                 omx->post_event ((unsigned long)NULL, vdec_msg->status_code,
                         OMX_COMPONENT_GENERATE_EOS_DONE);
-            else
+            } else {
                 omx->post_event ((unsigned int)NULL, vdec_msg->status_code,
                         OMX_COMPONENT_GENERATE_HARDWARE_ERROR);
+            }
             break;
         case VDEC_MSG_EVT_CONFIG_CHANGED:
             DEBUG_PRINT_HIGH("Port settings changed");
