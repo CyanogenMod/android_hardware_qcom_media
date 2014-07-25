@@ -1979,6 +1979,20 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                memcpy(pParam, &m_sConfigVp8ReferenceFrame, sizeof(m_sConfigVp8ReferenceFrame));
                break;
            }
+        case OMX_QcomIndexConfigPerfLevel:
+            {
+                OMX_U32 perflevel;
+                OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *pParam =
+                    reinterpret_cast<OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL*>(configData);
+                DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigPerfLevel");
+                if (!dev_get_performance_level(&perflevel)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from get_performance_level %d",
+                        pParam->ePerfLevel);
+                } else {
+                    pParam->ePerfLevel = (QOMX_VIDEO_PERF_LEVEL)perflevel;
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
