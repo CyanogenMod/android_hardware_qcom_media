@@ -589,6 +589,7 @@ class omx_video: public qc_omx_component
         OMX_VIDEO_CONFIG_DEINTERLACE m_sConfigDeinterlace;
         OMX_VIDEO_VP8REFERENCEFRAMETYPE m_sConfigVp8ReferenceFrame;
         QOMX_VIDEO_HIERARCHICALLAYERS m_sHierLayers;
+        QOMX_EXTNINDEX_VIDEO_INITIALQP m_sParamInitqp;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
 
