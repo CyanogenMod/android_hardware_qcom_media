@@ -7074,13 +7074,8 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         OMX_U32 buf_index = buffer - m_out_mem_ptr;
         BufferDim_t dim;
         private_handle_t *private_handle = NULL;
-        if (is_down_scalar_enabled) {
-             dim.sliceWidth = drv_ctx.video_resolution.stride;
-             dim.sliceHeight = drv_ctx.video_resolution.scan_lines;
-        } else {
-             dim.sliceWidth = drv_ctx.video_resolution.frame_width;
-             dim.sliceHeight = drv_ctx.video_resolution.frame_height;
-        }
+        dim.sliceWidth = drv_ctx.video_resolution.stride;
+        dim.sliceHeight = drv_ctx.video_resolution.scan_lines;
         if (native_buffer[buf_index].privatehandle)
             private_handle = native_buffer[buf_index].privatehandle;
         if (private_handle) {
