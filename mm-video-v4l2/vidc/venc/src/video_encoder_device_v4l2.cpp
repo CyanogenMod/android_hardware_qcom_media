@@ -58,6 +58,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define H264_BP_START 0
 #define H264_HP_START (H264_BP_START + 17)
 #define H264_MP_START (H264_BP_START + 34)
+#define HEVC_MAIN_START 0
+#define HEVC_MAIN10_START (HEVC_MAIN_START + 12)
 #define POLL_TIMEOUT 1000
 #define MAX_SUPPORTED_SLICES_PER_FRAME 28 /* Max supported slices with 32 output buffers */
 
@@ -166,6 +168,39 @@ static const unsigned int h263_profile_level_table[][MAX_PROFILE_PARAMS]= {
     {34560,1036800,20000000,OMX_VIDEO_H263Level70,OMX_VIDEO_H263ProfileBaseline,0},
     {0,0,0,0,0,0}
 };
+
+/* HEVC profile and level table*/
+static const unsigned int hevc_profile_level_table[][MAX_PROFILE_PARAMS]= {
+    /*max mb per frame, max mb per sec, max bitrate, level, profile*/
+    {99,1485,128000,OMX_VIDEO_HEVCMainTierLevel1,OMX_VIDEO_HEVCProfileMain,0},
+    {396,11880,1500000,OMX_VIDEO_HEVCMainTierLevel2,OMX_VIDEO_HEVCProfileMain,0},
+    {900,27000,3000000,OMX_VIDEO_HEVCMainTierLevel21,OMX_VIDEO_HEVCProfileMain,0},
+    {2025,60750,6000000,OMX_VIDEO_HEVCMainTierLevel3,OMX_VIDEO_HEVCProfileMain,0},
+    {8640,259200,10000000,OMX_VIDEO_HEVCMainTierLevel31,OMX_VIDEO_HEVCProfileMain,0},
+    {34560,1166400,12000000,OMX_VIDEO_HEVCMainTierLevel4,OMX_VIDEO_HEVCProfileMain,0},
+    {138240,4147200,20000000,OMX_VIDEO_HEVCMainTierLevel41,OMX_VIDEO_HEVCProfileMain,0},
+    {138240,8294400,25000000,OMX_VIDEO_HEVCMainTierLevel5,OMX_VIDEO_HEVCProfileMain,0},
+    {138240,4147200,40000000,OMX_VIDEO_HEVCMainTierLevel51,OMX_VIDEO_HEVCProfileMain,0},
+    {138240,4147200,50000000,OMX_VIDEO_HEVCHighTierLevel41,OMX_VIDEO_HEVCProfileMain,0},
+    {138240,4147200,100000000,OMX_VIDEO_HEVCHighTierLevel5,OMX_VIDEO_HEVCProfileMain,0},
+    {138240,4147200,1600000000,OMX_VIDEO_HEVCHighTierLevel51,OMX_VIDEO_HEVCProfileMain,0},
+    {0,0,0,0,0},
+
+    {99,1485,128000,OMX_VIDEO_HEVCMainTierLevel1,OMX_VIDEO_HEVCProfileMain10,0},
+    {396,11880,1500000,OMX_VIDEO_HEVCMainTierLevel2,OMX_VIDEO_HEVCProfileMain10,0},
+    {900,27000,3000000,OMX_VIDEO_HEVCMainTierLevel21,OMX_VIDEO_HEVCProfileMain10,0},
+    {2025,60750,6000000,OMX_VIDEO_HEVCMainTierLevel3,OMX_VIDEO_HEVCProfileMain10,0},
+    {8640,259200,10000000,OMX_VIDEO_HEVCMainTierLevel31,OMX_VIDEO_HEVCProfileMain10,0},
+    {34560,1166400,12000000,OMX_VIDEO_HEVCMainTierLevel4,OMX_VIDEO_HEVCProfileMain10,0},
+    {138240,4147200,20000000,OMX_VIDEO_HEVCMainTierLevel41,OMX_VIDEO_HEVCProfileMain10,0},
+    {138240,8294400,25000000,OMX_VIDEO_HEVCMainTierLevel5,OMX_VIDEO_HEVCProfileMain10,0},
+    {138240,4147200,40000000,OMX_VIDEO_HEVCMainTierLevel51,OMX_VIDEO_HEVCProfileMain10,0},
+    {138240,4147200,50000000,OMX_VIDEO_HEVCHighTierLevel41,OMX_VIDEO_HEVCProfileMain10,0},
+    {138240,4147200,100000000,OMX_VIDEO_HEVCHighTierLevel5,OMX_VIDEO_HEVCProfileMain10,0},
+    {138240,4147200,1600000000,OMX_VIDEO_HEVCHighTierLevel51,OMX_VIDEO_HEVCProfileMain10,0},
+    {0,0,0,0,0},
+};
+
 
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
@@ -842,6 +877,8 @@ bool venc_dev::venc_open(OMX_U32 codec)
         m_sVenc_cfg.codectype = V4L2_PIX_FMT_HEVC;
         session_qp_range.minqp = 1;
         session_qp_range.maxqp = 51;
+        codec_profile.profile = V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN;
+        profile_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_1;
     }
     session_qp_values.minqp = session_qp_range.minqp;
     session_qp_values.maxqp = session_qp_range.maxqp;
@@ -1516,10 +1553,6 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                     DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level %d, %d",
                                         pParam->eProfile, pParam->eLevel);
                     return false;
-                }
-                if(!venc_set_ltrmode(1, 1)) {
-                   DEBUG_PRINT_ERROR("ERROR: Failed to enable ltrmode");
-                   return false;
                 }
                 break;
             }
@@ -3158,6 +3191,96 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
                 return false;
                 break;
         }
+    }  else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+        if (eProfile == OMX_VIDEO_HEVCProfileMain) {
+            requested_profile.profile = V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN;
+        } else if(eProfile == OMX_VIDEO_HEVCProfileMain10) {
+            requested_profile.profile = V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN10;
+        } else {
+            DEBUG_PRINT_ERROR("ERROR: Unsupported HEVC profile = %lu",
+                    requested_profile.profile);
+            return false;
+        }
+
+        //profile level
+        switch (eLevel) {
+            case OMX_VIDEO_HEVCMainTierLevel1:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_1;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel1:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_1;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel2:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_2;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel2:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_2;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel21:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_2_1;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel21:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_2_1;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel3:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_3;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel3:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_3;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel31:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_3_1;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel31:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_3_1;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel4:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_4;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel4:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_4;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel41:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_4_1;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel41:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_4_1;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel5:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel5:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel51:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5_1;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel51:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5_1;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel52:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5_2;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel52:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5_2;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel6:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_6;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel6:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_6;
+                break;
+            case OMX_VIDEO_HEVCMainTierLevel61:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_6_1;
+                break;
+            case OMX_VIDEO_HEVCHighTierLevel61:
+                requested_level.level = V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_6_1;
+                break;
+            default :
+                DEBUG_PRINT_ERROR("ERROR: Unsupported HEVC level= %lu",
+                        requested_level.level);
+                return false;
+        }
     }
 
     if (!m_profile_set) {
@@ -3170,6 +3293,8 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
             control.id = V4L2_CID_MPEG_VIDEO_MPEG4_PROFILE;
         } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_H263_PROFILE;
+        } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_HEVC_PROFILE;
         } else {
             DEBUG_PRINT_ERROR("Wrong CODEC");
             return false;
@@ -3203,6 +3328,8 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_H263_LEVEL;
         } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_VP8) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_VP8_PROFILE_LEVEL;
+        } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_HEVC_TIER_LEVEL;
         } else {
             DEBUG_PRINT_ERROR("Wrong CODEC");
             return false;
@@ -4376,6 +4503,104 @@ bool venc_dev::venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel)
                 status = false;
                 break;
         }
+    } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+        switch (codec_profile.profile) {
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN:
+                *eProfile = OMX_VIDEO_HEVCProfileMain;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN10:
+                *eProfile = OMX_VIDEO_HEVCProfileMain10;
+                break;
+            default:
+                *eProfile = OMX_VIDEO_HEVCProfileMax;
+                status = false;
+                break;
+        }
+        if (!status) {
+            return status;
+        }
+
+        switch (profile_level.level) {
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_1:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel1;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_1:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel1;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_2:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel2;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_2:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel2;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_2_1:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel21;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_2_1:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel21;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_3:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel3;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_3:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel3;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_3_1:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel31;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_3_1:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel31;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_4:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel4;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_4:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel4;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_4_1:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel41;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_4_1:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel41;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel5;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel5;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5_1:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel51;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5_1:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel51;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_5_2:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel52;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_5_2:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel52;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_6:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel6;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_6:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel6;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_6_1:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel61;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_HIGH_TIER_LEVEL_6_1:
+                *eLevel = OMX_VIDEO_HEVCHighTierLevel61;
+                break;
+            case V4L2_MPEG_VIDC_VIDEO_HEVC_LEVEL_MAIN_TIER_LEVEL_6_2:
+                *eLevel = OMX_VIDEO_HEVCMainTierLevel62;
+                break;
+            default:
+                *eLevel = OMX_VIDEO_HEVCLevelMax;
+                status = false;
+                break;
+        }
     }
 
     return status;
@@ -4530,8 +4755,40 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
             }
         }
         return true;
+    } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+        if (*eProfile == 0) {
+            if (!m_profile_set) {
+                *eProfile = OMX_VIDEO_HEVCProfileMain;
+            } else {
+                switch (codec_profile.profile) {
+                    case V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN:
+                        *eProfile = OMX_VIDEO_HEVCProfileMain;
+                        break;
+                    case V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN10:
+                        *eProfile = OMX_VIDEO_HEVCProfileMain10;
+                        break;
+                    default:
+                        DEBUG_PRINT_ERROR("%s(): Unknown Error", __func__);
+                        return false;
+                }
+            }
+        }
+
+        if (*eLevel == 0 && !m_level_set) {
+            *eLevel = OMX_VIDEO_HEVCLevelMax;
+        }
+
+        if (*eProfile == OMX_VIDEO_HEVCProfileMain) {
+            profile_tbl = (unsigned int const *)hevc_profile_level_table;
+        } else if (*eProfile == OMX_VIDEO_HEVCProfileMain10) {
+            profile_tbl = (unsigned int const *)
+                (&hevc_profile_level_table[HEVC_MAIN10_START]);
+        } else {
+            DEBUG_PRINT_ERROR("Unsupported HEVC profile type %u", (unsigned int)*eProfile);
+            return false;
+        }
     } else {
-        DEBUG_PRINT_LOW("Invalid codec type");
+        DEBUG_PRINT_ERROR("Invalid codec type");
         return false;
     }
 
@@ -4586,7 +4843,8 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
     }
 
     if ((*eLevel == OMX_VIDEO_MPEG4LevelMax) || (*eLevel == OMX_VIDEO_AVCLevelMax)
-            || (*eLevel == OMX_VIDEO_H263LevelMax || (*eLevel == OMX_VIDEO_VP8ProfileMax))) {
+            || (*eLevel == OMX_VIDEO_H263LevelMax) || (*eLevel == OMX_VIDEO_VP8ProfileMax)
+            || (*eLevel == OMX_VIDEO_HEVCLevelMax)) {
         *eLevel = new_level;
     }
 
