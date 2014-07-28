@@ -52,5 +52,5 @@ LOCAL_MODULE:= libdashplayer
 
 LOCAL_MODULE_TAGS := eng
 
-include $(BUILD_SHARED_LIBRARY)
+#include $(BUILD_SHARED_LIBRARY)
 #endif
