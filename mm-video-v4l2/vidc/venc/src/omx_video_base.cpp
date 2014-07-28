@@ -4251,7 +4251,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
                 (unsigned int)profileLevelType->nProfileIndex);
                 eRet = OMX_ErrorNoMore;
             }
-        } else if (m_sOutPortDef.format.video.eCompressionFormat == (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingHevc) {
+        } else if (m_sOutPortDef.format.video.eCompressionFormat == OMX_VIDEO_CodingHEVC) {
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile =  OMX_VIDEO_HEVCProfileMain;
                 profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel52;
