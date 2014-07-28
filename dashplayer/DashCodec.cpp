@@ -534,7 +534,7 @@ status_t DashCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
     }
 
     sp<AMessage> notify = mNotify->dup();
-    notify->setInt32("what", DashCodec::kWhatBuffersAllocated);
+    notify->setInt32("what", CodecBase::kWhatBuffersAllocated);
 
     notify->setInt32("portIndex", portIndex);
 
@@ -2590,7 +2590,7 @@ void DashCodec::sendFormatChange() {
 
 void DashCodec::signalError(OMX_ERRORTYPE error, status_t internalError) {
     sp<AMessage> notify = mNotify->dup();
-    notify->setInt32("what", DashCodec::kWhatError);
+    notify->setInt32("what", CodecBase::kWhatError);
     notify->setInt32("omx-error", error);
     notify->setInt32("err", internalError);
     notify->post();
@@ -2815,7 +2815,7 @@ bool DashCodec::BaseState::onMessageReceived(const sp<AMessage> &msg) {
         case DashCodec::kWhatFlush:
         {
             sp<AMessage> notify = mCodec->mNotify->dup();
-            notify->setInt32("what", DashCodec::kWhatFlushCompleted);
+            notify->setInt32("what", CodecBase::kWhatFlushCompleted);
             notify->post();
             return true;
         }
@@ -2973,7 +2973,7 @@ void DashCodec::BaseState::postFillThisBuffer(BufferInfo *info) {
     CHECK_EQ((int)info->mStatus, (int)BufferInfo::OWNED_BY_US);
 
     sp<AMessage> notify = mCodec->mNotify->dup();
-    notify->setInt32("what", DashCodec::kWhatFillThisBuffer);
+    notify->setInt32("what", CodecBase::kWhatFillThisBuffer);
     notify->setInt32("buffer-id", info->mBufferID);
 
     info->mData->meta()->clear();
@@ -3255,7 +3255,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
                 ALOGE("[%s] saw output EOS", mCodec->mComponentName.c_str());
 
                 sp<AMessage> notify = mCodec->mNotify->dup();
-                notify->setInt32("what", DashCodec::kWhatEOS);
+                notify->setInt32("what", CodecBase::kWhatEOS);
                 notify->setInt32("err", mCodec->mInputEOSResult);
                 notify->post();
 
@@ -3282,7 +3282,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
             info->mData->meta()->setInt64("timeUs", timeUs);
 
             sp<AMessage> notify = mCodec->mNotify->dup();
-            notify->setInt32("what", DashCodec::kWhatDrainThisBuffer);
+            notify->setInt32("what", CodecBase::kWhatDrainThisBuffer);
             notify->setInt32("buffer-id", info->mBufferID);
             notify->setBuffer("buffer", info->mData);
             notify->setInt32("flags", flags);
@@ -3489,7 +3489,7 @@ bool DashCodec::UninitializedState::onMessageReceived(const sp<AMessage> &msg) {
             CHECK(!keepComponentAllocated);
 
             sp<AMessage> notify = mCodec->mNotify->dup();
-            notify->setInt32("what", DashCodec::kWhatShutdownCompleted);
+            notify->setInt32("what", CodecBase::kWhatShutdownCompleted);
             notify->post();
 
             handled = true;
@@ -3617,7 +3617,7 @@ bool DashCodec::UninitializedState::onAllocateComponent(const sp<AMessage> &msg)
 
     {
         sp<AMessage> notify = mCodec->mNotify->dup();
-        notify->setInt32("what", DashCodec::kWhatComponentAllocated);
+        notify->setInt32("what", CodecBase::kWhatComponentAllocated);
         notify->setString("componentName", mCodec->mComponentName.c_str());
         notify->post();
     }
@@ -3664,7 +3664,7 @@ void DashCodec::LoadedState::onShutdown(bool keepComponentAllocated) {
     }
 
     sp<AMessage> notify = mCodec->mNotify->dup();
-    notify->setInt32("what", DashCodec::kWhatShutdownCompleted);
+    notify->setInt32("what", CodecBase::kWhatShutdownCompleted);
     notify->post();
 }
 
@@ -3746,7 +3746,7 @@ bool DashCodec::LoadedState::onConfigureComponent(
 
     {
         sp<AMessage> notify = mCodec->mNotify->dup();
-        notify->setInt32("what", DashCodec::kWhatComponentConfigured);
+        notify->setInt32("what", CodecBase::kWhatComponentConfigured);
         notify->post();
     }
 
@@ -4481,7 +4481,7 @@ void DashCodec::FlushingState::changeStateIfWeOwnAllBuffers() {
         mCodec->waitUntilAllPossibleNativeWindowBuffersAreReturnedToUs();
 
         sp<AMessage> notify = mCodec->mNotify->dup();
-        notify->setInt32("what", DashCodec::kWhatFlushCompleted);
+        notify->setInt32("what", CodecBase::kWhatFlushCompleted);
         notify->post();
 
         mCodec->mPortEOS[kPortIndexInput] =
