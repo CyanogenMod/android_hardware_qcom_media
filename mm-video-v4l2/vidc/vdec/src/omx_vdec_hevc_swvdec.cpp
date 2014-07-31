@@ -123,8 +123,6 @@ extern "C"{
 
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 
-int debug_level = PRIO_ERROR;
-
 static OMX_U32 maxSmoothStreamingWidth = 1920;
 static OMX_U32 maxSmoothStreamingHeight = 1088;
 void* async_message_thread (void *input)

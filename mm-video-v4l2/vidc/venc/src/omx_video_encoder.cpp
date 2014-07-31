@@ -50,7 +50,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 (_s_)->nVersion.nVersion = OMX_SPEC_VERSION
 
 extern int m_pipe;
-int debug_level = PRIO_ERROR;
 static int bframes;
 static int entropy;
 // factory function executed by the core to create instances

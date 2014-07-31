@@ -131,9 +131,9 @@ libmm-vdec-inc          += $(TARGET_OUT_HEADERS)/adreno
 libmm-vdec-inc          += $(TOP)/frameworks/native/include/media/openmax
 libmm-vdec-inc          += $(TOP)/frameworks/native/include/media/hardware
 libmm-vdec-inc          += $(vdec-inc)
-libmm-vdec-inc      += $(TOP)/hardware/qcom/media/libc2dcolorconvert
-libmm-vdec-inc      += $(TOP)/frameworks/av/include/media/stagefright
-libmm-vdec-inc      += $(TARGET_OUT_HEADERS)/mm-video/SwVdec
+libmm-vdec-inc      	+= $(TOP)/hardware/qcom/media/libc2dcolorconvert
+libmm-vdec-inc      	+= $(TOP)/frameworks/av/include/media/stagefright
+libmm-vdec-inc      	+= $(TARGET_OUT_HEADERS)/mm-video/SwVdec
 
 ifeq ($(PLATFORM_SDK_VERSION), 18)  #JB_MR2
 libOmxVdec-def += -DANDROID_JELLYBEAN_MR2=1
@@ -162,12 +162,11 @@ LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
 LOCAL_SRC_FILES         += src/hevc_utils.cpp
+LOCAL_STATIC_LIBRARIES  := libOmxVidcCommon
 ifneq (,$(filter msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze msm8916 msm8994 ferrum,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
 endif
 
-LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
-LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
@@ -210,11 +209,10 @@ endif
 
 LOCAL_SRC_FILES         += src/hevc_utils.cpp
 
-LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
-LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
+LOCAL_STATIC_LIBRARIES  := libOmxVidcCommon
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
-LOCAL_32_BIT_ONLY         := true
+LOCAL_32_BIT_ONLY		:= true
 
 include $(BUILD_SHARED_LIBRARY)
 
