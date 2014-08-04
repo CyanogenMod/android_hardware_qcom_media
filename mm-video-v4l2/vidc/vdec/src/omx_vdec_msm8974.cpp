@@ -662,6 +662,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     memset (&h264_scratch,0,sizeof (OMX_BUFFERHEADERTYPE));
     memset (m_hwdevice_name,0,sizeof(m_hwdevice_name));
     memset(m_demux_offsets, 0, ( sizeof(OMX_U32) * 8192) );
+    memset(&m_custom_buffersize, 0, sizeof(m_custom_buffersize));
     m_demux_entries = 0;
     msg_thread_id = 0;
     async_thread_id = 0;
@@ -3379,6 +3380,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            }
                                        }
                                    }
+                                   if (m_custom_buffersize.input_buffersize
+                                        && (portDefn->nBufferSize > m_custom_buffersize.input_buffersize)) {
+                                       DEBUG_PRINT_ERROR("ERROR: Custom buffer size set by client: %d, trying to set: %d",
+                                               m_custom_buffersize.input_buffersize, portDefn->nBufferSize);
+                                       eRet = OMX_ErrorBadParameter;
+                                       break;
+                                   }
                                    if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
                                            || portDefn->nBufferSize != drv_ctx.ip_buf.buffer_size) {
                                        port_format_changed = true;
@@ -3913,6 +3921,33 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         }
 
 #endif
+        case OMX_QcomIndexParamVideoCustomBufferSize:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoCustomBufferSize");
+            QOMX_VIDEO_CUSTOM_BUFFERSIZE* pParam = (QOMX_VIDEO_CUSTOM_BUFFERSIZE*)paramData;
+            if (pParam->nPortIndex == OMX_CORE_INPUT_PORT_INDEX) {
+                struct v4l2_control control;
+                control.id = V4L2_CID_MPEG_VIDC_VIDEO_BUFFER_SIZE_LIMIT;
+                control.value = pParam->nBufferSize;
+                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                    DEBUG_PRINT_ERROR("Failed to set input buffer size");
+                    eRet = OMX_ErrorUnsupportedSetting;
+                } else {
+                    eRet = get_buffer_req(&drv_ctx.ip_buf);
+                    if (eRet == OMX_ErrorNone) {
+                        m_custom_buffersize.input_buffersize = drv_ctx.ip_buf.buffer_size;
+                        DEBUG_PRINT_HIGH("Successfully set custom input buffer size = %d",
+                            m_custom_buffersize.input_buffersize);
+                    } else {
+                        DEBUG_PRINT_ERROR("Failed to get buffer requirement");
+                    }
+                }
+            } else {
+                DEBUG_PRINT_ERROR("ERROR: Custom buffer size in not supported on output port");
+                eRet = OMX_ErrorBadParameter;
+            }
+            break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("Setparameter: unknown param %d", paramIndex);
                  eRet = OMX_ErrorUnsupportedIndex;
