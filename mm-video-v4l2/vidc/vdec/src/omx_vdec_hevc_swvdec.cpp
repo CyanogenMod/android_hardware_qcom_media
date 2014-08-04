@@ -1826,7 +1826,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
 
     drv_ctx.decoder_format = VDEC_CODECTYPE_HEVC;
-    eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingHevc;
+    eCompressionFormat = OMX_VIDEO_CodingHEVC;
     codec_type_parse = CODEC_TYPE_HEVC;
     m_frame_parser.init_start_codes (codec_type_parse);
     m_frame_parser.init_nal_length(nal_length);
