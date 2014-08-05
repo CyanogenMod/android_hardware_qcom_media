@@ -180,16 +180,13 @@ C2DColorConverter::~C2DColorConverter()
 
     mC2DDestroySurface(mDstSurface);
     mC2DDestroySurface(mSrcSurface);
-    if (isYUVSurface(mSrcFormat)) {
-        delete ((C2D_YUV_SURFACE_DEF *)mSrcSurfaceDef);
-    } else {
-        delete ((C2D_RGB_SURFACE_DEF *)mSrcSurfaceDef);
+
+    if (mSrcSurfaceDef) {
+        free(mSrcSurfaceDef);
     }
 
-    if (isYUVSurface(mDstFormat)) {
-        delete ((C2D_YUV_SURFACE_DEF *)mDstSurfaceDef);
-    } else {
-        delete ((C2D_RGB_SURFACE_DEF *)mDstSurfaceDef);
+    if (mDstSurfaceDef) {
+        free(mDstSurfaceDef);
     }
 
     dlclose(mC2DLibHandle);
@@ -280,7 +277,8 @@ bool C2DColorConverter::isYUVSurface(ColorConvertFormat format)
 void* C2DColorConverter::getDummySurfaceDef(ColorConvertFormat format, size_t width, size_t height, bool isSource)
 {
     if (isYUVSurface(format)) {
-        C2D_YUV_SURFACE_DEF * surfaceDef = new C2D_YUV_SURFACE_DEF;
+        C2D_YUV_SURFACE_DEF * surfaceDef = (C2D_YUV_SURFACE_DEF *)malloc(sizeof(C2D_YUV_SURFACE_DEF));
+        memset(surfaceDef, 0x0, sizeof(C2D_YUV_SURFACE_DEF));
         surfaceDef->format = getC2DFormat(format);
         surfaceDef->width = width;
         surfaceDef->height = height;
@@ -304,7 +302,8 @@ void* C2DColorConverter::getDummySurfaceDef(ColorConvertFormat format, size_t wi
                         &(*surfaceDef));
         return ((void *)surfaceDef);
     } else {
-        C2D_RGB_SURFACE_DEF * surfaceDef = new C2D_RGB_SURFACE_DEF;
+        C2D_RGB_SURFACE_DEF * surfaceDef = (C2D_RGB_SURFACE_DEF *)malloc(sizeof(C2D_RGB_SURFACE_DEF));
+        memset(surfaceDef, 0x0, sizeof(C2D_RGB_SURFACE_DEF));
         surfaceDef->format = getC2DFormat(format);
         surfaceDef->width = width;
         surfaceDef->height = height;
