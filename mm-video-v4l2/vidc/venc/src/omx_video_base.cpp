@@ -1497,7 +1497,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         [2] = OMX_COLOR_FormatYUV420SemiPlanar,
                     };
 
-                    if (index > sizeof(supportedFormats)/sizeof(*supportedFormats))
+                    if (index >= sizeof(supportedFormats)/sizeof(*supportedFormats))
                         eRet = OMX_ErrorNoMore;
                     else {
                         memcpy(portFmt, &m_sInPortFormat, sizeof(m_sInPortFormat));
