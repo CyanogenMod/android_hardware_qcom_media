@@ -8456,8 +8456,13 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
             act_timestamp = prev_ts + frm_int;
             DEBUG_PRINT_LOW("adjust_timestamp: predicted ts[%lld]", act_timestamp);
             prev_ts = act_timestamp;
-        } else
+        } else {
+            if (drv_ctx.picture_order == VDEC_ORDER_DISPLAY && act_timestamp < prev_ts) {
+                // ensure that timestamps can never step backwards when in display order
+                act_timestamp = prev_ts;
+            }
             set_frame_rate(act_timestamp);
+        }
     } else if (frm_int > 0)          // In this case the frame rate was set along
     {                               // with the port definition, start ts with 0
         act_timestamp = prev_ts = 0;  // and correct if a valid ts is received.
