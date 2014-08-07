@@ -249,6 +249,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&hier_p_layers,0,sizeof(hier_p_layers));
     is_searchrange_set = false;
     enable_mv_narrow_searchrange = false;
+    supported_rc_modes = RC_ALL;
     memset(&ltrinfo, 0, sizeof(ltrinfo));
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
@@ -822,6 +823,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
     if (!strncmp(platform_name, "msm8610", 7)) {
         device_name = (OMX_STRING)"/dev/video/q6_enc";
+        supported_rc_modes = (RC_ALL & ~RC_CBR_CFR);
     }
     m_nDriver_fd = open (device_name, O_RDWR);
     if (m_nDriver_fd == 0) {
@@ -4187,19 +4189,27 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
 
     switch (eControlRate) {
         case OMX_Video_ControlRateDisable:
-            control.value=V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_OFF;
+            control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_OFF;
             break;
         case OMX_Video_ControlRateVariableSkipFrames:
-            control.value=V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_VBR_VFR;
+            (supported_rc_modes & RC_VBR_VFR) ?
+                control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_VBR_VFR :
+                status = false;
             break;
         case OMX_Video_ControlRateVariable:
-            control.value=V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_VBR_CFR;
+            (supported_rc_modes & RC_VBR_CFR) ?
+                control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_VBR_CFR :
+                status = false;
             break;
         case OMX_Video_ControlRateConstantSkipFrames:
-            control.value=V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_CBR_VFR;
+            (supported_rc_modes & RC_CBR_VFR) ?
+                control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_CBR_VFR :
+                status = false;
             break;
         case OMX_Video_ControlRateConstant:
-            control.value=V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_CBR_CFR;
+            (supported_rc_modes & RC_CBR_CFR) ?
+                control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_CBR_CFR :
+                status = false;
             break;
         default:
             status = false;
