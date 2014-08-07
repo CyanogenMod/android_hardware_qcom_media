@@ -128,7 +128,6 @@ extern "C" {
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
-int debug_level = PRIO_ERROR;
 
 static OMX_U32 maxSmoothStreamingWidth = 1920;
 static OMX_U32 maxSmoothStreamingHeight = 1088;

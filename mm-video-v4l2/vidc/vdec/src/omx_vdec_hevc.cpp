@@ -136,8 +136,6 @@ extern "C" {
 
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 
-int debug_level = PRIO_ERROR;
-
 void* async_message_thread (void *input)
 {
     OMX_BUFFERHEADERTYPE *buffer;
