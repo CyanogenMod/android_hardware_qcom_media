@@ -352,6 +352,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     OMX_INIT_STRUCT(&m_sOutBufSupplier, OMX_PARAM_BUFFERSUPPLIERTYPE);
     m_sOutBufSupplier.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
 
+    OMX_INIT_STRUCT(&m_sParamInitqp, QOMX_EXTNINDEX_VIDEO_INITIALQP);
+    m_sParamInitqp.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
 
     // mp4 specific init
     OMX_INIT_STRUCT(&m_sParamMPEG4, OMX_VIDEO_PARAM_MPEG4TYPE);
@@ -420,6 +422,10 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     OMX_INIT_STRUCT(&m_sParamLTRMode, QOMX_VIDEO_PARAM_LTRMODE_TYPE);
     m_sParamLTRMode.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sParamLTRMode.eLTRMode = QOMX_VIDEO_LTRMode_Disable;
+
+    OMX_INIT_STRUCT(&m_sParamLTRCount, QOMX_VIDEO_PARAM_LTRCOUNT_TYPE);
+    m_sParamLTRCount.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sParamLTRCount.nCount = 0;
 
     OMX_INIT_STRUCT(&m_sConfigDeinterlace, OMX_VIDEO_CONFIG_DEINTERLACE);
     m_sConfigDeinterlace.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
@@ -962,6 +968,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     }
                     m_sSessionQuantization.nQpI = session_qp->nQpI;
                     m_sSessionQuantization.nQpP = session_qp->nQpP;
+                    m_sSessionQuantization.nQpB = session_qp->nQpB;
                 } else {
                     DEBUG_PRINT_ERROR("ERROR: Unsupported port Index for Session QP setting");
                     eRet = OMX_ErrorBadPortIndex;
@@ -1283,6 +1290,16 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 break;
 
            }
+       case QOMX_IndexParamVideoInitialQp:
+            {
+                if(!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE)QOMX_IndexParamVideoInitialQp)) {
+                    DEBUG_PRINT_ERROR("Request to Enable initial QP failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                memcpy(&m_sParamInitqp, paramData, sizeof(m_sParamInitqp));
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -1571,7 +1588,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
        case QOMX_IndexConfigVideoLTRUse:
             {
                 QOMX_VIDEO_CONFIG_LTRUSE_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRUSE_TYPE*)configData;
-                if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRUse)) {
+                if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRUse)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting LTR use failed");
                     return OMX_ErrorUnsupportedSetting;
                 }
@@ -1581,8 +1598,10 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
         case QOMX_IndexConfigVideoLTRMark:
             {
                 QOMX_VIDEO_CONFIG_LTRMARK_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRMARK_TYPE*)configData;
-                DEBUG_PRINT_ERROR("Setting ltr mark is not supported");
-                return OMX_ErrorUnsupportedSetting;
+                if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRMark)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting LTR mark failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
                 break;
             }
         case OMX_IndexConfigVideoAVCIntraPeriod:

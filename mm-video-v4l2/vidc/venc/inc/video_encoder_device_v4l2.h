@@ -77,8 +77,15 @@ struct msm_venc_profilelevel {
 
 struct msm_venc_sessionqp {
     unsigned long    iframeqp;
-    unsigned long    pframqp;
-    unsigned long    bframqp;
+    unsigned long    pframeqp;
+    unsigned long    bframeqp;
+};
+
+struct msm_venc_initqp {
+    unsigned long    iframeqp;
+    unsigned long    pframeqp;
+    unsigned long    bframeqp;
+    unsigned long    enableinitqp;
 };
 
 struct msm_venc_qprange {
@@ -178,6 +185,10 @@ struct msm_venc_hierlayers {
     unsigned int numlayers;
 };
 
+struct msm_venc_ltrinfo {
+    unsigned int enabled;
+    unsigned int count;
+};
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -271,6 +282,7 @@ class venc_dev
         int venc_set_format(int);
         bool deinterlace_enabled;
     private:
+        OMX_U32                             m_codec;
         struct msm_venc_basecfg             m_sVenc_cfg;
         struct msm_venc_ratectrlcfg         rate_ctrl;
         struct msm_venc_targetbitrate       bitrate;
@@ -282,6 +294,7 @@ class venc_dev
         struct msm_venc_allocatorproperty   m_sInput_buff_property;
         struct msm_venc_allocatorproperty   m_sOutput_buff_property;
         struct msm_venc_sessionqp           session_qp;
+        struct msm_venc_initqp              init_qp;
         struct msm_venc_qprange             session_qp_range;
         struct msm_venc_qprange             session_qp_values;
         struct msm_venc_multiclicecfg       multislice;
@@ -294,6 +307,7 @@ class venc_dev
         struct msm_venc_idrperiod           idrperiod;
         struct msm_venc_slice_delivery      slice_mode;
         struct msm_venc_hierlayers          hier_p_layers;
+        struct msm_venc_ltrinfo             ltrinfo;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -319,8 +333,9 @@ class venc_dev
         bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
         bool venc_set_deinterlace(OMX_U32 enable);
         bool venc_set_ltrmode(OMX_U32 enable, OMX_U32 count);
-        bool venc_set_useltr();
-        bool venc_set_markltr();
+        bool venc_set_useltr(OMX_U32 frameIdx);
+        bool venc_set_markltr(OMX_U32 frameIdx);
+        bool venc_enable_initial_qp(QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp);
         bool venc_set_inband_video_header(OMX_BOOL enable);
         bool venc_set_au_delimiter(OMX_BOOL enable);
         bool venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type, OMX_U32 num_layers);

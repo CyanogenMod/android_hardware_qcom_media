@@ -209,6 +209,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&capability, 0, sizeof(capability));
     memset(&m_debug,0,sizeof(m_debug));
     memset(&hier_p_layers,0,sizeof(hier_p_layers));
+    memset(&ltrinfo, 0, sizeof(ltrinfo));
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_value[0] = '\0';
@@ -738,6 +739,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     m_sVenc_cfg.fps_den = 1;
     m_sVenc_cfg.targetbitrate = 64000;
     m_sVenc_cfg.inputformat= V4L2_PIX_FMT_NV12;
+    m_codec = codec;
 
     if (codec == OMX_VIDEO_CodingMPEG4) {
         m_sVenc_cfg.codectype = V4L2_PIX_FMT_MPEG4;
@@ -1396,10 +1398,21 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                                         pParam->eProfile, pParam->eLevel);
                     return false;
                 }
+
                 if(!venc_set_ltrmode(1, 1)) {
                    DEBUG_PRINT_ERROR("ERROR: Failed to enable ltrmode");
                    return false;
                 }
+
+                 // For VP8, hier-p and ltr are mutually exclusive features in firmware
+                 // Disable hier-p if ltr is enabled.
+                 if (m_codec == OMX_VIDEO_CodingVPX) {
+                     DEBUG_PRINT_LOW("Disable Hier-P as LTR is being set");
+                     if (!venc_set_hier_layers(QOMX_HIERARCHICALCODING_P, 0)) {
+                        DEBUG_PRINT_ERROR("Disabling Hier P count failed");
+                     }
+                 }
+
                 break;
             }
         case OMX_IndexParamVideoIntraRefresh:
@@ -1462,7 +1475,6 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoQuantization");
                 OMX_VIDEO_PARAM_QUANTIZATIONTYPE *session_qp =
                     (OMX_VIDEO_PARAM_QUANTIZATIONTYPE *)paramData;
-
                 if (session_qp->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     if (venc_set_session_qp (session_qp->nQpI,
                                 session_qp->nQpP,
@@ -1474,6 +1486,20 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                     DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexParamVideoQuantization");
                 }
 
+                break;
+            }
+        case QOMX_IndexParamVideoInitialQp:
+            {
+                QOMX_EXTNINDEX_VIDEO_INITIALQP * initqp =
+                    (QOMX_EXTNINDEX_VIDEO_INITIALQP *)paramData;
+                 if (initqp->bEnableInitQp) {
+                    DEBUG_PRINT_LOW("Enable initial QP: %d", initqp->bEnableInitQp);
+                    if(venc_enable_initial_qp(initqp) == false) {
+                       DEBUG_PRINT_ERROR("ERROR: Failed to enable initial QP");
+                       return OMX_ErrorUnsupportedSetting;
+                     }
+                 } else
+                    DEBUG_PRINT_ERROR("ERROR: setting QOMX_IndexParamVideoEnableInitialQp");
                 break;
             }
         case OMX_QcomIndexParamVideoQPRange:
@@ -1572,18 +1598,45 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
            {
                QOMX_VIDEO_HIERARCHICALLAYERS* pParam =
                    (QOMX_VIDEO_HIERARCHICALLAYERS*)paramData;
+
                 if (pParam->nPortIndex == PORT_INDEX_OUT) {
                     if (!venc_set_hier_layers(pParam->eHierarchicalCodingType, pParam->nNumLayers)) {
                         DEBUG_PRINT_ERROR("Setting Hier P count failed");
-                        return OMX_ErrorUnsupportedSetting;
+                        return false;
                     }
                 } else {
                     DEBUG_PRINT_ERROR("OMX_QcomIndexHierarchicalStructure called on wrong port(%d)", pParam->nPortIndex);
-                    return OMX_ErrorBadPortIndex;
+                    return false;
                 }
 
+                // For VP8, hier-p and ltr are mutually exclusive features in firmware
+                // Disable ltr if hier-p is enabled.
+                if (m_codec == OMX_VIDEO_CodingVPX) {
+                    DEBUG_PRINT_LOW("Disable LTR as HIER-P is being set");
+                    if(!venc_set_ltrmode(0, 1)) {
+                         DEBUG_PRINT_ERROR("ERROR: Failed to disable ltrmode");
+                     }
+                }
                 break;
            }
+        case OMX_QcomIndexParamVideoLTRCount:
+            {
+                DEBUG_PRINT_LOW("venc_set_param: OMX_QcomIndexParamVideoLTRCount");
+                OMX_QCOM_VIDEO_PARAM_LTRCOUNT_TYPE* pParam =
+                        (OMX_QCOM_VIDEO_PARAM_LTRCOUNT_TYPE*)paramData;
+                if (pParam->nCount > 0) {
+                    if (venc_set_ltrmode(1, pParam->nCount) == false) {
+                        DEBUG_PRINT_ERROR("ERROR: Enable LTR mode failed");
+                        return false;
+                    }
+                } else {
+                    if (venc_set_ltrmode(0, 0) == false) {
+                        DEBUG_PRINT_ERROR("ERROR: Disable LTR mode failed");
+                        return false;
+                    }
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -1725,27 +1778,55 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
-       case OMX_IndexConfigVideoVp8ReferenceFrame:
-           {
-               OMX_VIDEO_VP8REFERENCEFRAMETYPE* vp8refframe = (OMX_VIDEO_VP8REFERENCEFRAMETYPE*) configData;
+        case OMX_IndexConfigVideoVp8ReferenceFrame:
+            {
+                OMX_VIDEO_VP8REFERENCEFRAMETYPE* vp8refframe = (OMX_VIDEO_VP8REFERENCEFRAMETYPE*) configData;
                 DEBUG_PRINT_LOW("venc_set_config: OMX_IndexConfigVideoVp8ReferenceFrame");
                 if ((vp8refframe->nPortIndex == (OMX_U32)PORT_INDEX_IN) &&
-                    (vp8refframe->bUseGoldenFrame)) {
-                    if(venc_set_useltr() == false) {
+                        (vp8refframe->bUseGoldenFrame)) {
+                    if(venc_set_useltr(0x1) == false) {
                         DEBUG_PRINT_ERROR("ERROR: use goldenframe failed");
                         return false;
                     }
                 } else if((vp8refframe->nPortIndex == (OMX_U32)PORT_INDEX_IN) &&
-                    (vp8refframe->bGoldenFrameRefresh)) {
-                    if(venc_set_markltr() == false) {
+                        (vp8refframe->bGoldenFrameRefresh)) {
+                    if(venc_set_markltr(0x1) == false) {
                         DEBUG_PRINT_ERROR("ERROR: Setting goldenframe failed");
                         return false;
                     }
                 } else {
                     DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_IndexConfigVideoVp8ReferenceFrame");
                 }
-               break;
-           }
+                break;
+            }
+        case OMX_QcomIndexConfigVideoLTRUse:
+            {
+                OMX_QCOM_VIDEO_CONFIG_LTRUSE_TYPE* pParam = (OMX_QCOM_VIDEO_CONFIG_LTRUSE_TYPE*)configData;
+                DEBUG_PRINT_LOW("venc_set_config: OMX_QcomIndexConfigVideoLTRUse");
+                if (pParam->nPortIndex == (OMX_U32)PORT_INDEX_IN) {
+                    if (venc_set_useltr(pParam->nID) == false) {
+                        DEBUG_PRINT_ERROR("ERROR: Use LTR failed");
+                        return false;
+                    }
+                } else {
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_QcomIndexConfigVideoLTRUse");
+                }
+                break;
+            }
+        case OMX_QcomIndexConfigVideoLTRMark:
+            {
+                OMX_QCOM_VIDEO_CONFIG_LTRMARK_TYPE* pParam = (OMX_QCOM_VIDEO_CONFIG_LTRMARK_TYPE*)configData;
+                DEBUG_PRINT_LOW("venc_set_config: OMX_QcomIndexConfigVideoLTRMark");
+                if (pParam->nPortIndex == (OMX_U32)PORT_INDEX_IN) {
+                    if (venc_set_markltr(pParam->nID) == false) {
+                        DEBUG_PRINT_ERROR("ERROR: Mark LTR failed");
+                        return false;
+                    }
+                }  else {
+                    DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_QcomIndexConfigVideoLTRMark");
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -1936,7 +2017,10 @@ void venc_dev::venc_config_print()
             bitrate.target_bitrate, rate_ctrl.rcmode, intra_period.num_pframes);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: qpI: %ld, qpP: %ld, qpb: %ld",
-            session_qp.iframeqp, session_qp.pframqp,session_qp.bframqp);
+            session_qp.iframeqp, session_qp.pframeqp, session_qp.bframeqp);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Init_qpI: %ld, Init_qpP: %ld, Init_qpb: %ld",
+            init_qp.iframeqp, init_qp.pframeqp, init_qp.bframeqp);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: minQP: %d, maxQP: %d",
             session_qp_values.minqp, session_qp_values.maxqp);
@@ -1956,6 +2040,8 @@ void venc_dev::venc_config_print()
             intra_refresh.mbcount, hec.header_extension, idrperiod.idrperiod);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: Hier-P layers: %d", hier_p_layers.numlayers);
+    DEBUG_PRINT_HIGH("ENC_CONFIG: LTR Enabled: %d, Count: %d",
+            ltrinfo.enabled, ltrinfo.count);
 
 }
 
@@ -2462,6 +2548,51 @@ bool venc_dev::venc_set_slice_delivery_mode(OMX_U32 enable)
     return true;
 }
 
+bool venc_dev::venc_enable_initial_qp(QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp)
+{
+    int rc;
+    struct v4l2_control control;
+    struct v4l2_ext_control ctrl[4];
+    struct v4l2_ext_controls controls;
+
+    ctrl[0].id = V4L2_CID_MPEG_VIDC_VIDEO_I_FRAME_QP;
+    ctrl[0].value = initqp->nQpI;
+    ctrl[1].id = V4L2_CID_MPEG_VIDC_VIDEO_P_FRAME_QP;
+    ctrl[1].value = initqp->nQpP;
+    ctrl[2].id = V4L2_CID_MPEG_VIDC_VIDEO_B_FRAME_QP;
+    ctrl[2].value = initqp->nQpB;
+    ctrl[3].id = V4L2_CID_MPEG_VIDC_VIDEO_ENABLE_INITIAL_QP;
+    ctrl[3].value = initqp->bEnableInitQp;
+
+    controls.count = 4;
+    controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+    controls.controls = ctrl;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x val=%d, id=%x val=%d, id=%x val=%d, id=%x val=%d",
+                    controls.controls[0].id, controls.controls[0].value,
+                    controls.controls[1].id, controls.controls[1].value,
+                    controls.controls[2].id, controls.controls[2].value,
+                    controls.controls[3].id, controls.controls[3].value);
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_EXT_CTRLS, &controls);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set session_qp %d", rc);
+        return false;
+    }
+
+    init_qp.iframeqp = initqp->nQpI;
+    init_qp.pframeqp = initqp->nQpP;
+    init_qp.bframeqp = initqp->nQpB;
+    init_qp.enableinitqp = initqp->bEnableInitQp;
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%x val=%d, id=%x val=%d, id=%x val=%d, id=%x val=%d",
+                    controls.controls[0].id, controls.controls[0].value,
+                    controls.controls[1].id, controls.controls[1].value,
+                    controls.controls[2].id, controls.controls[2].value,
+                    controls.controls[3].id, controls.controls[3].value);
+    return true;
+}
+
 bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U32 b_frame_qp)
 {
     int rc;
@@ -2494,7 +2625,7 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U3
 
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
 
-    session_qp.pframqp = control.value;
+    session_qp.pframeqp = control.value;
 
     if ((codec_profile.profile == V4L2_MPEG_VIDEO_H264_PROFILE_MAIN) ||
             (codec_profile.profile == V4L2_MPEG_VIDEO_H264_PROFILE_HIGH)) {
@@ -2512,7 +2643,7 @@ bool venc_dev::venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U3
 
         DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
 
-        session_qp.bframqp = control.value;
+        session_qp.bframeqp = control.value;
     }
 
     return true;
@@ -3438,10 +3569,12 @@ bool venc_dev::venc_set_ltrmode(OMX_U32 enable, OMX_U32 count)
         ctrl[0].value = V4L2_MPEG_VIDC_VIDEO_LTR_MODE_DISABLE;
 
     ctrl[1].id = V4L2_CID_MPEG_VIDC_VIDEO_LTRCOUNT;
-    if (count)
+    if (enable && count > 0)
         ctrl[1].value = count;
-    else
+    else if (enable)
         ctrl[1].value = 1;
+    else
+        ctrl[1].value = 0;
 
     controls.count = 2;
     controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
@@ -3456,6 +3589,8 @@ bool venc_dev::venc_set_ltrmode(OMX_U32 enable, OMX_U32 count)
         DEBUG_PRINT_ERROR("Failed to set ltrmode %d", rc);
         return false;
     }
+    ltrinfo.enabled = enable;
+    ltrinfo.count = count;
 
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, val=%d id=%x, val=%d",
                     controls.controls[0].id, controls.controls[0].value,
@@ -3471,14 +3606,14 @@ bool venc_dev::venc_set_ltrmode(OMX_U32 enable, OMX_U32 count)
     return true;
 }
 
-bool venc_dev::venc_set_useltr()
+bool venc_dev::venc_set_useltr(OMX_U32 frameIdx)
 {
     DEBUG_PRINT_LOW("venc_use_goldenframe");
     int rc = true;
     struct v4l2_control control;
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_USELTRFRAME;
-    control.value = 1;
+    control.value = frameIdx;
 
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
     if (rc) {
@@ -3491,14 +3626,14 @@ bool venc_dev::venc_set_useltr()
     return true;
 }
 
-bool venc_dev::venc_set_markltr()
+bool venc_dev::venc_set_markltr(OMX_U32 frameIdx)
 {
     DEBUG_PRINT_LOW("venc_set_goldenframe");
     int rc = true;
     struct v4l2_control control;
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_MARKLTRFRAME;
-    control.value = 1;
+    control.value = frameIdx;
 
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
     if (rc) {
