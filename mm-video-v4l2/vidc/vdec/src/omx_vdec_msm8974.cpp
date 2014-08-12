@@ -174,6 +174,8 @@ void* async_message_thread (void *input)
                     vdec_msg.msgdata.output_frame.framesize.top = plane[0].reserved[3];
                     vdec_msg.msgdata.output_frame.framesize.right = plane[0].reserved[4];
                     vdec_msg.msgdata.output_frame.framesize.bottom = plane[0].reserved[5];
+                    vdec_msg.msgdata.output_frame.picsize.frame_width = plane[0].reserved[6];
+                    vdec_msg.msgdata.output_frame.picsize.frame_height = plane[0].reserved[7];
                 }
                 if (omx->async_message_process(input,&vdec_msg) < 0) {
                     DEBUG_PRINT_HIGH("async_message_thread Exited");
@@ -1214,42 +1216,25 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
 
                                         }  else if (p2 == OMX_IndexConfigCommonOutputCrop) {
                                             DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexConfigCommonOutputCrop");
-                                            struct v4l2_format fmt;
 
-                                            memset(&fmt, 0, sizeof(struct v4l2_format));
-                                            fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-                                            fmt.fmt.pix_mp.pixelformat = pThis->capture_capability;
-                                            fmt.fmt.pix_mp.height = pThis->drv_ctx.video_resolution.frame_height;
-                                            fmt.fmt.pix_mp.width = pThis->drv_ctx.video_resolution.frame_width;
+                                            /* Check if resolution is changed in smooth streaming mode */
+                                            if (pThis->m_smoothstreaming_mode &&
+                                                (pThis->framesize.nWidth !=
+                                                    pThis->drv_ctx.video_resolution.frame_width) ||
+                                                (pThis->framesize.nHeight !=
+                                                    pThis->drv_ctx.video_resolution.frame_height)) {
 
-                                            if (ioctl(pThis->drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt)) {
-                                                DEBUG_PRINT_ERROR("VIDIOC_G_FMT failed in port settings changed sufficient event");
-                                                break;
-                                            }
-                                            /* Check if resolution is changed */
-                                            if ((fmt.fmt.pix_mp.width !=
-                                                    pThis->drv_ctx.video_resolution.frame_width)
-                                                || (fmt.fmt.pix_mp.height !=
-                                                    pThis->drv_ctx.video_resolution.frame_height)
-                                                || (fmt.fmt.pix_mp.plane_fmt[0].bytesperline !=
-                                                    pThis->drv_ctx.video_resolution.stride)
-                                                || (fmt.fmt.pix_mp.plane_fmt[0].reserved[0] !=
-                                                    pThis->drv_ctx.video_resolution.scan_lines)) {
-
-                                                DEBUG_PRINT_HIGH("Resolution changed from: wxh = %dx%d, sxsc = %dx%d, to: wxh = %dx%d, sxsc = %dx%d",
+                                                DEBUG_PRINT_HIGH("Resolution changed from: wxh = %dx%d to: wxh = %dx%d",
+                                                        pThis->framesize.nWidth,
+                                                        pThis->framesize.nHeight,
                                                         pThis->drv_ctx.video_resolution.frame_width,
-                                                        pThis->drv_ctx.video_resolution.frame_height,
-                                                        pThis->drv_ctx.video_resolution.stride,
-                                                        pThis->drv_ctx.video_resolution.scan_lines,
-                                                        fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height,
-                                                        fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
-                                                        fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
+                                                        pThis->drv_ctx.video_resolution.frame_height);
 
                                                 /* Update new resolution */
-                                                pThis->update_resolution(fmt.fmt.pix_mp.width,
-                                                        fmt.fmt.pix_mp.height,
-                                                        fmt.fmt.pix_mp.plane_fmt[0].bytesperline,
-                                                        fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
+                                                pThis->framesize.nWidth =
+                                                       pThis->drv_ctx.video_resolution.frame_width;
+                                                pThis->framesize.nHeight =
+                                                       pThis->drv_ctx.video_resolution.frame_height;
 
                                                 /* Update C2D with new resolution */
                                                 if (!pThis->client_buffers.update_buffer_req()) {
@@ -1848,6 +1833,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             /*TODO: How to handle this case */
             DEBUG_PRINT_ERROR("Failed to set format on capture port");
         }
+        memset(&framesize, 0, sizeof(OMX_FRAMESIZETYPE));
+        framesize.nWidth = drv_ctx.video_resolution.frame_width;
+        framesize.nHeight = drv_ctx.video_resolution.frame_height;
+
+        memset(&rectangle, 0, sizeof(OMX_CONFIG_RECTTYPE));
+        rectangle.nWidth = drv_ctx.video_resolution.frame_width;
+        rectangle.nHeight = drv_ctx.video_resolution.frame_height;
+
         DEBUG_PRINT_HIGH("Set Format was successful");
         if (secure_mode) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_SECURE;
@@ -6885,8 +6878,8 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         BufferDim_t dim;
         private_handle_t *private_handle = NULL;
         if (is_down_scalar_enabled) {
-             dim.sliceWidth = drv_ctx.video_resolution.stride;
-             dim.sliceHeight = drv_ctx.video_resolution.scan_lines;
+            dim.sliceWidth = framesize.nWidth;
+            dim.sliceHeight = framesize.nHeight;
         } else {
              dim.sliceWidth = drv_ctx.video_resolution.frame_width;
              dim.sliceHeight = drv_ctx.video_resolution.frame_height;
@@ -7115,17 +7108,26 @@ int omx_vdec::async_message_process (void *context, void* message)
                         || (omx->drv_ctx.frame_size.left != vdec_msg->msgdata.output_frame.framesize.left)
                         || (omx->drv_ctx.frame_size.top != vdec_msg->msgdata.output_frame.framesize.top)
                         || (omx->drv_ctx.frame_size.right != vdec_msg->msgdata.output_frame.framesize.right)
-                        || (omx->drv_ctx.frame_size.bottom != vdec_msg->msgdata.output_frame.framesize.bottom))) {
+                        || (omx->drv_ctx.frame_size.bottom != vdec_msg->msgdata.output_frame.framesize.bottom)
+                        || (omx->drv_ctx.video_resolution.frame_width != vdec_msg->msgdata.output_frame.picsize.frame_width)
+                        || (omx->drv_ctx.video_resolution.frame_height != vdec_msg->msgdata.output_frame.picsize.frame_height) )) {
 
-                        DEBUG_PRINT_HIGH("Paramters Changed From: Len: %u, L: %u, T: %u, R: %u, B: %u --> Len: %u, L: %u, T: %u, R: %u, B: %u",
-                                omx->prev_n_filled_len, omx->drv_ctx.frame_size.left,
-                                omx->drv_ctx.frame_size.top, omx->drv_ctx.frame_size.right,
-                                omx->drv_ctx.frame_size.bottom, omxhdr->nFilledLen,
+                        DEBUG_PRINT_HIGH("Paramters Changed From: Len: %u, WxH: %dx%d, L: %u, T: %u, R: %u, B: %u --> Len: %u, WxH: %dx%d, L: %u, T: %u, R: %u, B: %u",
+                                omx->prev_n_filled_len,
+                                omx->drv_ctx.video_resolution.frame_width,
+                                omx->drv_ctx.video_resolution.frame_height,
+                                omx->drv_ctx.frame_size.left, omx->drv_ctx.frame_size.top,
+                                omx->drv_ctx.frame_size.right, omx->drv_ctx.frame_size.bottom,
+                                omxhdr->nFilledLen, vdec_msg->msgdata.output_frame.picsize.frame_width,
+                                vdec_msg->msgdata.output_frame.picsize.frame_height,
                                 vdec_msg->msgdata.output_frame.framesize.left,
                                 vdec_msg->msgdata.output_frame.framesize.top,
                                 vdec_msg->msgdata.output_frame.framesize.right,
                                 vdec_msg->msgdata.output_frame.framesize.bottom);
 
+                        memcpy(&omx->drv_ctx.video_resolution,
+                                &vdec_msg->msgdata.output_frame.picsize,
+                                sizeof(struct vdec_picsize));
                         memcpy(&omx->drv_ctx.frame_size,
                                 &vdec_msg->msgdata.output_frame.framesize,
                                 sizeof(struct vdec_framesize));
