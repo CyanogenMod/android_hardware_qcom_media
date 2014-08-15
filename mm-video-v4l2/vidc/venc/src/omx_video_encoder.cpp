@@ -722,8 +722,6 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #ifdef _MSM8974_
                     if (pParam->nBFrames || bframes)
                         mp4_param.nBFrames = (pParam->nBFrames > (unsigned int) bframes)? pParam->nBFrames : bframes;
-                    if (mp4_param.nBFrames > 3)
-                        mp4_param.nBFrames = 3;
                     DEBUG_PRINT_HIGH("MPEG4: %u BFrames are being set", (unsigned int)mp4_param.nBFrames);
 #endif
 
@@ -787,11 +785,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #ifdef _MSM8974_
                     if (pParam->nBFrames || bframes) {
                         avc_param.nBFrames = (pParam->nBFrames > (unsigned int) bframes)? pParam->nBFrames : bframes;
-                        avc_param.nRefFrames = avc_param.nBFrames + 1;
-                    }
-                    if (avc_param.nBFrames > 3) {
-                        avc_param.nBFrames = 3;
-                        avc_param.nRefFrames = avc_param.nBFrames + 1;
+                        avc_param.nRefFrames = (avc_param.nBFrames < 4)? avc_param.nBFrames + 1 : 4;
                     }
                     DEBUG_PRINT_HIGH("AVC: RefFrames: %u, BFrames: %u", (unsigned int)avc_param.nRefFrames, (unsigned int)avc_param.nBFrames);
 
