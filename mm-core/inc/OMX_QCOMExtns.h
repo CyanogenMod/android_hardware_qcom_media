@@ -446,7 +446,50 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* VP8 Hierarchical P support */
     OMX_QcomIndexHierarchicalStructure = 0x7F000037,
+
+    /*"OMX.QCOM.index.param.video.LTRCount"*/
+    OMX_QcomIndexParamVideoLTRCount = QOMX_IndexParamVideoLTRCount,
+
+    /*"OMX.QCOM.index.config.video.LTRUse"*/
+    OMX_QcomIndexConfigVideoLTRUse = QOMX_IndexConfigVideoLTRUse,
+
+    /*"OMX.QCOM.index.config.video.LTRMark"*/
+    OMX_QcomIndexConfigVideoLTRMark = QOMX_IndexConfigVideoLTRMark,
+    /* Enable InitialQP index */
+    QOMX_IndexParamVideoInitialQp = 0x7F000038,
 };
+
+/**
+ * Initial QP parameter.  This structure is used to enable
+ * vendor specific extension to let client enable setting
+ * initial QP values to I P B Frames
+ *
+ * STRUCT MEMBERS:
+ *  nSize              : Size of Structure in bytes
+ *  nVersion           : OpenMAX IL specification version information
+ *  nPortIndex         : Index of the port to which this structure applies
+ *  OMX_U32 nQpI       : First Iframe QP
+ *  OMX_U32 nQpP       : First Pframe QP
+ *  OMX_U32 nQpB       : First Bframe QP
+ *  OMX_U32 bEnableInitQp : Bit field indicating which frame type(s) shall
+ *                             use the specified initial QP.
+ *                          Bit 0: Enable initial QP for I/IDR
+ *                                 and use value specified in nInitQpI
+ *                          Bit 1: Enable initial QP for P
+ *                                 and use value specified in nInitQpP
+ *                          Bit 2: Enable initial QP for B
+ *                                 and use value specified in nInitQpB
+ */
+
+typedef struct QOMX_EXTNINDEX_VIDEO_INITIALQP {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nQpI;
+    OMX_U32 nQpP;
+    OMX_U32 nQpB;
+    OMX_U32 bEnableInitQp;
+} QOMX_EXTNINDEX_VIDEO_INITIALQP;
 
 /**
  * Extension index parameter.  This structure is used to enable
@@ -554,6 +597,12 @@ typedef struct QOMX_VIDEO_PARAM_LTRCOUNT_TYPE {
     OMX_U32 nCount;
 } QOMX_VIDEO_PARAM_LTRCOUNT_TYPE;
 
+
+/**
+ * This should be used with OMX_QcomIndexParamVideoLTRCount extension.
+ */
+typedef QOMX_VIDEO_PARAM_LTRCOUNT_TYPE OMX_QCOM_VIDEO_PARAM_LTRCOUNT_TYPE;
+
 /**
  * LTR period index parameter.  This structure is used
  * to enable vendor specific extension on output port
@@ -579,12 +628,20 @@ typedef struct QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE {
  *  nSize              : Size of Structure in bytes
  *  nVersion           : OpenMAX IL specification version information
  *  nPortIndex         : Index of the port to which this structure applies
+ *  nID                : Specifies the identifier of the LTR frame to be marked
+ *                       as reference frame for encoding subsequent frames.
  */
 typedef struct QOMX_VIDEO_CONFIG_LTRMARK_TYPE {
     OMX_U32 nSize;
     OMX_VERSIONTYPE nVersion;
     OMX_U32 nPortIndex;
+    OMX_U32 nID;
 } QOMX_VIDEO_CONFIG_LTRMARK_TYPE;
+
+/**
+ * This should be used with OMX_QcomIndexConfigVideoLTRMark extension.
+ */
+typedef QOMX_VIDEO_CONFIG_LTRMARK_TYPE OMX_QCOM_VIDEO_CONFIG_LTRMARK_TYPE;
 
 /**
  * Specifies an LTR frame to encode subsequent frames.
@@ -608,6 +665,11 @@ typedef struct QOMX_VIDEO_CONFIG_LTRUSE_TYPE {
     OMX_U32 nID;
     OMX_U32 nFrames;
 } QOMX_VIDEO_CONFIG_LTRUSE_TYPE;
+
+/**
+ * This should be used with OMX_QcomIndexConfigVideoLTRUse extension.
+ */
+typedef QOMX_VIDEO_CONFIG_LTRUSE_TYPE OMX_QCOM_VIDEO_CONFIG_LTRUSE_TYPE;
 
 /**
  * Enumeration used to define the video encoder modes

@@ -1748,6 +1748,14 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
             }
             break;
+        case OMX_QcomIndexParamVideoLTRCount:
+            {
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamVideoLTRCount");
+                OMX_QCOM_VIDEO_PARAM_LTRCOUNT_TYPE *pParam =
+                        reinterpret_cast<OMX_QCOM_VIDEO_PARAM_LTRCOUNT_TYPE*>(paramData);
+                memcpy(pParam, &m_sParamLTRCount, sizeof(m_sParamLTRCount));
+                break;
+            }
 #endif
         case QOMX_IndexParamVideoSyntaxHdr:
             {
@@ -1799,6 +1807,12 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 QOMX_VIDEO_HIERARCHICALLAYERS* hierp = (QOMX_VIDEO_HIERARCHICALLAYERS*) paramData;
                 DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexHierarchicalStructure");
                 memcpy(hierp, &m_sHierLayers, sizeof(m_sHierLayers));
+                break;
+            }
+            {
+                 QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp =
+                     reinterpret_cast<QOMX_EXTNINDEX_VIDEO_INITIALQP *>(paramData);
+                     memcpy(initqp, &m_sParamInitqp, sizeof(m_sParamInitqp));
                 break;
             }
         case OMX_IndexParamVideoSliceFMO:
