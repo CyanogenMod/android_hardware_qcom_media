@@ -1167,6 +1167,14 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
             return false;
         }
 
+        // Increase buffer-header count for metadata-mode on input port
+        // to improve buffering and reduce bottlenecks in clients
+        if (metadatamode && (bufreq.count < 16)) {
+            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 16",
+                bufreq.count);
+            bufreq.count = 16;
+        }
+
         m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
         *min_buff_count = m_sInput_buff_property.mincount;
         *actual_buff_count = m_sInput_buff_property.actualcount;
