@@ -1960,6 +1960,16 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
         drv_ctx.idr_only_decoding = 0;
 
+        property_get("vidc.debug.turbo", property_value, "0");
+        if (atoi(property_value)) {
+            DEBUG_PRINT_HIGH("Turbo mode debug property enabled");
+            control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+            control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO;
+            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                DEBUG_PRINT_ERROR("Failed to set turbo mode");
+            }
+        }
+
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
         if (strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",

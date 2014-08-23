@@ -814,12 +814,12 @@ bool venc_dev::venc_open(OMX_U32 codec)
     unsigned int alignment = 0,buffer_size = 0, temp =0;
     struct v4l2_control control;
     OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_enc";
-    char narrow_searchrange[PROPERTY_VALUE_MAX] = {0};
+    char property_value[PROPERTY_VALUE_MAX] = {0};
     char platform_name[PROPERTY_VALUE_MAX] = {0};
 
     property_get("ro.board.platform", platform_name, "0");
-    property_get("vidc.enc.narrow.searchrange", narrow_searchrange, "0");
-    if (atoi(narrow_searchrange)) {
+    property_get("vidc.enc.narrow.searchrange", property_value, "0");
+    if (atoi(property_value)) {
         enable_mv_narrow_searchrange = true;
         sp<IBinder> display(SurfaceComposerClient::getBuiltInDisplay(
                         ISurfaceComposer::eDisplayIdMain));
@@ -1019,6 +1019,16 @@ bool venc_dev::venc_open(OMX_U32 codec)
         control.value = 0x7fffffff;
         if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control))
             DEBUG_PRINT_ERROR("Failed to set V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAME\n");
+    }
+
+    property_get("vidc.debug.turbo", property_value, "0");
+    if (atoi(property_value)) {
+        DEBUG_PRINT_HIGH("Turbo mode debug property enabled");
+        control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+        control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO;
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to set turbo mode");
+        }
     }
 
     return true;
