@@ -1105,20 +1105,20 @@ bool venc_dev::venc_get_buf_req(unsigned long *min_buff_count,
         else
             bufreq.count = 2;
 
+        // Increase buffer-header count for metadata-mode on input port
+        // to improve buffering and reduce bottlenecks in clients
+        if (metadatamode && (bufreq.count < 9)) {
+            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 16",
+                bufreq.count);
+            bufreq.count = 9;
+        }
+
         bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
 
         if (ret) {
             DEBUG_PRINT_ERROR("VIDIOC_REQBUFS OUTPUT_MPLANE Failed");
             return false;
-        }
-
-        // Increase buffer-header count for metadata-mode on input port
-        // to improve buffering and reduce bottlenecks in clients
-        if (metadatamode && (bufreq.count < 16)) {
-            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 16",
-                bufreq.count);
-            bufreq.count = 16;
         }
 
         m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
