@@ -571,6 +571,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     secure_mode(false),
     m_profile(0),
     client_set_fps(false),
+    ignore_not_coded_vops(true),
     m_last_rendered_TS(-1)
 {
     /* Assumption is that , to begin with , we have all the frames with decoder */
@@ -2967,6 +2968,12 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     break;
 #endif
 
+        case OMX_QcomIndexParamVideoProcessNotCodedVOP:
+        {
+            DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamVideoProcessNotCodedVOP");
+            ((QOMX_ENABLETYPE *)paramData)->bEnable = (OMX_BOOL)!ignore_not_coded_vops;
+            break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("get_parameter: unknown param %08x", paramIndex);
                  eRet =OMX_ErrorUnsupportedIndex;
@@ -3768,6 +3775,12 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 DEBUG_PRINT_ERROR("ERROR: Custom buffer size in not supported on output port");
                 eRet = OMX_ErrorBadParameter;
             }
+            break;
+        }
+        case OMX_QcomIndexParamVideoProcessNotCodedVOP:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoProcessNotCodedVOP");
+            ignore_not_coded_vops = !((QOMX_ENABLETYPE *)paramData)->bEnable;
             break;
         }
         default: {
@@ -5738,7 +5751,9 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     }
 
 
-    if (codec_type_parse == CODEC_TYPE_MPEG4 || codec_type_parse == CODEC_TYPE_DIVX) {
+    if (ignore_not_coded_vops &&
+            (codec_type_parse == CODEC_TYPE_MPEG4 ||
+             codec_type_parse == CODEC_TYPE_DIVX)) {
         mp4StreamType psBits;
         psBits.data = (unsigned char *)(buffer->pBuffer + buffer->nOffset);
         psBits.numBytes = buffer->nFilledLen;
