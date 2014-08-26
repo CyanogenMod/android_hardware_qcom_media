@@ -38,11 +38,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_video_base.h"
 #include "omx_video_encoder.h"
 #include <linux/videodev2.h>
-#include <linux/fb.h>
 #include <poll.h>
-#include <gui/ISurfaceComposer.h>
-#include <gui/SurfaceComposerClient.h>
-#include <ui/DisplayInfo.h>
 
 #define TIMEOUT 5*60*1000
 
@@ -401,7 +397,6 @@ class venc_dev
         int color_format;
         bool is_searchrange_set;
         bool enable_mv_narrow_searchrange;
-        DisplayInfo display_info;
 };
 
 enum instance_state {
