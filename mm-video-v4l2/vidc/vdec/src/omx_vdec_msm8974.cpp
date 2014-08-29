@@ -1959,18 +1959,6 @@ OMX_ERRORTYPE  omx_vdec::send_command(OMX_IN OMX_HANDLETYPE hComp,
         DEBUG_PRINT_ERROR("send_command(): ERROR OMX_CommandFlush "
                 "to invalid port: %lu", param1);
         return OMX_ErrorBadPortIndex;
-    } else if (cmd == OMX_CommandFlush && (param1 == OMX_CORE_INPUT_PORT_INDEX ||
-                param1 == OMX_ALL)) {
-        while (android_atomic_add(0, &m_queued_codec_config_count) > 0) {
-            struct timespec ts;
-
-            clock_gettime(CLOCK_REALTIME, &ts);
-            ts.tv_sec += 2;
-            if (sem_timedwait(&m_safe_flush, &ts)) {
-                DEBUG_PRINT_ERROR("Failed to wait for EBDs of CODEC CONFIG buffers");
-                break;
-            }
-        }
     }
 
     post_event((unsigned)cmd,(unsigned)param1,OMX_COMPONENT_GENERATE_COMMAND);
@@ -2305,6 +2293,22 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
 #ifdef _MSM8974_
         send_codec_config();
 #endif
+        if (cmd == OMX_CommandFlush && (param1 == OMX_CORE_INPUT_PORT_INDEX ||
+                    param1 == OMX_ALL)) {
+            while (android_atomic_add(0, &m_queued_codec_config_count) > 0) {
+               struct timespec ts;
+
+               clock_gettime(CLOCK_REALTIME, &ts);
+               ts.tv_sec += 2;
+               DEBUG_PRINT_LOW("waiting for %d EBDs of CODEC CONFIG buffers ",
+                       m_queued_codec_config_count);
+               if (sem_timedwait(&m_safe_flush, &ts)) {
+                   DEBUG_PRINT_ERROR("Failed to wait for EBDs of CODEC CONFIG buffers");
+                   break;
+               }
+            }
+        }
+
         if (OMX_CORE_INPUT_PORT_INDEX == param1 || OMX_ALL == param1) {
             BITMASK_SET(&m_flags, OMX_COMPONENT_INPUT_FLUSH_PENDING);
         }
@@ -6930,6 +6934,7 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
                 sem_getvalue(&m_safe_flush, &pending_flush_waiters),
                 /* 0 == there /are/ waiters depending on POSIX implementation */
                 pending_flush_waiters <= 0 ) {
+            DEBUG_PRINT_LOW("sem post for %d EBD of CODEC CONFIG buffer", m_queued_codec_config_count);
             sem_post(&m_safe_flush);
         }
 
