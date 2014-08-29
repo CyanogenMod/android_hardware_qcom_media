@@ -149,9 +149,6 @@ class omx_video: public qc_omx_component
         bool c2d_opened;
         encoder_media_buffer_type meta_buffers[MAX_NUM_INPUT_BUFFERS];
         OMX_BUFFERHEADERTYPE *opaque_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
-        bool mUseProxyColorFormat;
-        //RGB or non-native input, and we have pre-allocated conversion buffers
-        bool mUsesColorConversion;
         bool get_syntaxhdr_enable;
         OMX_BUFFERHEADERTYPE  *psource_frame;
         OMX_BUFFERHEADERTYPE  *pdest_frame;
@@ -184,6 +181,11 @@ class omx_video: public qc_omx_component
         omx_c2d_conv c2d_conv;
 #endif
     public:
+
+        bool mUseProxyColorFormat;
+        //RGB or non-native input, and we have pre-allocated conversion buffers
+        bool mUsesColorConversion;
+
         omx_video();  // constructor
         virtual ~omx_video();  // destructor
 
@@ -227,6 +229,9 @@ class omx_video: public qc_omx_component
 #endif
         virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
         virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
+        virtual bool dev_get_performance_level(OMX_U32 *) = 0;
+        virtual bool dev_get_vui_timing_info(OMX_U32 *) = 0;
+        virtual bool dev_get_peak_bitrate(OMX_U32 *) = 0;
 #ifdef _ANDROID_ICS_
         void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif

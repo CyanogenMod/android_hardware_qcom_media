@@ -210,7 +210,6 @@ VideoHeap::VideoHeap(int fd, size_t size, void* base)
    ========================================================================== */
 omx_video::omx_video():
     c2d_opened(false),
-    mUsesColorConversion(false),
     psource_frame(NULL),
     pdest_frame(NULL),
     secure_session(false),
@@ -248,6 +247,7 @@ omx_video::omx_video():
     async_thread_created = false;
     msg_thread_created = false;
 
+    mUsesColorConversion = false;
     pthread_mutex_init(&m_lock, NULL);
     sem_init(&m_cmd_lock,0,0);
 }
@@ -1809,10 +1809,53 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(hierp, &m_sHierLayers, sizeof(m_sHierLayers));
                 break;
             }
+        case QOMX_IndexParamVideoInitialQp:
             {
                  QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp =
                      reinterpret_cast<QOMX_EXTNINDEX_VIDEO_INITIALQP *>(paramData);
                      memcpy(initqp, &m_sParamInitqp, sizeof(m_sParamInitqp));
+                break;
+            }
+        case OMX_QcomIndexParamPerfLevel:
+            {
+                OMX_U32 perflevel;
+                OMX_QCOM_VIDEO_PARAM_PERF_LEVEL *pParam =
+                    reinterpret_cast<OMX_QCOM_VIDEO_PARAM_PERF_LEVEL*>(paramData);
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamPerfLevel");
+                if (!dev_get_performance_level(&perflevel)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from get_performance_level %d",
+                        pParam->ePerfLevel);
+                } else {
+                    pParam->ePerfLevel = (QOMX_VIDEO_PERF_LEVEL)perflevel;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamH264VUITimingInfo:
+            {
+                OMX_U32 enabled;
+                OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO *pParam =
+                    reinterpret_cast<OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO*>(paramData);
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamH264VUITimingInfo");
+                if (!dev_get_vui_timing_info(&enabled)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from get_vui_Timing_info %d",
+                        pParam->bEnable);
+                } else {
+                    pParam->bEnable = (OMX_BOOL)enabled;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamPeakBitrate:
+            {
+                OMX_U32 peakbitrate;
+                OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE *pParam =
+                    reinterpret_cast<OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE*>(paramData);
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamPeakBitrate");
+                if (!dev_get_peak_bitrate(&peakbitrate)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from get_peak_bitrate %d",
+                        pParam->nPeakBitrate);
+                } else {
+                    pParam->nPeakBitrate = peakbitrate;
+                }
                 break;
             }
         case OMX_IndexParamVideoSliceFMO:
@@ -1915,6 +1958,20 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                memcpy(pParam, &m_sConfigVp8ReferenceFrame, sizeof(m_sConfigVp8ReferenceFrame));
                break;
            }
+        case OMX_QcomIndexConfigPerfLevel:
+            {
+                OMX_U32 perflevel;
+                OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *pParam =
+                    reinterpret_cast<OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL*>(configData);
+                DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigPerfLevel");
+                if (!dev_get_performance_level(&perflevel)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from get_performance_level %d",
+                        pParam->ePerfLevel);
+                } else {
+                    pParam->ePerfLevel = (QOMX_VIDEO_PERF_LEVEL)perflevel;
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -3944,10 +4001,9 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
         } else {
             // We are not dealing with color-conversion, Buffer being returned
             // here is client's buffer, return it back to client
-            OMX_BUFFERHEADERTYPE* il_buffer = &meta_buffer_hdr[buffer_index];
-            if (m_pCallbacks.EmptyBufferDone && il_buffer) {
-                m_pCallbacks.EmptyBufferDone(hComp, m_app_data, il_buffer);
-                DEBUG_PRINT_LOW("empty_buffer_done: Returning client buf %p",il_buffer);
+            if (m_pCallbacks.EmptyBufferDone && buffer) {
+                m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
+                DEBUG_PRINT_LOW("empty_buffer_done: Returning client buf %p", buffer);
             }
         }
     } else if (m_pCallbacks.EmptyBufferDone) {
