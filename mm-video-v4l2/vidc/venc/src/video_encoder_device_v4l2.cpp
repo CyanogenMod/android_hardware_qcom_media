@@ -815,7 +815,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
     property_get("ro.board.platform", platform_name, "0");
     property_get("vidc.enc.narrow.searchrange", narrow_searchrange, "0");
-    if (atoi(narrow_searchrange) && (!strncmp(platform_name, "msm8916", 7))) {
+    if (atoi(narrow_searchrange)) {
         enable_mv_narrow_searchrange = true;
         sp<IBinder> display(SurfaceComposerClient::getBuiltInDisplay(
                         ISurfaceComposer::eDisplayIdMain));
