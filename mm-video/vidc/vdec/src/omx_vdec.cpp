@@ -5981,8 +5981,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
   }
   else
   {
-    if (!(client_extradata & OMX_TIMEINFO_EXTRADATA))
-      set_frame_rate(buffer->nTimeStamp);
     post_event ((unsigned)hComp,(unsigned)buffer,OMX_COMPONENT_GENERATE_ETB);
   }
   return OMX_ErrorNone;
@@ -7087,11 +7085,12 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         else
           handle_extradata(buffer);
       }
-      if (client_extradata & OMX_TIMEINFO_EXTRADATA)
-        // Keep min timestamp interval to handle corrupted bit stream scenario
-        set_frame_rate(buffer->nTimeStamp);
-      else if (arbitrary_bytes)
+
+      if (arbitrary_bytes)
         adjust_timestamp(buffer->nTimeStamp);
+      else
+        set_frame_rate(buffer->nTimeStamp);
+
 #ifdef _ANDROID_
       if (perf_flag)
       {
@@ -8450,8 +8449,8 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
   portDefn->nSize = sizeof(portDefn);
   portDefn->eDomain    = OMX_PortDomainVideo;
   if (drv_ctx.frame_rate.fps_denominator > 0)
-    portDefn->format.video.xFramerate = drv_ctx.frame_rate.fps_numerator /
-                                        drv_ctx.frame_rate.fps_denominator;
+    portDefn->format.video.xFramerate = (drv_ctx.frame_rate.fps_numerator /
+                                        drv_ctx.frame_rate.fps_denominator) << 16; //Q16 format;
   else {
     DEBUG_PRINT_ERROR("Error: Divide by zero \n");
     return OMX_ErrorBadParameter;
