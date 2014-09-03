@@ -24,6 +24,7 @@
 #include <android/native_window.h>
 #include <media/IOMX.h>
 #include <media/stagefright/foundation/AHierarchicalStateMachine.h>
+#include <media/stagefright/CodecBase.h>
 #include <media/stagefright/SkipCutBuffer.h>
 #include <OMX_Audio.h>
 #include <OMX_Component.h>
@@ -35,36 +36,43 @@ namespace android {
 struct ABuffer;
 struct MemoryDealer;
 
-struct DashCodec : public AHierarchicalStateMachine {
-    enum {
-        kWhatFillThisBuffer      = 'fill',
-        kWhatDrainThisBuffer     = 'drai',
-        kWhatEOS                 = 'eos ',
-        kWhatShutdownCompleted   = 'scom',
-        kWhatFlushCompleted      = 'fcom',
-        kWhatOutputFormatChanged = 'outC',
-        kWhatError               = 'erro',
-        kWhatComponentAllocated  = 'cAll',
-        kWhatComponentConfigured = 'cCon',
-        kWhatBuffersAllocated    = 'allc',
-    };
-
+struct DashCodec : public AHierarchicalStateMachine, public CodecBase {
     DashCodec();
 
-    void setNotificationMessage(const sp<AMessage> &msg);
+    virtual void setNotificationMessage(const sp<AMessage> &msg);
+
     void initiateSetup(const sp<AMessage> &msg);
-    void signalFlush();
-    void signalResume();
-    void initiateShutdown(bool keepComponentAllocated = false);
 
-    void initiateAllocateComponent(const sp<AMessage> &msg);
-    void initiateConfigureComponent(const sp<AMessage> &msg);
-    void initiateStart();
+    virtual void initiateAllocateComponent(const sp<AMessage> &msg);
+    virtual void initiateConfigureComponent(const sp<AMessage> &msg);
+    virtual void initiateCreateInputSurface() {
+      return;
+    }
+    virtual void initiateStart();
+    virtual void initiateShutdown(bool keepComponentAllocated = false);
 
-    void signalRequestIDRFrame();
+    virtual void signalFlush();
+    virtual void signalResume();
+
+    virtual void signalSetParameters(const sp<AMessage> &msg) {
+      return;
+    }
+    virtual void signalEndOfInputStream() {
+      return;
+    }
+    virtual void signalRequestIDRFrame();
+
     void queueNextFormat();
     void clearCachedFormats();
-    struct PortDescription : public RefBase {
+
+    static status_t PushBlankBuffersToNativeWindow(sp<ANativeWindow> nativeWindow);
+
+    // AHierarchicalStateMachine implements the message handling
+    virtual void onMessageReceived(const sp<AMessage> &msg) {
+        handleMessage(msg);
+    }
+
+    struct PortDescription : public CodecBase::PortDescription {
         size_t countBuffers();
         IOMX::buffer_id bufferIDAt(size_t index) const;
         sp<ABuffer> bufferAt(size_t index) const;
