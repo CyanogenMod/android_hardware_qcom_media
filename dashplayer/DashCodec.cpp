@@ -73,7 +73,7 @@ struct CodecObserver : public BnOMXObserver {
         sp<AMessage> msg = mNotify->dup();
 
         msg->setInt32("type", omx_msg.type);
-        msg->setPointer("node", omx_msg.node);
+        msg->setInt32("node", omx_msg.node);
 
         switch (omx_msg.type) {
             case omx_message::EVENT:
@@ -86,13 +86,13 @@ struct CodecObserver : public BnOMXObserver {
 
             case omx_message::EMPTY_BUFFER_DONE:
             {
-                msg->setPointer("buffer", omx_msg.u.buffer_data.buffer);
+                msg->setInt32("buffer", omx_msg.u.buffer_data.buffer);
                 break;
             }
 
             case omx_message::FILL_BUFFER_DONE:
             {
-                msg->setPointer(
+                msg->setInt32(
                         "buffer", omx_msg.u.extended_buffer_data.buffer);
                 msg->setInt32(
                         "range_offset",
@@ -106,12 +106,12 @@ struct CodecObserver : public BnOMXObserver {
                 msg->setInt64(
                         "timestamp",
                         omx_msg.u.extended_buffer_data.timestamp);
-                msg->setPointer(
-                        "platform_private",
-                        omx_msg.u.extended_buffer_data.platform_private);
-                msg->setPointer(
-                        "data_ptr",
-                        omx_msg.u.extended_buffer_data.data_ptr);
+                //msg->setPointer(
+                //        "platform_private",
+                //        omx_msg.u.extended_buffer_data.platform_private);
+                //msg->setPointer(
+                //        "data_ptr",
+                //        omx_msg.u.extended_buffer_data.data_ptr);
                 break;
             }
 
@@ -2601,7 +2601,7 @@ bool DashCodec::BaseState::onOMXMessage(const sp<AMessage> &msg) {
     CHECK(msg->findInt32("type", &type));
 
     IOMX::node_id nodeID;
-    CHECK(msg->findPointer("node", &nodeID));
+    CHECK(msg->findInt32("node", (int32_t*)&nodeID));
     CHECK_EQ(nodeID, mCodec->mNode);
 
     switch (type) {
@@ -2632,7 +2632,7 @@ bool DashCodec::BaseState::onOMXMessage(const sp<AMessage> &msg) {
         case omx_message::EMPTY_BUFFER_DONE:
         {
             IOMX::buffer_id bufferID;
-            CHECK(msg->findPointer("buffer", &bufferID));
+            CHECK(msg->findInt32("buffer", (int32_t*)&bufferID));
 
             return onOMXEmptyBufferDone(bufferID);
         }
@@ -2640,7 +2640,7 @@ bool DashCodec::BaseState::onOMXMessage(const sp<AMessage> &msg) {
         case omx_message::FILL_BUFFER_DONE:
         {
             IOMX::buffer_id bufferID;
-            CHECK(msg->findPointer("buffer", &bufferID));
+            CHECK(msg->findInt32("buffer", (int32_t*)&bufferID));
 
             int32_t rangeOffset, rangeLength, flags;
             int64_t timeUs;
@@ -2651,8 +2651,8 @@ bool DashCodec::BaseState::onOMXMessage(const sp<AMessage> &msg) {
             CHECK(msg->findInt32("range_length", &rangeLength));
             CHECK(msg->findInt32("flags", &flags));
             CHECK(msg->findInt64("timestamp", &timeUs));
-            CHECK(msg->findPointer("platform_private", &platformPrivate));
-            CHECK(msg->findPointer("data_ptr", &dataPtr));
+            //CHECK(msg->findPointer("platform_private", (void **)&platformPrivate));
+            //CHECK(msg->findPointer("data_ptr", (void **)&dataPtr));
 
             return onOMXFillBufferDone(
                     bufferID,
@@ -2743,13 +2743,13 @@ void DashCodec::BaseState::postFillThisBuffer(BufferInfo *info) {
 
     sp<AMessage> notify = mCodec->mNotify->dup();
     notify->setInt32("what", DashCodec::kWhatFillThisBuffer);
-    notify->setPointer("buffer-id", info->mBufferID);
+    notify->setInt32("buffer-id", info->mBufferID);
 
     info->mData->meta()->clear();
     notify->setBuffer("buffer", info->mData);
 
     sp<AMessage> reply = new AMessage(kWhatInputBufferFilled, mCodec->id());
-    reply->setPointer("buffer-id", info->mBufferID);
+    reply->setInt32("buffer-id", info->mBufferID);
 
     notify->setMessage("reply", reply);
 
@@ -2760,7 +2760,7 @@ void DashCodec::BaseState::postFillThisBuffer(BufferInfo *info) {
 
 void DashCodec::BaseState::onInputBufferFilled(const sp<AMessage> &msg) {
     IOMX::buffer_id bufferID;
-    CHECK(msg->findPointer("buffer-id", &bufferID));
+    CHECK(msg->findInt32("buffer-id",  (int32_t*)&bufferID));
 
     sp<ABuffer> buffer;
     int32_t err = OK;
@@ -3023,7 +3023,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
 
             sp<AMessage> notify = mCodec->mNotify->dup();
             notify->setInt32("what", DashCodec::kWhatDrainThisBuffer);
-            notify->setPointer("buffer-id", info->mBufferID);
+            notify->setInt32("buffer-id", info->mBufferID);
             notify->setBuffer("buffer", info->mData);
             notify->setInt32("flags", flags);
             sp<AMessage> reply =
@@ -3035,7 +3035,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
                    mCodec->mPostFormat = true;
             }
 
-            reply->setPointer("buffer-id", info->mBufferID);
+            reply->setInt32("buffer-id", info->mBufferID);
 
             notify->setMessage("reply", reply);
 
@@ -3061,7 +3061,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
 
 void DashCodec::BaseState::onOutputBufferDrained(const sp<AMessage> &msg) {
     IOMX::buffer_id bufferID;
-    CHECK(msg->findPointer("buffer-id", &bufferID));
+    CHECK(msg->findInt32("buffer-id", (int32_t*)&bufferID));
 
     ssize_t index;
     BufferInfo *info =
@@ -4052,7 +4052,7 @@ bool DashCodec::FlushingState::onOMXEvent(
         {
             sp<AMessage> msg = new AMessage(kWhatOMXMessage, mCodec->id());
             msg->setInt32("type", omx_message::EVENT);
-            msg->setPointer("node", mCodec->mNode);
+            msg->setInt32("node", mCodec->mNode);
             msg->setInt32("event", event);
             msg->setInt32("data1", data1);
             msg->setInt32("data2", data2);
@@ -4173,7 +4173,7 @@ bool DashCodec::FlushingOutputState::onOMXEvent(
         {
             sp<AMessage> msg = new AMessage(kWhatOMXMessage, mCodec->id());
             msg->setInt32("type", omx_message::EVENT);
-            msg->setPointer("node", mCodec->mNode);
+            msg->setInt32("node", mCodec->mNode);
             msg->setInt32("event", event);
             msg->setInt32("data1", data1);
             msg->setInt32("data2", data2);

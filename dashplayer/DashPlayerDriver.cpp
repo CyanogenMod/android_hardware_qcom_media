@@ -66,6 +66,7 @@ status_t DashPlayerDriver::setUID(uid_t uid) {
 }
 
 status_t DashPlayerDriver::setDataSource(
+         const sp<IMediaHTTPService> &httpService,
         const char *url, const KeyedVector<String8, String8> *headers) {
     CHECK_EQ((int)mState, (int)UNINITIALIZED);
 
