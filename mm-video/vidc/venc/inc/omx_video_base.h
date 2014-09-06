@@ -47,7 +47,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef _ANDROID_
   #include <binder/MemoryHeapBase.h>
 #ifdef _ANDROID_ICS_
-  #include "QComOMXMetadata.h"
+  #include <QComOMXMetadata.h>
 #endif
 #endif // _ANDROID_
 #include <pthread.h>
