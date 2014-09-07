@@ -926,6 +926,9 @@ class omx_vdec: public qc_omx_component
         int prev_n_filled_len;
         bool is_down_scalar_enabled;
 #endif
+        struct custom_buffersize {
+            OMX_U32 input_buffersize;
+        } m_custom_buffersize;
         bool m_power_hinted;
         bool is_q6_platform;
         OMX_ERRORTYPE power_module_register();
