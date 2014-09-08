@@ -1323,6 +1323,10 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
                 sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.264",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         }
+        else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevc", OMX_MAX_STRINGNAME_SIZE)) {
+                sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.265",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
         else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vc1", OMX_MAX_STRINGNAME_SIZE)) {
                 sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.vc1",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
