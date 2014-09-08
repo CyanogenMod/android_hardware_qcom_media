@@ -1497,6 +1497,21 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
                 if (portFmt->nPortIndex == (OMX_U32) PORT_INDEX_IN) {
                     unsigned index = portFmt->nIndex;
+
+#ifdef _UBWC_
+                    //we support following formats
+                    //index 0 - Compressed (UBWC) Venus flavour of YUV420SP
+                    //index 1 - Venus flavour of YUV420SP
+                    //index 2 - opaque which internally maps to YUV420SP.
+                    //index 3 - vannilla YUV420SP
+                    //this can be extended in the future
+                    int supportedFormats[] = {
+                        [0] = QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed,
+                        [1] = QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
+                        [2] = QOMX_COLOR_FormatAndroidOpaque,
+                        [3] = OMX_COLOR_FormatYUV420SemiPlanar,
+                    };
+#else
                     //we support two formats
                     //index 0 - Venus flavour of YUV420SP
                     //index 1 - opaque which internally maps to YUV420SP.
@@ -1507,7 +1522,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         [1] = QOMX_COLOR_FormatAndroidOpaque,
                         [2] = OMX_COLOR_FormatYUV420SemiPlanar,
                     };
-
+#endif
                     if (index > (sizeof(supportedFormats)/sizeof(*supportedFormats) - 1))
                         eRet = OMX_ErrorNoMore;
                     else {
@@ -4597,7 +4612,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
                     DEBUG_PRINT_ERROR("cannot set color format for RGBA8888");
 #endif
             } else if (handle->format != HAL_PIXEL_FORMAT_NV12_ENCODEABLE &&
-                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
+                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m &&
+                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed) {
                 mUsesColorConversion = false;
             } else {
                 DEBUG_PRINT_ERROR("Incorrect color format");
@@ -4799,7 +4815,8 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
             if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888)
                 ret = convert_queue_buffer(hComp,Input_pmem_info,index);
             else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE ||
-                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m)
+                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m ||
+                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed)
                 ret = queue_meta_buffer(hComp,Input_pmem_info);
             else
                 ret = OMX_ErrorBadParameter;

@@ -885,7 +885,8 @@ bool venc_dev::venc_open(OMX_U32 codec)
     m_sVenc_cfg.fps_num = 30;
     m_sVenc_cfg.fps_den = 1;
     m_sVenc_cfg.targetbitrate = 64000;
-    m_sVenc_cfg.inputformat= V4L2_PIX_FMT_NV12;
+    m_sVenc_cfg.inputformat= V4L2_DEFAULT_OUTPUT_COLOR_FMT;
+
     m_codec = codec;
 
     if (codec == OMX_VIDEO_CodingMPEG4) {
@@ -1008,7 +1009,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
     fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
     fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
-    fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
+    fmt.fmt.pix_mp.pixelformat = V4L2_DEFAULT_OUTPUT_COLOR_FMT;
 
     ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
     m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
@@ -1216,7 +1217,7 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
-        fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
+        fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
         ret = ioctl(m_nDriver_fd, VIDIOC_G_FMT, &fmt);
         m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
         bufreq.memory = V4L2_MEMORY_USERPTR;
@@ -1342,7 +1343,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
                         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
                         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
-                        fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
+                        fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
 
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
                             DEBUG_PRINT_ERROR("VIDIOC_S_FMT OUTPUT_MPLANE Failed");
@@ -4022,11 +4023,13 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
     if ((int)color_format == (int)OMX_COLOR_FormatYUV420SemiPlanar ||
             (int)color_format == (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+    } else if ((int)color_format == (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed) {
+        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12_UBWC;
     } else if ((int)color_format == (int)QOMX_COLOR_FormatYVU420SemiPlanar) {
         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV21;
     } else {
         DEBUG_PRINT_HIGH("WARNING: Unsupported Color format [%d]", color_format);
-        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+        m_sVenc_cfg.inputformat = V4L2_DEFAULT_OUTPUT_COLOR_FMT;
         DEBUG_PRINT_HIGH("Default color format YUV420SemiPlanar is set");
     }
 

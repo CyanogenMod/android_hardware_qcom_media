@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -602,7 +602,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     if (portDefn->format.video.eColorFormat ==
                             (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque) {
                         m_sInPortDef.format.video.eColorFormat = (OMX_COLOR_FORMATTYPE)
-                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+                            QOMX_DEFAULT_COLOR_FMT;
                         if (!mUseProxyColorFormat) {
                             if (!c2d_conv.init()) {
                                 DEBUG_PRINT_ERROR("C2D init failed");
@@ -684,7 +684,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     if (portFmt->eColorFormat ==
                             (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque) {
                         m_sInPortFormat.eColorFormat = (OMX_COLOR_FORMATTYPE)
-                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+                            QOMX_DEFAULT_COLOR_FMT;
                         if (!mUseProxyColorFormat) {
                             if (!c2d_conv.init()) {
                                 DEBUG_PRINT_ERROR("C2D init failed");
