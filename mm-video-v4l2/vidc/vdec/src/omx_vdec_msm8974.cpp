@@ -7136,9 +7136,9 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         DEBUG_PRINT_LOW("Before FBD callback Accessed Pmeminfo %lu",pPMEMInfo->pmem_fd);
         OMX_BUFFERHEADERTYPE *il_buffer;
         il_buffer = client_buffers.get_il_buf_hdr(buffer);
+        OMX_U32 current_framerate = (int)(drv_ctx.frame_rate.fps_numerator / drv_ctx.frame_rate.fps_denominator);
 
         if (il_buffer && m_last_rendered_TS >= 0) {
-            int current_framerate = (int)(drv_ctx.frame_rate.fps_numerator /drv_ctx.frame_rate.fps_denominator);
             OMX_TICKS ts_delta = (OMX_TICKS)llabs(il_buffer->nTimeStamp - m_last_rendered_TS);
 
             // Current frame can be send for rendering if
@@ -7161,6 +7161,19 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             DEBUG_PRINT_LOW(" -- %s Frame -- info:: fps(%d) lastRenderTime(%lld) bufferTs(%lld) ts_delta(%lld)",
                               buffer->nFilledLen? "Rendering":"Dropping",current_framerate,m_last_rendered_TS,
                               il_buffer->nTimeStamp,ts_delta);
+
+            //above code makes sure that delta b\w two consecutive frames is not
+            //greater than 16ms, slow-mo feature, so cap fps to max 60
+            if (current_framerate > 60 ) {
+                current_framerate = 60;
+            }
+        }
+
+        // add current framerate to gralloc meta data
+        if (m_enable_android_native_buffers && m_out_mem_ptr) {
+            OMX_U32 buf_index = buffer - m_out_mem_ptr;
+            setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                         UPDATE_REFRESH_RATE, (void*)&current_framerate);
         }
 
         if (il_buffer) {
