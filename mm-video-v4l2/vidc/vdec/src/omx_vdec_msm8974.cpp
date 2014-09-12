@@ -6915,8 +6915,8 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
         return OMX_ErrorBadParameter;
     }
 
-    DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p",
-            buffer, buffer->pBuffer);
+    DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p, bufhdr->nFlags = %x",
+            buffer, buffer->pBuffer, buffer->nFlags);
     pending_input_buffers--;
     if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
         int pending_flush_waiters;
@@ -7025,6 +7025,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                 omx->omx_report_error ();
             }
             if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT) {
+                omxhdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
                 vdec_msg->status_code = VDEC_S_INPUT_BITSTREAM_ERR;
             }
             omx->post_event ((unsigned int)omxhdr,vdec_msg->status_code,
