@@ -166,3 +166,22 @@ bool omx_c2d_conv::get_buffer_size(int port,unsigned int &buf_size)
 
     return ret;
 }
+
+bool omx_c2d_conv::get_output_filled_length(unsigned int &filled_length)
+{
+    bool ret = false;
+    C2DBuffReq req;
+    filled_length = 0;
+
+    if (c2dcc) {
+        int cret = c2dcc->getBuffReq(C2D_OUTPUT, &req);
+        DEBUG_PRINT_LOW("Status of getBuffReq is %d", cret);
+        if (!cret && (req.bpp.denominator > 0)) {
+            filled_length = (req.stride * req.sliceHeight * req.bpp.numerator);
+            filled_length /= req.bpp.denominator;
+            ret = true;
+        }
+    }
+
+    return ret;
+}
