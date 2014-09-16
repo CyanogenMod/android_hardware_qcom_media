@@ -49,12 +49,17 @@
 
 //Smmoth streaming settings
 //Max resolution 1080p
-#define MAX_WIDTH 1920;
-#define MAX_HEIGHT 1080;
+#define MAX_WIDTH 1920
+#define MAX_HEIGHT 1080
 
 //Min resolution QVGA
-#define MIN_WIDTH 480;
-#define MIN_HEIGHT 320;
+#define MIN_WIDTH 480
+#define MIN_HEIGHT 320
+
+#define MAX_SUPPORTED_BUF_SZ (((MAX_WIDTH * MAX_HEIGHT)*3/2)/2)
+// Alignment Macro
+#define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
+#define SZ_4K 0x1000
 
 namespace android {
 
@@ -566,14 +571,23 @@ OMX_U32 *bufferCount, OMX_U32 *bufferSize,
         return err;
     }
 
-    err = native_window_set_buffers_geometry(
+    err = native_window_set_buffers_dimensions(
             mNativeWindow.get(),
             def.format.video.nFrameWidth,
-            def.format.video.nFrameHeight,
-            def.format.video.eColorFormat);
+            def.format.video.nFrameHeight);
 
-    if (err != 0) {
-        ALOGE("native_window_set_buffers_geometry failed: %s (%d)",
+    if (err != NO_ERROR) {
+      ALOGE("native_window_set_buffers_dimensions failed: %s (%d)",
+               strerror(-err), -err);
+           return err;
+    }
+
+    err = native_window_set_buffers_format(
+           mNativeWindow.get(),
+           def.format.video.eColorFormat);
+
+    if (err != NO_ERROR) {
+        ALOGE("native_window_set_buffers_format failed: %s (%d)",
                 strerror(-err), -err);
         return err;
     }
@@ -1195,6 +1209,32 @@ status_t DashCodec::configureCodec(
                 ALOGE("[%s] setupVideoDecoder with width %d, height %d",
                       mComponentName.c_str(),width,height);
                 err = setupVideoDecoder(mime, width, height);
+
+                QOMX_VIDEO_CUSTOM_BUFFERSIZE sCustomBufferSize;
+                sCustomBufferSize.nPortIndex  = kPortIndexInput;
+                sCustomBufferSize.nBufferSize = (OMX_U32)(MAX_SUPPORTED_BUF_SZ);
+
+                ALOGV("[%s] Set Inputbuffers size %lu Input Port [Before Alignment]",
+                          mComponentName.c_str(),
+                          sCustomBufferSize.nBufferSize);
+                //Doing 4K alignment
+                sCustomBufferSize.nBufferSize = ALIGN(sCustomBufferSize.nBufferSize, SZ_4K);
+
+                 err = mOMX->setParameter(mNode,
+                                (OMX_INDEXTYPE)OMX_QcomIndexParamVideoCustomBufferSize,
+                                &sCustomBufferSize, sizeof(sCustomBufferSize));
+
+                 if (err != OK) {
+                   ALOGE("[%s] Set Inputbuffers thru extn size %lu InputPort Failed",
+                          mComponentName.c_str(),
+                          sCustomBufferSize.nBufferSize);
+                 }
+                 else
+                 {
+                   ALOGV("[%s] Set Inputbuffers thru extn size %lu InputPort Success",
+                          mComponentName.c_str(),
+                          sCustomBufferSize.nBufferSize);
+                 }
 
                 //Enable component support to extract SEI extradata if present in AVC stream
                 QOMX_ENABLETYPE extra_data;
@@ -2621,12 +2661,22 @@ status_t DashCodec::PushBlankBuffersToNativeWindow(sp<ANativeWindow> nativeWindo
         return err;
     }
 
-    err = native_window_set_buffers_geometry(nativeWindow.get(), 1, 1,
-            HAL_PIXEL_FORMAT_RGBX_8888);
+    err = native_window_set_buffers_dimensions(
+            nativeWindow.get(),
+            1,
+            1);
     if (err != NO_ERROR) {
-        ALOGE("error pushing blank frames: set_buffers_geometry failed: %s (%d)",
+      ALOGE("error pushing blank frames: native_window_set_buffers_dimensions failed: %s (%d)",
+               strerror(-err), -err);
+           return err;
+    }
+    err = native_window_set_buffers_format(
+           nativeWindow.get(),
+           HAL_PIXEL_FORMAT_RGBX_8888);
+    if (err != NO_ERROR) {
+        ALOGE("error pushing blank frames: native_window_set_buffers_format failed: %s (%d)",
                 strerror(-err), -err);
-        goto error;
+        return err;
     }
 
     err = native_window_set_scaling_mode(nativeWindow.get(),
@@ -2789,7 +2839,7 @@ DashCodec::BaseState::BaseState(DashCodec *codec, const sp<AState> &parentState)
       mCodec(codec) {
 }
 
-DashCodec::BaseState::PortMode DashCodec::BaseState::getPortMode(OMX_U32 portIndex) {
+DashCodec::BaseState::PortMode DashCodec::BaseState::getPortMode(OMX_U32 /*portIndex*/) {
     return KEEP_BUFFERS;
 }
 
@@ -2875,8 +2925,8 @@ bool DashCodec::BaseState::onOMXMessage(const sp<AMessage> &msg) {
 
             int32_t rangeOffset, rangeLength, flags;
             int64_t timeUs;
-            void *platformPrivate;
-            void *dataPtr;
+            void *platformPrivate = NULL;
+            void *dataPtr = NULL;
 
             CHECK(msg->findInt32("range_offset", &rangeOffset));
             CHECK(msg->findInt32("range_length", &rangeLength));
@@ -3201,8 +3251,8 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
         size_t rangeOffset, size_t rangeLength,
         OMX_U32 flags,
         int64_t timeUs,
-        void *platformPrivate,
-        void *dataPtr) {
+        void * /*platformPrivate*/,
+        void * /*dataPtr*/) {
     ALOGV("[%s] onOMXFillBufferDone %p time %lld us, flags = 0x%08lx",
          mCodec->mComponentName.c_str(), bufferID, timeUs, flags);
 
@@ -3879,7 +3929,7 @@ DashCodec::ExecutingState::ExecutingState(DashCodec *codec)
 }
 
 DashCodec::BaseState::PortMode DashCodec::ExecutingState::getPortMode(
-        OMX_U32 portIndex) {
+        OMX_U32 /*portIndex*/) {
     return RESUBMIT_BUFFERS;
 }
 

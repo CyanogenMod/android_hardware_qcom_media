@@ -40,11 +40,11 @@ struct DashPlayer::Source : public RefBase {
     virtual status_t dequeueAccessUnit(
             int track, sp<ABuffer> *accessUnit) = 0;
 
-    virtual status_t getDuration(int64_t *durationUs) {
+    virtual status_t getDuration(int64_t * /*durationUs*/) {
         return INVALID_OPERATION;
     }
 
-    virtual status_t seekTo(int64_t seekTimeUs) {
+    virtual status_t seekTo(int64_t /*seekTimeUs*/) {
         return INVALID_OPERATION;
     }
 
@@ -52,7 +52,7 @@ struct DashPlayer::Source : public RefBase {
         return false;
     }
 
-    virtual status_t getNewSeekTime(int64_t* newSeek) {
+    virtual status_t getNewSeekTime(int64_t* /*newSeek*/) {
         return INVALID_OPERATION;
     }
 
@@ -64,23 +64,23 @@ struct DashPlayer::Source : public RefBase {
         return INVALID_OPERATION;
     }
 
-    virtual status_t getParameter(int key, void **data, size_t *size) {
+    virtual status_t getParameter(int /*key*/, void ** /*data*/, size_t * /*size*/) {
         return INVALID_OPERATION;
     }
 
-    virtual status_t setParameter(int key, void *data, size_t size) {
+    virtual status_t setParameter(int /*key*/, void * /*data*/, size_t /*size*/) {
         return INVALID_OPERATION;
     }
-    virtual void notifyRenderingPosition(int64_t nRenderingTS){}
+    virtual void notifyRenderingPosition(int64_t /*nRenderingTS*/){}
 
-    virtual status_t setupSourceData(const sp<AMessage> &msg, int iTrack){
+    virtual status_t setupSourceData(const sp<AMessage> & /*msg*/, int /*iTrack*/){
         return INVALID_OPERATION;
     }
-    virtual status_t postNextTextSample(sp<ABuffer> accessUnit,const sp<AMessage> &msg,int iTrack) {
+    virtual status_t postNextTextSample(sp<ABuffer> /*accessUnit*/,const sp<AMessage> &/*msg*/,int /*iTrack*/) {
         return INVALID_OPERATION;
     }
 
-    virtual status_t getMediaPresence(bool &audio, bool &video, bool &text) {
+    virtual status_t getMediaPresence(bool &/*audio*/, bool &/*video*/, bool &/*text*/) {
        return INVALID_OPERATION;
     }
 
@@ -96,11 +96,11 @@ struct DashPlayer::Source : public RefBase {
         //CHECK(false);
     }
 
-    virtual status_t getRepositionRange(uint64_t* pMin, uint64_t* pMax, uint64_t* pMaxDepth) {
+    virtual status_t getRepositionRange(uint64_t* /*pMin*/, uint64_t* /*pMax*/, uint64_t* /*pMaxDepth*/) {
       return INVALID_OPERATION;
     }
 
-    virtual status_t getTrackInfo(Parcel *reply) {
+    virtual status_t getTrackInfo(Parcel * /*reply*/) {
       return INVALID_OPERATION;
     }
 

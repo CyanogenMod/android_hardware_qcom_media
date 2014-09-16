@@ -67,7 +67,7 @@ status_t DashPlayerDriver::setUID(uid_t uid) {
 }
 
 status_t DashPlayerDriver::setDataSource(
-         const sp<IMediaHTTPService> &httpService,
+         const sp<IMediaHTTPService> & /*httpService*/,
         const char *url, const KeyedVector<String8, String8> *headers) {
     CHECK_EQ((int)mState, (int)UNINITIALIZED);
 
@@ -274,7 +274,7 @@ status_t DashPlayerDriver::reset() {
     return OK;
 }
 
-status_t DashPlayerDriver::setLooping(int loop) {
+status_t DashPlayerDriver::setLooping(int /*loop*/) {
     return INVALID_OPERATION;
 }
 
@@ -443,7 +443,7 @@ status_t DashPlayerDriver::getParameter(int key, Parcel *reply) {
 }
 
 status_t DashPlayerDriver::getMetadata(
-        const media::Metadata::Filter& ids, Parcel *records) {
+        const media::Metadata::Filter& /*ids*/, Parcel * /*records*/) {
     return INVALID_OPERATION;
 }
 
