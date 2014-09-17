@@ -24,11 +24,8 @@ libOmxVdpp-def += -DENABLE_DEBUG_ERROR
 libOmxVdpp-def += -D_ANDROID_ICS_
 libOmxVdpp-def += -UINPUT_BUFFER_LOG
 libOmxVdpp-def += -UOUTPUT_BUFFER_LOG
-
-ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
 libOmxVdpp-def += -DMAX_RES_1080P
 libOmxVdpp-def += -DMAX_RES_1080P_EBI
-endif
 
 ifeq ($(TARGET_USES_ION),true)
 libOmxVdpp-def += -DUSE_ION

@@ -1,11 +1,5 @@
-ifneq ($(BUILD_TINY_ANDROID),true)
-
-ROOT_DIR := $(call my-dir)
-OMX_VIDEO_PATH := $(ROOT_DIR)/../..
-
-
+LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
-LOCAL_PATH:= $(ROOT_DIR)
 
 # ---------------------------------------------------------------------------------
 # 				Common definitons
@@ -24,91 +18,35 @@ libmm-venc-def += -UINPUT_BUFFER_LOG
 libmm-venc-def += -UOUTPUT_BUFFER_LOG
 libmm-venc-def += -USINGLE_ENCODER_INSTANCE
 libmm-venc-def += -Werror
-ifeq ($(TARGET_BOARD_PLATFORM),msm8660)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -UENABLE_GET_SYNTAX_HDR
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm8960)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -DMAX_RES_1080P_EBI
-libmm-venc-def += -UENABLE_GET_SYNTAX_HDR
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm8974)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
+libmm-venc-def += -D_ANDROID_ICS_
 libmm-venc-def += -D_MSM8974_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
-libmm-venc-def += -DMAX_RES_720P
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm7630_surf)
-libmm-venc-def += -DMAX_RES_720P
-endif
+
+TARGETS_THAT_USE_FLAG_MSM8226 := msm8226 msm8916 msm8909
+TARGETS_THAT_NEED_SW_VENC_MPEG4 := msm8909
+TARGETS_THAT_NEED_SW_VENC_HEVC := msm8992
+
 ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 libmm-venc-def += -DMAX_RES_720P
-libmm-venc-def += -D_MSM8974_
 libmm-venc-def += -D_MSM8610_
-endif
+else
 ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
 libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -D_MSM8974_
+else
+libmm-venc-def += -DMAX_RES_1080P
+libmm-venc-def += -DMAX_RES_1080P_EBI
+endif
+endif
+
+ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_FLAG_MSM8226)),true)
 libmm-venc-def += -D_MSM8226_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libmm-venc-def += -D_MSM8974_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),mpq8092)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libmm-venc-def += -D_MSM8974_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm_bronze)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libmm-venc-def += -D_MSM8974_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm8916)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libmm-venc-def += -D_MSM8974_
-libmm-venc-def += -D_MSM8226_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm8909)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libmm-venc-def += -D_MSM8974_
-libmm-venc-def += -D_MSM8226_
-endif
-ifeq ($(TARGET_BOARD_PLATFORM),msm8994)
-libmm-venc-def += -DMAX_RES_1080P
-libmm-venc-def += -DMAX_RES_1080P_EBI
-libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
-libmm-venc-def += -D_MSM8974_
 endif
 
 ifeq ($(TARGET_USES_ION),true)
 libmm-venc-def += -DUSE_ION
 endif
 
-venc-inc       = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
-
-libmm-venc-def += -D_ANDROID_ICS_
-
-# ---------------------------------------------------------------------------------
-# 			Make the Shared library (libOmxVenc)
-# ---------------------------------------------------------------------------------
-
-include $(CLEAR_VARS)
-
-libmm-venc-inc      += $(LOCAL_PATH)/inc
+# Common Includes
+libmm-venc-inc      := $(LOCAL_PATH)/inc
 libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-venc-inc      += hardware/qcom/media/mm-core/inc
 libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
@@ -118,12 +56,22 @@ libmm-venc-inc      += frameworks/native/include/media/hardware
 libmm-venc-inc      += frameworks/native/include/media/openmax
 libmm-venc-inc      += hardware/qcom/media/libc2dcolorconvert
 libmm-venc-inc      += frameworks/av/include/media/stagefright
-libmm-venc-inc      += $(venc-inc)
+libmm-venc-inc      += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+
+# Common Dependencies
+libmm-venc-add-dep  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
+# ---------------------------------------------------------------------------------
+# 			Make the Shared library (libOmxVenc)
+# ---------------------------------------------------------------------------------
+
+include $(CLEAR_VARS)
 
 LOCAL_MODULE                    := libOmxVenc
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(libmm-venc-inc)
+LOCAL_ADDITIONAL_DEPENDENCIES   := $(libmm-venc-add-dep)
 
 LOCAL_PRELINK_MODULE      := false
 LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
@@ -132,35 +80,17 @@ LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
 
 LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_video_encoder.cpp
-ifneq (,$(filter msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze msm8916 msm8994 msm8909,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
-else
-LOCAL_SRC_FILES   += src/video_encoder_device.cpp
-endif
-
-LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
-
 
 include $(BUILD_SHARED_LIBRARY)
 
-ifeq ($(TARGET_BOARD_PLATFORM),msm8909)
+ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_MPEG4)),true)
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxSwVencMpeg4)
 # ---------------------------------------------------------------------------------
 
 include $(CLEAR_VARS)
 
-libmm-venc-inc      += $(LOCAL_PATH)/inc
-libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
-libmm-venc-inc      += hardware/qcom/media/mm-core/inc
-libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
-libmm-venc-inc      += $(TARGET_OUT_HEADERS)/qcom/display
-libmm-venc-inc      += $(TARGET_OUT_HEADERS)/adreno
-libmm-venc-inc      += frameworks/native/include/media/hardware
-libmm-venc-inc      += frameworks/native/include/media/openmax
-libmm-venc-inc      += hardware/qcom/media/libc2dcolorconvert
-libmm-venc-inc      += frameworks/av/include/media/stagefright
-libmm-venc-inc      += $(venc-inc)
 libmm-venc-inc      += $(TARGET_OUT_HEADERS)/mm-video/swvenc
 
 LOCAL_MODULE                    := libOmxSwVencMpeg4
@@ -168,6 +98,7 @@ LOCAL_MODULE                    := libOmxSwVencMpeg4
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(libmm-venc-inc)
+LOCAL_ADDITIONAL_DEPENDENCIES   := $(libmm-venc-add-dep)
 
 LOCAL_PRELINK_MODULE      := false
 LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
@@ -178,50 +109,35 @@ LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
 LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_swvenc_mpeg4.cpp
 
-LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
-
 include $(BUILD_SHARED_LIBRARY)
 endif
 
-ifeq ($(TARGET_BOARD_PLATFORM),msm8992)
+ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_HEVC)),true)
 # ---------------------------------------------------------------------------------
 #                            Make the Shared library (libOmxSwVenc)
 # ---------------------------------------------------------------------------------
 include $(CLEAR_VARS)
-libmm-venc-inc      += $(LOCAL_PATH)/inc
-libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
-libmm-venc-inc      += hardware/qcom/media/mm-core/inc
-libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
-libmm-venc-inc      += $(TARGET_OUT_HEADERS)/qcom/display
-libmm-venc-inc      += $(TARGET_OUT_HEADERS)/adreno
-libmm-venc-inc      += frameworks/native/include/media/hardware
-libmm-venc-inc      += frameworks/native/include/media/openmax
-libmm-venc-inc      += hardware/qcom/media/libc2dcolorconvert
-libmm-venc-inc      += frameworks/av/include/media/stagefright
-libmm-venc-inc      += $(venc-inc)
+
 libmm-venc-inc      += $(TARGET_OUT_HEADERS)/mm-video/swVenc
 
 LOCAL_MODULE                    := libOmxSwVencHevc
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(libmm-venc-inc)
+LOCAL_ADDITIONAL_DEPENDENCIES   := $(libmm-venc-add-dep)
 
 LOCAL_PRELINK_MODULE      := false
 LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
                              libc2dcolorconvert libdl libgui
-LOCAL_SHARED_LIBRARIES  += libHevcSwEncoder
+LOCAL_SHARED_LIBRARIES    += libHevcSwEncoder
+LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
 
 LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_swvenc_hevc.cpp
-LOCAL_SRC_FILES   += ../common/src/extra_data_handler.cpp
-LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
 endif
 
-endif #BUILD_TINY_ANDROID
-
 # ---------------------------------------------------------------------------------
 # 					END
 # ---------------------------------------------------------------------------------
-
