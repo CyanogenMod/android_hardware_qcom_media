@@ -672,6 +672,8 @@ class omx_vdec: public qc_omx_component
         void append_frame_dimension_extradata(OMX_OTHER_EXTRADATATYPE *extra);
         void append_extn_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_extn);
         void append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra, OMX_OTHER_EXTRADATATYPE *p_user);
+        void append_concealmb_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+                OMX_OTHER_EXTRADATATYPE *p_concealmb, OMX_U8 *conceal_mb_data);
         void append_framepack_extradata(OMX_OTHER_EXTRADATATYPE *extra,
                 struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload);
         void append_qp_extradata(OMX_OTHER_EXTRADATATYPE *extra,
@@ -917,6 +919,7 @@ class omx_vdec: public qc_omx_component
         bool external_meta_buffer;
         bool external_meta_buffer_iommu;
         OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
+        OMX_OTHER_EXTRADATATYPE *m_other_extradata;
         bool codec_config_flag;
 #ifdef _MSM8974_
         int capture_capability;
