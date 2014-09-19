@@ -562,6 +562,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     secure_mode(false),
     m_profile(0),
     client_set_fps(false),
+    ignore_not_coded_vops(true),
     m_last_rendered_TS(-1),
     m_queued_codec_config_count(0)
 {
@@ -633,6 +634,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     memset (&h264_scratch,0,sizeof (OMX_BUFFERHEADERTYPE));
     memset (m_hwdevice_name,0,sizeof(m_hwdevice_name));
     memset(m_demux_offsets, 0, ( sizeof(OMX_U32) * 8192) );
+    memset(&m_custom_buffersize, 0, sizeof(m_custom_buffersize));
     m_demux_entries = 0;
     msg_thread_id = 0;
     async_thread_id = 0;
@@ -2938,6 +2940,12 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     break;
 #endif
 
+        case OMX_QcomIndexParamVideoProcessNotCodedVOP:
+        {
+            DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamVideoProcessNotCodedVOP");
+            ((QOMX_ENABLETYPE *)paramData)->bEnable = (OMX_BOOL)!ignore_not_coded_vops;
+            break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("get_parameter: unknown param %08x", paramIndex);
                  eRet =OMX_ErrorUnsupportedIndex;
@@ -3182,6 +3190,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            } else
                                                eRet = get_buffer_req(&drv_ctx.op_buf);
                                        }
+                                   }
+                                   if (m_custom_buffersize.input_buffersize
+                                        && (portDefn->nBufferSize > m_custom_buffersize.input_buffersize)) {
+                                       DEBUG_PRINT_ERROR("ERROR: Custom buffer size set by client: %d, trying to set: %d",
+                                               m_custom_buffersize.input_buffersize, portDefn->nBufferSize);
+                                       eRet = OMX_ErrorBadParameter;
+                                       break;
                                    }
                                    if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
                                            || portDefn->nBufferSize != drv_ctx.ip_buf.buffer_size) {
@@ -3760,6 +3775,39 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         }
 
 #endif
+        case OMX_QcomIndexParamVideoCustomBufferSize:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoCustomBufferSize");
+            QOMX_VIDEO_CUSTOM_BUFFERSIZE* pParam = (QOMX_VIDEO_CUSTOM_BUFFERSIZE*)paramData;
+            if (pParam->nPortIndex == OMX_CORE_INPUT_PORT_INDEX) {
+                struct v4l2_control control;
+                control.id = V4L2_CID_MPEG_VIDC_VIDEO_BUFFER_SIZE_LIMIT;
+                control.value = pParam->nBufferSize;
+                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                    DEBUG_PRINT_ERROR("Failed to set input buffer size");
+                    eRet = OMX_ErrorUnsupportedSetting;
+                } else {
+                    eRet = get_buffer_req(&drv_ctx.ip_buf);
+                    if (eRet == OMX_ErrorNone) {
+                        m_custom_buffersize.input_buffersize = drv_ctx.ip_buf.buffer_size;
+                        DEBUG_PRINT_HIGH("Successfully set custom input buffer size = %d",
+                            m_custom_buffersize.input_buffersize);
+                    } else {
+                        DEBUG_PRINT_ERROR("Failed to get buffer requirement");
+                    }
+                }
+            } else {
+                DEBUG_PRINT_ERROR("ERROR: Custom buffer size in not supported on output port");
+                eRet = OMX_ErrorBadParameter;
+            }
+            break;
+        }
+        case OMX_QcomIndexParamVideoProcessNotCodedVOP:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoProcessNotCodedVOP");
+            ignore_not_coded_vops = !((QOMX_ENABLETYPE *)paramData)->bEnable;
+            break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("Setparameter: unknown param %d", paramIndex);
                  eRet = OMX_ErrorUnsupportedIndex;
@@ -5709,7 +5757,9 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     }
 
 
-    if (codec_type_parse == CODEC_TYPE_MPEG4 || codec_type_parse == CODEC_TYPE_DIVX) {
+    if (ignore_not_coded_vops &&
+            (codec_type_parse == CODEC_TYPE_MPEG4 ||
+             codec_type_parse == CODEC_TYPE_DIVX)) {
         mp4StreamType psBits;
         psBits.data = (unsigned char *)(buffer->pBuffer + buffer->nOffset);
         psBits.numBytes = buffer->nFilledLen;
@@ -6880,8 +6930,8 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
         return OMX_ErrorBadParameter;
     }
 
-    DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p",
-            buffer, buffer->pBuffer);
+    DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p, bufhdr->nFlags = %x",
+            buffer, buffer->pBuffer, buffer->nFlags);
     pending_input_buffers--;
     if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
         int pending_flush_waiters;
@@ -6990,6 +7040,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                 omx->omx_report_error ();
             }
             if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT) {
+                omxhdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
                 vdec_msg->status_code = VDEC_S_INPUT_BITSTREAM_ERR;
             }
             omx->post_event ((unsigned int)omxhdr,vdec_msg->status_code,
