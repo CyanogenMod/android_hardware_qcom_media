@@ -481,6 +481,10 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.QCOM.index.param.video.Mpeg2SeqDispExtraData"*/
     OMX_QcomIndexParamMpeg2SeqDispExtraData = 0x7F000040,
+
+    /* Max Hierarchical P layers */
+    OMX_QcomIndexMaxHierarchicallayers = 0x7F000041,
+
 };
 
 /**
