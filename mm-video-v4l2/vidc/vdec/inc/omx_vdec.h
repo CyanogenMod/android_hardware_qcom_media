@@ -1030,6 +1030,8 @@ class omx_vdec: public qc_omx_component
         void send_codec_config();
 #endif
         OMX_TICKS m_last_rendered_TS;
+        volatile int32_t m_queued_codec_config_count;
+        bool secure_scaling_to_non_secure_opb;
 
         class perf_control {
             // 2 cores will be requested if framerate is beyond 45 fps
@@ -1051,7 +1053,6 @@ class omx_vdec: public qc_omx_component
         };
         perf_control m_perf_control;
 
-        volatile int32_t m_queued_codec_config_count;
         static OMX_COLOR_FORMATTYPE getPreferredColorFormatNonSurfaceMode(OMX_U32 index) {
             //On Android, we default to standard YUV formats for non-surface use-cases
             //where apps prefer known color formats.

@@ -592,7 +592,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     client_set_fps(false),
     ignore_not_coded_vops(true),
     m_last_rendered_TS(-1),
-    m_queued_codec_config_count(0)
+    m_queued_codec_config_count(0),
+    secure_scaling_to_non_secure_opb(false)
 {
     /* Assumption is that , to begin with , we have all the frames with decoder */
     DEBUG_PRINT_HIGH("In %u bit OMX vdec Constructor", (unsigned int)sizeof(long) * 8);
@@ -3123,7 +3124,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                         GetAndroidNativeBufferUsageParams* nativeBuffersUsage = (GetAndroidNativeBufferUsageParams *) paramData;
                                         if (nativeBuffersUsage->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
 
-                                            if (secure_mode) {
+                                            if (secure_mode && !secure_scaling_to_non_secure_opb) {
                                                 nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PROTECTED |
                                                         GRALLOC_USAGE_PRIVATE_UNCACHED);
                                             } else {
@@ -3309,7 +3310,37 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            } else
                                                eRet = get_buffer_req(&drv_ctx.op_buf);
                                        }
+
+                                       if (eRet) {
+                                           break;
+                                       }
+
+                                       if (secure_mode) {
+                                           struct v4l2_control control;
+                                           control.id = V4L2_CID_MPEG_VIDC_VIDEO_SECURE_SCALING_THRESHOLD;
+                                           if (ioctl(drv_ctx.video_driver_fd, VIDIOC_G_CTRL, &control) < 0) {
+                                               DEBUG_PRINT_ERROR("Failed getting secure scaling threshold : %d, id was : %x", errno, control.id);
+                                               eRet = OMX_ErrorHardware;
+                                           } else {
+                                               if (portDefn->format.video.nFrameWidth *
+                                                       portDefn->format.video.nFrameHeight < (OMX_U32)control.value) {
+                                                   secure_scaling_to_non_secure_opb = true;
+                                                   DEBUG_PRINT_HIGH("Enabling secure scalar out of CPZ");
+                                                   control.id = V4L2_CID_MPEG_VIDC_VIDEO_NON_SECURE_OUTPUT2;
+                                                   control.value = 1;
+                                                   if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control) < 0) {
+                                                       DEBUG_PRINT_ERROR("Enabling non-secure output2 failed");
+                                                       eRet = OMX_ErrorUnsupportedSetting;
+                                                   }
+                                               }
+                                           }
+                                       }
                                    }
+
+                                   if (eRet) {
+                                       break;
+                                   }
+
                                    if (!client_buffers.get_buffer_req(buffer_size)) {
                                        DEBUG_PRINT_ERROR("Error in getting buffer requirements");
                                        eRet = OMX_ErrorBadParameter;
@@ -4644,10 +4675,15 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
             }
 
             if ((OMX_U32)handle->size < drv_ctx.op_buf.buffer_size) {
-                DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
-                        " expected %u, got %u",
+                if (secure_mode && secure_scaling_to_non_secure_opb) {
+                    DEBUG_PRINT_HIGH("Buffer size expected %u, got %u, but it's ok since we will never map it",
                         (unsigned int)drv_ctx.op_buf.buffer_size, (unsigned int)handle->size);
-                return OMX_ErrorBadParameter;
+                } else {
+                    DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
+                            " expected %u, got %u",
+                            (unsigned int)drv_ctx.op_buf.buffer_size, (unsigned int)handle->size);
+                    return OMX_ErrorBadParameter;
+                }
             }
 
             drv_ctx.op_buf.buffer_size = handle->size;
@@ -5410,8 +5446,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
 #ifdef USE_ION
         ion_device_fd = alloc_map_ion_memory(
                 drv_ctx.op_buf.buffer_size * drv_ctx.op_buf.actualcount,
-                drv_ctx.op_buf.alignment,
-                &ion_alloc_data, &fd_ion_data, secure_mode ? ION_SECURE : 0);
+                drv_ctx.op_buf.alignment, &ion_alloc_data, &fd_ion_data,
+                (secure_mode && !secure_scaling_to_non_secure_opb) ? ION_SECURE : 0);
         if (ion_device_fd < 0) {
             return OMX_ErrorInsufficientResources;
         }
