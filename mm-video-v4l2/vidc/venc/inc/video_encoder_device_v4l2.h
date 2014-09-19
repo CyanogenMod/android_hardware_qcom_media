@@ -374,6 +374,7 @@ class venc_dev
         bool venc_set_peak_bitrate(OMX_U32 nPeakBitrate);
         bool venc_set_searchrange();
         bool venc_set_vpx_error_resilience(OMX_BOOL enable);
+        bool venc_set_perf_mode(OMX_U32 mode);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
