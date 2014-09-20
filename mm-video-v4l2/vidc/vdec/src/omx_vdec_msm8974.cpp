@@ -1904,6 +1904,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             m_decoder_capability.max_height = frmsize.stepwise.max_height;
         }
 
+        memset(&fmt, 0x0, sizeof(struct v4l2_format));
         fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
         fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -3433,6 +3434,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoPortFormat 0x%x, port: %u",
                                         portFmt->eColorFormat, (unsigned int)portFmt->nPortIndex);
 
+                                memset(&fmt, 0x0, sizeof(struct v4l2_format));
                                 if (1 == portFmt->nPortIndex) {
                                     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
                                     fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
@@ -8540,6 +8542,7 @@ OMX_ERRORTYPE omx_vdec::set_buffer_req(vdec_allocatorproperty *buffer_prop)
                 (unsigned int)buffer_prop->buffer_size, buf_size);
         eRet = OMX_ErrorBadParameter;
     } else {
+        memset(&fmt, 0x0, sizeof(struct v4l2_format));
         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
         fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
 
