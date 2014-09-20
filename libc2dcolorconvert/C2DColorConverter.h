@@ -80,6 +80,11 @@ enum ColorConvertFormat {
 };
 
 typedef struct {
+    int32_t numerator;
+    int32_t denominator;
+} C2DBytesPerPixel;
+
+typedef struct {
   int32_t width;
   int32_t height;
   int32_t stride;
@@ -87,6 +92,7 @@ typedef struct {
   int32_t lumaAlign;
   int32_t sizeAlign;
   int32_t size;
+  C2DBytesPerPixel bpp;
 } C2DBuffReq;
 
 typedef enum {
