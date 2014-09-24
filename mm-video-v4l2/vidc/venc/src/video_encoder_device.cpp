@@ -2955,14 +2955,16 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
                     case VEN_PROFILE_H264_BASELINE:
                         *eProfile = OMX_VIDEO_AVCProfileBaseline;
                         break;
+#ifndef _MSM8610_
                     case VEN_PROFILE_H264_MAIN:
                         *eProfile = OMX_VIDEO_AVCProfileMain;
                         break;
                     case VEN_PROFILE_H264_HIGH:
                         *eProfile = OMX_VIDEO_AVCProfileHigh;
                         break;
+#endif
                     default:
-                        DEBUG_PRINT_LOW("%s(): Unknown Error", __func__);
+                        DEBUG_PRINT_LOW("%s(): Unsupported profile %x", __func__, codec_profile.profile);
                         return false;
                 }
             }
