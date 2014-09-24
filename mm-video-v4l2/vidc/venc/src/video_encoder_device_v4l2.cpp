@@ -2042,6 +2042,16 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexConfigVideoVencPerfMode:
+            {
+                QOMX_EXTNINDEX_VIDEO_PERFMODE *pParam = (QOMX_EXTNINDEX_VIDEO_PERFMODE *) configData;
+                DEBUG_PRINT_LOW("venc_set_config: OMX_QcomIndexConfigVideoVencPerfMode");
+                if (venc_set_perf_mode(pParam->nPerfMode) == false) {
+                    DEBUG_PRINT_ERROR("Failed to set V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE");
+                    return false;
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -4245,6 +4255,24 @@ bool venc_dev::venc_set_perf_level(QOMX_VIDEO_PERF_LEVEL ePerfLevel)
         DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
     }
     return status;
+}
+
+bool venc_dev::venc_set_perf_mode(OMX_U32 mode)
+{
+    struct v4l2_control control;
+    if (mode && mode <= V4L2_MPEG_VIDC_VIDEO_PERF_POWER_SAVE) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE;
+        control.value = mode;
+        DEBUG_PRINT_LOW("Going to set V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE");
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to set V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE");
+            return false;
+        }
+        return true;
+    } else {
+        DEBUG_PRINT_ERROR("Invalid mode set for V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE: %d", mode);
+        return false;
+    }
 }
 
 bool venc_dev::venc_set_vui_timing_info(OMX_BOOL enable)
