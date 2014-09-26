@@ -182,7 +182,8 @@ struct msm_venc_slice_delivery {
 };
 
 struct msm_venc_hierlayers {
-    unsigned int numlayers;
+    unsigned int num_p_layers;
+    unsigned int num_b_layers;
 };
 
 struct msm_venc_ltrinfo {
@@ -328,7 +329,7 @@ class venc_dev
         struct msm_venc_video_capability    capability;
         struct msm_venc_idrperiod           idrperiod;
         struct msm_venc_slice_delivery      slice_mode;
-        struct msm_venc_hierlayers          hier_p_layers;
+        struct msm_venc_hierlayers          hier_layers;
         struct msm_venc_perf_level          performance_level;
         struct msm_venc_vui_timing_info     vui_timing_info;
         struct msm_venc_peak_bitrate        peak_bitrate;

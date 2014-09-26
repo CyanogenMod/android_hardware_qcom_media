@@ -153,6 +153,7 @@ class omx_video: public qc_omx_component
         OMX_BUFFERHEADERTYPE  *psource_frame;
         OMX_BUFFERHEADERTYPE  *pdest_frame;
         bool secure_session;
+        bool hier_b_enabled;
         //intermediate conversion buffer queued to encoder in case of invalid EOS input
         OMX_BUFFERHEADERTYPE  *mEmptyEosBuffer;
 
