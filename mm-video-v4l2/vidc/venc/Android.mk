@@ -79,7 +79,7 @@ libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libmm-venc-def += -D_MSM8974_
 libmm-venc-def += -D_MSM8226_
 endif
-ifeq ($(TARGET_BOARD_PLATFORM),ferrum)
+ifeq ($(TARGET_BOARD_PLATFORM),msm8909)
 libmm-venc-def += -DMAX_RES_1080P
 libmm-venc-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
@@ -130,7 +130,7 @@ LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
 
 LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_video_encoder.cpp
-ifneq (,$(filter msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze msm8916 msm8994 ferrum,$(TARGET_BOARD_PLATFORM)))
+ifneq (,$(filter msm8974 msm8610 msm8226 apq8084 mpq8092 msm_bronze msm8916 msm8994 msm8909,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
 else
 LOCAL_SRC_FILES   += src/video_encoder_device.cpp
@@ -141,7 +141,7 @@ LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
 
-ifeq ($(TARGET_BOARD_PLATFORM),ferrum)
+ifeq ($(TARGET_BOARD_PLATFORM),msm8909)
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxSwVencMpeg4)
 # ---------------------------------------------------------------------------------
