@@ -229,7 +229,7 @@ typedef struct OMX_QCOM_PLATFORM_PRIVATE_ENTRY
     OMX_QCOM_PLATFORM_PRIVATE_ENTRY_TYPE type;
 
     /** Pointer to platform specific entry */
-    void* entry;
+    OMX_PTR entry;
 }OMX_QCOM_PLATFORM_PRIVATE_ENTRY;
 
 typedef struct OMX_QCOM_PLATFORM_PRIVATE_LIST
