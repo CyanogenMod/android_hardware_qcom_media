@@ -487,7 +487,31 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Set Encoder Performance Index */
     OMX_QcomIndexConfigVideoVencPerfMode = 0x7F000042,
+
+    /* Set Hybrid Hier-p layers */
+    OMX_QcomIndexParamVideoHybridHierpMode = 0x7F000043,
 };
+
+/**
+* This is custom extension to configure Hybrid Hier-p settings.
+* This mode is different from enabling Hier-p mode. This
+* property enables Hier-p encoding with LTR referencing in each
+* sub-GOP.
+*
+* STRUCT MEMBERS
+*
+* nSize         : Size of Structure in bytes
+* nVersion      : OpenMAX IL specification version information
+* nHpLayers     : Set the number of Hier-p layers for the session
+*                  - This should be <= 6. (1 Base layer +
+*                    5 Enhancement layers)
+*/
+
+typedef struct QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE {
+   OMX_U32 nSize;
+   OMX_VERSIONTYPE nVersion;
+   OMX_U32 nHpLayers;
+} QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE;
 
 /**
  * Encoder Performance Mode.  This structure is used to set

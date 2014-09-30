@@ -51,6 +51,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 #define MAXDPB 16
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
+#define MAX(x,y) (((x) > (y)) ? (x) : (y))
+#define ROUND(__sz, __align) (((__sz) + ((__align>>1))) & (~(__align-1)))
 #define MAX_PROFILE_PARAMS 6
 #define MPEG4_SP_START 0
 #define MPEG4_ASP_START (MPEG4_SP_START + 10)
@@ -1842,6 +1844,17 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexParamVideoHybridHierpMode:
+            {
+                QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* pParam =
+                    (QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE*)paramData;
+
+                if (!venc_set_hybrid_hierp(pParam->nHpLayers)) {
+                     DEBUG_PRINT_ERROR("Setting hybrid Hier-P mode failed");
+                     return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -2229,6 +2242,23 @@ unsigned venc_dev::venc_start(void)
     return 0;
 }
 
+inline const char* hiermode_string(int val)
+{
+    switch(val)
+    {
+    case HIER_NONE:
+        return "No Hier";
+    case HIER_P:
+        return "Hier-P";
+    case HIER_B:
+        return "Hier-B";
+    case HIER_P_HYBRID:
+        return "Hybrid Hier-P";
+    default:
+        return "No hier";
+    }
+}
+
 void venc_dev::venc_config_print()
 {
 
@@ -2272,8 +2302,8 @@ void venc_dev::venc_config_print()
     DEBUG_PRINT_HIGH("ENC_CONFIG: LTR Enabled: %d, Count: %d",
             ltrinfo.enabled, ltrinfo.count);
 
-    DEBUG_PRINT_HIGH("ENC_CONFIG: Hier-P layers: %d, Hier-B layers: %d, VPX_ErrorResilience: %d",
-            hier_layers.num_p_layers, hier_layers.num_b_layers, vpx_err_resilience.enable);
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Hier layers: %d, Hier Mode: %s VPX_ErrorResilience: %d",
+            hier_layers.numlayers, hiermode_string(hier_layers.hier_mode), vpx_err_resilience.enable);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: Performace level: %d", performance_level.perflevel);
 
@@ -2741,10 +2771,38 @@ bool venc_dev::venc_set_au_delimiter(OMX_BOOL enable)
     return true;
 }
 
+bool venc_dev::venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode)
+{
+    // Check for layers in Hier-p/hier-B with Hier-P-Hybrid
+    if (layers && (mode == HIER_P || mode == HIER_B) && hier_layers.hier_mode == HIER_P_HYBRID)
+        return false;
+
+    // Check for bframes with Hier-P-Hybrid
+    if (bFrames && hier_layers.hier_mode == HIER_P_HYBRID)
+        return false;
+
+    // Check for Hier-P-Hybrid with bframes/LTR/hier-p/Hier-B
+    if (layers && mode == HIER_P_HYBRID && (intra_period.num_bframes || hier_layers.hier_mode == HIER_P ||
+           hier_layers.hier_mode == HIER_B || ltrinfo.count))
+        return false;
+
+    // Check for LTR with Hier-P-Hybrid
+    if (count && hier_layers.hier_mode == HIER_P_HYBRID)
+        return false;
+
+    return true;
+}
+
 bool venc_dev::venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type,
                                     OMX_U32 num_layers)
 {
     struct v4l2_control control;
+
+    if (!venc_validate_hybridhp_params(num_layers, 0, 0, (int)type)){
+        DEBUG_PRINT_ERROR("Invalid settings, Hier-pLayers enabled with HybridHP");
+        return false;
+    }
+
     if (type == QOMX_HIERARCHICALCODING_P) {
         // Reduce layer count by 1 before sending to driver. This avoids
         // driver doing the same in multiple places.
@@ -2755,7 +2813,6 @@ bool venc_dev::venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type,
             DEBUG_PRINT_ERROR("Request to set Hier P num layers failed");
             return false;
         }
-        hier_layers.num_p_layers = num_layers;
         if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
             DEBUG_PRINT_LOW("Set H264_SVC_NAL");
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC;
@@ -2765,6 +2822,7 @@ bool venc_dev::venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type,
                 return false;
             }
         }
+        hier_layers.hier_mode = HIER_P;
     } else if (type == QOMX_HIERARCHICALCODING_B) {
         if (m_sVenc_cfg.codectype != V4L2_PIX_FMT_HEVC) {
             DEBUG_PRINT_ERROR("Failed : Hier B layers supported only for HEVC encode");
@@ -2777,11 +2835,12 @@ bool venc_dev::venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type,
             DEBUG_PRINT_ERROR("Request to set Hier P num layers failed");
             return false;
         }
-        hier_layers.num_b_layers = num_layers;
+        hier_layers.hier_mode = HIER_B;
     } else {
         DEBUG_PRINT_ERROR("Request to set hier num layers failed for type: %d", type);
         return false;
     }
+    hier_layers.numlayers = num_layers;
     return true;
 }
 
@@ -3432,19 +3491,23 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
             (codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_HIGH)) {
         nBFrames=0;
     }
-    //Do not update nBFrames when nPFrames = 0, to ensure that IPBBBB sequence doesn't fail
-    if (nBFrames && nPFrames) {
-        int ratio = nBFrames / nPFrames;
-        if (ratio * nPFrames != nBFrames) {
-            DEBUG_PRINT_HIGH("Warning: nPFrames and nBFrames ratio is not integer. Ratio is floored = %d "
-                "nPFrames = %d nBFrames = %d", ratio, nPFrames, nBFrames);
-            nBFrames = ratio * nPFrames;
-        }
-        DEBUG_PRINT_HIGH("Updated nPFrames = %d nBFrames = %d", nPFrames, nBFrames);
+
+    if (!venc_validate_hybridhp_params(0, nBFrames, 0, 0)) {
+        DEBUG_PRINT_ERROR("Invalid settings, bframes cannot be enabled with HybridHP");
+        return false;
+    }
+
+    intra_period.num_pframes = nPFrames;
+    intra_period.num_bframes = nBFrames;
+
+    if (!venc_calibrate_gop())
+    {
+        DEBUG_PRINT_ERROR("Invalid settings, Hybrid HP enabled with LTR OR Hier-pLayers OR bframes");
+        return false;
     }
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
-    control.value = nPFrames;
+    control.value = intra_period.num_pframes;
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 
     if (rc) {
@@ -3454,9 +3517,8 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
 
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
 
-    intra_period.num_pframes = control.value;
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_B_FRAMES;
-    control.value = nBFrames;
+    control.value = intra_period.num_bframes;
     DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d", control.id, control.value);
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 
@@ -3465,7 +3527,6 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
         return false;
     }
 
-    intra_period.num_bframes = control.value;
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%lu", control.id, intra_period.num_bframes);
 
     if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
@@ -3478,10 +3539,8 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
             DEBUG_PRINT_ERROR("Failed to set control");
             return false;
         }
-
         idrperiod.idrperiod = 1;
     }
-
     return true;
 }
 
@@ -3967,6 +4026,146 @@ bool venc_dev::venc_set_deinterlace(OMX_U32 enable)
     return true;
 }
 
+bool venc_dev::venc_calibrate_gop()
+{
+    int ratio, sub_gop_size, gop_size, nPframes, nBframes, nLayers;
+    int num_sub_gops_in_a_gop;
+    nPframes = intra_period.num_pframes;
+    nBframes = intra_period.num_bframes;
+    nLayers = hier_layers.numlayers;
+
+    if (!nPframes) {
+        DEBUG_PRINT_ERROR("nPframes should be non-zero\n");
+        return false;
+    }
+
+    if (nLayers > 1) { /*Multi-layer encoding*/
+        sub_gop_size = 1 << (nLayers - 1);
+        /* Actual GOP definition is nPframes + nBframes + 1 but for the sake of
+         * below calculations we are ignoring +1 . Ignoring +1 in below
+         * calculations is not a mistake but intentional.
+         */
+        gop_size = MAX(sub_gop_size, ROUND(nPframes + nBframes, sub_gop_size));
+        num_sub_gops_in_a_gop = gop_size/sub_gop_size;
+        if (nBframes) { /*Hier-B case*/
+        /*
+            * Frame Type--> I  B  B  B  P  B  B  B  P  I  B  B  P ...
+            * Layer -->     0  2  1  2  0  2  1  2  0  0  2  1  2 ...
+            * nPframes = 2, nBframes = 6, nLayers = 3
+            *
+            * Intention is to keep the intraperiod as close as possible to what is desired
+            * by the client while adjusting nPframes and nBframes to meet other constraints.
+            * eg1: Input by client: nPframes =  9, nBframes = 14, nLayers = 2
+            *    Output of this fn: nPframes = 12, nBframes = 12, nLayers = 2
+            *
+            * eg2: Input by client: nPframes = 9, nBframes = 4, nLayers = 2
+            *    Output of this fn: nPframes = 7, nBframes = 7, nLayers = 2
+            */
+            nPframes = num_sub_gops_in_a_gop;
+            nBframes = gop_size - nPframes;
+        } else { /*Hier-P case*/
+            /*
+            * Frame Type--> I  P  P  P  P  P  P  P  I  P  P  P  P ...
+            * Layer-->      0  2  1  2  0  2  1  2  0  2  1  2  0 ...
+            * nPframes =  7, nBframes = 0, nLayers = 3
+            *
+            * Intention is to keep the intraperiod as close as possible to what is desired
+            * by the client while adjusting nPframes and nBframes to meet other constraints.
+            * eg1: Input by client: nPframes = 9, nBframes = 0, nLayers = 3
+            *    Output of this fn: nPframes = 7, nBframes = 0, nLayers = 3
+            *
+            * eg2: Input by client: nPframes = 10, nBframes = 0, nLayers = 3
+            *     Output of this fn:nPframes = 12, nBframes = 0, nLayers = 3
+            */
+            nPframes = gop_size - 1;
+        }
+    } else { /*Single-layer encoding*/
+        if (nBframes) {
+            /* I  P  B  B  B  P  B  B  B   P   B   B   B   I   P   B   B...
+            *  1  2  3  4  5  6  7  8  9  10  11  12  13  14  15  16  17...
+            * nPframes = 3, nBframes = 9, nLayers = 0
+            *
+            * ratio is rounded,
+            * eg1: nPframes = 9, nBframes = 11 => ratio = 1
+            * eg2: nPframes = 9, nBframes = 16 => ratio = 2
+            */
+            ratio = MAX(1, MIN((nBframes + (nPframes >> 1))/nPframes, 3));
+            nBframes = ratio * nPframes;
+        }
+    }
+    DEBUG_PRINT_LOW("P/B Frames changed from: %ld/%ld to %d/%d",
+        intra_period.num_pframes, intra_period.num_bframes, nPframes, nBframes);
+    intra_period.num_pframes = nPframes;
+    intra_period.num_bframes = nBframes;
+    hier_layers.numlayers = nLayers;
+    return true;
+}
+
+bool venc_dev::venc_set_hybrid_hierp(OMX_U32 layers)
+{
+    DEBUG_PRINT_LOW("venc_set_hybrid_hierp layers: %u", layers);
+    struct v4l2_control control;
+    int rc;
+
+    if (!venc_validate_hybridhp_params(layers, 0, 0, (int) HIER_P_HYBRID)) {
+        DEBUG_PRINT_ERROR("Invalid settings, Hybrid HP enabled with LTR OR Hier-pLayers OR bframes");
+        return false;
+    }
+
+    if (!layers || layers > MAX_HYB_HIERP_LAYERS) {
+        DEBUG_PRINT_ERROR("Invalid numbers of layers set: %d (max supported is 6)", layers);
+        return false;
+    }
+
+    hier_layers.numlayers = layers;
+    hier_layers.hier_mode = HIER_P_HYBRID;
+    if (venc_calibrate_gop()) {
+     // Update the driver with the new nPframes and nBframes
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
+        control.value = intra_period.num_pframes;
+        rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+        if (rc) {
+            DEBUG_PRINT_ERROR("Failed to set control");
+            return false;
+        }
+
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_B_FRAMES;
+        control.value = intra_period.num_bframes;
+        rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+        if (rc) {
+            DEBUG_PRINT_ERROR("Failed to set control");
+            return false;
+        }
+        DEBUG_PRINT_LOW("Updated nPframes (%ld) and nBframes (%ld)",
+                         intra_period.num_pframes, intra_period.num_bframes);
+    } else {
+        DEBUG_PRINT_ERROR("Invalid settings, Hybrid HP enabled with LTR OR Hier-pLayers OR bframes");
+        return false;
+    }
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_HYBRID_HIERP_MODE;
+    control.value = layers - 1;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x, val=%d",
+                    control.id, control.value);
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set hybrid hierp %d", rc);
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("SUCCESS IOCTL set control for id=%x, val=%d",
+                    control.id, control.value);
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC;
+    control.value = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC_ENABLED;
+    if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_ERROR("Failed to enable SVC_NAL");
+        return false;
+    }
+    return true;
+}
+
 bool venc_dev::venc_set_ltrmode(OMX_U32 enable, OMX_U32 count)
 {
     DEBUG_PRINT_LOW("venc_set_ltrmode: enable = %u", (unsigned int)enable);
@@ -3974,6 +4173,11 @@ bool venc_dev::venc_set_ltrmode(OMX_U32 enable, OMX_U32 count)
     struct v4l2_ext_control ctrl[2];
     struct v4l2_ext_controls controls;
     int rc;
+
+    if (!venc_validate_hybridhp_params(0, 0, count, 0)) {
+        DEBUG_PRINT_ERROR("Invalid settings, LTR enabled with HybridHP");
+        return false;
+    }
 
     ctrl[0].id = V4L2_CID_MPEG_VIDC_VIDEO_LTRMODE;
     if (enable)
@@ -4889,23 +5093,33 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
 
     mb_per_sec = mb_per_frame * m_sVenc_cfg.fps_num / m_sVenc_cfg.fps_den;
 
-    bool h264, ltr, hierp;
+    bool h264, ltr, hlayers;
+    unsigned int hybridp = 0, maxDpb = profile_tbl[5] / mb_per_frame;
     h264 = m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264;
     ltr = ltrinfo.enabled && ((ltrinfo.count + 2) <= MIN((unsigned int) (profile_tbl[5] / mb_per_frame), MAXDPB));
-    hierp = hier_layers.num_p_layers && ((intra_period.num_bframes + ltrinfo.count +
-                        hier_layers.num_p_layers + 1) <= (unsigned int) (profile_tbl[5] / profile_tbl[0]));
+    hlayers = hier_layers.numlayers && hier_layers.hier_mode == HIER_P &&
+     ((intra_period.num_bframes + ltrinfo.count + hier_layers.numlayers + 1) <= (unsigned int) (profile_tbl[5] / profile_tbl[0]));
+
+    /*  Hybrid HP reference buffers:
+        layers = 1, 2 need 1 reference buffer
+        layers = 3, 4 need 2 reference buffers
+        layers = 5, 6 need 3 reference buffers
+    */
+
+    if(hier_layers.hier_mode == HIER_P_HYBRID)
+        hybridp = MIN(MAX(maxDpb, ((hier_layers.numlayers + 1) / 2)), 16);
 
     do {
         if (mb_per_frame <= (unsigned int)profile_tbl[0]) {
             if (mb_per_sec <= (unsigned int)profile_tbl[1]) {
                 if (m_sVenc_cfg.targetbitrate <= (unsigned int)profile_tbl[2]) {
-                    if (h264 && (ltr || hierp)) {
-                        // Update profile and level to adapt to the LTR and Hier-p settings
+                    if (h264 && (ltr || hlayers || hybridp)) {
+                        // Update profile and level to adapt to the LTR and Hier-p/Hybrid-HP settings
                         new_level = (int)profile_tbl[3];
                         new_profile = (int)profile_tbl[4];
                         profile_level_found = true;
-                        DEBUG_PRINT_LOW("Appropriate profile/level for LTR count: %u/ Hier-p: %u is %u/%u, maxDPB: %u",
-                                        ltrinfo.count, hier_layers.num_p_layers, (int)new_profile, (int)new_level,
+                        DEBUG_PRINT_LOW("Appropriate profile/level for LTR count: %u OR Hier-p: %u is %u/%u, maxDPB: %u",
+                                        ltrinfo.count, hier_layers.numlayers, (int)new_profile, (int)new_level,
                                         MIN((unsigned int) (profile_tbl[5] / mb_per_frame), MAXDPB));
                         break;
                     } else {
