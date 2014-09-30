@@ -60,7 +60,7 @@ void DashPacketSource::updateFormat(const sp<MetaData> &meta) {
 DashPacketSource::~DashPacketSource() {
 }
 
-status_t DashPacketSource::start(MetaData *params) {
+status_t DashPacketSource::start(MetaData * /*params*/) {
     return OK;
 }
 

@@ -56,7 +56,7 @@ struct DashCodec : public AHierarchicalStateMachine, public CodecBase {
     virtual void signalFlush();
     virtual void signalResume();
 
-    virtual void signalSetParameters(const sp<AMessage> &msg) {
+    virtual void signalSetParameters(const sp<AMessage> & /*msg*/) {
       return;
     }
     virtual void signalEndOfInputStream() {

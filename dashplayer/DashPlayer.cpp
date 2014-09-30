@@ -125,11 +125,13 @@ private:
 DashPlayer::DashPlayer()
     : mUIDValid(false),
       mVideoIsAVC(false),
+      mRenderer(NULL),
       mAudioEOS(false),
       mVideoEOS(false),
       mScanSourcesPending(false),
       isSetSurfaceTexturePending(false),
       mScanSourcesGeneration(0),
+      mBufferingNotification(false),
       mTimeDiscontinuityPending(false),
       mFlushingAudio(NONE),
       mFlushingVideo(NONE),
@@ -143,11 +145,9 @@ DashPlayer::DashPlayer()
       mNumFramesDropped(0ll),
       mPauseIndication(false),
       mSourceType(kDefaultSource),
-      mRenderer(NULL),
       mIsSecureInputBuffers(false),
-      mStats(NULL),
-      mBufferingNotification(false),
       mSRid(0),
+      mStats(NULL),
       mTimedTextCEAPresent(false),
       mTimedTextCEASamplesDisc(false),
       mQCTimedTextListenerPresent(false){
@@ -186,7 +186,7 @@ void DashPlayer::setDriver(const wp<DashPlayerDriver> &driver) {
     mDriver = driver;
 }
 
-void DashPlayer::setDataSource(const sp<IStreamSource> &source) {
+void DashPlayer::setDataSource(const sp<IStreamSource> & /*source*/) {
     ALOGE("DashPlayer::setDataSource not Implemented...");
 }
 
@@ -217,7 +217,7 @@ status_t DashPlayer::setDataSource(
     }
 }
 
-void DashPlayer::setDataSource(int fd, int64_t offset, int64_t length) {
+void DashPlayer::setDataSource(int /*fd*/, int64_t /*offset*/, int64_t /*length*/) {
    ALOGE("DashPlayer::setDataSource not Implemented...");
 }
 
@@ -511,7 +511,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
         case kWhatAudioNotify:
         case kWhatTextNotify:
         {
-            int track;
+            int track = -1;
             if (msg->what() == kWhatAudioNotify)
                 track = kAudio;
             else if (msg->what() == kWhatVideoNotify)
@@ -2352,7 +2352,7 @@ void DashPlayer::prepareSource()
     }
 }
 
-status_t DashPlayer::dump(int fd, const Vector<String16> &args)
+status_t DashPlayer::dump(int fd, const Vector<String16> & /*args*/)
 {
     if(mStats != NULL) {
       mStats->setFileDescAndOutputStream(fd);

@@ -42,6 +42,7 @@ DashPlayer::Renderer::Renderer(
       mVideoQueueGeneration(0),
       mAnchorTimeMediaUs(-1),
       mAnchorTimeRealUs(-1),
+      mSeekTimeUs(0),
       mFlushingAudio(false),
       mFlushingVideo(false),
       mHasAudio(false),
@@ -51,8 +52,7 @@ DashPlayer::Renderer::Renderer(
       mWasPaused(false),
       mLastPositionUpdateUs(-1ll),
       mVideoLateByUs(0ll),
-      mStats(NULL),
-      mSeekTimeUs(0){
+      mStats(NULL){
 
       mAVSyncDelayWindowUs = 40000;
 
