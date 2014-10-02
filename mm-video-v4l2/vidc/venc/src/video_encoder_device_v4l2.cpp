@@ -347,7 +347,11 @@ void* venc_dev::async_venc_message_thread (void *input)
             while (!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
                 venc_msg.msgcode=VEN_MSG_INPUT_BUFFER_DONE;
                 venc_msg.statuscode=VEN_S_SUCCESS;
-                omxhdr=omx_venc_base->m_inp_mem_ptr+v4l2_buf.index;
+                if (omx_venc_base->mUseProxyColorFormat && !omx_venc_base->mUsesColorConversion)
+                    omxhdr = &omx_venc_base->meta_buffer_hdr[v4l2_buf.index];
+                else
+                    omxhdr = &omx_venc_base->m_inp_mem_ptr[v4l2_buf.index];
+
                 venc_msg.buf.clientdata=(void*)omxhdr;
                 omx->handle->ebd++;
 
