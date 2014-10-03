@@ -100,6 +100,7 @@ endif
 venc-inc       = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 libmm-venc-def += -D_ANDROID_ICS_
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVenc)
 # ---------------------------------------------------------------------------------
@@ -162,6 +163,7 @@ libmm-venc-inc      += $(venc-inc)
 libmm-venc-inc      += $(TARGET_OUT_HEADERS)/mm-video/swvenc
 
 LOCAL_MODULE                    := libOmxSwVencMpeg4
+
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(libmm-venc-inc)
@@ -175,6 +177,42 @@ LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
 LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_swvenc_mpeg4.cpp
 
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
+include $(BUILD_SHARED_LIBRARY)
+endif
+
+ifeq ($(TARGET_BOARD_PLATFORM),msm8992)
+# ---------------------------------------------------------------------------------
+#                            Make the Shared library (libOmxSwVenc)
+# ---------------------------------------------------------------------------------
+include $(CLEAR_VARS)
+libmm-venc-inc      += $(LOCAL_PATH)/inc
+libmm-venc-inc      += $(OMX_VIDEO_PATH)/vidc/common/inc
+libmm-venc-inc      += hardware/qcom/media/mm-core/inc
+libmm-venc-inc      += hardware/qcom/media/libstagefrighthw
+libmm-venc-inc      += $(TARGET_OUT_HEADERS)/qcom/display
+libmm-venc-inc      += $(TARGET_OUT_HEADERS)/adreno
+libmm-venc-inc      += frameworks/native/include/media/hardware
+libmm-venc-inc      += frameworks/native/include/media/openmax
+libmm-venc-inc      += hardware/qcom/media/libc2dcolorconvert
+libmm-venc-inc      += frameworks/av/include/media/stagefright
+libmm-venc-inc      += $(venc-inc)
+libmm-venc-inc      += $(TARGET_OUT_HEADERS)/mm-video/swVenc
+
+LOCAL_MODULE                    := libOmxSwVencHevc
+LOCAL_MODULE_TAGS               := optional
+LOCAL_CFLAGS                    := $(libmm-venc-def)
+LOCAL_C_INCLUDES                := $(libmm-venc-inc)
+
+LOCAL_PRELINK_MODULE      := false
+LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
+                             libc2dcolorconvert libdl libgui
+LOCAL_SHARED_LIBRARIES  += libHevcSwEncoder
+
+LOCAL_SRC_FILES   := src/omx_video_base.cpp
+LOCAL_SRC_FILES   += src/omx_swvenc_hevc.cpp
+LOCAL_SRC_FILES   += ../common/src/extra_data_handler.cpp
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
