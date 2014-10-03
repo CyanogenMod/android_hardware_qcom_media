@@ -4,15 +4,13 @@ include $(CLEAR_VARS)
 
 
 ifneq ($(TARGET_QCOM_DISPLAY_VARIANT),)
-DISPLAY := display-$(TARGET_QCOM_DISPLAY_VARIANT)
+PLATFORM := .
 else
-DISPLAY := display/$(TARGET_BOARD_PLATFORM)
-# Fix the header inclusions for platform variants without an explicit path
-ifneq ($(filter msm8610 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
-    DISPLAY := display/msm8974
+ifneq ($(filter msm8610 msm8226 msm8974 apq8084 mpq8092,$(TARGET_BOARD_PLATFORM)),)
+PLATFORM := msm8974
 endif
-ifneq ($(filter msm8660 ,$(TARGET_BOARD_PLATFORM)),)
-    DISPLAY := display/msm8960
+ifneq ($(filter msm8660 msm8960,$(TARGET_BOARD_PLATFORM)),)
+PLATFORM := msm8960
 endif
 endif
 
@@ -22,7 +20,7 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
     $(TOP)/frameworks/av/include/media/stagefright \
     $(TOP)/frameworks/native/include/media/openmax \
-    $(TOP)/hardware/qcom/$(DISPLAY)/libcopybit \
+    $(TOP)/$(call project-path-for,qcom-display)/$(PLATFORM)/libcopybit \
     $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
