@@ -48,6 +48,7 @@ endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 libmm-venc-def += -DMAX_RES_720P
 libmm-venc-def += -D_MSM8974_
+libmm-venc-def += -D_MSM8610_
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm8226)
 libmm-venc-def += -DMAX_RES_1080P
