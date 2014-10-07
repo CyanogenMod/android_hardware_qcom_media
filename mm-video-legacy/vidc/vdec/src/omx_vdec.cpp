@@ -3042,6 +3042,15 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             if ( portDefn->nBufferCountActual >= drv_ctx.op_buf.mincount &&
                  portDefn->nBufferSize >=  buffer_size)
               {
+                // disallow more than 2 extrabuffers when we are in smoothstreaming mode
+                // and output memory comes from a budgeted carveout
+                if (m_use_smoothstreaming && secure_mode &&
+                    (portDefn->nBufferCountActual > drv_ctx.op_buf.actualcount + 2)) {
+                    ALOGI("NOTE: rejecting client's buffer-count %d v/s actual %d",
+                            portDefn->nBufferCountActual, drv_ctx.op_buf.actualcount);
+                    eRet = OMX_ErrorBadParameter;
+                    break;
+                }
                 drv_ctx.op_buf.actualcount = portDefn->nBufferCountActual;
                 drv_ctx.op_buf.buffer_size = portDefn->nBufferSize;
                 eRet = set_buffer_req(&drv_ctx.op_buf);
