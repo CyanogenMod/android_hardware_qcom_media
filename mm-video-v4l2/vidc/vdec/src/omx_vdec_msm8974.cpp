@@ -7952,7 +7952,8 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
                                      h264_scratch.pBuffer,h264_scratch.nFilledLen);
                              pdest_frame->nFilledLen += h264_scratch.nFilledLen;
                              h264_scratch.nFilledLen = 0;
-                             pdest_frame->nTimeStamp = h264_last_au_ts;
+                             if (h264_last_au_ts != LLONG_MAX)
+                                 pdest_frame->nTimeStamp = h264_last_au_ts;
                         } else {
                             /* Completely new frame, let's just push what
                              * we have now.  The resulting EBD would trigger
