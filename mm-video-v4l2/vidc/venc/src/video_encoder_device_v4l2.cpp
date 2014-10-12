@@ -246,7 +246,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&voptimecfg, 0, sizeof(voptimecfg));
     memset(&capability, 0, sizeof(capability));
     memset(&m_debug,0,sizeof(m_debug));
-    memset(&hier_p_layers,0,sizeof(hier_p_layers));
+    memset(&hier_layers,0,sizeof(hier_layers));
     is_searchrange_set = false;
     enable_mv_narrow_searchrange = false;
     memset(&ltrinfo, 0, sizeof(ltrinfo));
@@ -2270,8 +2270,8 @@ void venc_dev::venc_config_print()
     DEBUG_PRINT_HIGH("ENC_CONFIG: LTR Enabled: %d, Count: %d",
             ltrinfo.enabled, ltrinfo.count);
 
-    DEBUG_PRINT_HIGH("ENC_CONFIG: Hier-P layers: %d, VPX_ErrorResilience: %d",
-            hier_p_layers.numlayers, vpx_err_resilience.enable);
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Hier-P layers: %d, Hier-B layers: %d, VPX_ErrorResilience: %d",
+            hier_layers.num_p_layers, hier_layers.num_b_layers, vpx_err_resilience.enable);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: Performace level: %d", performance_level.perflevel);
 
@@ -2743,17 +2743,17 @@ bool venc_dev::venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type,
                                     OMX_U32 num_layers)
 {
     struct v4l2_control control;
-    control.id = V4L2_CID_MPEG_VIDC_VIDEO_HIER_P_NUM_LAYERS;
     if (type == QOMX_HIERARCHICALCODING_P) {
         // Reduce layer count by 1 before sending to driver. This avoids
         // driver doing the same in multiple places.
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_HIER_P_NUM_LAYERS;
         control.value = num_layers - 1;
         DEBUG_PRINT_HIGH("Set Hier P num layers: %u", (unsigned int)num_layers);
         if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
             DEBUG_PRINT_ERROR("Request to set Hier P num layers failed");
             return false;
         }
-        hier_p_layers.numlayers = num_layers;
+        hier_layers.num_p_layers = num_layers;
         if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
             DEBUG_PRINT_LOW("Set H264_SVC_NAL");
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC;
@@ -2763,6 +2763,19 @@ bool venc_dev::venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type,
                 return false;
             }
         }
+    } else if (type == QOMX_HIERARCHICALCODING_B) {
+        if (m_sVenc_cfg.codectype != V4L2_PIX_FMT_HEVC) {
+            DEBUG_PRINT_ERROR("Failed : Hier B layers supported only for HEVC encode");
+            return false;
+        }
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_HIER_B_NUM_LAYERS;
+        control.value = num_layers - 1;
+        DEBUG_PRINT_INFO("Set Hier B num layers: %u", (unsigned int)num_layers);
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Request to set Hier P num layers failed");
+            return false;
+        }
+        hier_layers.num_b_layers = num_layers;
     } else {
         DEBUG_PRINT_ERROR("Request to set hier num layers failed for type: %d", type);
         return false;
@@ -3412,17 +3425,20 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
 
     if ((codec_profile.profile != V4L2_MPEG_VIDEO_MPEG4_PROFILE_ADVANCED_SIMPLE) &&
             (codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_MAIN) &&
+            (codec_profile.profile != V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN) &&
+            (codec_profile.profile != V4L2_MPEG_VIDC_VIDEO_HEVC_PROFILE_MAIN10) &&
             (codec_profile.profile != V4L2_MPEG_VIDEO_H264_PROFILE_HIGH)) {
         nBFrames=0;
     }
-    if (nBFrames) {
-        int ratio = nPFrames ? nBFrames / nPFrames : 1;
+    //Do not update nBFrames when nPFrames = 0, to ensure that IPBBBB sequence doesn't fail
+    if (nBFrames && nPFrames) {
+        int ratio = nBFrames / nPFrames;
         if (ratio * nPFrames != nBFrames) {
             DEBUG_PRINT_HIGH("Warning: nPFrames and nBFrames ratio is not integer. Ratio is floored = %d "
                 "nPFrames = %d nBFrames = %d", ratio, nPFrames, nBFrames);
             nBFrames = ratio * nPFrames;
-            DEBUG_PRINT_HIGH("Updated nPFrames = %d nBFrames = %d", nPFrames, nBFrames);
         }
+        DEBUG_PRINT_HIGH("Updated nPFrames = %d nBFrames = %d", nPFrames, nBFrames);
     }
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
@@ -4866,8 +4882,8 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
     bool h264, ltr, hierp;
     h264 = m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264;
     ltr = ltrinfo.enabled && ((ltrinfo.count + 2) <= MIN((unsigned int) (profile_tbl[5] / mb_per_frame), MAXDPB));
-    hierp = hier_p_layers.numlayers && ((intra_period.num_bframes + ltrinfo.count +
-                        hier_p_layers.numlayers + 1) <= (unsigned int) (profile_tbl[5] / profile_tbl[0]));
+    hierp = hier_layers.num_p_layers && ((intra_period.num_bframes + ltrinfo.count +
+                        hier_layers.num_p_layers + 1) <= (unsigned int) (profile_tbl[5] / profile_tbl[0]));
 
     do {
         if (mb_per_frame <= (unsigned int)profile_tbl[0]) {
@@ -4879,7 +4895,7 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
                         new_profile = (int)profile_tbl[4];
                         profile_level_found = true;
                         DEBUG_PRINT_LOW("Appropriate profile/level for LTR count: %u/ Hier-p: %u is %u/%u, maxDPB: %u",
-                                        ltrinfo.count, hier_p_layers.numlayers, (int)new_profile, (int)new_level,
+                                        ltrinfo.count, hier_layers.num_p_layers, (int)new_profile, (int)new_level,
                                         MIN((unsigned int) (profile_tbl[5] / mb_per_frame), MAXDPB));
                         break;
                     } else {
