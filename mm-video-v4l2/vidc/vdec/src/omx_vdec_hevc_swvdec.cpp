@@ -3277,7 +3277,9 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         // for swvdec use cached buffer
                         DEBUG_PRINT_HIGH("get_parameter: OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage using output buffer cached");
                         // nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED);
-                        nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+                        nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP |
+                                                      GRALLOC_USAGE_SW_READ_OFTEN |
+                                                      GRALLOC_USAGE_SW_WRITE_OFTEN);
                     }
                     DEBUG_PRINT_HIGH("nativeBuffersUsage->nUsage %x", (unsigned int)nativeBuffersUsage->nUsage);
                 }
