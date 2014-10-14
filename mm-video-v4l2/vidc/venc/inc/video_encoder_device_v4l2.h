@@ -41,7 +41,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <poll.h>
 
 #define TIMEOUT 5*60*1000
-
+#define BIT(num) (1 << (num))
 
 struct msm_venc_switch {
     unsigned char    status;
@@ -224,6 +224,15 @@ struct extradata_buffer_info {
 #endif
 };
 
+enum rc_modes {
+    RC_VBR_VFR = BIT(0),
+    RC_VBR_CFR = BIT(1),
+    RC_CBR_VFR = BIT(2),
+    RC_CBR_CFR = BIT(3),
+    RC_ALL = (RC_VBR_VFR | RC_VBR_CFR
+        | RC_CBR_VFR | RC_CBR_CFR)
+};
+
 class venc_dev
 {
     public:
@@ -398,6 +407,7 @@ class venc_dev
         int color_format;
         bool is_searchrange_set;
         bool enable_mv_narrow_searchrange;
+        int supported_rc_modes;
 };
 
 enum instance_state {
