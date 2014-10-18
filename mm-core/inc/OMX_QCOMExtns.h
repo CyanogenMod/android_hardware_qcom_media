@@ -487,6 +487,11 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Set Encoder Performance Index */
     OMX_QcomIndexConfigVideoVencPerfMode = 0x7F000042,
+
+    /* Set Hybrid Hier-p layers */
+    OMX_QcomIndexParamVideoHybridHierpMode = 0x7F000043,
+
+    OMX_QcomIndexFlexibleYUVDescription = 0x7F000044,
 };
 
 /**
