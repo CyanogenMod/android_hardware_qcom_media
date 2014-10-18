@@ -1044,6 +1044,8 @@ class omx_vdec: public qc_omx_component
         }
 
         volatile int32_t m_queued_codec_config_count;
+
+        static OMX_ERRORTYPE describeColorFormat(OMX_PTR params);
 };
 
 #ifdef _MSM8974_
