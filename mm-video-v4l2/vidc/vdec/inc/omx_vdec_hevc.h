@@ -911,6 +911,7 @@ class omx_vdec: public qc_omx_component
         allocate_color_convert_buf client_buffers;
 #endif
         HEVC_Utils mHEVCutils;
+        static OMX_ERRORTYPE describeColorFormat(OMX_PTR params);
 };
 
 #ifdef _MSM8974_
