@@ -468,6 +468,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     QOMX_IndexParamVideoInitialQp = 0x7F00003B,
 
     OMX_QcomIndexParamSetMVSearchrange = 0x7F00003C,
+
+    OMX_QcomIndexFlexibleYUVDescription = 0x7F00003D,
 };
 
 /**

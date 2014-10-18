@@ -1060,6 +1060,8 @@ class omx_vdec: public qc_omx_component
             return (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?
                 formatsDefault[index] : OMX_COLOR_FormatMax;
         }
+
+        static OMX_ERRORTYPE describeColorFormat(DescribeColorFormatParams *params);
 };
 
 #ifdef _MSM8974_
