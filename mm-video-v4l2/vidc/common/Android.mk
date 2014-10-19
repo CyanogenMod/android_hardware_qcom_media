@@ -1,5 +1,3 @@
-ifneq ($(BUILD_TINY_ANDROID),true)
-
 ROOT_DIR := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -41,7 +39,6 @@ LOCAL_SRC_FILES   := src/extra_data_handler.cpp
 LOCAL_SRC_FILES   += src/vidc_color_converter.cpp
 
 include $(BUILD_STATIC_LIBRARY)
-endif #BUILD_TINY_ANDROID
 
 # ---------------------------------------------------------------------------------
 # 					END
