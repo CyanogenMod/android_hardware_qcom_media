@@ -668,6 +668,7 @@ private:
     //*******************MEMBER VARIABLES *************************
     //*************************************************************
     pthread_mutex_t       m_lock;
+    pthread_mutex_t       c_lock;
     //sem to handle the minimum procesing of commands
     sem_t                 m_cmd_lock;
     bool              m_error_propogated;
