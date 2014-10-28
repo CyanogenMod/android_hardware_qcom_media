@@ -2759,6 +2759,8 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka;
 #endif
         else if (1 == portFmt->nIndex) {
+          portFmt->eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+        } else if (2 == portFmt->nIndex) {
           portFmt->eColorFormat = OMX_COLOR_FormatYUV420Planar;
         }
         else
@@ -2767,6 +2769,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                   " NoMore Color formats\n");
            eRet =  OMX_ErrorNoMore;
         }
+        ALOGI("get_parameter: color-format=%x @ index=%d", portFmt->eColorFormat, portFmt->nIndex);
       }
       else
       {
@@ -7985,6 +7988,11 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
   portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
   portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
   portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
+  if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
+      (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
+      portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
+      portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
+  }
   DEBUG_PRINT_LOW("update_portdef Width = %d Height = %d Stride = %u"
     "SliceHeight = %u \n", portDefn->format.video.nFrameHeight,
     portDefn->format.video.nFrameWidth,
@@ -9033,6 +9041,7 @@ omx_vdec::allocate_color_convert_buf::allocate_color_convert_buf()
   omx = NULL;
   init_members();
   ColorFormat = OMX_COLOR_FormatMax;
+  dest_format = YCbCr420P;
 }
 
 void omx_vdec::allocate_color_convert_buf::set_vdec_client(void *client)
@@ -9079,7 +9088,7 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
   c2d.close();
   status = c2d.open(omx->drv_ctx.video_resolution.frame_height,
                     omx->drv_ctx.video_resolution.frame_width,
-                    YCbCr420Tile,YCbCr420P);
+                    YCbCr420Tile, dest_format);
   if (status) {
     status = c2d.get_buffer_size(C2D_INPUT,src_size);
     if (status)
@@ -9124,12 +9133,16 @@ bool omx_vdec::allocate_color_convert_buf::set_color_format(
   }
   pthread_mutex_lock(&omx->c_lock);
   if (status && (drv_color_format != dest_color_format)) {
-    if (dest_color_format != OMX_COLOR_FormatYUV420Planar) {
+    if ((dest_color_format != OMX_COLOR_FormatYUV420Planar) &&
+        (dest_color_format != OMX_COLOR_FormatYUV420SemiPlanar)) {
       DEBUG_PRINT_ERROR("\n Unsupported color format for c2d");
       status = false;
     } else {
       DEBUG_PRINT_HIGH("\n Planar color format set");
-      ColorFormat = OMX_COLOR_FormatYUV420Planar;
+      ColorFormat = dest_color_format;
+      dest_format = (dest_color_format == OMX_COLOR_FormatYUV420Planar) ?
+              YCbCr420P : YCbCr420SP;
+      ALOGI("C2D o/p color format = %x", dest_color_format);
       if (enabled)
         c2d.destroy();
       enabled = false;
@@ -9366,10 +9379,12 @@ bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE
     else
       status = false;
   } else {
-    if (ColorFormat != OMX_COLOR_FormatYUV420Planar) {
-      status = false;
-    } else
-      dest_color_format = OMX_COLOR_FormatYUV420Planar;
+    if ((ColorFormat == OMX_COLOR_FormatYUV420Planar) ||
+       (ColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
+        dest_color_format = ColorFormat;
+    } else {
+        status = false;
+    }
   }
   return status;
 }
@@ -9420,11 +9435,10 @@ OMX_ERRORTYPE omx_vdec::update_color_format(OMX_COLOR_FORMATTYPE eColorFormat)
    struct vdec_ioctl_msg ioctl_msg = {NULL,NULL};
    OMX_ERRORTYPE eRet = OMX_ErrorNone;
    enum vdec_output_fromat op_format;
-   if(eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)
-     op_format = VDEC_YUV_FORMAT_NV12;
-   else if(eColorFormat ==
+   if(eColorFormat ==
            QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka ||
-           eColorFormat == OMX_COLOR_FormatYUV420Planar)
+           eColorFormat == OMX_COLOR_FormatYUV420Planar ||
+           eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)
       op_format = VDEC_YUV_FORMAT_TILE_4x2;
    else
       eRet = OMX_ErrorBadParameter;
