@@ -5450,7 +5450,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
 #ifdef USE_ION
         ion_device_fd = alloc_map_ion_memory(
                 drv_ctx.op_buf.buffer_size * drv_ctx.op_buf.actualcount,
-                drv_ctx.op_buf.alignment, &ion_alloc_data, &fd_ion_data,
+                secure_scaling_to_non_secure_opb ? SZ_4K : drv_ctx.op_buf.alignment,
+                &ion_alloc_data, &fd_ion_data,
                 (secure_mode && !secure_scaling_to_non_secure_opb) ? ION_SECURE : 0);
         if (ion_device_fd < 0) {
             return OMX_ErrorInsufficientResources;
