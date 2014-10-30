@@ -3327,7 +3327,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                eRet = OMX_ErrorHardware;
                                            } else {
                                                if (portDefn->format.video.nFrameWidth *
-                                                       portDefn->format.video.nFrameHeight < (OMX_U32)control.value) {
+                                                       portDefn->format.video.nFrameHeight <= (OMX_U32)control.value) {
                                                    secure_scaling_to_non_secure_opb = true;
                                                    DEBUG_PRINT_HIGH("Enabling secure scalar out of CPZ");
                                                    control.id = V4L2_CID_MPEG_VIDC_VIDEO_NON_SECURE_OUTPUT2;
