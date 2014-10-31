@@ -1569,6 +1569,9 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                                         pParam->eProfile, pParam->eLevel);
                     return false;
                 }
+                if (!venc_set_inloop_filter(OMX_VIDEO_AVCLoopFilterEnable))
+                    DEBUG_PRINT_HIGH("WARN: Request for setting Inloop filter failed for HEVC encoder");
+
                 break;
             }
         case OMX_IndexParamVideoIntraRefresh:
