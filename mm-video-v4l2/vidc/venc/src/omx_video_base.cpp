@@ -2942,7 +2942,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
             align_size = ((m_sOutPortDef.nBufferSize + 4095)/4096) * 4096;
             m_pOutput_ion[i].ion_device_fd = alloc_map_ion_memory(align_size,
                     &m_pOutput_ion[i].ion_alloc_data,
-                    &m_pOutput_ion[i].fd_ion_data,0);
+                    &m_pOutput_ion[i].fd_ion_data, ION_FLAG_CACHED);
 #else
             m_pOutput_ion[i].ion_device_fd = alloc_map_ion_memory(m_sOutPortDef.nBufferSize,
                     &m_pOutput_ion[i].ion_alloc_data,
