@@ -42,6 +42,14 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define TIMEOUT 5*60*1000
 #define BIT(num) (1 << (num))
+#define MAX_HYB_HIERP_LAYERS 6
+
+enum hier_type {
+    HIER_NONE = 0x0,
+    HIER_P = 0x1,
+    HIER_B = 0x2,
+    HIER_P_HYBRID = 0x3,
+};
 
 struct msm_venc_switch {
     unsigned char    status;
@@ -182,8 +190,8 @@ struct msm_venc_slice_delivery {
 };
 
 struct msm_venc_hierlayers {
-    unsigned int num_p_layers;
-    unsigned int num_b_layers;
+    unsigned int numlayers;
+    enum hier_type hier_mode;
 };
 
 struct msm_venc_ltrinfo {
@@ -369,7 +377,7 @@ class venc_dev
         bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
         bool venc_set_deinterlace(OMX_U32 enable);
         bool venc_set_ltrmode(OMX_U32 enable, OMX_U32 count);
-	bool venc_enable_initial_qp(QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp);
+        bool venc_enable_initial_qp(QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp);
         bool venc_set_useltr(OMX_U32 frameIdx);
         bool venc_set_markltr(OMX_U32 frameIdx);
         bool venc_set_inband_video_header(OMX_BOOL enable);
@@ -381,6 +389,9 @@ class venc_dev
         bool venc_set_searchrange();
         bool venc_set_vpx_error_resilience(OMX_BOOL enable);
         bool venc_set_perf_mode(OMX_U32 mode);
+        bool venc_set_hybrid_hierp(OMX_U32 layers);
+        bool venc_calibrate_gop();
+        bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();

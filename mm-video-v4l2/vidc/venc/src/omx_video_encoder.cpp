@@ -27,7 +27,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #include "omx_video_encoder.h"
 #include <string.h>
-#include "video_encoder_device.h"
 #include <stdio.h>
 #ifdef _ANDROID_ICS_
 #include <media/hardware/HardwareAPI.h>
@@ -53,6 +52,7 @@ extern int m_pipe;
 static int bframes;
 static int entropy;
 static int perfmode;
+static int hybrid_hp;
 // factory function executed by the core to create instances
 void *get_omx_component_factory_fn(void)
 {
@@ -84,6 +84,9 @@ omx_venc::omx_venc()
     property_value[0] = '\0';
     property_get("vidc.debug.perf.mode", property_value, "0");
     perfmode = atoi(property_value);
+    property_value[0] = '\0';
+    property_get("vidc.debug.hybrid.hierp", property_value, "0");
+    hybrid_hp = atoi(property_value);
     property_value[0] = '\0';
 }
 
@@ -500,6 +503,20 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         DEBUG_PRINT_LOW("Perfmode = 0x%x", pParam.nPerfMode);
         if (!handle->venc_set_config(&pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoVencPerfMode))
             DEBUG_PRINT_ERROR("Failed setting PerfMode to %d", pParam.nPerfMode);
+    }
+
+    if (hybrid_hp)
+    {
+        if (hybrid_hp <= MAX_HYB_HIERP_LAYERS) {
+            QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE hyb_hp;
+            hyb_hp.nHpLayers = hybrid_hp;
+            DEBUG_PRINT_LOW("hybrid_hp = 0x%x", hyb_hp.nHpLayers);
+            if (!handle->venc_set_param(&hyb_hp, (OMX_INDEXTYPE)OMX_QcomIndexParamVideoHybridHierpMode)) {
+                DEBUG_PRINT_ERROR("Failed setting hybrid_hp to %d", hyb_hp.nHpLayers);
+            }
+        } else {
+            DEBUG_PRINT_ERROR("Max hybrid_hp layers supported is %d", hybrid_hp);
+        }
     }
     DEBUG_PRINT_INFO("Component_init : %s : return = 0x%x", m_nkind, eRet);
     return eRet;
@@ -1390,6 +1407,15 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             (OMX_INDEXTYPE) OMX_QcomIndexParamSetMVSearchrange)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting Searchrange");
                     return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamVideoHybridHierpMode:
+            {
+               if(!handle->venc_set_param(paramData,
+                         (OMX_INDEXTYPE)OMX_QcomIndexParamVideoHybridHierpMode)) {
+                   DEBUG_PRINT_ERROR("Request to Enable Hybrid Hier-P failed");
+                   return OMX_ErrorUnsupportedSetting;
                 }
                 break;
             }
