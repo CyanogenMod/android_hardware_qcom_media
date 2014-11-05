@@ -128,6 +128,14 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         codec_type = OMX_VIDEO_CodingMPEG4;
         m_codec = SWVENC_CODEC_MPEG4;
     }
+    else if (!strncmp( (char *)m_nkind,"OMX.qcom.video.encoder.h263sw",
+                  OMX_MAX_STRINGNAME_SIZE))
+    {
+        strlcpy((char *)m_cRole, "video_encoder.h263",\
+                OMX_MAX_STRINGNAME_SIZE);
+        codec_type = OMX_VIDEO_CodingH263;
+        m_codec = SWVENC_CODEC_H263;
+    }
     else
     {
         DEBUG_PRINT_ERROR("ERROR: Unknown Component");
@@ -919,7 +927,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
             }
             else
             {
-                DEBUG_PRINT_ERROR("ashish ERROR: Setparameter: unknown param %s", m_nkind);
+                DEBUG_PRINT_ERROR("ERROR: Setparameter: unknown param %s", m_nkind);
                 eRet = OMX_ErrorInvalidComponentName;
             }
             break;
@@ -1081,27 +1089,30 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                 (OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE*)paramData;
 
             /* HEC */
-            Prop.id = SWVENC_PROPERTY_ID_MPEG4_HEC;
-            Prop.info.mpeg4_hec = pParam->bEnableHEC;
-
-            Ret = swvenc_setproperty(m_hSwVenc, &Prop);
-            if (Ret != SWVENC_S_SUCCESS)
+            if (m_codec == SWVENC_CODEC_MPEG4)
             {
-               DEBUG_PRINT_ERROR("%s, swvenc_setproperty failed (%d)",
-                 __FUNCTION__, Ret);
-               RETURN(OMX_ErrorUndefined);
-            }
+               Prop.id = SWVENC_PROPERTY_ID_MPEG4_HEC;
+               Prop.info.mpeg4_hec = pParam->bEnableHEC;
 
-            /* Data partitioning */
-            Prop.id = SWVENC_PROPERTY_ID_MPEG4_DP;
-            Prop.info.mpeg4_dp = pParam->bEnableDataPartitioning;
+               Ret = swvenc_setproperty(m_hSwVenc, &Prop);
+               if (Ret != SWVENC_S_SUCCESS)
+               {
+                  DEBUG_PRINT_ERROR("%s, swvenc_setproperty failed (%d)",
+                    __FUNCTION__, Ret);
+                  RETURN(OMX_ErrorUndefined);
+               }
 
-            Ret = swvenc_setproperty(m_hSwVenc, &Prop);
-            if (Ret != SWVENC_S_SUCCESS)
-            {
-               DEBUG_PRINT_ERROR("%s, swvenc_setproperty failed (%d)",
-                 __FUNCTION__, Ret);
-               RETURN(OMX_ErrorUndefined);
+               /* Data partitioning */
+               Prop.id = SWVENC_PROPERTY_ID_MPEG4_DP;
+               Prop.info.mpeg4_dp = pParam->bEnableDataPartitioning;
+
+               Ret = swvenc_setproperty(m_hSwVenc, &Prop);
+               if (Ret != SWVENC_S_SUCCESS)
+               {
+                  DEBUG_PRINT_ERROR("%s, swvenc_setproperty failed (%d)",
+                    __FUNCTION__, Ret);
+                  RETURN(OMX_ErrorUndefined);
+               }
             }
 
             /* RVLC */
@@ -2387,10 +2398,6 @@ SWVENC_STATUS omx_venc::swvenc_fill_buffer_done_cb
             {
                omxhdr->nFlags |= OMX_BUFFERFLAG_EOS;
             }
-            if (SWVENC_FLAG_CODEC_CONFIG & p_opbuffer->flags)
-            {
-               //omxhdr->nFlags |= OMX_BUFFERFLAG_CODECCONFIG;
-            }
             if(omxhdr->nFilledLen)
             {
                omxhdr->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
@@ -2524,8 +2531,7 @@ SWVENC_STATUS omx_venc::swvenc_set_rc_mode
         {
            DEBUG_PRINT_ERROR("%s, swvenc_setproperty failed (%d)",
              __FUNCTION__, Ret);
-           //RETURN(SWVENC_S_FAILURE);//ASHISH: hack
-           RETURN(SWVENC_S_SUCCESS);
+           RETURN(SWVENC_S_FAILURE);
         }
     }
 
