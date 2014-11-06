@@ -3326,8 +3326,23 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                DEBUG_PRINT_ERROR("Failed getting secure scaling threshold : %d, id was : %x", errno, control.id);
                                                eRet = OMX_ErrorHardware;
                                            } else {
-                                               if (portDefn->format.video.nFrameWidth *
-                                                       portDefn->format.video.nFrameHeight <= (OMX_U32)control.value) {
+                                               /* This is a workaround for a bug in fw which uses stride
+                                                * and slice instead of width and height to check against
+                                                * the threshold.
+                                                */
+                                               OMX_U32 stride, slice;
+                                               if (drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
+                                                   stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, portDefn->format.video.nFrameWidth);
+                                                   slice = VENUS_Y_SCANLINES(COLOR_FMT_NV12, portDefn->format.video.nFrameHeight);
+                                               } else {
+                                                   stride = portDefn->format.video.nFrameWidth;
+                                                   slice = portDefn->format.video.nFrameHeight;
+                                               }
+
+                                               DEBUG_PRINT_LOW("Stride is %d, slice is %d, sxs is %d\n", stride, slice, stride * slice);
+                                               DEBUG_PRINT_LOW("Threshold value is %d\n", control.value);
+
+                                               if (stride * slice <= (OMX_U32)control.value) {
                                                    secure_scaling_to_non_secure_opb = true;
                                                    DEBUG_PRINT_HIGH("Enabling secure scalar out of CPZ");
                                                    control.id = V4L2_CID_MPEG_VIDC_VIDEO_NON_SECURE_OUTPUT2;
