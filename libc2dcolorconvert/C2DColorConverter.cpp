@@ -60,19 +60,19 @@ protected:
     virtual int convertC2D(int srcFd, void *srcBase, void * srcData, int dstFd, void *dstBase, void * dstData);
 
 private:
-    virtual bool isYUVSurface(ColorConvertFormat format);
-    virtual void *getDummySurfaceDef(ColorConvertFormat format, size_t width, size_t height, bool isSource);
-    virtual C2D_STATUS updateYUVSurfaceDef(int fd, void *base, void * data, bool isSource);
-    virtual C2D_STATUS updateRGBSurfaceDef(int fd, void * data, bool isSource);
-    virtual uint32_t getC2DFormat(ColorConvertFormat format);
-    virtual size_t calcStride(ColorConvertFormat format, size_t width);
-    virtual size_t calcYSize(ColorConvertFormat format, size_t width, size_t height);
-    virtual size_t calcSize(ColorConvertFormat format, size_t width, size_t height);
-    virtual void *getMappedGPUAddr(int bufFD, void *bufPtr, size_t bufLen);
-    virtual bool unmapGPUAddr(uint32_t gAddr);
-    virtual size_t calcLumaAlign(ColorConvertFormat format);
-    virtual size_t calcSizeAlign(ColorConvertFormat format);
-
+    bool isYUVSurface(ColorConvertFormat format);
+    void *getDummySurfaceDef(ColorConvertFormat format, size_t width, size_t height, bool isSource);
+    C2D_STATUS updateYUVSurfaceDef(int fd, void *base, void * data, bool isSource);
+    C2D_STATUS updateRGBSurfaceDef(int fd, void * data, bool isSource);
+    uint32_t getC2DFormat(ColorConvertFormat format);
+    size_t calcStride(ColorConvertFormat format, size_t width);
+    size_t calcYSize(ColorConvertFormat format, size_t width, size_t height);
+    size_t calcSize(ColorConvertFormat format, size_t width, size_t height);
+    void *getMappedGPUAddr(int bufFD, void *bufPtr, size_t bufLen);
+    bool unmapGPUAddr(uint32_t gAddr);
+    size_t calcLumaAlign(ColorConvertFormat format);
+    size_t calcSizeAlign(ColorConvertFormat format);
+    C2DBytesPerPixel calcBytesPerPixel(ColorConvertFormat format);
     void *mC2DLibHandle;
     LINK_c2dCreateSurface mC2DCreateSurface;
     LINK_c2dUpdateSurface mC2DUpdateSurface;
@@ -533,7 +533,7 @@ int32_t C2DColorConverter::getBuffReq(int32_t port, C2DBuffReq *req) {
         req->lumaAlign = calcLumaAlign(mSrcFormat);
         req->sizeAlign = calcSizeAlign(mSrcFormat);
         req->size = calcSize(mSrcFormat, mSrcWidth, mSrcHeight);
-        //add bpp?
+        req->bpp = calcBytesPerPixel(mSrcFormat);
         ALOGV("input req->size = %d\n", req->size);
     } else if (port == C2D_OUTPUT) {
         req->width = mDstWidth;
@@ -543,6 +543,7 @@ int32_t C2DColorConverter::getBuffReq(int32_t port, C2DBuffReq *req) {
         req->lumaAlign = calcLumaAlign(mDstFormat);
         req->sizeAlign = calcSizeAlign(mDstFormat);
         req->size = calcSize(mDstFormat, mDstWidth, mDstHeight);
+        req->bpp = calcBytesPerPixel(mDstFormat);
         ALOGV("output req->size = %d\n", req->size);
     }
     return 0;
@@ -575,6 +576,33 @@ size_t C2DColorConverter::calcSizeAlign(ColorConvertFormat format) {
           ALOGE("unknown format passed for size alignment number");
           return 1;
     }
+}
+
+C2DBytesPerPixel C2DColorConverter::calcBytesPerPixel(ColorConvertFormat format) {
+    C2DBytesPerPixel bpp;
+    bpp.numerator = 0;
+    bpp.denominator = 1;
+
+    switch (format) {
+        case RGB565:
+            bpp.numerator = 2;
+            break;
+        case RGBA8888:
+            bpp.numerator = 4;
+            break;
+        case YCbCr420SP:
+        case YCbCr420P:
+        case YCrCb420P:
+        case YCbCr420Tile:
+        case NV12_2K:
+        case NV12_128m:
+            bpp.numerator = 3;
+            bpp.denominator = 2;
+            break;
+        default:
+            break;
+    }
+    return bpp;
 }
 
 int32_t C2DColorConverter::dumpOutput(char * filename, char mode) {
