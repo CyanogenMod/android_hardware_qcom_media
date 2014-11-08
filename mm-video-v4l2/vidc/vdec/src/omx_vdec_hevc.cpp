@@ -1412,7 +1412,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
         output_capability=V4L2_PIX_FMT_VP8;
-        eCompressionFormat = OMX_VIDEO_CodingVPX;
+        eCompressionFormat = OMX_VIDEO_CodingVP8;
         codec_type_parse = CODEC_TYPE_VP8;
         arbitrary_bytes = false;
     } else {

@@ -49,6 +49,8 @@ typedef enum OMX_INDEXEXTTYPE {
     /* Component parameters and configurations */
     OMX_IndexExtComponentStartUnused = OMX_IndexKhronosExtensions + 0x00100000,
     OMX_IndexConfigCallbackRequest,  /**< reference: OMX_CONFIG_CALLBACKREQUESTTYPE */
+    OMX_IndexConfigCommitMode,                      /**< reference: OMX_CONFIG_COMMITMODETYPE */
+    OMX_IndexConfigCommit,                          /**< reference: OMX_CONFIG_COMMITTYPE */
 
     /* Port parameters and configurations */
     OMX_IndexExtPortStartUnused = OMX_IndexKhronosExtensions + 0x00200000,
@@ -61,12 +63,14 @@ typedef enum OMX_INDEXEXTTYPE {
 
     /* Video parameters and configurations */
     OMX_IndexExtVideoStartUnused = OMX_IndexKhronosExtensions + 0x00600000,
-    OMX_IndexKhronosExtParamNALStreamFormatSupported,   /**< reference: OMX_NALSTREAMFORMATTYPE */
-    OMX_IndexKhronosExtParamNALStreamFormat,            /**< reference: OMX_NALSTREAMFORMATTYPE */
-    OMX_IndexKhronosExtParamNALStreamFormatSelect,      /**< reference: OMX_NALSTREAMFORMATTYPE */
-    OMX_IndexParamVideoVp8,                             /**< reference: OMX_VIDEO_PARAM_VP8TYPE */
-    OMX_IndexConfigVideoVp8ReferenceFrame,              /**< reference: OMX_VIDEO_VP8REFERENCEFRAMETYPE */
-    OMX_IndexConfigVideoVp8ReferenceFrameType,          /**< reference: OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE */
+    OMX_IndexParamNalStreamFormatSupported,         /**< reference: OMX_NALSTREAMFORMATTYPE */
+    OMX_IndexParamNalStreamFormat,                  /**< reference: OMX_NALSTREAMFORMATTYPE */
+    OMX_IndexParamNalStreamFormatSelect,            /**< reference: OMX_NALSTREAMFORMATTYPE */
+    OMX_IndexParamVideoVp8,                         /**< reference: OMX_VIDEO_PARAM_VP8TYPE */
+    OMX_IndexConfigVideoVp8ReferenceFrame,          /**< reference: OMX_VIDEO_VP8REFERENCEFRAMETYPE */
+    OMX_IndexConfigVideoVp8ReferenceFrameType,      /**< reference: OMX_VIDEO_VP8REFERENCEFRAMEINFOTYPE */
+    OMX_IndexParamVideoReserved,                    /**< Reserved for future index */
+    OMX_IndexParamVideoHevc,                        /**< reference: OMX_VIDEO_PARAM_HEVCTYPE */
 
     /* Image & Video common configurations */
     OMX_IndexExtCommonStartUnused = OMX_IndexKhronosExtensions + 0x00700000,
