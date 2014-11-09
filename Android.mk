@@ -1,3 +1,5 @@
+ifeq ($(call my-dir),$(call project-path-for,qcom-media)/default)
+
 QCOM_MEDIA_ROOT := $(call my-dir)
 ifneq ($(filter msm8610 msm8226 msm8974 msm8960 msm8660 msm7627a msm7630_surf msm8084 msm8992 msm8994,$(TARGET_BOARD_PLATFORM)),)
 include $(QCOM_MEDIA_ROOT)/mm-core/Android.mk
@@ -14,4 +16,6 @@ endif
 
 ifneq ($(filter msm8610 msm8226 msm8974 msm8960 msm8084 msm8992 msm8994,$(TARGET_BOARD_PLATFORM)),)
 include $(QCOM_MEDIA_ROOT)/libc2dcolorconvert/Android.mk
+endif
+
 endif
