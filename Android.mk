@@ -1,3 +1,5 @@
+ifeq ($(call my-dir),$(call project-path-for,qcom-media))
+
 ifneq (, $(filter aarch64 arm64, $(TARGET_ARCH)))
     $(info TODOAArch64: $(LOCAL_PATH)/Android.mk: Enable compile for 64 bit)
 else
@@ -19,3 +21,5 @@ ifneq ($(filter apq8084,$(TARGET_BOARD_PLATFORM)),)
 include $(QCOM_MEDIA_ROOT)/videopp/Android.mk
 endif
 endif # TARGET_ARCH
+
+endif
