@@ -9608,10 +9608,13 @@ void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
 OMX_ERRORTYPE omx_vdec::get_buffer_req_swvdec()
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
-
+    if ((!m_pSwVdec) || (m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY))
+    {
+        if (OMX_ErrorNone != get_buffer_req(&drv_ctx.ip_buf))
+            DEBUG_PRINT_ERROR("input get_buffer_reg failed");
+    }
     if (!m_pSwVdec)
     {
-        eRet=get_buffer_req(&drv_ctx.ip_buf);
         eRet=get_buffer_req(&drv_ctx.op_buf);
         return eRet;
     }
