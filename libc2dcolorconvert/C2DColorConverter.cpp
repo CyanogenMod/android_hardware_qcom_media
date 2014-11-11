@@ -290,6 +290,7 @@ void* C2DColorConverter::getDummySurfaceDef(ColorConvertFormat format, size_t wi
         surfaceDef->plane1 = (void *)0xaaaaaaaa;
         surfaceDef->phys1 = (void *)0xaaaaaaaa;
         surfaceDef->stride1 = calcStride(format, width);
+        surfaceDef->stride2 = 0;
 
         if (format == YCbCr420P ||
             format == YCrCb420P) {
@@ -401,7 +402,7 @@ size_t C2DColorConverter::calcStride(ColorConvertFormat format, size_t width)
         case YCbCr420Tile:
             return ALIGN(width, ALIGN128);
         case YCbCr420SP:
-            return ALIGN(width, ALIGN32);
+            return ALIGN(width, ALIGN16);
         case NV12_2K:
             return ALIGN(width, ALIGN16);
         case YCbCr420P:
@@ -417,7 +418,7 @@ size_t C2DColorConverter::calcYSize(ColorConvertFormat format, size_t width, siz
 {
     switch (format) {
         case YCbCr420SP:
-            return (ALIGN(width, ALIGN32) * height);
+            return (ALIGN(width, ALIGN16) * height);
         case YCbCr420P:
             return width * height;
         case YCrCb420P:
@@ -450,8 +451,8 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
             size = ALIGN(size, ALIGN4K);
             break;
         case YCbCr420SP:
-            alignedw = ALIGN(width, ALIGN32);
-            size = ALIGN((alignedw * height) + (ALIGN(width/2, ALIGN32) * (height/2) * 2), ALIGN4K);
+            alignedw = ALIGN(width, ALIGN16);
+            size = ALIGN((alignedw * height) + (ALIGN(width/2, ALIGN16) * (height/2) * 2), ALIGN4K);
             break;
         case YCbCr420P:
             size = ALIGN((width * height * 3 / 2), ALIGN4K);
