@@ -1609,6 +1609,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
      * Clients may configure OMX_QCOM_FramePacking_Arbitrary to enable this mode
      */
     arbitrary_bytes = false;
+    property_get("vidc.dec.debug.arbitrarybytes.mode", property_value, "0");
+    if (atoi(property_value)) {
+        DEBUG_PRINT_HIGH("arbitrary_bytes mode enabled via property command");
+        arbitrary_bytes = true;
+    }
 #endif
 
     if (!strncmp(role, "OMX.qcom.video.decoder.avc.secure",
@@ -3234,6 +3239,9 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
     int ret=0;
     struct v4l2_format fmt;
+#ifdef _ANDROID_
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+#endif
     if (m_state == OMX_StateInvalid) {
         DEBUG_PRINT_ERROR("Set Param in Invalid State");
         return OMX_ErrorInvalidState;
@@ -3559,6 +3567,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 } else if (portFmt->nFramePackingFormat ==
                                         OMX_QCOM_FramePacking_OnlyOneCompleteFrame) {
                                     arbitrary_bytes = false;
+#ifdef _ANDROID_
+                                    property_get("vidc.dec.debug.arbitrarybytes.mode", property_value, "0");
+                                    if (atoi(property_value)) {
+                                        DEBUG_PRINT_HIGH("arbitrary_bytes enabled via property command");
+                                        arbitrary_bytes = true;
+                                    }
+#endif
                                 } else {
                                     DEBUG_PRINT_ERROR("Setparameter: unknown FramePacking format %u",
                                             (unsigned int)portFmt->nFramePackingFormat);
