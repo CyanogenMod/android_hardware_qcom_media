@@ -497,7 +497,7 @@ void *get_omx_component_factory_fn(void)
 #ifdef _ANDROID_
 #ifdef USE_ION
 VideoHeap::VideoHeap(int devicefd, size_t size, void* base,
-struct ion_handle *handle, int ionMapfd)
+ion_user_handle_t handle, int ionMapfd)
 {
     //    ionInit(devicefd, base, size, 0 , MEM_DEVICE,handle,ionMapfd);
 }
@@ -4480,7 +4480,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
             drv_ctx.ptr_outputbuffer[i].mmaped_size =
                 drv_ctx.ptr_outputbuffer[i].buffer_len = drv_ctx.op_buf.buffer_size;
             drv_ctx.op_buf_ion_info[i].fd_ion_data.fd = handle->fd;
-            drv_ctx.op_buf_ion_info[i].fd_ion_data.handle = (ion_handle*)handle;
+            drv_ctx.op_buf_ion_info[i].fd_ion_data.handle = (ion_user_handle_t)handle;
             DEBUG_PRINT_HIGH("Native Buffer vaddr %x, idx %d fd %d len %d", (unsigned int)buff,i, handle->fd , drv_ctx.op_buf.buffer_size);
         } else
 #endif
