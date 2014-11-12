@@ -88,6 +88,8 @@ endif
 libOmxVdec-def += -DFLEXYUV_SUPPORTED
 libOmxVdec-def += -DADAPTIVE_PLAYBACK_SUPPORTED
 
+vdec-inc       = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------
@@ -139,6 +141,8 @@ LOCAL_SRC_FILES         += common/src/vidc_color_converter.cpp
 # omx_vdec_msm8974.cpp:9375:16: address of array 'extra->data' will always evaluate to 'true'
 LOCAL_CLANG_CFLAGS      += -Wno-pointer-bool-conversion
 
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
 include $(BUILD_SHARED_LIBRARY)
 
 
@@ -171,6 +175,8 @@ LOCAL_SRC_FILES         += vdec/src/hevc_utils.cpp
 
 LOCAL_SRC_FILES         += common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += common/src/vidc_color_converter.cpp
+
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 #include $(BUILD_SHARED_LIBRARY)
 
@@ -213,6 +219,8 @@ LOCAL_C_INCLUDES                := $(mm-vdec-drv-test-inc)
 
 LOCAL_SRC_FILES                 := vdec/src/message_queue.c
 LOCAL_SRC_FILES                 += vdec/test/decoder_driver_test.c
+
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 #include $(BUILD_EXECUTABLE)
 
