@@ -44,6 +44,8 @@ libOmxVdec-def += -D_ANDROID_ICS_
 libOmxVdec-def += -DUSE_ION
 #endif
 
+vdec-inc       := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------
@@ -65,6 +67,7 @@ libmm-vdec-inc          += frameworks/native/include/media/openmax
 libmm-vdec-inc          += frameworks/native/include/media/hardware
 libmm-vdec-inc          += $(call project-path-for,qcom-media)/$(TARGET_BOARD_PLATFORM)/libc2dcolorconvert
 libmm-vdec-inc          += frameworks/av/include/media/stagefright
+libmm-vdec-inc          += $(vdec-inc)
 
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
@@ -86,6 +89,8 @@ LOCAL_SRC_FILES         += vdec/src/omx_vdec.cpp
 LOCAL_SRC_FILES         += common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += common/src/vidc_color_converter.cpp
 
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
 include $(BUILD_SHARED_LIBRARY)
 
 # ---------------------------------------------------------------------------------
@@ -95,6 +100,7 @@ include $(CLEAR_VARS)
 
 mm-vdec-test-inc    := $(call project-path-for,qcom-media)/$(TARGET_BOARD_PLATFORM)/mm-core/inc
 mm-vdec-test-inc    += $(LOCAL_PATH)/vdec/inc
+mm-vdec-test-inc    += $(vdec-inc)
 
 LOCAL_MODULE                    := mm-vdec-omx-test
 LOCAL_MODULE_TAGS               := optional
@@ -107,6 +113,8 @@ LOCAL_SHARED_LIBRARIES    := libutils liblog libOmxCore libOmxVdec libbinder
 LOCAL_SRC_FILES           := vdec/src/queue.c
 LOCAL_SRC_FILES           += vdec/test/omx_vdec_test.cpp
 
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
 include $(BUILD_EXECUTABLE)
 
 # ---------------------------------------------------------------------------------
@@ -116,6 +124,7 @@ include $(CLEAR_VARS)
 
 mm-vdec-drv-test-inc    := $(call project-path-for,qcom-media)/$(TARGET_BOARD_PLATFORM)/mm-core/inc
 mm-vdec-drv-test-inc    += $(LOCAL_PATH)/vdec/inc
+mm-vdec-drv-test-inc    += $(vdec-inc)
 
 LOCAL_MODULE                    := mm-video-driver-test
 LOCAL_MODULE_TAGS               := optional
@@ -125,6 +134,8 @@ LOCAL_PRELINK_MODULE            := false
 
 LOCAL_SRC_FILES                 := vdec/src/message_queue.c
 LOCAL_SRC_FILES                 += vdec/test/decoder_driver_test.c
+
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_EXECUTABLE)
 
