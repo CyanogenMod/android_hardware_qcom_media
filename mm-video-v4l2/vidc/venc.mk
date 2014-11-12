@@ -68,6 +68,8 @@ ifeq ($(TARGET_USES_ION),true)
 libmm-venc-def += -DUSE_ION
 endif
 
+venc-inc       = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+
 libmm-venc-def += -D_ANDROID_ICS_
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVenc)
@@ -105,6 +107,8 @@ LOCAL_SRC_FILES   += venc/src/video_encoder_device.cpp
 endif
 
 LOCAL_SRC_FILES   += common/src/extra_data_handler.cpp
+
+LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
 
