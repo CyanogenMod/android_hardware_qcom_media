@@ -7125,9 +7125,11 @@ int omx_vdec::async_message_process (void *context, void* message)
                                 vdec_msg->msgdata.output_frame.framesize.right,
                                 vdec_msg->msgdata.output_frame.framesize.bottom);
 
-                        memcpy(&omx->drv_ctx.video_resolution,
-                                &vdec_msg->msgdata.output_frame.picsize,
-                                sizeof(struct vdec_picsize));
+                        omx->drv_ctx.video_resolution.frame_width =
+                                vdec_msg->msgdata.output_frame.picsize.frame_width;
+                        omx->drv_ctx.video_resolution.frame_height =
+                                vdec_msg->msgdata.output_frame.picsize.frame_height;
+
                         memcpy(&omx->drv_ctx.frame_size,
                                 &vdec_msg->msgdata.output_frame.framesize,
                                 sizeof(struct vdec_framesize));
