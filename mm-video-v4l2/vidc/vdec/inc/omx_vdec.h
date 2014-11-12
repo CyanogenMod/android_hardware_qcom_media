@@ -927,6 +927,7 @@ class omx_vdec: public qc_omx_component
         int capture_capability;
         int output_capability;
         bool streaming[MAX_PORT];
+        OMX_FRAMESIZETYPE framesize;
         OMX_CONFIG_RECTTYPE rectangle;
         OMX_U32 prev_n_filled_len;
         bool is_down_scalar_enabled;
