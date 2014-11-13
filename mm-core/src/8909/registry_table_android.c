@@ -41,6 +41,19 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 omx_core_cb_type core[] =
 {
   {
+    "OMX.ittiam.video.decoder.mpeg4",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxIttiamVdec.so",
+    {
+      "video_decoder.mpeg4"
+    }
+  },
+  {
     "OMX.qcom.video.decoder.avc",
     NULL, // Create instance function
     // Unique instance handle
@@ -90,6 +103,32 @@ omx_core_cb_type core[] =
     "libOmxVenc.so",
     {
       "video_encoder.avc"
+    }
+  },
+   {
+    "OMX.qcom.video.encoder.mpeg4sw",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxSwVencMpeg4.so",
+    {
+      "video_encoder.mpeg4"
+    }
+  },
+  {
+    "OMX.qcom.video.encoder.h263sw",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxSwVencMpeg4.so",
+    {
+      "video_encoder.h263"
     }
   },
   {
