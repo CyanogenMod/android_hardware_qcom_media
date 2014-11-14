@@ -63,6 +63,7 @@ extern const char *MEDIA_MIMETYPE_CONTAINER_QCMATROSKA;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCOGG;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QTIFLAC;
 extern const char *MEDIA_MIMETYPE_VIDEO_VPX; //backward compatibility
+extern const char *MEDIA_MIMETYPE_AUDIO_EAC3_JOC;
 }  // namespace android
 
 #endif  //QC_MEDIA_DEFS_H_
