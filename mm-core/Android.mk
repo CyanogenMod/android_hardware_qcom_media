@@ -42,6 +42,8 @@ else ifeq ($(TARGET_BOARD_PLATFORM),msm8994)
 MM_CORE_TARGET = msm8994
 else ifeq ($(TARGET_BOARD_PLATFORM),thulium)
 MM_CORE_TARGET = thulium
+else ifeq ($(TARGET_BOARD_PLATFORM),msm8952)
+MM_CORE_TARGET = 8952
 else
 MM_CORE_TARGET = default
 endif
@@ -93,7 +95,7 @@ LOCAL_CFLAGS            := $(OMXCORE_CFLAGS)
 
 LOCAL_SRC_FILES         := src/common/omx_core_cmp.cpp
 LOCAL_SRC_FILES         += src/common/qc_omx_core.c
-ifneq (,$(filter msm8916 msm8994 msm8909 thulium msm8992,$(TARGET_BOARD_PLATFORM)))
+ifneq (,$(filter msm8916 msm8994 msm8909 thulium msm8992 msm8952,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SRC_FILES         += src/$(MM_CORE_TARGET)/registry_table_android.c
 else
 LOCAL_SRC_FILES         += src/$(MM_CORE_TARGET)/qc_registry_table_android.c
@@ -117,7 +119,7 @@ LOCAL_CFLAGS            := $(OMXCORE_CFLAGS)
 
 LOCAL_SRC_FILES         := src/common/omx_core_cmp.cpp
 LOCAL_SRC_FILES         += src/common/qc_omx_core.c
-ifneq (,$(filter msm8916 msm8994 msm8909 thulium msm8992,$(TARGET_BOARD_PLATFORM)))
+ifneq (,$(filter msm8916 msm8994 msm8909 thulium msm8992 msm8952,$(TARGET_BOARD_PLATFORM)))
 LOCAL_SRC_FILES         += src/$(MM_CORE_TARGET)/registry_table.c
 else
 LOCAL_SRC_FILES         += src/$(MM_CORE_TARGET)/qc_registry_table.c
