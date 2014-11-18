@@ -8,7 +8,7 @@ LOCAL_SRC_FILES := \
 LOCAL_C_INCLUDES := \
     $(TOP)/frameworks/av/include/media/stagefright \
     $(TOP)/frameworks/native/include/media/openmax \
-    $(TOP)/$(call project-path-for,qcom-display)/$(TARGET_BOARD_PLATFORM)/libcopybit \
+    $(TOP)/$(call project-path-for,qcom-display)/libcopybit \
     $(TARGET_OUT_HEADERS)/qcom/display/
 
 LOCAL_C_INCLUDES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
