@@ -41,8 +41,8 @@ LOCAL_C_INCLUDES := \
 	$(TOP)/frameworks/av/media/libstagefright/include             \
 	$(TOP)/frameworks/av/media/libstagefright/mpeg2ts             \
 	$(TOP)/frameworks/av/media/libstagefright/rtsp                \
-	$(TOP)/$(call project-path-for,qcom-media)/$(TARGET_BOARD_PLATFORM)/mm-core/inc                        \
-	$(TOP)/$(call project-path-for,qcom-display)/$(TARGET_BOARD_PLATFORM)/libgralloc                       \
+	$(TOP)/$(call project-path-for,qcom-media)/mm-core/inc                        \
+	$(TOP)/$(call project-path-for,qcom-display)/libgralloc                       \
 	$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
