@@ -1,4 +1,4 @@
-ifeq ($(call my-dir),$(call project-path-for,qcom-media)/$(TARGET_BOARD_PLATFORM))
+ifeq ($(call my-dir),$(call project-path-for,qcom-media))
 
 ifneq ($(filter msm8960,$(TARGET_BOARD_PLATFORM)),)
 
