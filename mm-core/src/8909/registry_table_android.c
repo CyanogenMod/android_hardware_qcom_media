@@ -67,6 +67,32 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.ittiam.video.decoder.divx",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxIttiamVdec.so",
+    {
+      "video_decoder.divx"
+    }
+  },
+  {
+    "OMX.ittiam.video.decoder.divx4",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxIttiamVdec.so",
+    {
+      "video_decoder.divx"
+    }
+  },
+  {
     "OMX.qcom.video.decoder.hevc",
     NULL,   // Create instance function
     // Unique instance handle
