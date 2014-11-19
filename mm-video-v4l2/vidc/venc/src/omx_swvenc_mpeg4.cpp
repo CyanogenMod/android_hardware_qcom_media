@@ -518,12 +518,12 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                     omx_report_unsupported_setting();
                     RETURN(OMX_ErrorUnsupportedSetting);
                 }
-                DEBUG_PRINT_LOW("i/p actual cnt requested = %lu", portDefn->nBufferCountActual);
-                DEBUG_PRINT_LOW("i/p min cnt requested = %lu", portDefn->nBufferCountMin);
-                DEBUG_PRINT_LOW("i/p buffersize requested = %lu", portDefn->nBufferSize);
+                DEBUG_PRINT_LOW("i/p actual cnt requested = %u", portDefn->nBufferCountActual);
+                DEBUG_PRINT_LOW("i/p min cnt requested = %u", portDefn->nBufferCountMin);
+                DEBUG_PRINT_LOW("i/p buffersize requested = %u", portDefn->nBufferSize);
                 if (portDefn->nBufferCountMin > portDefn->nBufferCountActual)
                 {
-                    DEBUG_PRINT_ERROR("ERROR: (In_PORT) Min buffers (%lu) > actual count (%lu)",
+                    DEBUG_PRINT_ERROR("ERROR: (In_PORT) Min buffers (%u) > actual count (%u)",
                             portDefn->nBufferCountMin, portDefn->nBufferCountActual);
                     RETURN(OMX_ErrorUnsupportedSetting);
                 }
@@ -574,9 +574,9 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                    RETURN(OMX_ErrorUnsupportedSetting);
                 }
 
-                DEBUG_PRINT_LOW("i/p previous actual cnt = %lu", m_sInPortDef.nBufferCountActual);
-                DEBUG_PRINT_LOW("i/p previous min cnt = %lu", m_sInPortDef.nBufferCountMin);
-                DEBUG_PRINT_LOW("i/p previous buffersize = %lu", m_sInPortDef.nBufferSize);
+                DEBUG_PRINT_LOW("i/p previous actual cnt = %u", m_sInPortDef.nBufferCountActual);
+                DEBUG_PRINT_LOW("i/p previous min cnt = %u", m_sInPortDef.nBufferCountMin);
+                DEBUG_PRINT_LOW("i/p previous buffersize = %u", m_sInPortDef.nBufferSize);
 
                 /* set the buffer requirement */
                 bResult = dev_set_buf_req(&portDefn->nBufferCountMin,
@@ -613,18 +613,18 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                    m_sInPortDef.nBufferSize = portDefn->nBufferSize;
                 }
 
-                DEBUG_PRINT_LOW("i/p new actual cnt = %lu", m_sInPortDef.nBufferCountActual);
-                DEBUG_PRINT_LOW("i/p new min cnt = %lu", m_sInPortDef.nBufferCountMin);
-                DEBUG_PRINT_LOW("i/p new buffersize = %lu", m_sInPortDef.nBufferSize);
+                DEBUG_PRINT_LOW("i/p new actual cnt = %u", m_sInPortDef.nBufferCountActual);
+                DEBUG_PRINT_LOW("i/p new min cnt = %u", m_sInPortDef.nBufferCountMin);
+                DEBUG_PRINT_LOW("i/p new buffersize = %u", m_sInPortDef.nBufferSize);
             }
             else if (PORT_INDEX_OUT == portDefn->nPortIndex)
             {
-                DEBUG_PRINT_LOW("o/p actual cnt requested = %lu", portDefn->nBufferCountActual);
-                DEBUG_PRINT_LOW("o/p min cnt requested = %lu", portDefn->nBufferCountMin);
-                DEBUG_PRINT_LOW("o/p buffersize requested = %lu", portDefn->nBufferSize);
+                DEBUG_PRINT_LOW("o/p actual cnt requested = %u", portDefn->nBufferCountActual);
+                DEBUG_PRINT_LOW("o/p min cnt requested = %u", portDefn->nBufferCountMin);
+                DEBUG_PRINT_LOW("o/p buffersize requested = %u", portDefn->nBufferSize);
                 if (portDefn->nBufferCountMin > portDefn->nBufferCountActual)
                 {
-                    DEBUG_PRINT_ERROR("ERROR: (Out_PORT) Min buffers (%lu) > actual count (%lu)",
+                    DEBUG_PRINT_ERROR("ERROR: (Out_PORT) Min buffers (%u) > actual count (%u)",
                             portDefn->nBufferCountMin, portDefn->nBufferCountActual);
                     RETURN(OMX_ErrorUnsupportedSetting);
                 }
@@ -638,9 +638,9 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                    RETURN(OMX_ErrorUnsupportedSetting);
                 }
 
-                DEBUG_PRINT_LOW("o/p previous actual cnt = %lu", m_sOutPortDef.nBufferCountActual);
-                DEBUG_PRINT_LOW("o/p previous min cnt = %lu", m_sOutPortDef.nBufferCountMin);
-                DEBUG_PRINT_LOW("o/p previous buffersize = %lu", m_sOutPortDef.nBufferSize);
+                DEBUG_PRINT_LOW("o/p previous actual cnt = %u", m_sOutPortDef.nBufferCountActual);
+                DEBUG_PRINT_LOW("o/p previous min cnt = %u", m_sOutPortDef.nBufferCountMin);
+                DEBUG_PRINT_LOW("o/p previous buffersize = %u", m_sOutPortDef.nBufferSize);
 
                 /* set the buffer requirement */
                 bResult = dev_set_buf_req(&portDefn->nBufferCountMin,
@@ -677,9 +677,9 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                    m_sOutPortDef.nBufferSize = portDefn->nBufferSize;
                 }
 
-                DEBUG_PRINT_LOW("o/p new actual cnt = %lu", m_sOutPortDef.nBufferCountActual);
-                DEBUG_PRINT_LOW("o/p new min cnt = %lu", m_sOutPortDef.nBufferCountMin);
-                DEBUG_PRINT_LOW("o/p new buffersize = %lu", m_sOutPortDef.nBufferSize);
+                DEBUG_PRINT_LOW("o/p new actual cnt = %u", m_sOutPortDef.nBufferCountActual);
+                DEBUG_PRINT_LOW("o/p new min cnt = %u", m_sOutPortDef.nBufferCountMin);
+                DEBUG_PRINT_LOW("o/p new buffersize = %u", m_sOutPortDef.nBufferSize);
             }
             else
             {
@@ -796,7 +796,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
             m_sConfigBitrate.nEncodeBitrate = pParam->nTargetBitrate;
             m_sInPortDef.format.video.nBitrate = pParam->nTargetBitrate;
             m_sOutPortDef.format.video.nBitrate = pParam->nTargetBitrate;
-            DEBUG_PRINT_LOW("bitrate = %lu", m_sOutPortDef.format.video.nBitrate);
+            DEBUG_PRINT_LOW("bitrate = %u", m_sOutPortDef.format.video.nBitrate);
             break;
         }
 
@@ -941,10 +941,10 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                 RETURN(OMX_ErrorIncorrectStateOperation);
             }
             OMX_PRIORITYMGMTTYPE *priorityMgmtype = (OMX_PRIORITYMGMTTYPE*) paramData;
-            DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPriorityMgmt %lu",
+            DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPriorityMgmt %u",
                     priorityMgmtype->nGroupID);
 
-            DEBUG_PRINT_LOW("set_parameter: priorityMgmtype %lu",
+            DEBUG_PRINT_LOW("set_parameter: priorityMgmtype %u",
                     priorityMgmtype->nGroupPriority);
 
             m_sPriorityMgmt.nGroupID = priorityMgmtype->nGroupID;
@@ -1171,7 +1171,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
             StoreMetaDataInBuffersParams *pParam =
                 (StoreMetaDataInBuffersParams*)paramData;
             DEBUG_PRINT_HIGH("set_parameter:OMX_QcomIndexParamVideoMetaBufferMode: "
-                    "port_index = %lu, meta_mode = %d", pParam->nPortIndex, pParam->bStoreMetaData);
+                    "port_index = %u, meta_mode = %d", pParam->nPortIndex, pParam->bStoreMetaData);
 
             if (pParam->nPortIndex == PORT_INDEX_IN)
             {
@@ -1295,8 +1295,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                    break;
                 }
 
-                DEBUG_PRINT_HIGH("updated out_buf_req: buffer cnt=%lu, "
-                        "count min=%lu, buffer size=%lu",
+                DEBUG_PRINT_HIGH("updated out_buf_req: buffer cnt=%u, "
+                        "count min=%u, buffer size=%u",
                         m_sOutPortDef.nBufferCountActual,
                         m_sOutPortDef.nBufferCountMin,
                         m_sOutPortDef.nBufferSize);
@@ -1318,7 +1318,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
             else
             {
                 DEBUG_PRINT_ERROR("ERROR: OMX_QcomIndexParamVideoMaxAllowedBitrateCheck "
-                        " called on wrong port(%lu)", pParam->nPortIndex);
+                        " called on wrong port(%u)", pParam->nPortIndex);
                 RETURN(OMX_ErrorBadPortIndex);
             }
             break;
@@ -1346,7 +1346,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
             else
             {
                 DEBUG_PRINT_ERROR("ERROR: OMX_QcomIndexEnableSliceDeliveryMode "
-                        "called on wrong port(%lu)", pParam->nPortIndex);
+                        "called on wrong port(%u)", pParam->nPortIndex);
                 RETURN(OMX_ErrorBadPortIndex);
             }
             break;
@@ -1365,7 +1365,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
             else
             {
                 DEBUG_PRINT_ERROR("ERROR: OMX_QcomIndexEnableH263PlusPType "
-                        "called on wrong port(%lu)", pParam->nPortIndex);
+                        "called on wrong port(%u)", pParam->nPortIndex);
                 RETURN(OMX_ErrorBadPortIndex);
             }
             break;
@@ -1436,7 +1436,7 @@ OMX_ERRORTYPE  omx_venc::set_config
         {
             OMX_VIDEO_CONFIG_BITRATETYPE* pParam =
                 reinterpret_cast<OMX_VIDEO_CONFIG_BITRATETYPE*>(configData);
-            DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoBitrate (%lu)", pParam->nEncodeBitrate);
+            DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoBitrate (%u)", pParam->nEncodeBitrate);
 
             if (pParam->nPortIndex == PORT_INDEX_OUT)
             {
@@ -1454,7 +1454,7 @@ OMX_ERRORTYPE  omx_venc::set_config
             }
             else
             {
-                DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %lu", pParam->nPortIndex);
+                DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", pParam->nPortIndex);
                 RETURN(OMX_ErrorBadPortIndex);
             }
             break;
@@ -1463,7 +1463,7 @@ OMX_ERRORTYPE  omx_venc::set_config
         {
             OMX_CONFIG_FRAMERATETYPE* pParam =
                 reinterpret_cast<OMX_CONFIG_FRAMERATETYPE*>(configData);
-            DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoFramerate (0x%lx)", pParam->xEncodeFramerate);
+            DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoFramerate (0x%x)", pParam->xEncodeFramerate);
 
             if (pParam->nPortIndex == PORT_INDEX_OUT)
             {
@@ -1481,7 +1481,7 @@ OMX_ERRORTYPE  omx_venc::set_config
             }
             else
             {
-                DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %lu", pParam->nPortIndex);
+                DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", pParam->nPortIndex);
                 RETURN(OMX_ErrorBadPortIndex);
             }
             break;
@@ -1500,7 +1500,7 @@ OMX_ERRORTYPE  omx_venc::set_config
                     RETURN(OMX_ErrorUnsupportedSetting);
                 }
 
-                DEBUG_PRINT_HIGH("Old: P/B frames = %lu/%lu, New: P/B frames = %lu/%lu",
+                DEBUG_PRINT_HIGH("Old: P/B frames = %u/%u, New: P/B frames = %u/%u",
                         m_sIntraperiod.nPFrames, m_sIntraperiod.nBFrames,
                         pParam->nPFrames, pParam->nBFrames);
                 if (m_sIntraperiod.nBFrames != pParam->nBFrames)
@@ -1541,7 +1541,7 @@ OMX_ERRORTYPE  omx_venc::set_config
             }
             else
             {
-                DEBUG_PRINT_ERROR("ERROR: (QOMX_IndexConfigVideoIntraperiod) Unsupported port index: %lu", pParam->nPortIndex);
+                DEBUG_PRINT_ERROR("ERROR: (QOMX_IndexConfigVideoIntraperiod) Unsupported port index: %u", pParam->nPortIndex);
                 RETURN(OMX_ErrorBadPortIndex);
             }
 
@@ -1572,7 +1572,7 @@ OMX_ERRORTYPE  omx_venc::set_config
             }
             else
             {
-                DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %lu", pParam->nPortIndex);
+                DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", pParam->nPortIndex);
                 RETURN(OMX_ErrorBadPortIndex);
             }
             break;
@@ -1877,7 +1877,7 @@ bool omx_venc::dev_fill_buf
       opbuffer.filled_length,
       opbuffer.flags,
       opbuffer.timestamp,
-      opbuffer.p_client_data);
+      (unsigned int)opbuffer.p_client_data);
     DEBUG_PRINT_LOW("FTB: extradata_type (%d) p_extradata (%p)",
       opbuffer.extradata_type,
       opbuffer.p_extradata);
@@ -2080,7 +2080,7 @@ bool omx_venc::dev_set_buf_req
 
    if (*actual_buff_count < PortDef->nBufferCountMin)
    {
-      DEBUG_PRINT_ERROR("ERROR: %s, (actual,min) buffer count (%ld, %ld)",
+      DEBUG_PRINT_ERROR("ERROR: %s, (actual,min) buffer count (%d, %d)",
          __FUNCTION__, *actual_buff_count, PortDef->nBufferCountMin);
       RETURN(false);
    }
@@ -2088,7 +2088,7 @@ bool omx_venc::dev_set_buf_req
    {
       if (*buff_size < PortDef->nBufferSize)
       {
-          DEBUG_PRINT_ERROR("ERROR: %s, (new,old) buffer count (%ld, %ld)",
+          DEBUG_PRINT_ERROR("ERROR: %s, (new,old) buffer count (%d, %d)",
              __FUNCTION__, *actual_buff_count, PortDef->nBufferCountMin);
           RETURN(false);
       }
@@ -2106,7 +2106,7 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
       )
    {
        DEBUG_PRINT_ERROR(
-         "Unsupported Resolution WxH = (%lu)x(%lu) Supported Range = min (%d)x(%d) - max (%d)x(%d)",
+         "Unsupported Resolution WxH = (%u)x(%u) Supported Range = min (%d)x(%d) - max (%d)x(%d)",
          width, height,
          m_capability.min_width, m_capability.min_height,
          m_capability.max_width, m_capability.max_height);
@@ -2238,7 +2238,7 @@ int omx_venc::swvenc_input_log_buffers(const char *buffer, int bufferlen)
        if (!m_debug.infile)
        {
            DEBUG_PRINT_HIGH("Failed to open input file: %s for logging",
-              m_debug.infile);
+              m_debug.infile_name);
            m_debug.infile_name[0] = '\0';
            RETURN(-1);
        }
