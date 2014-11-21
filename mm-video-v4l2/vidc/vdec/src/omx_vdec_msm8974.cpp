@@ -1618,6 +1618,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         drv_ctx.decoder_format = VDEC_CODECTYPE_MPEG4;
         eCompressionFormat = OMX_VIDEO_CodingMPEG4;
         output_capability=V4L2_PIX_FMT_MPEG4;
+        ignore_not_coded_vops = false;
         /*Initialize Start Code for MPEG4*/
         codec_type_parse = CODEC_TYPE_MPEG4;
         m_frame_parser.init_start_codes (codec_type_parse);
@@ -1648,6 +1649,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         output_capability = V4L2_PIX_FMT_DIVX_311;
         eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingDivx;
         codec_type_parse = CODEC_TYPE_DIVX;
+        ignore_not_coded_vops = true;
         m_frame_parser.init_start_codes (codec_type_parse);
 
         eRet = createDivxDrmContext();
@@ -1664,6 +1666,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingDivx;
         codec_type_parse = CODEC_TYPE_DIVX;
         codec_ambiguous = true;
+        ignore_not_coded_vops = true;
         m_frame_parser.init_start_codes (codec_type_parse);
 
         eRet = createDivxDrmContext();
@@ -1680,6 +1683,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingDivx;
         codec_type_parse = CODEC_TYPE_DIVX;
         codec_ambiguous = true;
+        ignore_not_coded_vops = true;
         m_frame_parser.init_start_codes (codec_type_parse);
 
         eRet = createDivxDrmContext();
