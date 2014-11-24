@@ -44,6 +44,10 @@ libOmxVdec-def += -D_ANDROID_ICS_
 libOmxVdec-def += -DUSE_ION
 #endif
 
+ifeq ($(TARGET_NO_ADAPTIVE_PLAYBACK),true)
+libOmxVdec-def += -DNO_ADAPTIVE_PLAYBACK
+endif
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------

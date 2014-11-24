@@ -4426,9 +4426,11 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     else if(!strncmp(paramName,"OMX.google.android.index.getAndroidNativeBufferUsage", sizeof("OMX.google.android.index.getAndroidNativeBufferUsage") - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage;
     }
+#ifndef NO_ADAPTIVE_PLAYBACK
     else if(!strncmp(paramName,"OMX.google.android.index.prepareForAdaptivePlayback", sizeof("OMX.google.android.index.prepareForAdaptivePlayback") - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexPrepareForAdaptivePlayback;
     }
+#endif
 #endif
 	else {
         DEBUG_PRINT_ERROR("Extension: %s not implemented\n", paramName);
