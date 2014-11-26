@@ -1013,6 +1013,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                         if (p2 == OMX_CORE_OUTPUT_PORT_INDEX && pThis->m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
                         {
                             DEBUG_PRINT_LOW("send all interm buffers to dsp after port enabled");
+                            pThis->m_fill_internal_bufers = OMX_TRUE;
                             pThis->fill_all_buffers_proxy_dsp(&pThis->m_cmp);
                         }
                         pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,\
@@ -9904,6 +9905,7 @@ OMX_ERRORTYPE omx_vdec::fill_all_buffers_proxy_dsp(OMX_HANDLETYPE hComp)
             {
                 DEBUG_PRINT_ERROR("fill_this_buffer_proxy_dsp failed for buff %d bufHdr %p pBuffer %p",
                     idx, bufHdr, bufHdr->pBuffer);
+                pthread_mutex_unlock(&m_lock);
                 break;
             }
         }
@@ -10569,7 +10571,8 @@ bool omx_vdec::execute_output_flush_dsp()
         }
     }
     m_interm_flush_dsp_progress = false;
-    m_fill_internal_bufers = OMX_TRUE;
+    if (!in_reconfig)
+        m_fill_internal_bufers = OMX_TRUE;
     pthread_mutex_unlock(&m_lock);
 
     for (idx = 0; idx < (int)drv_ctx.interm_op_buf.actualcount; idx++)
