@@ -150,10 +150,10 @@ class VideoHeap : public MemoryHeapBase
         (unsigned)((OMX_BUFFERHEADERTYPE *)bufHdr)->nTimeStamp)
 
 // BitMask Management logic
-#define BITS_PER_BYTE        32
-#define BITMASK_SIZE(mIndex) (((mIndex) + BITS_PER_BYTE - 1)/BITS_PER_BYTE)
-#define BITMASK_OFFSET(mIndex) ((mIndex)/BITS_PER_BYTE)
-#define BITMASK_FLAG(mIndex) (1 << ((mIndex) % BITS_PER_BYTE))
+#define BITS_PER_INDEX        64
+#define BITMASK_SIZE(mIndex) (((mIndex) + BITS_PER_INDEX - 1)/BITS_PER_INDEX)
+#define BITMASK_OFFSET(mIndex) ((mIndex)/BITS_PER_INDEX)
+#define BITMASK_FLAG(mIndex) ((uint64_t)1 << ((mIndex) % BITS_PER_INDEX))
 #define BITMASK_CLEAR(mArray,mIndex) (mArray)[BITMASK_OFFSET(mIndex)] \
     &=  ~(BITMASK_FLAG(mIndex))
 #define BITMASK_SET(mArray,mIndex)  (mArray)[BITMASK_OFFSET(mIndex)] \
@@ -806,9 +806,9 @@ class omx_vdec: public qc_omx_component
         int pending_input_buffers;
         int pending_output_buffers;
         // bitmask array size for output side
-        unsigned int m_out_bm_count;
+        uint64_t m_out_bm_count;
         // bitmask array size for input side
-        unsigned int m_inp_bm_count;
+        uint64_t m_inp_bm_count;
         //Input port Populated
         OMX_BOOL m_inp_bPopulated;
         //Output port Populated
