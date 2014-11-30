@@ -571,6 +571,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     secure_mode(false),
     m_profile(0),
     client_set_fps(false),
+    ignore_not_coded_vops(true),
     m_last_rendered_TS(-1)
 {
     /* Assumption is that , to begin with , we have all the frames with decoder */
@@ -1617,6 +1618,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         drv_ctx.decoder_format = VDEC_CODECTYPE_MPEG4;
         eCompressionFormat = OMX_VIDEO_CodingMPEG4;
         output_capability=V4L2_PIX_FMT_MPEG4;
+        ignore_not_coded_vops = false;
         /*Initialize Start Code for MPEG4*/
         codec_type_parse = CODEC_TYPE_MPEG4;
         m_frame_parser.init_start_codes (codec_type_parse);
@@ -1647,6 +1649,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         output_capability = V4L2_PIX_FMT_DIVX_311;
         eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingDivx;
         codec_type_parse = CODEC_TYPE_DIVX;
+        ignore_not_coded_vops = true;
         m_frame_parser.init_start_codes (codec_type_parse);
 
         eRet = createDivxDrmContext();
@@ -1663,6 +1666,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingDivx;
         codec_type_parse = CODEC_TYPE_DIVX;
         codec_ambiguous = true;
+        ignore_not_coded_vops = true;
         m_frame_parser.init_start_codes (codec_type_parse);
 
         eRet = createDivxDrmContext();
@@ -1679,6 +1683,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingDivx;
         codec_type_parse = CODEC_TYPE_DIVX;
         codec_ambiguous = true;
+        ignore_not_coded_vops = true;
         m_frame_parser.init_start_codes (codec_type_parse);
 
         eRet = createDivxDrmContext();
@@ -2967,6 +2972,12 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     break;
 #endif
 
+        case OMX_QcomIndexParamVideoProcessNotCodedVOP:
+        {
+            DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamVideoProcessNotCodedVOP");
+            ((QOMX_ENABLETYPE *)paramData)->bEnable = (OMX_BOOL)!ignore_not_coded_vops;
+            break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("get_parameter: unknown param %08x", paramIndex);
                  eRet =OMX_ErrorUnsupportedIndex;
@@ -3768,6 +3779,12 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 DEBUG_PRINT_ERROR("ERROR: Custom buffer size in not supported on output port");
                 eRet = OMX_ErrorBadParameter;
             }
+            break;
+        }
+        case OMX_QcomIndexParamVideoProcessNotCodedVOP:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoProcessNotCodedVOP");
+            ignore_not_coded_vops = !((QOMX_ENABLETYPE *)paramData)->bEnable;
             break;
         }
         default: {
@@ -5738,7 +5755,9 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     }
 
 
-    if (codec_type_parse == CODEC_TYPE_MPEG4 || codec_type_parse == CODEC_TYPE_DIVX) {
+    if (ignore_not_coded_vops &&
+            (codec_type_parse == CODEC_TYPE_MPEG4 ||
+             codec_type_parse == CODEC_TYPE_DIVX)) {
         mp4StreamType psBits;
         psBits.data = (unsigned char *)(buffer->pBuffer + buffer->nOffset);
         psBits.numBytes = buffer->nFilledLen;
@@ -8456,8 +8475,13 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
             act_timestamp = prev_ts + frm_int;
             DEBUG_PRINT_LOW("adjust_timestamp: predicted ts[%lld]", act_timestamp);
             prev_ts = act_timestamp;
-        } else
+        } else {
+            if (drv_ctx.picture_order == VDEC_ORDER_DISPLAY && act_timestamp < prev_ts) {
+                // ensure that timestamps can never step backwards when in display order
+                act_timestamp = prev_ts;
+            }
             set_frame_rate(act_timestamp);
+        }
     } else if (frm_int > 0)          // In this case the frame rate was set along
     {                               // with the port definition, start ts with 0
         act_timestamp = prev_ts = 0;  // and correct if a valid ts is received.
@@ -9482,7 +9506,6 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr()
             status = c2d.convert(omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
                     omx->m_out_mem_ptr->pBuffer, bufadd->pBuffer, pmem_fd[index],
                     pmem_baseaddress[index], pmem_baseaddress[index]);
-            pthread_mutex_unlock(&omx->c_lock);
             if (!status) {
                 DEBUG_PRINT_ERROR("Failed color conversion %d", status);
                 m_out_mem_ptr_client[index].nFilledLen = 0;
