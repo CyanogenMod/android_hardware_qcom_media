@@ -51,9 +51,7 @@ libOmxVdec-def += -DUSE_ION
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
-libmm-vdec-inc          := bionic/libc/include
-libmm-vdec-inc          += bionic/libstdc++/include
-libmm-vdec-inc          += $(LOCAL_PATH)/vdec/inc
+libmm-vdec-inc          := $(LOCAL_PATH)/vdec/inc
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += hardware/qcom/media/mm-core/inc
 #DRM include - Interface which loads the DRM library
