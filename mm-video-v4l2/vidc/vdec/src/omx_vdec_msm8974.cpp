@@ -6958,19 +6958,6 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
     DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p",
             buffer, buffer->pBuffer);
     pending_input_buffers--;
-    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-        int pending_flush_waiters;
-
-        while (pending_flush_waiters = INT_MAX,
-                sem_getvalue(&m_safe_flush, &pending_flush_waiters),
-                /* 0 == there /are/ waiters depending on POSIX implementation */
-                pending_flush_waiters <= 0 ) {
-            DEBUG_PRINT_LOW("sem post for %d EBD of CODEC CONFIG buffer", m_queued_codec_config_count);
-            sem_post(&m_safe_flush);
-        }
-
-        android_atomic_and(0, &m_queued_codec_config_count); /* no clearer way to set to 0 */
-    }
 
     if (arbitrary_bytes) {
         if (pdest_frame == NULL && input_flush_progress == false) {
@@ -7073,6 +7060,20 @@ int omx_vdec::async_message_process (void *context, void* message)
             if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT) {
                 vdec_msg->status_code = VDEC_S_INPUT_BITSTREAM_ERR;
             }
+            if (omxhdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+                int pending_flush_waiters;
+
+                while (pending_flush_waiters = INT_MAX,
+                    sem_getvalue(&omx->m_safe_flush, &pending_flush_waiters),
+                    /* 0 == there /are/ waiters depending on POSIX implementation */
+                    pending_flush_waiters <= 0 ) {
+                    DEBUG_PRINT_LOW("sem post for %d EBD of CODEC CONFIG buffer",
+                        omx->m_queued_codec_config_count);
+                    sem_post(&omx->m_safe_flush);
+                }
+                android_atomic_and(0, &omx->m_queued_codec_config_count); /* no clearer way to set to 0 */
+            }
+
             omx->post_event ((unsigned int)omxhdr,vdec_msg->status_code,
                     OMX_COMPONENT_GENERATE_EBD);
             break;
