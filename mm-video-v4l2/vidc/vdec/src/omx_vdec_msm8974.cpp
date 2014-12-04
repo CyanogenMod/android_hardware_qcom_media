@@ -4773,14 +4773,6 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
 
     if (index < drv_ctx.op_buf.actualcount
             && drv_ctx.ptr_outputbuffer) {
-
-        if (streaming[CAPTURE_PORT]) {
-            if (stream_off(OMX_CORE_OUTPUT_PORT_INDEX))
-                DEBUG_PRINT_ERROR("STREAMOFF Failed");
-            else
-                DEBUG_PRINT_HIGH("STREAMOFF Successful");
-        }
-
         DEBUG_PRINT_LOW("Free ouput Buffer index = %d addr = %p", index,
                 drv_ctx.ptr_outputbuffer[index].bufferaddr);
 
