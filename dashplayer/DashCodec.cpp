@@ -73,7 +73,7 @@ struct CodecObserver : public BnOMXObserver {
         sp<AMessage> msg = mNotify->dup();
 
         msg->setInt32("type", omx_msg.type);
-        msg->setPointer("node", omx_msg.node);
+        msg->setInt32("node", omx_msg.node);
 
         switch (omx_msg.type) {
             case omx_message::EVENT:
@@ -86,13 +86,13 @@ struct CodecObserver : public BnOMXObserver {
 
             case omx_message::EMPTY_BUFFER_DONE:
             {
-                msg->setPointer("buffer", omx_msg.u.buffer_data.buffer);
+                msg->setInt32("buffer", omx_msg.u.buffer_data.buffer);
                 break;
             }
 
             case omx_message::FILL_BUFFER_DONE:
             {
-                msg->setPointer(
+                msg->setInt32(
                         "buffer", omx_msg.u.extended_buffer_data.buffer);
                 msg->setInt32(
                         "range_offset",
@@ -106,12 +106,12 @@ struct CodecObserver : public BnOMXObserver {
                 msg->setInt64(
                         "timestamp",
                         omx_msg.u.extended_buffer_data.timestamp);
-                msg->setPointer(
-                        "platform_private",
-                        omx_msg.u.extended_buffer_data.platform_private);
-                msg->setPointer(
-                        "data_ptr",
-                        omx_msg.u.extended_buffer_data.data_ptr);
+                //msg->setPointer(
+                //        "platform_private",
+                //        omx_msg.u.extended_buffer_data.platform_private);
+                //msg->setPointer(
+                //        "data_ptr",
+                //        omx_msg.u.extended_buffer_data.data_ptr);
                 break;
             }
 
@@ -516,7 +516,7 @@ status_t DashCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
     }
 
     sp<AMessage> notify = mNotify->dup();
-    notify->setInt32("what", DashCodec::kWhatBuffersAllocated);
+    notify->setInt32("what", CodecBase::kWhatBuffersAllocated);
 
     notify->setInt32("portIndex", portIndex);
 
@@ -2367,7 +2367,7 @@ void DashCodec::sendFormatChange() {
 
 void DashCodec::signalError(OMX_ERRORTYPE error, status_t internalError) {
     sp<AMessage> notify = mNotify->dup();
-    notify->setInt32("what", DashCodec::kWhatError);
+    notify->setInt32("what", CodecBase::kWhatError);
     notify->setInt32("omx-error", error);
     notify->setInt32("err", internalError);
     notify->post();
@@ -2584,7 +2584,7 @@ bool DashCodec::BaseState::onMessageReceived(const sp<AMessage> &msg) {
         case DashCodec::kWhatFlush:
         {
             sp<AMessage> notify = mCodec->mNotify->dup();
-            notify->setInt32("what", DashCodec::kWhatFlushCompleted);
+            notify->setInt32("what", CodecBase::kWhatFlushCompleted);
             notify->post();
             return true;
         }
@@ -2601,7 +2601,7 @@ bool DashCodec::BaseState::onOMXMessage(const sp<AMessage> &msg) {
     CHECK(msg->findInt32("type", &type));
 
     IOMX::node_id nodeID;
-    CHECK(msg->findPointer("node", &nodeID));
+    CHECK(msg->findInt32("node", (int32_t*)&nodeID));
     CHECK_EQ(nodeID, mCodec->mNode);
 
     switch (type) {
@@ -2632,7 +2632,7 @@ bool DashCodec::BaseState::onOMXMessage(const sp<AMessage> &msg) {
         case omx_message::EMPTY_BUFFER_DONE:
         {
             IOMX::buffer_id bufferID;
-            CHECK(msg->findPointer("buffer", &bufferID));
+            CHECK(msg->findInt32("buffer", (int32_t*)&bufferID));
 
             return onOMXEmptyBufferDone(bufferID);
         }
@@ -2640,7 +2640,7 @@ bool DashCodec::BaseState::onOMXMessage(const sp<AMessage> &msg) {
         case omx_message::FILL_BUFFER_DONE:
         {
             IOMX::buffer_id bufferID;
-            CHECK(msg->findPointer("buffer", &bufferID));
+            CHECK(msg->findInt32("buffer", (int32_t*)&bufferID));
 
             int32_t rangeOffset, rangeLength, flags;
             int64_t timeUs;
@@ -2651,8 +2651,8 @@ bool DashCodec::BaseState::onOMXMessage(const sp<AMessage> &msg) {
             CHECK(msg->findInt32("range_length", &rangeLength));
             CHECK(msg->findInt32("flags", &flags));
             CHECK(msg->findInt64("timestamp", &timeUs));
-            CHECK(msg->findPointer("platform_private", &platformPrivate));
-            CHECK(msg->findPointer("data_ptr", &dataPtr));
+            //CHECK(msg->findPointer("platform_private", (void **)&platformPrivate));
+            //CHECK(msg->findPointer("data_ptr", (void **)&dataPtr));
 
             return onOMXFillBufferDone(
                     bufferID,
@@ -2742,14 +2742,14 @@ void DashCodec::BaseState::postFillThisBuffer(BufferInfo *info) {
     CHECK_EQ((int)info->mStatus, (int)BufferInfo::OWNED_BY_US);
 
     sp<AMessage> notify = mCodec->mNotify->dup();
-    notify->setInt32("what", DashCodec::kWhatFillThisBuffer);
-    notify->setPointer("buffer-id", info->mBufferID);
+    notify->setInt32("what", CodecBase::kWhatFillThisBuffer);
+    notify->setInt32("buffer-id", info->mBufferID);
 
     info->mData->meta()->clear();
     notify->setBuffer("buffer", info->mData);
 
     sp<AMessage> reply = new AMessage(kWhatInputBufferFilled, mCodec->id());
-    reply->setPointer("buffer-id", info->mBufferID);
+    reply->setInt32("buffer-id", info->mBufferID);
 
     notify->setMessage("reply", reply);
 
@@ -2760,7 +2760,7 @@ void DashCodec::BaseState::postFillThisBuffer(BufferInfo *info) {
 
 void DashCodec::BaseState::onInputBufferFilled(const sp<AMessage> &msg) {
     IOMX::buffer_id bufferID;
-    CHECK(msg->findPointer("buffer-id", &bufferID));
+    CHECK(msg->findInt32("buffer-id",  (int32_t*)&bufferID));
 
     sp<ABuffer> buffer;
     int32_t err = OK;
@@ -2995,7 +2995,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
                 ALOGE("[%s] saw output EOS", mCodec->mComponentName.c_str());
 
                 sp<AMessage> notify = mCodec->mNotify->dup();
-                notify->setInt32("what", DashCodec::kWhatEOS);
+                notify->setInt32("what", CodecBase::kWhatEOS);
                 notify->setInt32("err", mCodec->mInputEOSResult);
                 notify->post();
 
@@ -3022,8 +3022,8 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
             info->mData->meta()->setInt64("timeUs", timeUs);
 
             sp<AMessage> notify = mCodec->mNotify->dup();
-            notify->setInt32("what", DashCodec::kWhatDrainThisBuffer);
-            notify->setPointer("buffer-id", info->mBufferID);
+            notify->setInt32("what", CodecBase::kWhatDrainThisBuffer);
+            notify->setInt32("buffer-id", info->mBufferID);
             notify->setBuffer("buffer", info->mData);
             notify->setInt32("flags", flags);
             sp<AMessage> reply =
@@ -3035,7 +3035,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
                    mCodec->mPostFormat = true;
             }
 
-            reply->setPointer("buffer-id", info->mBufferID);
+            reply->setInt32("buffer-id", info->mBufferID);
 
             notify->setMessage("reply", reply);
 
@@ -3061,7 +3061,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
 
 void DashCodec::BaseState::onOutputBufferDrained(const sp<AMessage> &msg) {
     IOMX::buffer_id bufferID;
-    CHECK(msg->findPointer("buffer-id", &bufferID));
+    CHECK(msg->findInt32("buffer-id", (int32_t*)&bufferID));
 
     ssize_t index;
     BufferInfo *info =
@@ -3180,7 +3180,7 @@ bool DashCodec::UninitializedState::onMessageReceived(const sp<AMessage> &msg) {
             CHECK(!keepComponentAllocated);
 
             sp<AMessage> notify = mCodec->mNotify->dup();
-            notify->setInt32("what", DashCodec::kWhatShutdownCompleted);
+            notify->setInt32("what", CodecBase::kWhatShutdownCompleted);
             notify->post();
 
             handled = true;
@@ -3297,7 +3297,7 @@ bool DashCodec::UninitializedState::onAllocateComponent(const sp<AMessage> &msg)
 
     {
         sp<AMessage> notify = mCodec->mNotify->dup();
-        notify->setInt32("what", DashCodec::kWhatComponentAllocated);
+        notify->setInt32("what", CodecBase::kWhatComponentAllocated);
         notify->setString("componentName", mCodec->mComponentName.c_str());
         notify->post();
     }
@@ -3341,7 +3341,7 @@ void DashCodec::LoadedState::onShutdown(bool keepComponentAllocated) {
     }
 
     sp<AMessage> notify = mCodec->mNotify->dup();
-    notify->setInt32("what", DashCodec::kWhatShutdownCompleted);
+    notify->setInt32("what", CodecBase::kWhatShutdownCompleted);
     notify->post();
 }
 
@@ -3423,7 +3423,7 @@ bool DashCodec::LoadedState::onConfigureComponent(
 
     {
         sp<AMessage> notify = mCodec->mNotify->dup();
-        notify->setInt32("what", DashCodec::kWhatComponentConfigured);
+        notify->setInt32("what", CodecBase::kWhatComponentConfigured);
         notify->post();
     }
 
@@ -4052,7 +4052,7 @@ bool DashCodec::FlushingState::onOMXEvent(
         {
             sp<AMessage> msg = new AMessage(kWhatOMXMessage, mCodec->id());
             msg->setInt32("type", omx_message::EVENT);
-            msg->setPointer("node", mCodec->mNode);
+            msg->setInt32("node", mCodec->mNode);
             msg->setInt32("event", event);
             msg->setInt32("data1", data1);
             msg->setInt32("data2", data2);
@@ -4089,7 +4089,7 @@ void DashCodec::FlushingState::changeStateIfWeOwnAllBuffers() {
             && mFlushComplete[kPortIndexOutput]
             && mCodec->allYourBuffersAreBelongToUs()) {
         sp<AMessage> notify = mCodec->mNotify->dup();
-        notify->setInt32("what", DashCodec::kWhatFlushCompleted);
+        notify->setInt32("what", CodecBase::kWhatFlushCompleted);
         notify->post();
 
         mCodec->mPortEOS[kPortIndexInput] =
@@ -4173,7 +4173,7 @@ bool DashCodec::FlushingOutputState::onOMXEvent(
         {
             sp<AMessage> msg = new AMessage(kWhatOMXMessage, mCodec->id());
             msg->setInt32("type", omx_message::EVENT);
-            msg->setPointer("node", mCodec->mNode);
+            msg->setInt32("node", mCodec->mNode);
             msg->setInt32("event", event);
             msg->setInt32("data1", data1);
             msg->setInt32("data2", data2);
