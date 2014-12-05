@@ -3439,17 +3439,21 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port");
                 m_display_id = portDefn->format.video.pNativeWindow;
                 unsigned int buffer_size;
-
                 if (m_swvdec_mode == SWVDEC_MODE_PARSE_DECODE) {
                     SWVDEC_PROP prop;
+                    SWVDEC_STATUS sRet;
                     prop.ePropId = SWVDEC_PROP_ID_DIMENSIONS;
                     prop.uProperty.sDimensions.nWidth =
                                portDefn->format.video.nFrameWidth;
                     prop.uProperty.sDimensions.nHeight =
                                portDefn->format.video.nFrameHeight;
-                    SwVdec_SetProperty(m_pSwVdec,&prop);
+                    sRet = SwVdec_SetProperty(m_pSwVdec,&prop);
+                    if(sRet!=SWVDEC_S_SUCCESS)
+                    {
+                        DEBUG_PRINT_ERROR("set_parameter: SwVdec_SetProperty():Failed to set dimensions to SwVdec in full SW");
+                        return OMX_ErrorUnsupportedSetting;
+                    }
                 }
-
                 if (!client_buffers.get_buffer_req(buffer_size)) {
                     DEBUG_PRINT_ERROR("Error in getting buffer requirements");
                     eRet = OMX_ErrorBadParameter;
