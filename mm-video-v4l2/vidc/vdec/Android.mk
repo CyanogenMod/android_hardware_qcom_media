@@ -61,10 +61,10 @@ include $(CLEAR_VARS)
 
 # Common Includes
 libmm-vdec-inc          := $(LOCAL_PATH)/inc
-libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
+libmm-vdec-inc          += $(TOP)/hardware/qcom/media/mm-video-v4l2/vidc/common/inc
 libmm-vdec-inc          += $(TOP)/hardware/qcom/media/mm-core/inc
 #DRM include - Interface which loads the DRM library
-libmm-vdec-inc	        += $(OMX_VIDEO_PATH)/DivxDrmDecrypt/inc
+libmm-vdec-inc	        += $(TOP)/hardware/qcom/media/mm-video-v4l2/DivxDrmDecrypt/inc
 libmm-vdec-inc          += $(TARGET_OUT_HEADERS)/qcom/display
 libmm-vdec-inc          += $(TARGET_OUT_HEADERS)/adreno
 libmm-vdec-inc          += $(TOP)/frameworks/native/include/media/openmax
