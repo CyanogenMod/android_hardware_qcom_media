@@ -41,17 +41,20 @@ enum {
 extern int debug_level;
 
 #undef DEBUG_PRINT_ERROR
-#define DEBUG_PRINT_ERROR(fmt, args...) \
+#define DEBUG_PRINT_ERROR(fmt, args...) ({ \
       if (debug_level & PRIO_ERROR) \
-          ALOGE(fmt,##args)
+          ALOGE(fmt,##args); \
+      })
 #undef DEBUG_PRINT_LOW
-#define DEBUG_PRINT_LOW(fmt, args...) \
+#define DEBUG_PRINT_LOW(fmt, args...) ({ \
       if (debug_level & PRIO_LOW) \
-          ALOGD(fmt,##args)
+          ALOGD(fmt,##args); \
+      })
 #undef DEBUG_PRINT_HIGH
-#define DEBUG_PRINT_HIGH(fmt, args...) \
+#define DEBUG_PRINT_HIGH(fmt, args...) ({ \
       if (debug_level & PRIO_HIGH) \
-          ALOGD(fmt,##args)
+          ALOGD(fmt,##args); \
+      })
 #else
 #define DEBUG_PRINT_ERROR printf
 #define DEBUG_PRINT_LOW printf
