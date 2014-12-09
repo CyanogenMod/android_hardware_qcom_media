@@ -286,10 +286,12 @@ void* venc_dev::async_venc_message_thread (void *input)
     struct pollfd pfd;
     struct v4l2_buffer v4l2_buf;
     struct v4l2_event dqevent;
+    struct statistics stats;
     pfd.events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
     pfd.fd = omx->handle->m_nDriver_fd;
     int error_code = 0,rc=0;
 
+    memset(&stats, 0, sizeof(statistics));
     memset(&v4l2_buf, 0, sizeof(v4l2_buf));
 
     while (1) {
@@ -317,6 +319,7 @@ void* venc_dev::async_venc_message_thread (void *input)
                 pthread_mutex_unlock(&omx->handle->pause_resume_mlock);
                 break;
             }
+            memset(&stats, 0, sizeof(statistics));
         }
 
         pthread_mutex_unlock(&omx->handle->pause_resume_mlock);
@@ -372,6 +375,7 @@ void* venc_dev::async_venc_message_thread (void *input)
                     venc_msg.buf.flags |= OMX_BUFFERFLAG_ENDOFFRAME;
 
                 omx->handle->fbd++;
+                stats.bytes_generated += venc_msg.buf.len;
 
                 if (omx->async_message_process(input,&venc_msg) < 0) {
                     DEBUG_PRINT_ERROR("ERROR: Wrong ioctl message");
@@ -446,6 +450,25 @@ void* venc_dev::async_venc_message_thread (void *input)
                 }
             }
         }
+
+        /* calc avg. fps, bitrate */
+        struct timeval tv;
+        gettimeofday(&tv,NULL);
+        OMX_U64 time_diff = (OMX_U32)((tv.tv_sec * 1000000 + tv.tv_usec) -
+                (stats.prev_tv.tv_sec * 1000000 + stats.prev_tv.tv_usec));
+        if (time_diff >= 5000000) {
+            if (stats.prev_tv.tv_sec) {
+                OMX_U32 num_fbd = omx->handle->fbd - stats.prev_fbd;
+                float framerate = num_fbd * 1000000/(float)time_diff;
+                OMX_U32 bitrate = (stats.bytes_generated * 8/num_fbd) * framerate;
+                DEBUG_PRINT_HIGH("stats: avg. fps %0.2f, bitrate %d",
+                    framerate, bitrate);
+            }
+            stats.prev_tv = tv;
+            stats.bytes_generated = 0;
+            stats.prev_fbd = omx->handle->fbd;
+        }
+
     }
 
     DEBUG_PRINT_HIGH("omx_venc: Async Thread exit");
