@@ -6077,6 +6077,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     } else {
         post_event ((unsigned long)hComp,(unsigned long)buffer,OMX_COMPONENT_GENERATE_ETB);
     }
+    time_stamp_dts.insert_timestamp(buffer);
     return OMX_ErrorNone;
 }
 
@@ -6339,7 +6340,6 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
     DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%u)",
             frameinfo.bufferaddr, (long long)frameinfo.timestamp,
             (unsigned int)frameinfo.datalen);
-    time_stamp_dts.insert_timestamp(buffer);
 
     return ret;
 }
