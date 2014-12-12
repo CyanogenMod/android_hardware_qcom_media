@@ -1643,7 +1643,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         strlcpy((char *)m_cRole, "video_decoder.hevc",OMX_MAX_STRINGNAME_SIZE);
         drv_ctx.decoder_format = VDEC_CODECTYPE_HEVC;
         output_capability = V4L2_PIX_FMT_HEVC;
-        eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingHevc;
+        eCompressionFormat = OMX_VIDEO_CodingHEVC;
         codec_type_parse = CODEC_TYPE_HEVC;
         m_frame_parser.init_start_codes(codec_type_parse);
         m_frame_parser.init_nal_length(nal_length);
