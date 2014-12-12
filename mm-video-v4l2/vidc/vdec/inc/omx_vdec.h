@@ -993,6 +993,7 @@ class omx_vdec: public qc_omx_component
                         OMX_BUFFERHEADERTYPE **bufferHdr,OMX_U32 port,OMX_PTR appData,
                         OMX_U32 bytes);
                 OMX_ERRORTYPE free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
+                bool is_color_conversion_enabled() {return enabled;}
             private:
 #define MAX_COUNT 32
                 omx_vdec *omx;
@@ -1018,6 +1019,7 @@ class omx_vdec: public qc_omx_component
                     sp<MemoryHeapBase>    video_heap_ptr;
                 };
                 struct vidc_heap m_heap_ptr[MAX_COUNT];
+                OMX_ERRORTYPE cache_invalidate_buffer(unsigned int index);
         };
 #if  defined (_MSM8960_) || defined (_MSM8974_)
         allocate_color_convert_buf client_buffers;
