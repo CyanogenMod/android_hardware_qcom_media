@@ -5478,11 +5478,16 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         DEBUG_PRINT_LOW("PE %d OutputBuffer Count %d",nPlatformEntrySize,
                 drv_ctx.op_buf.actualcount);
 #ifdef USE_ION
+        // Allocate output buffers as cached to improve performance of software-reading
+        // of the YUVs. Output buffers are cache-invalidated in driver.
+        // If color-conversion is involved, Only the C2D output buffers are cached, no
+        // need to cache the decoder's output buffers
+        int cache_flag = client_buffers.is_color_conversion_enabled() ? 0 : ION_FLAG_CACHED;
         ion_device_fd = alloc_map_ion_memory(
                 drv_ctx.op_buf.buffer_size * drv_ctx.op_buf.actualcount,
                 secure_scaling_to_non_secure_opb ? SZ_4K : drv_ctx.op_buf.alignment,
                 &ion_alloc_data, &fd_ion_data,
-                (secure_mode && !secure_scaling_to_non_secure_opb) ? ION_SECURE : 0);
+                (secure_mode && !secure_scaling_to_non_secure_opb) ? ION_SECURE : cache_flag);
         if (ion_device_fd < 0) {
             return OMX_ErrorInsufficientResources;
         }
@@ -10178,6 +10183,7 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr()
                 unsigned int filledLen = 0;
                 c2d.get_output_filled_length(filledLen);
                 m_out_mem_ptr_client[index].nFilledLen = filledLen;
+                cache_invalidate_buffer(index);
             }
             pthread_mutex_unlock(&omx->c_lock);
         } else
@@ -10305,10 +10311,13 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::allocate_buffers_color_conve
     }
     unsigned int i = allocated_count;
 #ifdef USE_ION
+    // Allocate color-conversion buffers as cached to improve software-reading
+    // performance of YUV (thumbnails). NOTE: These buffers will need an explicit
+    // cache invalidation.
     op_buf_ion_info[i].ion_device_fd = omx->alloc_map_ion_memory(
             buffer_size_req,buffer_alignment_req,
             &op_buf_ion_info[i].ion_alloc_data,&op_buf_ion_info[i].fd_ion_data,
-            0);
+            ION_FLAG_CACHED);
     pmem_fd[i] = op_buf_ion_info[i].fd_ion_data.fd;
     if (op_buf_ion_info[i].ion_device_fd < 0) {
         DEBUG_PRINT_ERROR("alloc_map_ion failed in color_convert");
@@ -10375,6 +10384,41 @@ bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE
             status = false;
     }
     return status;
+}
+
+OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::cache_invalidate_buffer(unsigned int index)
+{
+    if (!enabled) {
+        return OMX_ErrorNone;
+    }
+
+    if (!omx || index >= omx->drv_ctx.op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("Invalid param invalidateCache");
+        return OMX_ErrorBadParameter;
+    }
+
+    struct ion_flush_data flush_data;
+    struct ion_custom_data custom_data;
+
+    memset(&flush_data, 0x0, sizeof(flush_data));
+    memset(&custom_data, 0x0, sizeof(custom_data));
+
+    flush_data.vaddr = pmem_baseaddress[index];
+    flush_data.fd = op_buf_ion_info[index].fd_ion_data.fd;
+    flush_data.handle = op_buf_ion_info[index].fd_ion_data.handle;
+    flush_data.length = buffer_size_req;
+    custom_data.cmd = ION_IOC_INV_CACHES;
+    custom_data.arg = (unsigned long)&flush_data;
+
+    DEBUG_PRINT_LOW("Cache Invalidate: fd=%d handle=%d va=%p size=%d",
+            flush_data.fd, flush_data.handle, flush_data.vaddr,
+            flush_data.length);
+    int ret = ioctl(op_buf_ion_info[index].ion_device_fd, ION_IOC_CUSTOM, &custom_data);
+    if (ret < 0) {
+        DEBUG_PRINT_ERROR("Cache Invalidate failed: %s\n", strerror(errno));
+        return OMX_ErrorUndefined;
+    }
+    return OMX_ErrorNone;
 }
 
 void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
