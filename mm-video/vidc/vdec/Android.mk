@@ -94,6 +94,9 @@ LOCAL_SRC_FILES         += src/omx_vdec.cpp
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
 
+# omx_vdec.cpp: address of array 'extra->data' will always evaluate to 'true'
+LOCAL_CLANG_CFLAGS      += -Wno-pointer-bool-conversion
+
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
