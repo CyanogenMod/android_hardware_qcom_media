@@ -44,6 +44,10 @@ libOmxVdec-def += -D_ANDROID_ICS_
 libOmxVdec-def += -DUSE_ION
 #endif
 
+ifeq ($(TARGET_USE_ION_COMPAT), true)
+libOmxVdec-def += -D_ION_HEAP_MASK_COMPATIBILITY_WA
+endif
+
 vdec-inc       := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 # ---------------------------------------------------------------------------------
