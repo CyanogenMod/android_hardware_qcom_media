@@ -578,6 +578,16 @@ bool venc_dev::handle_extradata(void *buffer, int index)
                 p_extra->nDataSize = payloadSize;
                 break;
             }
+            case MSM_VIDC_EXTRADATA_METADATA_LTR:
+            {
+                *p_extra->data = *p_extradata->data;
+                p_extra->nSize = ALIGN(sizeof(OMX_OTHER_EXTRADATATYPE) + p_extradata->data_size, 4);
+                p_extra->nVersion.nVersion = OMX_SPEC_VERSION;
+                p_extra->nPortIndex = OMX_DirOutput;
+                p_extra->eType = (OMX_EXTRADATATYPE) OMX_ExtraDataVideoLTRInfo;
+                p_extra->nDataSize = p_extradata->data_size;
+                break;
+            }
             case MSM_VIDC_EXTRADATA_NONE:
                 p_extra->nSize = ALIGN(sizeof(OMX_OTHER_EXTRADATATYPE), 4);
                 p_extra->nVersion.nVersion = OMX_SPEC_VERSION;
