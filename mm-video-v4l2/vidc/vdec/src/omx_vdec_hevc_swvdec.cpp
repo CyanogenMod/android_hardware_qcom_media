@@ -1013,6 +1013,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                         if (p2 == OMX_CORE_OUTPUT_PORT_INDEX && pThis->m_swvdec_mode == SWVDEC_MODE_DECODE_ONLY)
                         {
                             DEBUG_PRINT_LOW("send all interm buffers to dsp after port enabled");
+                            pThis->m_fill_internal_bufers = OMX_TRUE;
                             pThis->fill_all_buffers_proxy_dsp(&pThis->m_cmp);
                         }
                         pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,\
@@ -6233,6 +6234,7 @@ true/false
 OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
                                           OMX_IN OMX_BUFFERHEADERTYPE* buffer)
 {
+    unsigned int nPortIndex = (unsigned int)(buffer - client_buffers.get_il_buf_hdr());
     if(m_state == OMX_StateInvalid)
     {
         DEBUG_PRINT_ERROR("FTB in Invalid State");
@@ -6245,7 +6247,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorIncorrectStateOperation;
     }
 
-    unsigned int nPortIndex = (unsigned int)(buffer - client_buffers.get_il_buf_hdr());
     if (!buffer || !buffer->pBuffer || nPortIndex >= drv_ctx.op_buf.actualcount)
     {
         DEBUG_PRINT_ERROR("ERROR:FTB invalid bufHdr %p, nPortIndex %u", buffer, nPortIndex);
@@ -9904,6 +9905,7 @@ OMX_ERRORTYPE omx_vdec::fill_all_buffers_proxy_dsp(OMX_HANDLETYPE hComp)
             {
                 DEBUG_PRINT_ERROR("fill_this_buffer_proxy_dsp failed for buff %d bufHdr %p pBuffer %p",
                     idx, bufHdr, bufHdr->pBuffer);
+                pthread_mutex_unlock(&m_lock);
                 break;
             }
         }
@@ -9948,8 +9950,11 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy_dsp(
 
     nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)m_interm_mem_ptr);
 
-    if (bufferAdd == NULL || nPortIndex > drv_ctx.interm_op_buf.actualcount)
+    if (bufferAdd == NULL || nPortIndex > drv_ctx.interm_op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("FTBProxyDSP: bufhdr = %p, nPortIndex %u bufCount %u",
+            bufferAdd, nPortIndex, drv_ctx.interm_op_buf.actualcount);
         return OMX_ErrorBadParameter;
+    }
 
     DEBUG_PRINT_LOW("fill_this_buffer_proxy_dsp: bufhdr = %p,pBuffer = %p, idx %d, state %d",
         bufferAdd, bufferAdd->pBuffer, nPortIndex, m_interm_buf_state[nPortIndex]);
@@ -10569,7 +10574,8 @@ bool omx_vdec::execute_output_flush_dsp()
         }
     }
     m_interm_flush_dsp_progress = false;
-    m_fill_internal_bufers = OMX_TRUE;
+    if (!in_reconfig)
+        m_fill_internal_bufers = OMX_TRUE;
     pthread_mutex_unlock(&m_lock);
 
     for (idx = 0; idx < (int)drv_ctx.interm_op_buf.actualcount; idx++)
