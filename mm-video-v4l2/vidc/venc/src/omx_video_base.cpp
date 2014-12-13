@@ -4597,7 +4597,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
                 if (!dev_set_format(handle->format))
                     DEBUG_PRINT_ERROR("cannot set color format for RGBA8888");
 #endif
-            } else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE) {
+            } else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE &&
+                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
                 mUsesColorConversion = false;
             } else {
                 DEBUG_PRINT_ERROR("Incorrect color format");
@@ -4799,7 +4800,8 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
             Input_pmem_info.size = handle->size;
             if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888)
                 ret = convert_queue_buffer(hComp,Input_pmem_info, (unsigned long)index);
-            else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE)
+            else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE ||
+                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m)
                 ret = queue_meta_buffer(hComp,Input_pmem_info);
             else
                 ret = OMX_ErrorBadParameter;
