@@ -55,7 +55,6 @@ libmm-venc-def += -DMAX_RES_1080P
 libmm-venc-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libmm-venc-def += -D_MSM8974_
-libmm-venc-def += -D_ION_HEAP_MASK_COMPATIBILITY_WA
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),mpq8092)
 libmm-venc-def += -DMAX_RES_1080P
@@ -66,6 +65,10 @@ endif
 
 ifeq ($(TARGET_USES_ION),true)
 libmm-venc-def += -DUSE_ION
+endif
+
+ifeq ($(TARGET_USE_ION_COMPAT), true)
+libmm-venc-def += -D_ION_HEAP_MASK_COMPATIBILITY_WA
 endif
 
 venc-inc       = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
