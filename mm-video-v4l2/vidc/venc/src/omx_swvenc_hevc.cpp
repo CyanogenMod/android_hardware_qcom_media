@@ -370,6 +370,7 @@ OMX_ERRORTYPE  omx_swvenc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         OMX_IN OMX_INDEXTYPE paramIndex,
         OMX_IN OMX_PTR        paramData)
 {
+    (void)hComp;
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
 
 
@@ -845,6 +846,7 @@ OMX_ERRORTYPE  omx_swvenc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
         OMX_IN OMX_INDEXTYPE configIndex,
         OMX_IN OMX_PTR        configData)
 {
+    (void)hComp;
     if (configData == NULL) {
         DEBUG_PRINT_ERROR("ERROR: param is null");
         return OMX_ErrorBadParameter;
@@ -992,6 +994,7 @@ OMX_ERRORTYPE  omx_swvenc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
    ========================================================================== */
 OMX_ERRORTYPE  omx_swvenc::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
 {
+    (void) hComp;
     OMX_U32 i = 0;
     DEBUG_PRINT_HIGH("omx_swvenc(): Inside component_deinit()");
     if (OMX_StateLoaded != m_state) {
@@ -1096,17 +1099,19 @@ OMX_U32 omx_swvenc::dev_start_done(void)
 
 OMX_U32 omx_swvenc::dev_set_message_thread_id(pthread_t tid)
 {
+    (void) tid;
     return SWVENC_S_SUCCESS;
 }
 
 bool omx_swvenc::dev_use_buf(void *buf_addr,unsigned port,unsigned index)
 {
     struct pmem* buf = (struct pmem*)buf_addr;
+    unsigned long index1 = (unsigned long) index;
     if (port == PORT_INDEX_IN)
     {
         // m_pSwVencIpBuffer[index].nSize = buf->size;
         m_pSwVencIpBuffer[index].pBuffer = (unsigned char*)buf->buffer;
-        m_pSwVencIpBuffer[index].pClientBufferData = (void*)index;
+        m_pSwVencIpBuffer[index].pClientBufferData = (void*)index1;
 
         DEBUG_PRINT_LOW("dev_use_buf input %p, index %d userData %p",
             m_pSwVencIpBuffer[index].pBuffer, index, m_pSwVencIpBuffer[index].pClientBufferData);
@@ -1115,7 +1120,7 @@ bool omx_swvenc::dev_use_buf(void *buf_addr,unsigned port,unsigned index)
     {
         m_pSwVencOpBuffer[index].nSize = buf->size;
         m_pSwVencOpBuffer[index].pBuffer = (unsigned char*)buf->buffer;
-        m_pSwVencOpBuffer[index].pClientBufferData = (void*)index;
+        m_pSwVencOpBuffer[index].pClientBufferData = (void *)index1;
         DEBUG_PRINT_LOW("dev_use_buf output %p, index %d userData %p",
             m_pSwVencIpBuffer[index].pBuffer, index, m_pSwVencIpBuffer[index].pClientBufferData);
     }
@@ -1194,6 +1199,7 @@ bool omx_swvenc::dev_empty_buf(void *buffer, void *pmem_data_buf,unsigned index,
 {
     SWVENC_STATUS status;
     SWVENC_IPBUFFER ipbuffer;
+    (void) pmem_data_buf;
     OMX_BUFFERHEADERTYPE *bufHdr = (OMX_BUFFERHEADERTYPE *)buffer;
 
     if (meta_mode_enable)
@@ -1235,7 +1241,7 @@ bool omx_swvenc::dev_empty_buf(void *buffer, void *pmem_data_buf,unsigned index,
     if (status != SWVENC_S_SUCCESS)
     {
         DEBUG_PRINT_ERROR("SwVenc_EmptyThisBuffer failed");
-        post_event ((unsigned int)buffer,0,OMX_COMPONENT_GENERATE_EBD);
+        post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_EBD);
         pending_output_buffers--;
     }
 
@@ -1245,6 +1251,7 @@ bool omx_swvenc::dev_empty_buf(void *buffer, void *pmem_data_buf,unsigned index,
 bool omx_swvenc::dev_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,unsigned fd)
 {
     SWVENC_STATUS status;
+    (void) fd;
     OMX_BUFFERHEADERTYPE* bufHdr = (OMX_BUFFERHEADERTYPE*)buffer;
 
     DEBUG_PRINT_LOW("SwVenc_FillThisBuffer index %d pBuffer %p pmem_data_buf %p",
@@ -1254,7 +1261,7 @@ bool omx_swvenc::dev_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,u
     if (status != SWVENC_S_SUCCESS)
     {
         DEBUG_PRINT_ERROR("SwVenc_FillThisBuffer failed");
-        post_event ((unsigned int)buffer,0,OMX_COMPONENT_GENERATE_FBD);
+        post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_FBD);
         pending_output_buffers--;
     }
 
@@ -1263,11 +1270,17 @@ bool omx_swvenc::dev_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,u
 
 bool omx_swvenc::dev_get_seq_hdr(void *buffer, unsigned size, unsigned *hdrlen)
 {
+    (void) buffer;
+    (void) size;
+    (void) hdrlen;
     return false;
 }
 
 bool omx_swvenc::dev_get_capability_ltrcount(OMX_U32 *min, OMX_U32 *max, OMX_U32 *step_size)
 {
+    (void) min;
+    (void) max;
+    (void) step_size;
     return true;
 }
 
@@ -1294,18 +1307,21 @@ bool omx_swvenc::dev_loaded_stop_done()
 
 bool omx_swvenc::dev_get_performance_level(OMX_U32 *perflevel)
 {
+    (void) perflevel;
     DEBUG_PRINT_ERROR("Get performance level is not supported");
     return false;
 }
 
 bool omx_swvenc::dev_get_vui_timing_info(OMX_U32 *enabled)
 {
+    (void) enabled;
     DEBUG_PRINT_ERROR("Get vui timing information is not supported");
     return false;
 }
 
 bool omx_swvenc::dev_get_peak_bitrate(OMX_U32 *peakbitrate)
 {
+    (void) peakbitrate;
     DEBUG_PRINT_ERROR("Get peak bitrate is not supported");
     return false;
 }
@@ -1387,17 +1403,23 @@ bool omx_swvenc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
 
 int omx_swvenc::dev_handle_extradata(void *buffer, int index)
 {
+    (void) buffer;
+    (void) index;
     return SWVENC_S_EUNSUPPORTED;
 }
 
 int omx_swvenc::dev_set_format(int color)
 {
+    (void) color;
     return SWVENC_S_SUCCESS;
 }
 
 bool omx_swvenc::dev_color_align(OMX_BUFFERHEADERTYPE *buffer,
                 OMX_U32 width, OMX_U32 height)
 {
+    (void) buffer;
+    (void) width;
+    (void) height;
     if(secure_session) {
         DEBUG_PRINT_ERROR("Cannot align colors in secure session.");
         return OMX_FALSE;
@@ -1417,11 +1439,14 @@ bool omx_swvenc::dev_get_output_log_flag()
 
 int omx_swvenc::dev_output_log_buffers(const char *buffer, int bufferlen)
 {
+    (void) buffer;
+    (void) bufferlen;
     return 0;
 }
 
 int omx_swvenc::dev_extradata_log_buffers(char *buffer)
 {
+    (void) buffer;
     return 0;
 }
 
@@ -1432,6 +1457,7 @@ SWVENC_STATUS omx_swvenc::swvenc_input_buffer_done_cb
     void *pClientHandle
 )
 {
+    (void) pSwEnc;
     SWVENC_STATUS eRet = SWVENC_S_SUCCESS;
     omx_swvenc *omx = reinterpret_cast<omx_swvenc*>(pClientHandle);
 
@@ -1462,7 +1488,7 @@ void omx_swvenc::swvenc_input_buffer_done(SWVENC_IPBUFFER *pIpBuffer)
     DEBUG_PRINT_LOW("swvenc_empty_buffer_done bufHdr %p pBuffer %p = %p nFilledLen %d nFlags %x",
         bufHdr, bufHdr->pBuffer, pIpBuffer->pBuffer, pIpBuffer->nFilledLen, pIpBuffer->nFlags);
 
-    post_event((unsigned int)(bufHdr), SWVENC_S_SUCCESS, OMX_COMPONENT_GENERATE_EBD);
+    post_event((unsigned long)(bufHdr), SWVENC_S_SUCCESS, OMX_COMPONENT_GENERATE_EBD);
 }
 
 SWVENC_STATUS omx_swvenc::swvenc_fill_buffer_done_cb
@@ -1472,6 +1498,7 @@ SWVENC_STATUS omx_swvenc::swvenc_fill_buffer_done_cb
     void *pClientHandle
 )
 {
+    (void) pSwEnc;
     SWVENC_STATUS eRet = SWVENC_S_SUCCESS;
     omx_swvenc *omx = reinterpret_cast<omx_swvenc*>(pClientHandle);
 
@@ -1488,7 +1515,7 @@ SWVENC_STATUS omx_swvenc::swvenc_fill_buffer_done_cb
 
 void omx_swvenc::swvenc_fill_buffer_done(SWVENC_OPBUFFER *pOpBuffer)
 {
-    int index = (int)pOpBuffer->pClientBufferData;
+    unsigned long index = (unsigned long)pOpBuffer->pClientBufferData;
     OMX_BUFFERHEADERTYPE *bufHdr = m_out_mem_ptr + index;
 
     bufHdr->nOffset = 0;
@@ -1511,7 +1538,7 @@ void omx_swvenc::swvenc_fill_buffer_done(SWVENC_OPBUFFER *pOpBuffer)
 
     DEBUG_PRINT_LOW("swvenc_fill_buffer_done bufHdr %p pBuffer %p = %p idx %d nFilledLen %d nFlags %x\n",
         bufHdr, bufHdr->pBuffer, pOpBuffer->pBuffer, index, pOpBuffer->nFilledLen, pOpBuffer->nFlags);
-    post_event((unsigned int)bufHdr, SWVENC_S_SUCCESS, OMX_COMPONENT_GENERATE_FBD);
+    post_event((unsigned long)bufHdr, SWVENC_S_SUCCESS, OMX_COMPONENT_GENERATE_FBD);
 }
 
 SWVENC_STATUS omx_swvenc::swvenc_handle_event_cb
@@ -1521,6 +1548,7 @@ SWVENC_STATUS omx_swvenc::swvenc_handle_event_cb
     void *pClientHandle
 )
 {
+   (void) pSwEnc;
     omx_swvenc *omx = reinterpret_cast<omx_swvenc*>(pClientHandle);
     omx->swvenc_handle_event(pEventHandler);
     return SWVENC_S_SUCCESS;
