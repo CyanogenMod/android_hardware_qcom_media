@@ -9,7 +9,7 @@ include $(QCOM_MEDIA_ROOT)/mm-core/Android.mk
 include $(QCOM_MEDIA_ROOT)/libstagefrighthw/Android.mk
 endif
 
-ifeq ($(call is-board-platform-in-list, $(MSM_VIDC_TARGET_LIST)),true)
+ifneq ($(filter msm8994,$(TARGET_BOARD_PLATFORM)),)
 include $(QCOM_MEDIA_ROOT)/mm-video-v4l2/Android.mk
 include $(QCOM_MEDIA_ROOT)/libc2dcolorconvert/Android.mk
 
