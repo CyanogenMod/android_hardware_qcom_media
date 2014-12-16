@@ -19,7 +19,6 @@ LOCAL_C_INCLUDES:= \
     $(LOCAL_PATH)/inc \
     $(TARGET_OUT_HEADERS)/mm-core/omxcore
 
-LOCAL_PRELINK_MODULE:= false
 
 LOCAL_MODULE:= libdivxdrmdecrypt
 LOCAL_MODULE_TAGS := optional
