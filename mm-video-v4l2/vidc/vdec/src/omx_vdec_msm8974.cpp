@@ -10167,6 +10167,7 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr()
         bool status;
         if (!omx->in_reconfig && !omx->output_flush_progress && bufadd->nFilledLen) {
             pthread_mutex_lock(&omx->c_lock);
+            cache_clean_buffer(index);
             status = c2d.convert(omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
                     omx->m_out_mem_ptr->pBuffer, bufadd->pBuffer, pmem_fd[index],
                     pmem_baseaddress[index], pmem_baseaddress[index]);
@@ -10179,7 +10180,7 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr()
                 unsigned int filledLen = 0;
                 c2d.get_output_filled_length(filledLen);
                 m_out_mem_ptr_client[index].nFilledLen = filledLen;
-                cache_invalidate_buffer(index);
+                cache_clean_invalidate_buffer(index);
             }
             pthread_mutex_unlock(&omx->c_lock);
         } else
@@ -10382,14 +10383,15 @@ bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE
     return status;
 }
 
-OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::cache_invalidate_buffer(unsigned int index)
+OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::cache_ops(
+        unsigned int index, unsigned int cmd)
 {
     if (!enabled) {
         return OMX_ErrorNone;
     }
 
     if (!omx || index >= omx->drv_ctx.op_buf.actualcount) {
-        DEBUG_PRINT_ERROR("Invalid param invalidateCache");
+        DEBUG_PRINT_ERROR("%s: Invalid param", __func__);
         return OMX_ErrorBadParameter;
     }
 
@@ -10403,15 +10405,18 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::cache_invalidate_buffer(unsi
     flush_data.fd = op_buf_ion_info[index].fd_ion_data.fd;
     flush_data.handle = op_buf_ion_info[index].fd_ion_data.handle;
     flush_data.length = buffer_size_req;
-    custom_data.cmd = ION_IOC_INV_CACHES;
+    custom_data.cmd = cmd;
     custom_data.arg = (unsigned long)&flush_data;
 
-    DEBUG_PRINT_LOW("Cache Invalidate: fd=%d handle=%d va=%p size=%d",
+    DEBUG_PRINT_LOW("Cache %s: fd=%d handle=%d va=%p size=%d",
+            (cmd == ION_IOC_CLEAN_CACHES) ? "Clean" : "Invalidate",
             flush_data.fd, flush_data.handle, flush_data.vaddr,
             flush_data.length);
     int ret = ioctl(op_buf_ion_info[index].ion_device_fd, ION_IOC_CUSTOM, &custom_data);
     if (ret < 0) {
-        DEBUG_PRINT_ERROR("Cache Invalidate failed: %s\n", strerror(errno));
+        DEBUG_PRINT_ERROR("Cache %s failed: %s\n",
+                (cmd == ION_IOC_CLEAN_CACHES) ? "Clean" : "Invalidate",
+                strerror(errno));
         return OMX_ErrorUndefined;
     }
     return OMX_ErrorNone;

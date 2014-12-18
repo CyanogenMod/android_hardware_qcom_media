@@ -1019,7 +1019,14 @@ class omx_vdec: public qc_omx_component
                     sp<MemoryHeapBase>    video_heap_ptr;
                 };
                 struct vidc_heap m_heap_ptr[MAX_COUNT];
-                OMX_ERRORTYPE cache_invalidate_buffer(unsigned int index);
+
+                OMX_ERRORTYPE cache_ops(unsigned int index, unsigned int cmd);
+                inline OMX_ERRORTYPE cache_clean_buffer(unsigned int index) {
+                    return cache_ops(index, ION_IOC_CLEAN_CACHES);
+                }
+                OMX_ERRORTYPE cache_clean_invalidate_buffer(unsigned int index) {
+                    return cache_ops(index, ION_IOC_CLEAN_INV_CACHES);
+                }
         };
 #if  defined (_MSM8960_) || defined (_MSM8974_)
         allocate_color_convert_buf client_buffers;
