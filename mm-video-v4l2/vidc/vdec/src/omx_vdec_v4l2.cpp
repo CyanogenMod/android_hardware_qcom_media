@@ -111,7 +111,6 @@ char output_extradata_filename [] = "/data/misc/media/extradata";
 #define POLL_TIMEOUT 0x7fffffff
 
 #define MEM_DEVICE "/dev/ion"
-#define MEM_HEAP_ID ION_CP_MM_HEAP_ID
 
 #ifdef _ANDROID_
 extern "C" {
@@ -130,6 +129,15 @@ extern "C" {
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
+#ifdef ION_FLAG_CP_BITSTREAM
+#define MEM_HEAP_ID ION_SECURE_HEAP_ID
+#define SECURE_ALIGN SZ_4K
+#else
+#define SECURE_ALIGN SZ_1M
+#define ION_FLAG_CP_BITSTREAM 0
+#define ION_FLAG_CP_PIXEL 0
+#define MEM_HEAP_ID ION_CP_MM_HEAP_ID
+#endif
 
 static OMX_U32 maxSmoothStreamingWidth = 1920;
 static OMX_U32 maxSmoothStreamingHeight = 1088;
@@ -1973,13 +1981,15 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         /*Get the Buffer requirements for input and output ports*/
         drv_ctx.ip_buf.buffer_type = VDEC_BUFFER_TYPE_INPUT;
         drv_ctx.op_buf.buffer_type = VDEC_BUFFER_TYPE_OUTPUT;
+
         if (secure_mode) {
-            drv_ctx.op_buf.alignment=SZ_1M;
-            drv_ctx.ip_buf.alignment=SZ_1M;
+            drv_ctx.op_buf.alignment = SECURE_ALIGN;
+            drv_ctx.ip_buf.alignment = SECURE_ALIGN;
         } else {
-            drv_ctx.op_buf.alignment=SZ_4K;
-            drv_ctx.ip_buf.alignment=SZ_4K;
+            drv_ctx.op_buf.alignment = SZ_4K;
+            drv_ctx.ip_buf.alignment = SZ_4K;
         }
+
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
         drv_ctx.extradata = 0;
         drv_ctx.picture_order = VDEC_ORDER_DISPLAY;
@@ -4766,7 +4776,8 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                 drv_ctx.op_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
                         drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.alignment,
                         &drv_ctx.op_buf_ion_info[i].ion_alloc_data,
-                        &drv_ctx.op_buf_ion_info[i].fd_ion_data, secure_mode ? ION_SECURE : 0);
+                        &drv_ctx.op_buf_ion_info[i].fd_ion_data,
+                        secure_mode ? ION_SECURE | ION_FLAG_CP_PIXEL : 0);
                 if (drv_ctx.op_buf_ion_info[i].ion_device_fd < 0) {
                     DEBUG_PRINT_ERROR("ION device fd is bad %d", drv_ctx.op_buf_ion_info[i].ion_device_fd);
                     return OMX_ErrorInsufficientResources;
@@ -5330,7 +5341,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
         drv_ctx.ip_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
                 drv_ctx.ip_buf.buffer_size,drv_ctx.op_buf.alignment,
                 &drv_ctx.ip_buf_ion_info[i].ion_alloc_data,
-                &drv_ctx.ip_buf_ion_info[i].fd_ion_data, secure_mode ? ION_SECURE : ION_FLAG_CACHED);
+                &drv_ctx.ip_buf_ion_info[i].fd_ion_data, secure_mode ?
+                ION_SECURE | ION_FLAG_CP_BITSTREAM : ION_FLAG_CACHED);
         if (drv_ctx.ip_buf_ion_info[i].ion_device_fd < 0) {
             return OMX_ErrorInsufficientResources;
         }
@@ -5508,7 +5520,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
                 drv_ctx.op_buf.buffer_size * drv_ctx.op_buf.actualcount,
                 secure_scaling_to_non_secure_opb ? SZ_4K : drv_ctx.op_buf.alignment,
                 &ion_alloc_data, &fd_ion_data,
-                (secure_mode && !secure_scaling_to_non_secure_opb) ? ION_SECURE : cache_flag);
+                (secure_mode && !secure_scaling_to_non_secure_opb) ?
+                ION_SECURE | ION_FLAG_CP_PIXEL : cache_flag);
         if (ion_device_fd < 0) {
             return OMX_ErrorInsufficientResources;
         }
@@ -8363,21 +8376,18 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
         DEBUG_PRINT_ERROR("opening ion device failed with fd = %d", fd);
         return fd;
     }
-    alloc_data->flags = 0;
-    if (!secure_mode && (flag & ION_FLAG_CACHED)) {
-        alloc_data->flags |= ION_FLAG_CACHED;
-    }
+
+    alloc_data->flags = flag;
     alloc_data->len = buffer_size;
     alloc_data->align = clip2(alignment);
     if (alloc_data->align < 4096) {
         alloc_data->align = 4096;
     }
-    if ((secure_mode) && (flag & ION_SECURE))
-        alloc_data->flags |= ION_SECURE;
 
     alloc_data->heap_id_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
     if (secure_mode && (alloc_data->flags & ION_SECURE))
         alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
+
     rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
     if (rc || !alloc_data->handle) {
         DEBUG_PRINT_ERROR("ION ALLOC memory failed");
