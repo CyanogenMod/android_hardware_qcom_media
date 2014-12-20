@@ -121,6 +121,10 @@ ifeq ($(call is-platform-sdk-version-at-least, 19),true)
 libOmxVdec-def += -DADAPTIVE_PLAYBACK_SUPPORTED
 endif
 
+ifeq ($(TARGET_REQUIRES_AVOID_STREAM_OFF_ON_FREE),true)
+libOmxVdec-def += -DAVOID_STREAM_OFF_ON_FREE
+endif
+
 LOCAL_MODULE                    := libOmxVdec
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libOmxVdec-def)
