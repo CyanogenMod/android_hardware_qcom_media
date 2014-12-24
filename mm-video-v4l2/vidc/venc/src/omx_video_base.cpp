@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2014, Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -4573,6 +4573,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
 
     /*Enable following code once private handle color format is
       updated correctly*/
+    if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888)
+        mUsesColorConversion = true;
 
     if (buffer->nFilledLen > 0) {
         if (c2d_opened && handle->format != c2d_conv.get_src_format()) {
@@ -4581,7 +4583,6 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         }
         if (!c2d_opened) {
             if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888) {
-                mUsesColorConversion = true;
                 DEBUG_PRINT_INFO("open Color conv for RGBA888 W: %u, H: %u",
                         (unsigned int)m_sInPortDef.format.video.nFrameWidth,
                         (unsigned int)m_sInPortDef.format.video.nFrameHeight);
