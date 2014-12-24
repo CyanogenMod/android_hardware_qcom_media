@@ -4507,6 +4507,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
 
     /*Enable following code once private handle color format is
       updated correctly*/
+    if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888)
+        mUsesColorConversion = true;
 
     if (buffer->nFilledLen > 0 && handle) {
         if (c2d_opened && handle->format != c2d_conv.get_src_format()) {
@@ -4515,7 +4517,6 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         }
         if (!c2d_opened) {
             if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888) {
-                mUsesColorConversion = true;
                 DEBUG_PRINT_ERROR("open Color conv for RGBA888 W: %lu, H: %lu",
                         m_sInPortDef.format.video.nFrameWidth,
                         m_sInPortDef.format.video.nFrameHeight);
