@@ -9697,11 +9697,14 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr()
                     omx->m_out_mem_ptr->pBuffer, bufadd->pBuffer, pmem_fd[index],
                     pmem_baseaddress[index], pmem_baseaddress[index]);
             pthread_mutex_unlock(&omx->c_lock);
-            m_out_mem_ptr_client[index].nFilledLen = buffer_size_req;
             if (!status) {
                 DEBUG_PRINT_ERROR("Failed color conversion %d", status);
                 m_out_mem_ptr_client[index].nFilledLen = 0;
                 return &m_out_mem_ptr_client[index];
+            } else {
+                unsigned int filledLen = 0;
+                c2d.get_output_filled_length(filledLen);
+                m_out_mem_ptr_client[index].nFilledLen = filledLen;
             }
         } else
             m_out_mem_ptr_client[index].nFilledLen = 0;
