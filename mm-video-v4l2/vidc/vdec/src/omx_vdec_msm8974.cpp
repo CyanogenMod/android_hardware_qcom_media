@@ -5943,14 +5943,15 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
     buf.flags |= (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) ? V4L2_QCOM_BUF_FLAG_CODECCONFIG: 0;
     buf.flags |= (buffer->nFlags & OMX_BUFFERFLAG_DECODEONLY) ? V4L2_QCOM_BUF_FLAG_DECODEONLY: 0;
 
+    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+        DEBUG_PRINT_LOW("Increment codec_config buffer counter");
+        android_atomic_inc(&m_queued_codec_config_count);
+    }
+
     rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
     if (rc) {
         DEBUG_PRINT_ERROR("Failed to qbuf Input buffer to driver");
         return OMX_ErrorHardware;
-    }
-
-    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-        android_atomic_inc(&m_queued_codec_config_count);
     }
 
     if (codec_config_flag && !(buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG)) {
@@ -7071,6 +7072,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                         omx->m_queued_codec_config_count);
                     sem_post(&omx->m_safe_flush);
                 }
+                DEBUG_PRINT_LOW("Reset codec_config buffer counter");
                 android_atomic_and(0, &omx->m_queued_codec_config_count); /* no clearer way to set to 0 */
             }
 
