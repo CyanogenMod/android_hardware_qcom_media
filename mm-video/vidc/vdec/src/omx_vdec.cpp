@@ -916,11 +916,15 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
           {
             if (p2 == VDEC_S_INPUT_BITSTREAM_ERR && p1)
             {
-              pThis->m_inp_err_count++;
-              pThis->time_stamp_dts.remove_time_stamp(
-              ((OMX_BUFFERHEADERTYPE *)p1)->nTimeStamp,
-              (pThis->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
-                ?true:false);
+               if (!(((OMX_BUFFERHEADERTYPE *)p1)->nFlags & OMX_BUFFERFLAG_CODECCONFIG))
+               {
+                  DEBUG_PRINT_HIGH("remove the timestamp from queue for VDEC_S_INPUT_BITSTREAM_ERR");
+                  pThis->m_inp_err_count++;
+                  pThis->time_stamp_dts.remove_time_stamp(
+                  ((OMX_BUFFERHEADERTYPE *)p1)->nTimeStamp,
+                  (pThis->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
+                  ?true:false);
+               }
             }
             else
             {
