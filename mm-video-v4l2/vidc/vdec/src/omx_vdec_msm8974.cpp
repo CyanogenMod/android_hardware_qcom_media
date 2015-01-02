@@ -1327,6 +1327,10 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                             DEBUG_PRINT_ERROR("Rxd Invalid PORT_RECONFIG event (%lu)", p2);
                                             break;
                                         }
+                                        if (pThis->m_debug.outfile) {
+                                            fclose(pThis->m_debug.outfile);
+                                            pThis->m_debug.outfile = NULL;
+                                        }
                                         if (pThis->m_cb.EventHandler) {
                                             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                                     OMX_EventPortSettingsChanged, p1, p2, NULL );
