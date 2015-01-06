@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1324,6 +1324,10 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         } else {
                                             DEBUG_PRINT_ERROR("Rxd Invalid PORT_RECONFIG event (%lu)", p2);
                                             break;
+                                        }
+                                        if (pThis->m_debug.outfile) {
+                                            fclose(pThis->m_debug.outfile);
+                                            pThis->m_debug.outfile = NULL;
                                         }
                                         if (pThis->m_cb.EventHandler) {
                                             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
