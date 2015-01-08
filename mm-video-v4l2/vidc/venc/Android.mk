@@ -21,7 +21,7 @@ libmm-venc-def += -Werror
 libmm-venc-def += -D_ANDROID_ICS_
 libmm-venc-def += -D_MSM8974_
 
-TARGETS_THAT_USE_FLAG_MSM8226 := msm8226 msm8916 msm8909
+TARGETS_THAT_USE_FLAG_MSM8226 := msm8226 msm8916
 TARGETS_THAT_NEED_SW_VENC_MPEG4 := msm8909
 TARGETS_THAT_NEED_SW_VENC_HEVC := msm8992
 
@@ -39,6 +39,10 @@ endif
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_FLAG_MSM8226)),true)
 libmm-venc-def += -D_MSM8226_
+endif
+
+ifeq ($(TARGET_BOARD_PLATFORM),msm8909)
+libmm-venc-def += -D_MSM8909_
 endif
 
 ifeq ($(TARGET_USES_ION),true)
