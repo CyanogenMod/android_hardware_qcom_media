@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -1041,6 +1041,27 @@ class omx_vdec: public qc_omx_component
         OMX_TICKS m_last_rendered_TS;
         volatile int32_t m_queued_codec_config_count;
         bool secure_scaling_to_non_secure_opb;
+        class perf_lock {
+            private:
+                pthread_mutex_t mlock;
+
+            public:
+                perf_lock() {
+                    pthread_mutex_init(&mlock, NULL);
+                }
+
+                ~perf_lock() {
+                    pthread_mutex_destroy(&mlock);
+                }
+
+                void lock() {
+                    pthread_mutex_lock(&mlock);
+                }
+
+                void unlock() {
+                    pthread_mutex_unlock(&mlock);
+                }
+        };
 
         class perf_control {
             // 2 cores will be requested if framerate is beyond 45 fps
@@ -1048,17 +1069,25 @@ class omx_vdec: public qc_omx_component
             typedef int (*perf_lock_acquire_t)(int, int, int*, int);
             typedef int (*perf_lock_release_t)(int);
 
-            public:
-                perf_control();
-                ~perf_control();
-                void request_cores(int frame_duration_us);
             private:
                 void *m_perf_lib;
                 int m_perf_handle;
                 perf_lock_acquire_t m_perf_lock_acquire;
                 perf_lock_release_t m_perf_lock_release;
-                //void (*perf_cpu_boost)(int ntasks);
-                void load_lib();
+                bool load_lib();
+                struct mpctl_stats {
+                  int vid_inst_count;
+                  bool vid_acquired;
+                  int vid_disp_handle;
+                };
+                static struct mpctl_stats mpctl_obj;
+                static perf_lock m_perf_lock;
+
+            public:
+                perf_control();
+                ~perf_control();
+                void request_cores(int frame_duration_us);
+                void send_hint_to_mpctl(bool state);
         };
         perf_control m_perf_control;
 

@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -707,6 +707,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_smoothstreaming_width = 0;
     m_smoothstreaming_height = 0;
     is_q6_platform = false;
+    m_perf_control.send_hint_to_mpctl(true);
 }
 
 static const int event_type[] = {
@@ -821,6 +822,7 @@ omx_vdec::~omx_vdec()
         dec_time.end();
     }
     DEBUG_PRINT_INFO("Exit OMX vdec Destructor: fd=%d",drv_ctx.video_driver_fd);
+    m_perf_control.send_hint_to_mpctl(false);
 }
 
 int release_buffers(omx_vdec* obj, enum vdec_buffer buffer_type)
@@ -10548,17 +10550,17 @@ void omx_vdec::send_codec_config() {
 }
 #endif
 
-omx_vdec::perf_control::perf_control ()
+omx_vdec::perf_control::perf_control()
 {
     m_perf_lib = NULL;
-    m_perf_handle = -1;
+    m_perf_handle = 0;
     m_perf_lock_acquire = NULL;
     m_perf_lock_release = NULL;
 }
 
 omx_vdec::perf_control::~perf_control()
 {
-    if (m_perf_handle >= 0 && m_perf_lock_release) {
+    if (m_perf_handle != 0 && m_perf_lock_release) {
         DEBUG_PRINT_LOW("NOTE2: release perf lock");
         m_perf_lock_release(m_perf_handle);
     }
@@ -10567,13 +10569,47 @@ omx_vdec::perf_control::~perf_control()
     }
 }
 
+struct omx_vdec::perf_control::mpctl_stats omx_vdec::perf_control::mpctl_obj = {0, 0, 0};
+
+omx_vdec::perf_lock omx_vdec::perf_control::m_perf_lock;
+
+void omx_vdec::perf_control::send_hint_to_mpctl(bool state)
+{
+    if (load_lib() == false) {
+       return;
+    }
+    m_perf_lock.lock();
+    /* 0x4401 maps to video decode playback hint
+     * in perflock, enum number is 44 and state
+     * being sent on perflock acquire is 01 (true)
+     */
+    int arg = 0x4401;
+
+    if (state == true) {
+        mpctl_obj.vid_inst_count++;
+    } else if (state == false) {
+        mpctl_obj.vid_inst_count--;
+    }
+
+    if (m_perf_lock_acquire && mpctl_obj.vid_inst_count == 1 && mpctl_obj.vid_acquired == false) {
+        mpctl_obj.vid_disp_handle = m_perf_lock_acquire(0, 0, &arg, sizeof(arg) / sizeof(int));
+        mpctl_obj.vid_acquired = true;
+        DEBUG_PRINT_INFO("Video slvp perflock acquired");
+    } else if (m_perf_lock_release && (mpctl_obj.vid_inst_count == 0 || mpctl_obj.vid_inst_count > 1) && mpctl_obj.vid_acquired == true) {
+        m_perf_lock_release(mpctl_obj.vid_disp_handle);
+        mpctl_obj.vid_acquired = false;
+        DEBUG_PRINT_INFO("Video slvp perflock released");
+    }
+    m_perf_lock.unlock();
+}
+
 void omx_vdec::perf_control::request_cores(int frame_duration_us)
 {
     if (frame_duration_us > MIN_FRAME_DURATION_FOR_PERF_REQUEST_US) {
         return;
     }
-    load_lib();
-    if (m_perf_lock_acquire && m_perf_handle < 0) {
+    bool retVal = load_lib();
+    if (retVal && m_perf_lock_acquire && m_perf_handle == 0) {
         int arg = 0x700 /*base value*/ + 2 /*cores*/;
         m_perf_handle = m_perf_lock_acquire(m_perf_handle, 0, &arg, sizeof(arg)/sizeof(int));
         if (m_perf_handle) {
@@ -10582,29 +10618,40 @@ void omx_vdec::perf_control::request_cores(int frame_duration_us)
     }
 }
 
-void omx_vdec::perf_control::load_lib()
+bool omx_vdec::perf_control::load_lib()
 {
     char perf_lib_path[PROPERTY_VALUE_MAX] = {0};
     if (m_perf_lib)
-        return;
+        return true;
 
     if((property_get("ro.vendor.extension_library", perf_lib_path, NULL) <= 0)) {
         DEBUG_PRINT_ERROR("vendor library not set in ro.vendor.extension_library");
-        return;
+        goto handle_err;
     }
 
     if ((m_perf_lib = dlopen(perf_lib_path, RTLD_NOW)) == NULL) {
         DEBUG_PRINT_ERROR("Failed to open %s : %s",perf_lib_path, dlerror());
+        goto handle_err;
     } else {
         m_perf_lock_acquire = (perf_lock_acquire_t)dlsym(m_perf_lib, "perf_lock_acq");
         if (m_perf_lock_acquire == NULL) {
             DEBUG_PRINT_ERROR("Failed to load symbol: perf_lock_acq");
+            goto handle_err;
         }
         m_perf_lock_release = (perf_lock_release_t)dlsym(m_perf_lib, "perf_lock_rel");
         if (m_perf_lock_release == NULL) {
             DEBUG_PRINT_ERROR("Failed to load symbol: perf_lock_rel");
+            goto handle_err;
         }
     }
+    return true;
+
+handle_err:
+    if (m_perf_lib) {
+        dlclose(m_perf_lib);
+    }
+    m_perf_lib = NULL;
+    return false;
 }
 
 OMX_ERRORTYPE omx_vdec::enable_adaptive_playback(unsigned long nMaxFrameWidth,

@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -93,6 +93,21 @@ class omx_venc: public omx_video
         bool dev_get_output_log_flag();
         int dev_output_log_buffers(const char *buffer_addr, int buffer_len);
         int dev_extradata_log_buffers(char *buffer);
+        class perf_control {
+            typedef int (*perf_lock_acquire_t)(int, int, int*, int);
+            typedef int (*perf_lock_release_t)(int);
+            public:
+                perf_control();
+                ~perf_control();
+                void send_hint_to_mpctl(bool state);
+            private:
+                int m_perf_handle;
+                void *m_perf_lib;
+                bool load_lib();
+                perf_lock_acquire_t m_perf_lock_acquire;
+                perf_lock_release_t m_perf_lock_release;
+        };
+        perf_control m_perf_control;
 };
 
 #endif //__OMX_VENC__H
