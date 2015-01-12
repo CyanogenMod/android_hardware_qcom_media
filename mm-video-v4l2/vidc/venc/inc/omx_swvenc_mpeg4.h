@@ -84,6 +84,10 @@ class omx_venc: public omx_video
           SWVENC_IPBUFFER *p_ipbuffer,
           void            *p_client
         );
+        SWVENC_STATUS swvenc_empty_buffer_done
+        (
+          SWVENC_IPBUFFER *p_ipbuffer
+        );
         static SWVENC_STATUS swvenc_fill_buffer_done_cb
         (
             SWVENC_HANDLE    swvenc,

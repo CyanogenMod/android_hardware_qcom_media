@@ -2326,30 +2326,69 @@ SWVENC_STATUS omx_venc::swvenc_empty_buffer_done_cb
 {
     ENTER_FUNC();
 
+    (void)swvenc;
+    SWVENC_STATUS eRet = SWVENC_S_SUCCESS;
+    omx_venc *omx = reinterpret_cast<omx_venc*>(p_client);
+
+    if (p_ipbuffer == NULL)
+    {
+        eRet = SWVENC_S_FAILURE;
+    }
+    else
+    {
+        omx->swvenc_empty_buffer_done(p_ipbuffer);
+    }
+    return eRet;
+}
+
+SWVENC_STATUS omx_venc::swvenc_empty_buffer_done
+(
+    SWVENC_IPBUFFER *p_ipbuffer
+)
+{
     SWVENC_STATUS eRet = SWVENC_S_SUCCESS;
     OMX_ERRORTYPE error = OMX_ErrorNone;
     OMX_BUFFERHEADERTYPE* omxhdr = NULL;
-    omx_video *omx = reinterpret_cast<omx_video*>(p_client);
 
-    (void)swvenc;
-
+    //omx_video *omx = reinterpret_cast<omx_video*>(p_client);
     omxhdr = (OMX_BUFFERHEADERTYPE*)p_ipbuffer->p_client_data;
 
     DEBUG_PRINT_LOW("EBD: clientData (%p)", p_ipbuffer->p_client_data);
 
     if ( (omxhdr == NULL) ||
-         ( ((OMX_U32)(omxhdr - omx->m_inp_mem_ptr) > omx->m_sInPortDef.nBufferCountActual) &&
-           ((OMX_U32)(omxhdr - omx->meta_buffer_hdr) > omx->m_sInPortDef.nBufferCountActual)
+         ( ((OMX_U32)(omxhdr - m_inp_mem_ptr) >m_sInPortDef.nBufferCountActual) &&
+           ((OMX_U32)(omxhdr - meta_buffer_hdr) >m_sInPortDef.nBufferCountActual)
          )
        )
     {
         omxhdr = NULL;
         error = OMX_ErrorUndefined;
     }
-
-    omx->omx_release_meta_buffer(omxhdr);
-
-    omx->post_event ((unsigned long)omxhdr,error,OMX_COMPONENT_GENERATE_EBD);
+    // unmap the input buffer->pBuffer
+    omx_release_meta_buffer(omxhdr);
+#ifdef _ANDROID_ICS_
+    if (meta_mode_enable)
+    {
+       encoder_media_buffer_type *meta_buf = NULL;
+       unsigned int size = 0;
+       meta_buf = (encoder_media_buffer_type *)omxhdr->pBuffer;
+       if (meta_buf)
+       {
+          if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource)
+          {
+              size = meta_buf->meta_handle->data[2];
+          }
+          else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource)
+          {
+              private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
+              size = handle->size;
+          }
+       }
+       int status = munmap(p_ipbuffer->p_buffer, size);
+       DEBUG_PRINT_HIGH("Unmapped pBuffer <%p> size <%d> status <%d>", p_ipbuffer->p_buffer, size, status);
+    }
+#endif
+    post_event ((unsigned long)omxhdr,error,OMX_COMPONENT_GENERATE_EBD);
 
     RETURN(eRet);
 }
