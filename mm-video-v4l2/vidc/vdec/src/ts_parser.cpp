@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -32,17 +32,20 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 void omx_time_stamp_reorder::set_timestamp_reorder_mode(bool mode)
 {
+    auto_lock l(&m_lock);
     reorder_ts = mode;
 }
 
 void omx_time_stamp_reorder::enable_debug_print(bool flag)
 {
+    auto_lock l(&m_lock);
     print_debug = flag;
 }
 
 omx_time_stamp_reorder::~omx_time_stamp_reorder()
 {
     delete_list();
+    pthread_mutex_destroy(&m_lock);
 }
 
 omx_time_stamp_reorder::omx_time_stamp_reorder()
@@ -51,6 +54,7 @@ omx_time_stamp_reorder::omx_time_stamp_reorder()
     phead = pcurrent = NULL;
     error = false;
     print_debug = false;
+    pthread_mutex_init(&m_lock, NULL);
 }
 
 void omx_time_stamp_reorder::delete_list()
@@ -143,6 +147,7 @@ bool omx_time_stamp_reorder::add_new_list()
 
 bool omx_time_stamp_reorder::insert_timestamp(OMX_BUFFERHEADERTYPE *header)
 {
+    auto_lock l(&m_lock);
     OMX_TICKS *table_entry = NULL;
 
     if (!reorder_ts || error || !header) {
@@ -209,6 +214,7 @@ bool omx_time_stamp_reorder::insert_timestamp(OMX_BUFFERHEADERTYPE *header)
 
 bool omx_time_stamp_reorder::remove_time_stamp(OMX_TICKS ts, bool is_interlaced = false)
 {
+    auto_lock l(&m_lock);
     unsigned int num_ent_remove = (is_interlaced)?2:1;
 
     if (!reorder_ts || error) {
@@ -241,11 +247,13 @@ bool omx_time_stamp_reorder::remove_time_stamp(OMX_TICKS ts, bool is_interlaced 
 
 void omx_time_stamp_reorder::flush_timestamp()
 {
+    auto_lock l(&m_lock);
     delete_list();
 }
 
 bool omx_time_stamp_reorder::get_next_timestamp(OMX_BUFFERHEADERTYPE *header, bool is_interlaced)
 {
+    auto_lock l(&m_lock);
     timestamp *element = NULL,*duplicate = NULL;
     bool status = false;
 
