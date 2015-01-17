@@ -1816,7 +1816,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
     if (eRet == OMX_ErrorNone) {
         OMX_COLOR_FORMATTYPE dest_color_format;
+#ifdef _UBWC_
+        drv_ctx.output_format = VDEC_YUV_FORMAT_NV12_UBWC;
+#else
         drv_ctx.output_format = VDEC_YUV_FORMAT_NV12;
+#endif
         if (eCompressionFormat == (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingMVC)
             dest_color_format = (OMX_COLOR_FORMATTYPE)
                 QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView;
@@ -1828,8 +1832,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             eRet = OMX_ErrorInsufficientResources;
         }
 
-        capture_capability= V4L2_PIX_FMT_NV12;
-
+#ifdef _UBWC_
+        capture_capability = V4L2_PIX_FMT_NV12_UBWC;
+#else
+        capture_capability = V4L2_PIX_FMT_NV12;
+#endif
         struct v4l2_capability cap;
         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_QUERYCAP, &cap);
         if (ret) {
@@ -3342,6 +3349,9 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                if (drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
                                                    stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, portDefn->format.video.nFrameWidth);
                                                    slice = VENUS_Y_SCANLINES(COLOR_FMT_NV12, portDefn->format.video.nFrameHeight);
+                                               } else if (drv_ctx.output_format == VDEC_YUV_FORMAT_NV12_UBWC) {
+                                                   stride = VENUS_Y_STRIDE(COLOR_FMT_NV12_UBWC, portDefn->format.video.nFrameWidth);
+                                                   slice = VENUS_Y_SCANLINES(COLOR_FMT_NV12_UBWC, portDefn->format.video.nFrameHeight);
                                                } else {
                                                    stride = portDefn->format.video.nFrameWidth;
                                                    slice = portDefn->format.video.nFrameHeight;
@@ -3515,17 +3525,26 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
                                     fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
                                     fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
-                                    fmt.fmt.pix_mp.pixelformat = capture_capability;
                                     enum vdec_output_fromat op_format;
                                     if (portFmt->eColorFormat == (OMX_COLOR_FORMATTYPE)
                                                 QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m ||
                                             portFmt->eColorFormat == (OMX_COLOR_FORMATTYPE)
                                                 QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView ||
                                             portFmt->eColorFormat == OMX_COLOR_FormatYUV420Planar ||
-                                            portFmt->eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)
+                                            portFmt->eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar) {
                                         op_format = (enum vdec_output_fromat)VDEC_YUV_FORMAT_NV12;
-                                    else
+                                    } else if (portFmt->eColorFormat == (OMX_COLOR_FORMATTYPE)
+                                                QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed) {
+                                        op_format = (enum vdec_output_fromat)VDEC_YUV_FORMAT_NV12_UBWC;
+                                    } else
                                         eRet = OMX_ErrorBadParameter;
+
+                                    if (portFmt->eColorFormat == (OMX_COLOR_FORMATTYPE)
+                                                QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed) {
+                                        fmt.fmt.pix_mp.pixelformat = capture_capability = V4L2_PIX_FMT_NV12_UBWC;
+                                    } else {
+                                        fmt.fmt.pix_mp.pixelformat = capture_capability = V4L2_PIX_FMT_NV12;
+                                    }
 
                                     if (eRet == OMX_ErrorNone) {
                                         drv_ctx.output_format = op_format;
@@ -7587,7 +7606,13 @@ int omx_vdec::async_message_process (void *context, void* message)
                                 VENUS_Y_STRIDE(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_width);
                             omx->drv_ctx.video_resolution.scan_lines =
                                 VENUS_Y_SCANLINES(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_height);
+                        } else if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12_UBWC) {
+                            omx->drv_ctx.video_resolution.stride =
+                                VENUS_Y_STRIDE(COLOR_FMT_NV12_UBWC, omx->drv_ctx.video_resolution.frame_width);
+                            omx->drv_ctx.video_resolution.scan_lines =
+                                VENUS_Y_SCANLINES(COLOR_FMT_NV12_UBWC, omx->drv_ctx.video_resolution.frame_height);
                         }
+
                         memcpy(&omx->drv_ctx.frame_size,
                                 &vdec_msg->msgdata.output_frame.framesize,
                                 sizeof(struct vdec_framesize));
@@ -10119,14 +10144,21 @@ bool omx_vdec::allocate_color_convert_buf::set_color_format(
         else
             drv_color_format = (OMX_COLOR_FORMATTYPE)
                 QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
-    else {
+     else if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12_UBWC) {
+         drv_color_format = (OMX_COLOR_FORMATTYPE)
+                  QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed;
+     } else {
         DEBUG_PRINT_ERROR("Incorrect color format");
         status = false;
     }
     if (status &&
         drv_color_format != dest_color_format &&
         drv_color_format != (OMX_COLOR_FORMATTYPE)
-                QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView) {
+                QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView &&
+        drv_color_format != (OMX_COLOR_FORMATTYPE)
+                QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed &&
+        dest_color_format != (OMX_COLOR_FORMATTYPE)
+                QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed) {
         DEBUG_PRINT_LOW("Enabling C2D");
         if ((dest_color_format != OMX_COLOR_FormatYUV420Planar) &&
            (dest_color_format != OMX_COLOR_FormatYUV420SemiPlanar)) {
@@ -10380,14 +10412,15 @@ bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE
 {
     bool status = true;
     if (!enabled) {
-        if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12)
+        if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
             if (omx->drv_ctx.decoder_format == VDEC_CODECTYPE_MVC)
                     dest_color_format = (OMX_COLOR_FORMATTYPE)
                         QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView;
                 else
-                    dest_color_format = (OMX_COLOR_FORMATTYPE)
-                        QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
-        else
+                    dest_color_format = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+        } else if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12_UBWC){
+             dest_color_format = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed;
+        } else
             status = false;
     } else {
         if (ColorFormat == OMX_COLOR_FormatYUV420Planar ||

@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -1070,6 +1070,7 @@ class omx_vdec: public qc_omx_component
                 [1] = OMX_COLOR_FormatYUV420Planar,
                 [2] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
                 [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
+                [4] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed,
             };
             return (index < sizeof(formatsNonSurfaceMode) / sizeof(OMX_COLOR_FORMATTYPE)) ?
                 formatsNonSurfaceMode[index] : OMX_COLOR_FormatMax;
@@ -1077,12 +1078,22 @@ class omx_vdec: public qc_omx_component
 
         static OMX_COLOR_FORMATTYPE getPreferredColorFormatDefaultMode(OMX_U32 index) {
             //for surface mode (normal playback), advertise native/accelerated formats first
+#if _UBWC_
+            OMX_COLOR_FORMATTYPE formatsDefault[] = {
+                [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed,
+                [1] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
+                [2] = OMX_COLOR_FormatYUV420Planar,
+                [3] = OMX_COLOR_FormatYUV420SemiPlanar,
+                [4] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
+            };
+#else
             OMX_COLOR_FORMATTYPE formatsDefault[] = {
                 [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
                 [1] = OMX_COLOR_FormatYUV420Planar,
                 [2] = OMX_COLOR_FormatYUV420SemiPlanar,
                 [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
             };
+#endif
             return (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?
                 formatsDefault[index] : OMX_COLOR_FormatMax;
         }
