@@ -66,6 +66,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SZ_4K 0x1000
 #define SZ_1M 0x100000
 
+#define METADATA_INPUT_BUFFER_COUNT 5
+
 /* MPEG4 profile and level table*/
 static const unsigned int mpeg4_profile_level_table[][MAX_PROFILE_PARAMS]= {
     /*max mb per frame, max mb per sec, max bitrate, level, profile, dpbmbs*/
@@ -1169,10 +1171,10 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
 
         // Increase buffer-header count for metadata-mode on input port
         // to improve buffering and reduce bottlenecks in clients
-        if (metadatamode && (bufreq.count < 9)) {
-            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 16",
-                bufreq.count);
-            bufreq.count = 9;
+        if (metadatamode && (bufreq.count < METADATA_INPUT_BUFFER_COUNT)) {
+            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with %d",
+                bufreq.count, METADATA_INPUT_BUFFER_COUNT);
+            bufreq.count = METADATA_INPUT_BUFFER_COUNT;
         }
 
         bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
