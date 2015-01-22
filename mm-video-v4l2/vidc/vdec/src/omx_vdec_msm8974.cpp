@@ -2350,17 +2350,18 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
 #endif
         if (cmd == OMX_CommandFlush && (param1 == OMX_CORE_INPUT_PORT_INDEX ||
                     param1 == OMX_ALL)) {
-            while (android_atomic_add(0, &m_queued_codec_config_count) > 0) {
+            if (android_atomic_add(0, &m_queued_codec_config_count) > 0) {
                struct timespec ts;
 
                clock_gettime(CLOCK_REALTIME, &ts);
                ts.tv_sec += 2;
                DEBUG_PRINT_LOW("waiting for %d EBDs of CODEC CONFIG buffers ",
                        m_queued_codec_config_count);
+               BITMASK_SET(&m_flags, OMX_COMPONENT_FLUSH_DEFERRED);
                if (sem_timedwait(&m_safe_flush, &ts)) {
                    DEBUG_PRINT_ERROR("Failed to wait for EBDs of CODEC CONFIG buffers");
-                   break;
                }
+               BITMASK_CLEAR (&m_flags,OMX_COMPONENT_FLUSH_DEFERRED);
             }
         }
 
@@ -7027,18 +7028,14 @@ int omx_vdec::async_message_process (void *context, void* message)
                 vdec_msg->status_code = VDEC_S_INPUT_BITSTREAM_ERR;
             }
             if (omxhdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-                int pending_flush_waiters;
 
-                while (pending_flush_waiters = INT_MAX,
-                    sem_getvalue(&omx->m_safe_flush, &pending_flush_waiters),
-                    /* 0 == there /are/ waiters depending on POSIX implementation */
-                    pending_flush_waiters <= 0 ) {
-                    DEBUG_PRINT_LOW("sem post for %d EBD of CODEC CONFIG buffer",
-                        omx->m_queued_codec_config_count);
+                DEBUG_PRINT_LOW("Decrement codec_config buffer counter");
+                android_atomic_dec(&omx->m_queued_codec_config_count);
+                if ((android_atomic_add(0, &omx->m_queued_codec_config_count) == 0) &&
+                    BITMASK_PRESENT(&omx->m_flags, OMX_COMPONENT_FLUSH_DEFERRED)) {
+                    DEBUG_PRINT_LOW("sem post for CODEC CONFIG buffer");
                     sem_post(&omx->m_safe_flush);
                 }
-                DEBUG_PRINT_LOW("Reset codec_config buffer counter");
-                android_atomic_and(0, &omx->m_queued_codec_config_count); /* no clearer way to set to 0 */
             }
 
             omx->post_event ((unsigned int)omxhdr,vdec_msg->status_code,
