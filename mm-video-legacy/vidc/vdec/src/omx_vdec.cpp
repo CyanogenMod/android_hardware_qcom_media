@@ -1185,6 +1185,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
   int r;
   OMX_STRING device_name = "/dev/msm_vidc_dec";
 
+#ifdef _ANDROID_
+    /*
+     * turn off frame parsing for Android by default.
+     * Clients may configure OMX_QCOM_FramePacking_Arbitrary to enable this mode
+     */
+    arbitrary_bytes = false;
+#endif
+
   if(!strncmp(role, "OMX.qcom.video.decoder.avc.smoothstreaming",OMX_MAX_STRINGNAME_SIZE)){
       ALOGI("smooth streaming role");
       m_use_smoothstreaming = true;
