@@ -4049,7 +4049,7 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
 
   pending_input_buffers--;
 
-  if(mUseProxyColorFormat && (buffer_index < m_sInPortDef.nBufferCountActual)) {
+  if(mUseProxyColorFormat && ((OMX_U32)buffer_index < m_sInPortDef.nBufferCountActual)) {
     if(!pdest_frame) {
       pdest_frame = buffer;
       DEBUG_PRINT_LOW("\n empty_buffer_done pdest_frame address is %p",pdest_frame);
@@ -4059,6 +4059,7 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
       DEBUG_PRINT_LOW("\n empty_buffer_done insert address is %p",buffer);
       if (!m_opq_pmem_q.insert_entry((unsigned int)buffer, 0, 0)) {
         DEBUG_PRINT_ERROR("\n empty_buffer_done: pmem queue is full");
+        m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
         return OMX_ErrorBadParameter;
       }
     }
@@ -4582,13 +4583,10 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
     ret = push_input_buffer(hComp);
   } else {
     if (!m_opq_meta_q.insert_entry((unsigned)buffer,0,0)) {
+      m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
       DEBUG_PRINT_ERROR("\nERROR: ETBProxy: Queue is full");
       ret = OMX_ErrorBadParameter;
     }
-  }
-  if(ret != OMX_ErrorNone) {
-    m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
-    DEBUG_PRINT_LOW("\nERROR: ETBOpaque failed:");
   }
   return ret;
 }
@@ -4621,6 +4619,9 @@ OMX_ERRORTYPE omx_video::queue_meta_buffer(OMX_HANDLETYPE hComp,
       m_opq_meta_q.pop_entry(&address,&p2,&id);
       psource_frame = (OMX_BUFFERHEADERTYPE* ) address;
     }
+  } else {
+    // there has been an error and source frame has been scheduled for an EBD
+    psource_frame = NULL;
   }
   return ret;
 }
@@ -4708,6 +4709,9 @@ OMX_ERRORTYPE omx_video::convert_queue_buffer(OMX_HANDLETYPE hComp,
         pdest_frame = (OMX_BUFFERHEADERTYPE* ) address;
         DEBUG_PRINT_LOW("\n pdest_frame pop address is %p",pdest_frame);
       }
+    } else {
+      // there has been an error and source frame has been scheduled for an EBD
+      psource_frame = NULL;
     }
     return ret;
 }
