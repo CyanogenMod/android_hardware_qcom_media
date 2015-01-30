@@ -33,6 +33,7 @@ Copyright (c) 2012 The Linux Foundation. All rights reserved.
 #include <C2DColorConverter.h>
 #include <arm_neon.h>
 #include <stdlib.h>
+#include <string.h>
 #include <fcntl.h>
 #include <linux/msm_kgsl.h>
 #include <sys/ioctl.h>
