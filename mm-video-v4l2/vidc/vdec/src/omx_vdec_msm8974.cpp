@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -54,6 +54,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <media/hardware/HardwareAPI.h>
 #include <media/msm_media_info.h>
+#include <OMX_VideoExt.h>
 
 #ifndef _ANDROID_
 #include <sys/ioctl.h>
@@ -1324,6 +1325,10 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         } else {
                                             DEBUG_PRINT_ERROR("Rxd Invalid PORT_RECONFIG event (%lu)", p2);
                                             break;
+                                        }
+                                        if (pThis->m_debug.outfile) {
+                                            fclose(pThis->m_debug.outfile);
+                                            pThis->m_debug.outfile = NULL;
                                         }
                                         if (pThis->m_cb.EventHandler) {
                                             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
@@ -2874,9 +2879,14 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
                 eRet = OMX_ErrorNoMore;
             }
         } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevc", OMX_MAX_STRINGNAME_SIZE)) {
+            if (profileLevelType->nProfileIndex == 0) {
+                profileLevelType->eProfile = OMX_VIDEO_HEVCProfileMain;
+                profileLevelType->eLevel   = OMX_VIDEO_HEVCMainTierLevel41;
+            } else {
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
                         (unsigned int)profileLevelType->nProfileIndex);
                 eRet = OMX_ErrorNoMore;
+            }
         } else if ((!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.h263",OMX_MAX_STRINGNAME_SIZE))) {
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_H263ProfileBaseline;
@@ -6250,14 +6260,15 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
     buf.flags |= (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) ? V4L2_QCOM_BUF_FLAG_CODECCONFIG: 0;
     buf.flags |= (buffer->nFlags & OMX_BUFFERFLAG_DECODEONLY) ? V4L2_QCOM_BUF_FLAG_DECODEONLY: 0;
 
+    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+        DEBUG_PRINT_LOW("Increment codec_config buffer counter");
+        android_atomic_inc(&m_queued_codec_config_count);
+    }
+
     rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
     if (rc) {
         DEBUG_PRINT_ERROR("Failed to qbuf Input buffer to driver");
         return OMX_ErrorHardware;
-    }
-
-    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-        android_atomic_inc(&m_queued_codec_config_count);
     }
 
     if (codec_config_flag && !(buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG)) {
@@ -7293,19 +7304,6 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
     DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p, bufhdr->nFlags = %x",
             buffer, buffer->pBuffer, buffer->nFlags);
     pending_input_buffers--;
-    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-        int pending_flush_waiters;
-
-        while (pending_flush_waiters = INT_MAX,
-                sem_getvalue(&m_safe_flush, &pending_flush_waiters),
-                /* 0 == there /are/ waiters depending on POSIX implementation */
-                pending_flush_waiters <= 0 ) {
-            DEBUG_PRINT_LOW("sem post for %d EBD of CODEC CONFIG buffer", m_queued_codec_config_count);
-            sem_post(&m_safe_flush);
-        }
-
-        android_atomic_and(0, &m_queued_codec_config_count); /* no clearer way to set to 0 */
-    }
 
     if (arbitrary_bytes) {
         if (pdest_frame == NULL && input_flush_progress == false) {
@@ -7414,6 +7412,21 @@ int omx_vdec::async_message_process (void *context, void* message)
                 omxhdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
                 vdec_msg->status_code = VDEC_S_INPUT_BITSTREAM_ERR;
             }
+            if (omxhdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+                int pending_flush_waiters;
+
+                while (pending_flush_waiters = INT_MAX,
+                    sem_getvalue(&omx->m_safe_flush, &pending_flush_waiters),
+                    /* 0 == there /are/ waiters depending on POSIX implementation */
+                    pending_flush_waiters <= 0 ) {
+                    DEBUG_PRINT_LOW("sem post for %d EBD of CODEC CONFIG buffer",
+                        omx->m_queued_codec_config_count);
+                    sem_post(&omx->m_safe_flush);
+                }
+                DEBUG_PRINT_LOW("Reset codec_config buffer counter");
+                android_atomic_and(0, &omx->m_queued_codec_config_count); /* no clearer way to set to 0 */
+            }
+
             omx->post_event ((unsigned long)omxhdr,vdec_msg->status_code,
                     OMX_COMPONENT_GENERATE_EBD);
             break;
@@ -7533,7 +7546,12 @@ int omx_vdec::async_message_process (void *context, void* message)
                                 vdec_msg->msgdata.output_frame.picsize.frame_width;
                         omx->drv_ctx.video_resolution.frame_height =
                                 vdec_msg->msgdata.output_frame.picsize.frame_height;
-
+                        if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
+                            omx->drv_ctx.video_resolution.stride =
+                                VENUS_Y_STRIDE(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_width);
+                            omx->drv_ctx.video_resolution.scan_lines =
+                                VENUS_Y_SCANLINES(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_height);
+                        }
                         memcpy(&omx->drv_ctx.frame_size,
                                 &vdec_msg->msgdata.output_frame.framesize,
                                 sizeof(struct vdec_framesize));
@@ -8619,11 +8637,11 @@ OMX_ERRORTYPE omx_vdec::set_buffer_req(vdec_allocatorproperty *buffer_prop)
         memset(&fmt, 0x0, sizeof(struct v4l2_format));
         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
         fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+        fmt.fmt.pix_mp.plane_fmt[0].sizeimage = buf_size;
 
         if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_INPUT) {
             fmt.type =V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
             fmt.fmt.pix_mp.pixelformat = output_capability;
-            fmt.fmt.pix_mp.plane_fmt[0].sizeimage = buf_size;
         } else if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT) {
             fmt.type =V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
             fmt.fmt.pix_mp.pixelformat = capture_capability;
@@ -8758,8 +8776,10 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
 
     if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
        (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
-        portDefn->format.video.nStride = ALIGN(drv_ctx.video_resolution.frame_width, 16);
-        portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
+        portDefn->format.video.nStride = VENUS_Y_STRIDE(COLOR_FMT_NV12,
+            drv_ctx.video_resolution.frame_width);
+        portDefn->format.video.nSliceHeight = VENUS_Y_SCANLINES(COLOR_FMT_NV12,
+            drv_ctx.video_resolution.frame_height);
     }
     DEBUG_PRINT_HIGH("update_portdef(%u): Width = %u Height = %u Stride = %d "
             "SliceHeight = %u eColorFormat = %d nBufSize %u nBufCnt %u",
@@ -10598,6 +10618,7 @@ OMX_ERRORTYPE omx_vdec::enable_adaptive_playback(unsigned long nMaxFrameWidth,
 
      drv_ctx.op_buf.mincount = min_res_buf_count;
      drv_ctx.op_buf.actualcount = min_res_buf_count;
+     drv_ctx.op_buf.buffer_size = drv_ctx.op_buf.buffer_size;
      eRet = set_buffer_req(&drv_ctx.op_buf);
      if (eRet != OMX_ErrorNone) {
          DEBUG_PRINT_ERROR("failed to set_buffer_req");

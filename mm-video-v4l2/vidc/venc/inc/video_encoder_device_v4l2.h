@@ -224,6 +224,12 @@ struct extradata_buffer_info {
 #endif
 };
 
+struct statistics {
+    struct timeval prev_tv;
+    int prev_fbd;
+    int bytes_generated;
+};
+
 enum rc_modes {
     RC_VBR_VFR = BIT(0),
     RC_VBR_CFR = BIT(1),

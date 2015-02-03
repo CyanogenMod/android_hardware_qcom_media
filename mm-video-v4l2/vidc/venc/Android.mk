@@ -21,7 +21,7 @@ libmm-venc-def += -Werror
 libmm-venc-def += -D_ANDROID_ICS_
 libmm-venc-def += -D_MSM8974_
 
-TARGETS_THAT_USE_FLAG_MSM8226 := msm8226 msm8916 msm8909
+TARGETS_THAT_USE_FLAG_MSM8226 := msm8226 msm8916
 TARGETS_THAT_NEED_SW_VENC_MPEG4 := msm8909
 TARGETS_THAT_NEED_SW_VENC_HEVC := msm8992
 
@@ -39,6 +39,10 @@ endif
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_FLAG_MSM8226)),true)
 libmm-venc-def += -D_MSM8226_
+endif
+
+ifeq ($(TARGET_BOARD_PLATFORM),msm8909)
+libmm-venc-def += -D_MSM8909_
 endif
 
 ifeq ($(TARGET_USES_ION),true)
@@ -84,6 +88,7 @@ LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
 
 include $(BUILD_SHARED_LIBRARY)
 
+ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_MPEG4)),true)
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxSwVencMpeg4)
@@ -110,6 +115,7 @@ LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_swvenc_mpeg4.cpp
 
 include $(BUILD_SHARED_LIBRARY)
+endif
 endif
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_HEVC)),true)

@@ -4121,7 +4121,7 @@ void omx_video::complete_pending_buffer_done_cbs()
     }
 }
 
-#ifdef MAX_RES_720P
+#if defined(MAX_RES_720P) || defined(_MSM8909_)
 OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType)
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
@@ -4174,7 +4174,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
 }
 #endif
 
-#ifdef MAX_RES_1080P
+#if defined(MAX_RES_1080P) && !defined(_MSM8909_)
 OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType)
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;

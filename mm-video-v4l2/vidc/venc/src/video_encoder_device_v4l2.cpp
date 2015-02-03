@@ -56,8 +56,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MPEG4_ASP_START (MPEG4_SP_START + 10)
 #define H263_BP_START 0
 #define H264_BP_START 0
-#define H264_HP_START (H264_BP_START + 17)
-#define H264_MP_START (H264_BP_START + 34)
+#define H264_HP_START (H264_BP_START + 18)
+#define H264_MP_START (H264_BP_START + 36)
 #define HEVC_MAIN_START 0
 #define HEVC_MAIN10_START (HEVC_MAIN_START + 12)
 #define POLL_TIMEOUT 1000
@@ -65,6 +65,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define SZ_4K 0x1000
 #define SZ_1M 0x100000
+
+#define METADATA_INPUT_BUFFER_COUNT 5
 
 /* MPEG4 profile and level table*/
 static const unsigned int mpeg4_profile_level_table[][MAX_PROFILE_PARAMS]= {
@@ -284,10 +286,12 @@ void* venc_dev::async_venc_message_thread (void *input)
     struct pollfd pfd;
     struct v4l2_buffer v4l2_buf;
     struct v4l2_event dqevent;
+    struct statistics stats;
     pfd.events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
     pfd.fd = omx->handle->m_nDriver_fd;
     int error_code = 0,rc=0;
 
+    memset(&stats, 0, sizeof(statistics));
     memset(&v4l2_buf, 0, sizeof(v4l2_buf));
 
     while (1) {
@@ -315,6 +319,7 @@ void* venc_dev::async_venc_message_thread (void *input)
                 pthread_mutex_unlock(&omx->handle->pause_resume_mlock);
                 break;
             }
+            memset(&stats, 0, sizeof(statistics));
         }
 
         pthread_mutex_unlock(&omx->handle->pause_resume_mlock);
@@ -370,6 +375,7 @@ void* venc_dev::async_venc_message_thread (void *input)
                     venc_msg.buf.flags |= OMX_BUFFERFLAG_ENDOFFRAME;
 
                 omx->handle->fbd++;
+                stats.bytes_generated += venc_msg.buf.len;
 
                 if (omx->async_message_process(input,&venc_msg) < 0) {
                     DEBUG_PRINT_ERROR("ERROR: Wrong ioctl message");
@@ -444,6 +450,25 @@ void* venc_dev::async_venc_message_thread (void *input)
                 }
             }
         }
+
+        /* calc avg. fps, bitrate */
+        struct timeval tv;
+        gettimeofday(&tv,NULL);
+        OMX_U64 time_diff = (OMX_U32)((tv.tv_sec * 1000000 + tv.tv_usec) -
+                (stats.prev_tv.tv_sec * 1000000 + stats.prev_tv.tv_usec));
+        if (time_diff >= 5000000) {
+            if (stats.prev_tv.tv_sec) {
+                OMX_U32 num_fbd = omx->handle->fbd - stats.prev_fbd;
+                float framerate = num_fbd * 1000000/(float)time_diff;
+                OMX_U32 bitrate = (stats.bytes_generated * 8/num_fbd) * framerate;
+                DEBUG_PRINT_HIGH("stats: avg. fps %0.2f, bitrate %d",
+                    framerate, bitrate);
+            }
+            stats.prev_tv = tv;
+            stats.bytes_generated = 0;
+            stats.prev_fbd = omx->handle->fbd;
+        }
+
     }
 
     DEBUG_PRINT_HIGH("omx_venc: Async Thread exit");
@@ -1169,10 +1194,10 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
 
         // Increase buffer-header count for metadata-mode on input port
         // to improve buffering and reduce bottlenecks in clients
-        if (metadatamode && (bufreq.count < 9)) {
-            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 16",
-                bufreq.count);
-            bufreq.count = 9;
+        if (metadatamode && (bufreq.count < METADATA_INPUT_BUFFER_COUNT)) {
+            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with %d",
+                bufreq.count, METADATA_INPUT_BUFFER_COUNT);
+            bufreq.count = METADATA_INPUT_BUFFER_COUNT;
         }
 
         bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
