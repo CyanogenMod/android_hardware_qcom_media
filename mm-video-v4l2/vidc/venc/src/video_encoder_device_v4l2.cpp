@@ -4172,7 +4172,6 @@ bool venc_dev::venc_set_hybrid_hierp(OMX_U32 layers)
 bool venc_dev::venc_set_ltrmode(OMX_U32 enable, OMX_U32 count)
 {
     DEBUG_PRINT_LOW("venc_set_ltrmode: enable = %u", (unsigned int)enable);
-    struct v4l2_control control;
     struct v4l2_ext_control ctrl[2];
     struct v4l2_ext_controls controls;
     int rc;
@@ -4215,14 +4214,6 @@ bool venc_dev::venc_set_ltrmode(OMX_U32 enable, OMX_U32 count)
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, val=%d id=%x, val=%d",
                     controls.controls[0].id, controls.controls[0].value,
                     controls.controls[1].id, controls.controls[1].value);
-
-    control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
-    control.value = V4L2_MPEG_VIDC_EXTRADATA_LTR;
-
-    if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
-        DEBUG_PRINT_ERROR("ERROR: Request for setting extradata failed");
-        return false;
-    }
 
     if (!venc_set_profile_level(0, 0)) {
         DEBUG_PRINT_ERROR("ERROR: %s(): Driver Profile/Level is NOT SET",
