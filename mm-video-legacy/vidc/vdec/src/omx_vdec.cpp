@@ -5087,7 +5087,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     drv_ctx.op_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
                     drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.alignment,
                     &drv_ctx.op_buf_ion_info[i].ion_alloc_data,
-                    &drv_ctx.op_buf_ion_info[i].fd_ion_data, ION_FLAG_CACHED);
+                    &drv_ctx.op_buf_ion_info[i].fd_ion_data, 0);
     if (drv_ctx.op_buf_ion_info[i].ion_device_fd < 0) {
         return OMX_ErrorInsufficientResources;
      }
@@ -9329,7 +9329,7 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::allocate_buffers_color_conve
   op_buf_ion_info[i].ion_device_fd = omx->alloc_map_ion_memory(
     buffer_size_req,buffer_alignment_req,
     &op_buf_ion_info[i].ion_alloc_data,&op_buf_ion_info[i].fd_ion_data,
-    ION_FLAG_CACHED);
+    0);
 
   pmem_fd[i] = op_buf_ion_info[i].fd_ion_data.fd;
   if (op_buf_ion_info[i].ion_device_fd < 0) {
