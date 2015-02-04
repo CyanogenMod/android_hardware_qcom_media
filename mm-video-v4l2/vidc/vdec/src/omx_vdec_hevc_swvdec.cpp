@@ -653,7 +653,7 @@ omx_vdec::omx_vdec():
     property_get("vidc.dec.log.imb", property_value, "0");
     m_debug.im_buffer_log = atoi(property_value);
 
-    sprintf(m_debug.log_loc, "%s", BUFFER_LOG_LOC);
+    snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX, "%s", BUFFER_LOG_LOC);
     property_value[0] = '\0';
     property_get("vidc.log.loc", property_value, "");
     if (*property_value)
@@ -1643,8 +1643,8 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
         if(!strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.hevc", OMX_MAX_STRINGNAME_SIZE) ||
            !strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.hevchybrid", OMX_MAX_STRINGNAME_SIZE) ||
            !strncmp(drv_ctx.kind,"OMX.qcom.video.decoder.hevcswvdec", OMX_MAX_STRINGNAME_SIZE)) {
-           sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.hevc",
-                   m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+           snprintf(m_debug.infile_name, PROPERTY_VALUE_MAX + 36, "%s/input_dec_%d_%d_%p.hevc",
+                    m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         }
         m_debug.infile = fopen (m_debug.infile_name, "ab");
         if (!m_debug.infile) {
@@ -1662,8 +1662,8 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
 int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer)
 {
     if (m_debug.out_buffer_log && !m_debug.outfile) {
-        sprintf(m_debug.outfile_name, "%s/output_%d_%d_%p.yuv",
-                m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        snprintf(m_debug.outfile_name, PROPERTY_VALUE_MAX + 36, "%s/output_%d_%d_%p.yuv",
+                 m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         m_debug.outfile = fopen (m_debug.outfile_name, "ab");
         if (!m_debug.outfile) {
             DEBUG_PRINT_HIGH("Failed to open output file: %s for logging", m_debug.log_loc);
@@ -1704,8 +1704,8 @@ int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer)
 int omx_vdec::log_im_buffer(OMX_BUFFERHEADERTYPE * buffer)
 {
     if (m_debug.im_buffer_log && !m_debug.imbfile) {
-        sprintf(m_debug.imbfile_name, "%s/imb_%d_%d_%p.bin",
-                m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        snprintf(m_debug.imbfile_name, PROPERTY_VALUE_MAX + 36, "%s/imb_%d_%d_%p.bin",
+                 m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         m_debug.imbfile = fopen (m_debug.imbfile_name, "ab");
         if (!m_debug.imbfile) {
             DEBUG_PRINT_HIGH("Failed to open intermediate file: %s for logging", m_debug.log_loc);
