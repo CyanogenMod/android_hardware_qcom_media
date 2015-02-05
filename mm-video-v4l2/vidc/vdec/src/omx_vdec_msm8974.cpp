@@ -2822,17 +2822,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     }
                                 } else if (1 == portFmt->nPortIndex) {
                                     portFmt->eCompressionFormat =  OMX_VIDEO_CodingUnused;
-
-                                    // Distinguish non-surface mode from normal playback use-case based on
-                                    // usage hinted via "OMX.google.android.index.useAndroidNativeBuffer2"
-                                    // For non-android, use the default list
-                                    bool useNonSurfaceMode = false;
-#if _ANDROID_
-                                    useNonSurfaceMode = (m_enable_android_native_buffers == OMX_FALSE);
-#endif
-                                    portFmt->eColorFormat = useNonSurfaceMode ?
-                                        getPreferredColorFormatNonSurfaceMode(portFmt->nIndex) :
-                                        getPreferredColorFormatDefaultMode(portFmt->nIndex);
+                                    portFmt->eColorFormat = getColorFormatAt(portFmt->nIndex);
 
                                     if (portFmt->eColorFormat == OMX_COLOR_FormatMax ) {
                                         eRet = OMX_ErrorNoMore;
@@ -3616,13 +3606,6 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            EnableAndroidNativeBuffersParams* enableNativeBuffers = (EnableAndroidNativeBuffersParams *) paramData;
                                            if (enableNativeBuffers) {
                                                m_enable_android_native_buffers = enableNativeBuffers->enable;
-                                           }
-                                           if (m_enable_android_native_buffers) {
-                                               // Use the most-preferred-native-color-format as surface-mode is hinted here
-                                               if(!client_buffers.set_color_format(getPreferredColorFormatDefaultMode(0))) {
-                                                   DEBUG_PRINT_ERROR("Failed to set native color format!");
-                                                   eRet = OMX_ErrorUnsupportedSetting;
-                                               }
                                            }
                                        }
                                        break;
