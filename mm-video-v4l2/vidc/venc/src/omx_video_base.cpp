@@ -4024,7 +4024,7 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
 {
     int buffer_index  = -1;
 
-    buffer_index = buffer - (mUsesColorConversion ? m_inp_mem_ptr : meta_buffer_hdr);
+    buffer_index = buffer - ((mUseProxyColorFormat && !mUsesColorConversion) ? meta_buffer_hdr : m_inp_mem_ptr);
     DEBUG_PRINT_LOW("empty_buffer_done: buffer[%p]", buffer);
     if (buffer == NULL ||
             ((buffer_index > (int)m_sInPortDef.nBufferCountActual))) {
