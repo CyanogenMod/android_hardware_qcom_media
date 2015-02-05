@@ -465,8 +465,6 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.QCOM.index.param.video.CustomBufferSize"*/
     OMX_QcomIndexParamVideoCustomBufferSize = 0x7F00003E,
-
-    OMX_QcomIndexParamVideoProcessNotCodedVOP = 0x7F00003F,
 };
 
 /**
