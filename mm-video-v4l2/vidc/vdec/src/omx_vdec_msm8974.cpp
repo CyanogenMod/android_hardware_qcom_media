@@ -590,7 +590,6 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_other_extradata(NULL),
     m_profile(0),
     client_set_fps(false),
-    ignore_not_coded_vops(true),
     m_last_rendered_TS(-1),
     m_queued_codec_config_count(0),
     secure_scaling_to_non_secure_opb(false)
@@ -3156,12 +3155,6 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     break;
 #endif
 
-        case OMX_QcomIndexParamVideoProcessNotCodedVOP:
-        {
-            DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamVideoProcessNotCodedVOP");
-            ((QOMX_ENABLETYPE *)paramData)->bEnable = (OMX_BOOL)!ignore_not_coded_vops;
-            break;
-        }
         default: {
                  DEBUG_PRINT_ERROR("get_parameter: unknown param %08x", paramIndex);
                  eRet =OMX_ErrorUnsupportedIndex;
@@ -4070,12 +4063,6 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 DEBUG_PRINT_ERROR("ERROR: Custom buffer size in not supported on output port");
                 eRet = OMX_ErrorBadParameter;
             }
-            break;
-        }
-        case OMX_QcomIndexParamVideoProcessNotCodedVOP:
-        {
-            DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoProcessNotCodedVOP");
-            ignore_not_coded_vops = !((QOMX_ENABLETYPE *)paramData)->bEnable;
             break;
         }
         default: {
@@ -6121,7 +6108,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
     struct vdec_bufferpayload *temp_buffer;
     struct vdec_seqheader seq_header;
     bool port_setting_changed = true;
-    bool not_coded_vop = false;
 
     /*Should we generate a Aync error event*/
     if (buffer == NULL || buffer->pInputPortPrivate == NULL) {
@@ -6148,32 +6134,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorNone;
     }
 
-
-    if (ignore_not_coded_vops &&
-            (codec_type_parse == CODEC_TYPE_MPEG4 ||
-             codec_type_parse == CODEC_TYPE_DIVX)) {
-        mp4StreamType psBits;
-        psBits.data = (unsigned char *)(buffer->pBuffer + buffer->nOffset);
-        psBits.numBytes = buffer->nFilledLen;
-        mp4_headerparser.parseHeader(&psBits);
-        not_coded_vop = mp4_headerparser.is_notcodec_vop(
-                (buffer->pBuffer + buffer->nOffset),buffer->nFilledLen);
-        if (not_coded_vop) {
-            DEBUG_PRINT_HIGH("Found Not coded vop len %u frame number %u",
-                    (unsigned int)buffer->nFilledLen,frame_count);
-            if (buffer->nFlags & OMX_BUFFERFLAG_EOS) {
-                DEBUG_PRINT_HIGH("Eos and Not coded Vop set len to zero");
-                not_coded_vop = false;
-                buffer->nFilledLen = 0;
-            }
-        }
-    }
-
-    if (input_flush_progress == true
-
-            || not_coded_vop
-
-       ) {
+    if (input_flush_progress == true) {
         DEBUG_PRINT_LOW("Flush in progress return buffer ");
         post_event ((unsigned long)buffer,VDEC_S_SUCCESS,
                 OMX_COMPONENT_GENERATE_EBD);
