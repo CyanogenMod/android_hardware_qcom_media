@@ -86,7 +86,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef OUTPUT_EXTRADATA_LOG
 FILE *outputExtradataFile;
-char output_extradata_filename [] = "/data/misc/extradata";
+char output_extradata_filename [] = "/data/misc/media/extradata";
 #endif
 
 #define DEFAULT_FPS 30
@@ -7114,6 +7114,28 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         handle_extradata(buffer);
     }
 
+#ifdef OUTPUT_EXTRADATA_LOG
+    if (outputExtradataFile) {
+        int buf_index = buffer - m_out_mem_ptr;
+        OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr);
+
+        OMX_OTHER_EXTRADATATYPE *p_extra = NULL;
+        p_extra = (OMX_OTHER_EXTRADATATYPE *)
+            ((unsigned long)(pBuffer + buffer->nOffset + buffer->nFilledLen + 3)&(~3));
+
+        while (p_extra && (OMX_U8*)p_extra < (pBuffer + buffer->nAllocLen) ) {
+            DEBUG_PRINT_LOW("WRITING extradata, size=%d,type=%x",
+                                    p_extra->nSize, p_extra->eType);
+            fwrite (p_extra,1,p_extra->nSize,outputExtradataFile);
+
+            if (p_extra->eType == OMX_ExtraDataNone) {
+                break;
+            }
+            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+        }
+    }
+#endif
+
     /* For use buffer we need to copy the data */
     if (!output_flush_progress) {
         /* This is the error check for non-recoverable errros */
@@ -7190,25 +7212,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                     proc_frms = 0;
                 }
             }
-
-#ifdef OUTPUT_EXTRADATA_LOG
-            if (outputExtradataFile) {
-
-                OMX_OTHER_EXTRADATATYPE *p_extra = NULL;
-                p_extra = (OMX_OTHER_EXTRADATATYPE *)
-                    ((unsigned)(buffer->pBuffer + buffer->nOffset +
-                        buffer->nFilledLen + 3)&(~3));
-                while (p_extra &&
-                        (OMX_U8*)p_extra < (buffer->pBuffer + buffer->nAllocLen) ) {
-                    DEBUG_PRINT_LOW("WRITING extradata, size=%d,type=%d",p_extra->nSize, p_extra->eType);
-                    fwrite (p_extra,1,p_extra->nSize,outputExtradataFile);
-                    if (p_extra->eType == OMX_ExtraDataNone) {
-                        break;
-                    }
-                    p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-                }
-            }
-#endif
         }
         if (buffer->nFlags & OMX_BUFFERFLAG_EOS) {
             prev_ts = LLONG_MAX;
@@ -9802,7 +9805,7 @@ void omx_vdec::append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     userdata_payload =
         (struct msm_vidc_stream_userdata_payload *)(void *)p_user->data;
     userdata_size = p_user->nDataSize;
-    extra->nSize = OMX_USERDATA_EXTRADATA_SIZE + p_user->nSize;
+    extra->nSize = OMX_USERDATA_EXTRADATA_SIZE + userdata_size;
     extra->nVersion.nVersion = OMX_SPEC_VERSION;
     extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
     extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMP2UserData;
