@@ -7403,6 +7403,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                     ((omxhdr - omx->m_inp_mem_ptr) > (int)omx->drv_ctx.ip_buf.actualcount) ) {
                 omxhdr = NULL;
                 vdec_msg->status_code = VDEC_S_EFATAL;
+                break;
             }
             if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_INPUT_UNSUPPORTED) {
                 DEBUG_PRINT_HIGH("Unsupported input");
