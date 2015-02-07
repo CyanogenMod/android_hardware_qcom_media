@@ -1521,6 +1521,9 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
 }
 
 int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer) {
+    int buf_index = 0;
+    char *temp = NULL;
+
     if (m_debug.out_buffer_log && !m_debug.outfile && buffer->nFilledLen) {
         sprintf(m_debug.outfile_name, "%s/output_%d_%d_%p.yuv",
                 m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
@@ -1531,8 +1534,20 @@ int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer) {
             return -1;
         }
     }
-    if (m_debug.outfile && buffer && buffer->nFilledLen) {
-        int buf_index = buffer - m_out_mem_ptr;
+
+    if (!m_debug.outfile || !buffer || !buffer->nFilledLen)
+        return 0;
+
+    buf_index = buffer - m_out_mem_ptr;
+    temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr;
+
+    if (drv_ctx.output_format == VDEC_YUV_FORMAT_NV12_UBWC) {
+        DEBUG_PRINT_HIGH("Logging UBWC yuv width/height(%u/%u)",
+            drv_ctx.video_resolution.frame_width,
+            drv_ctx.video_resolution.frame_height);
+
+        fwrite(temp, buffer->nFilledLen, 1, m_debug.outfile);
+    } else if (drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
         int stride = drv_ctx.video_resolution.stride;
         int scanlines = drv_ctx.video_resolution.scan_lines;
         if (m_smoothstreaming_mode) {
@@ -1541,7 +1556,6 @@ int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer) {
             stride = (stride + DEFAULT_WIDTH_ALIGNMENT - 1) & (~(DEFAULT_WIDTH_ALIGNMENT - 1));
             scanlines = (scanlines + DEFAULT_HEIGHT_ALIGNMENT - 1) & (~(DEFAULT_HEIGHT_ALIGNMENT - 1));
         }
-        char *temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr;
         unsigned i;
         DEBUG_PRINT_HIGH("Logging width/height(%u/%u) stride/scanlines(%u/%u)",
             drv_ctx.video_resolution.frame_width,
