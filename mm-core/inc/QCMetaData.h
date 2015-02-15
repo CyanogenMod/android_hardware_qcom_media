@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -63,6 +63,15 @@ enum {
     kKeyUseArbitraryMode     = 'ArbM',  //bool (int32_t)
     kKeySmoothStreaming      = 'ESmS',  //bool (int32_t)
     kKeyHFR                  = 'hfr ',  // int32_t
+
+    kKeySampleBits           = 'sbit', // int32_t (audio sample bit-width)
+    kKeyPcmFormat            = 'pfmt', //int32_t (pcm format)
+    kKeyMinBlkSize           = 'mibs', //int32_t
+    kKeyMaxBlkSize           = 'mabs', //int32_t
+    kKeyMinFrmSize           = 'mifs', //int32_t
+    kKeyMaxFrmSize           = 'mafs', //int32_t
+    kKeyMd5Sum               = 'md5s', //cstring
+    kKeyHSR                  = 'hsr ',  // int32_t
 };
 
 enum {
