@@ -294,6 +294,7 @@ enum OMX_QCOM_VIDEO_CODINGTYPE
     QOMX_VIDEO_CodingVp8 = OMX_VIDEO_CodingVP8,   /**< keeping old enum for backwards compatibility*/
     QOMX_VIDEO_CodingHevc = OMX_VIDEO_CodingHEVC, /**< keeping old enum for backwards compatibility*/
     QOMX_VIDEO_CodingMVC = 0x7FA30C07,
+    QOMX_VIDEO_CodingVp9 = OMX_VIDEO_CodingVP9,   /**< keeping old enum for backwards compatibility*/
 };
 
 enum OMX_QCOM_EXTN_INDEXTYPE
@@ -1270,6 +1271,7 @@ typedef enum QOMX_VIDEO_VPFORMATTYPE {
     QOMX_VIDEO_VPFormat6      = 0x02, /**< VP6 Video Format */
     QOMX_VIDEO_VPFormat7      = 0x04, /**< VP7 Video Format */
     QOMX_VIDEO_VPFormat8      = 0x08, /**< VP8 Video Format */
+    QOMX_VIDEO_VPFormat9      = 0x10, /**< VP9 Video Format */
     QOMX_VIDEO_VPFormatKhronosExtensions = 0x6F000000,
     QOMX_VIDEO_VPFormatVendorStartUnused = 0x7F000000,
     QOMX_VIDEO_VPFormatMax = 0x7FFFFFFF
