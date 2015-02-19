@@ -7156,7 +7156,12 @@ int omx_vdec::async_message_process (void *context, void* message)
                                 vdec_msg->msgdata.output_frame.picsize.frame_width;
                         omx->drv_ctx.video_resolution.frame_height =
                                 vdec_msg->msgdata.output_frame.picsize.frame_height;
-
+                        if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
+                            omx->drv_ctx.video_resolution.stride =
+                                VENUS_Y_STRIDE(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_width);
+                            omx->drv_ctx.video_resolution.scan_lines =
+                                VENUS_Y_SCANLINES(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_height);
+                        }
                         memcpy(&omx->drv_ctx.frame_size,
                                 &vdec_msg->msgdata.output_frame.framesize,
                                 sizeof(struct vdec_framesize));
