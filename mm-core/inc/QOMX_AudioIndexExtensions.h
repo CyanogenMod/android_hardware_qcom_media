@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009, The Linux Foundation. All rights reserved.
+Copyright (c) 2009, 2015 The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -63,13 +63,18 @@ extern "C"
  */
 typedef enum QOMX_AUDIO_EXTENSIONS_INDEXTYPE
 {
-    QOMX_IndexParamAudioAmrWbPlus        = 0x7F200000, /**< "OMX.Qualcomm.index.audio.amrwbplus" */
-    QOMX_IndexParamAudioWma10Pro         = 0x7F200001, /**< "OMX.Qualcomm.index.audio.wma10pro" */
-    QOMX_IndexParamAudioSessionId        = 0x7F200002, /**< "OMX.Qualcomm.index.audio.sessionId" */
-    QOMX_IndexParamAudioVoiceRecord      = 0x7F200003, /**< "OMX.Qualcomm.index.audio.VoiceRecord" */
-    QOMX_IndexConfigAudioDualMono        = 0x7F200004, /**< "OMX.Qualcomm.index.audio.dualmono" */
-    QOMX_IndexParamAudioAacSelectMixCoef = 0x7F200005, /**< "OMX.Qualcomm.index.audio.aac_sel_mix_coef" */
-    QOMX_IndexParamAudioUnused           = 0x7F2FFFFF
+    QOMX_IndexParamAudioAmrWbPlus       = 0x7F200000, /**< "OMX.Qualcomm.index.audio.amrwbplus" */
+    QOMX_IndexParamAudioWma10Pro        = 0x7F200001, /**< "OMX.Qualcomm.index.audio.wma10pro" */
+    QOMX_IndexParamAudioSessionId       = 0x7F200002, /**< "OMX.Qualcomm.index.audio.sessionId" */
+    QOMX_IndexParamAudioVoiceRecord     = 0x7F200003, /**< "OMX.Qualcomm.index.audio.VoiceRecord" */
+    QOMX_IndexConfigAudioDualMono       = 0x7F200004, /**< "OMX.Qualcomm.index.audio.dualmono" */
+    QOMX_IndexParamAudioAc3             = 0x7F200005, /**< "OMX.Qualcomm.index.audio.ac3" */
+    QOMX_IndexParamAudioAc3PostProc     = 0x7F200006, /**< "OMX.Qualcomm.index.audio.postproc.ac3" */
+    QOMX_IndexParamAudioAacSelectMixCoef = 0x7F200007, /** "OMX.Qualcomm.index.audio.aac_sel_mix_coef**/
+    QOMX_IndexParamAudioAlac            = 0x7F200008, /** "OMX.Qualcomm.index.audio.alac" */
+    QOMX_IndexParamAudioApe             = 0x7F200009, /** "OMX.Qualcomm.index.audio.ape" */
+    QOMX_IndexParamAudioFlacDec         = 0x7F20000A, /** "OMX.Qualcomm.index.audio.flacdec**/
+    QOMX_IndexParamAudioUnused          = 0x7F2FFFFF
 } QOMX_AUDIO_EXTENSIONS_INDEXTYPE;
 
 #if defined( __cplusplus )
