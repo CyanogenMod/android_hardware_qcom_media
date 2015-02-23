@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009, 2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2009, 2011, 2015 The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -75,6 +75,7 @@ extern "C"
 #define OMX_QCOM_INDEX_PARAM_DAK_SEQ         "OMX.Qualcomm.index.audio.dak_seq"
 #define OMX_QCOM_INDEX_CONFIG_DUALMONO       "OMX.Qualcomm.index.audio.dualmono"
 #define OMX_QCOM_INDEX_CONFIG_AAC_SEL_MIX_COEF "OMX.Qualcomm.index.audio.aac_sel_mix_coef"
+#define OMX_QCOM_INDEX_PARAM_ALAC            "OMX.Qualcomm.index.audio.alac"
 
 typedef enum QOMX_AUDIO_AMRBANDMODETYPE {
     QOMX_AUDIO_AMRBandModeWB9              = 0x7F000001,/**< AMRWB Mode 9 = SID*/
@@ -504,6 +505,25 @@ typedef struct QOMX_AUDIO_CONFIG_DUALMONOTYPE {
    OMX_U32 nPortIndex;
    OMX_AUDIO_DUAL_MONO_CHANNEL_CONFIG eChannelConfig;
 } QOMX_AUDIO_CONFIG_DUALMONOTYPE;
+
+typedef struct QOMX_AUDIO_PARAM_ALACTYPE {
+    OMX_U32 nSize; /* Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion; /**< OMX specification version information */
+    OMX_U32 nPortIndex; /* Port that this structure applies to */
+    OMX_U32 nFrameLength; /* Frames per packet when no explicit frames per packet setting is present in the packet header */
+    OMX_U8 nCompatibleVersion; /* Indicates the compatible version */
+    OMX_U8 nBitDepth; /* Bit depth of the source PCM data */
+    OMX_U8 nPb; /* Tuning Parameter; currently not used */
+    OMX_U8 nMb; /* Tuning Parameter; currently not used */
+    OMX_U8 nKb; /* Tuning Parameter; currently not used */
+    OMX_U8 nChannels; /* Number of channels for multichannel decoding */
+    OMX_U16 nMaxRun; /* Currently not used */
+    OMX_U32 nMaxFrameBytes; /* Max size of an Apple Lossless packet within the encoded stream */
+    OMX_U32 nAvgBitRate; /* Average bit rate in bits per second of the Apple Lossless stream */
+    OMX_U32 nSampleRate; /* Number of samples per second in Hertz */
+    OMX_U32 nChannelLayoutTag; /*Indicates whether channel layout information is present in the bitstream */
+} QOMX_AUDIO_PARAM_ALACTYPE;
+
 
 #if defined( __cplusplus )
 }
