@@ -37,6 +37,8 @@ namespace android {
 extern const char *MEDIA_MIMETYPE_AUDIO_EVRC;
 extern const char *MEDIA_MIMETYPE_VIDEO_WMV;
 extern const char *MEDIA_MIMETYPE_AUDIO_WMA;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMA_PRO;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMA_LOSSLESS;
 extern const char *MEDIA_MIMETYPE_CONTAINER_ASF;
 extern const char *MEDIA_MIMETYPE_VIDEO_DIVX;
 extern const char *MEDIA_MIMETYPE_AUDIO_AC3;
@@ -50,6 +52,9 @@ extern const char *MEDIA_MIMETYPE_AUDIO_DTS;
 extern const char *MEDIA_MIMETYPE_AUDIO_DTS_LBR;
 extern const char *MEDIA_MIMETYPE_AUDIO_EAC3;
 extern const char *MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS;
+extern const char *MEDIA_MIMETYPE_AUDIO_AIFF;
+extern const char *MEDIA_MIMETYPE_AUDIO_ALAC;
+extern const char *MEDIA_MIMETYPE_AUDIO_APE;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG2TS;
 extern const char *MEDIA_MIMETYPE_VIDEO_HEVC;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG;
