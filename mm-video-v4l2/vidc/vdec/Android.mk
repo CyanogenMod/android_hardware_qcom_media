@@ -111,7 +111,7 @@ LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
 LOCAL_SRC_FILES         += src/hevc_utils.cpp
 LOCAL_STATIC_LIBRARIES  := libOmxVidcCommon
-LOCAL_SRC_FILES         += src/omx_vdec_msm8974.cpp
+LOCAL_SRC_FILES         += src/omx_vdec_v4l2.cpp
 
 include $(BUILD_SHARED_LIBRARY)
 
