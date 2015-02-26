@@ -3874,6 +3874,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
           EnableAndroidNativeBuffersParams* enableNativeBuffers = (EnableAndroidNativeBuffersParams *) paramData;
           if(enableNativeBuffers) {
               m_enable_android_native_buffers = enableNativeBuffers->enable;
+              client_buffers.enable_native_buffers(m_enable_android_native_buffers);
           }
       }
       break;
@@ -4785,8 +4786,9 @@ OMX_ERRORTYPE  omx_vdec::use_buffer(
   }
   if(port == OMX_CORE_INPUT_PORT_INDEX)
     error = use_input_heap_buffers(hComp, bufferHdr, port, appData, bytes, buffer);
-  else if(port == OMX_CORE_OUTPUT_PORT_INDEX)
-    error = use_output_buffer(hComp,bufferHdr,port,appData,bytes,buffer); //not tested
+  else if(port == OMX_CORE_OUTPUT_PORT_INDEX){
+    error = client_buffers.use_output_buffer(hComp,bufferHdr,port,appData,bytes,buffer); //not tested
+  }
   else
   {
     DEBUG_PRINT_ERROR("Error: Invalid Port Index received %d\n",(int)port);
@@ -10149,6 +10151,7 @@ void omx_vdec::allocate_color_convert_buf::init_members() {
   memset(op_buf_ion_info,0,sizeof(m_platform_entry_client));
   for (int i = 0; i < MAX_COUNT;i++)
     pmem_fd[i] = -1;
+  m_native_buffers_enabled = false;
 }
 
 omx_vdec::allocate_color_convert_buf::~allocate_color_convert_buf() {
@@ -10282,6 +10285,20 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr
       status = c2d.convert(omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
                   bufadd->pBuffer,pmem_fd[index],pmem_baseaddress[index]);
       m_out_mem_ptr_client[index].nFilledLen = buffer_size_req;
+// DEBUG: dump converted output
+#if 0
+      {
+          FILE* fp = fopen("/data/misc/media/out.yuv","ab");
+          if (fp) {
+              ALOGI("c2d: dumped: %dx%d",omx->drv_ctx.video_resolution.frame_height,
+                      omx->drv_ctx.video_resolution.frame_width);
+              fwrite(pmem_baseaddress[index],
+                 (omx->drv_ctx.video_resolution.frame_height *
+                  omx->drv_ctx.video_resolution.frame_width * 3)/2, 1, fp);
+              fclose(fp);
+          }
+      }
+#endif
       pthread_mutex_unlock(&omx->c_lock);
       if (!status){
         DEBUG_PRINT_ERROR("\n Failed color conversion %d", status);
@@ -10349,11 +10366,32 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::free_output_buffer(
     DEBUG_PRINT_ERROR("\n Incorrect index color convert free_output_buffer");
     return OMX_ErrorBadParameter;
   }
-  if (pmem_fd[index] > 0) {
-    munmap(pmem_baseaddress[index], buffer_size_req);
+  if (m_native_buffers_enabled) {
+      // unmap client's fd
+      if (pmem_fd[index] > 0 && pmem_baseaddress[index]) {
+          munmap(pmem_baseaddress[index], buffer_size_req);
+          pmem_baseaddress[index] = 0;
+      }
+      // free from internal set
+      // Do this explicitly as omx->free_output_buffer() does not free
+      //  the memory when native-buffers are enabled
+      if (omx->drv_ctx.ptr_outputbuffer[index].pmem_fd > 0) {
+          ALOGI("free_buffer(conversion): free ion mem[%d] fd=%d size=%d",
+                  index, omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
+                  omx->drv_ctx.ptr_outputbuffer[index].mmaped_size);
+          munmap (omx->drv_ctx.ptr_outputbuffer[index].bufferaddr,
+                  omx->drv_ctx.ptr_outputbuffer[index].mmaped_size);
+          omx->free_ion_memory(&(omx->drv_ctx.op_buf_ion_info[index]));
+          close (omx->drv_ctx.ptr_outputbuffer[index].pmem_fd);
+          omx->drv_ctx.ptr_outputbuffer[index].pmem_fd = -1;
+      }
+  } else {
+      if (pmem_fd[index] > 0) {
+        munmap(pmem_baseaddress[index], buffer_size_req);
+      }
+      omx->free_ion_memory(&op_buf_ion_info[index]);
+      pmem_fd[index] = -1;
   }
-  omx->free_ion_memory(&op_buf_ion_info[index]);
-  pmem_fd[index] = -1;
   m_heap_ptr[index].video_heap_ptr = NULL;
   if (allocated_count > 0)
     allocated_count--;
@@ -10448,6 +10486,79 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::allocate_buffers_color_conve
   return eRet;
 }
 
+OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::use_output_buffer(OMX_HANDLETYPE hComp,
+        OMX_BUFFERHEADERTYPE **bufferHdr, OMX_U32 port, OMX_PTR appData,
+        OMX_U32 bytes, OMX_U8 *buffer)
+{
+    OMX_ERRORTYPE eRet = OMX_ErrorNone;
+    const char *func = "use_buf(conversion)";
+    if (!enabled) {
+        return omx->use_output_buffer(hComp, bufferHdr, port, appData, bytes, buffer);
+    }
+    // assert native-buffer-mode is enabled
+    if (!m_native_buffers_enabled) {
+        DEBUG_PRINT_ERROR("%s: use_buffer called in non-surface mode", func);
+        return OMX_ErrorUnsupportedSetting;
+    }
+    if (omx->is_component_secure()) {
+        DEBUG_PRINT_ERROR("%s: Cannot color-convert secure buffers", func);
+        return OMX_ErrorUnsupportedSetting;
+    }
+    if (!bufferHdr || bytes > buffer_size_req) {
+        DEBUG_PRINT_ERROR("%s: Invalid params hdr=%p requested-size=%d passed-size=%d",
+                func, bufferHdr, buffer_size_req, bytes);
+        return OMX_ErrorBadParameter;
+    }
+    if (allocated_count >= omx->drv_ctx.op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("%s: all buffers (%d) already allocated", func, allocated_count);
+        return OMX_ErrorInsufficientResources;
+    }
+    // Allocate pixel buffer for the decoder
+    OMX_BUFFERHEADERTYPE *temp_bufferHdr = NULL;
+    eRet = omx->allocate_output_buffer(hComp, &temp_bufferHdr,
+             port, appData, omx->drv_ctx.op_buf.buffer_size);
+    if (eRet != OMX_ErrorNone || !temp_bufferHdr){
+        DEBUG_PRINT_ERROR("%s: decoder's o/p allocation failed", func);
+        return eRet;
+    }
+    if ((temp_bufferHdr - omx->m_out_mem_ptr) >= omx->drv_ctx.op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("%s: Invalid header index %d",
+                func, (temp_bufferHdr - omx->m_out_mem_ptr));
+        return OMX_ErrorUndefined;
+    }
+    unsigned int i = allocated_count;
+    private_handle_t *handle = (private_handle_t *)buffer;
+    pmem_fd[i] = handle->fd;
+    pmem_baseaddress[i] = (OMX_U8*)mmap(0, handle->size,
+            PROT_READ|PROT_WRITE, MAP_SHARED, handle->fd, 0);
+    if (pmem_baseaddress[i] == MAP_FAILED) {
+        DEBUG_PRINT_ERROR("%s: Failed to map native handle fd=%d size=%d",
+               func, handle->fd, handle->size);
+        return OMX_ErrorInsufficientResources;
+    }
+    m_heap_ptr[i].video_heap_ptr = NULL; //not used
+    m_pmem_info_client[i].pmem_fd = handle->fd;
+    m_pmem_info_client[i].offset = 0;
+    m_platform_entry_client[i].entry = (void *)&m_pmem_info_client[i];
+    m_platform_entry_client[i].type = OMX_QCOM_PLATFORM_PRIVATE_PMEM;
+    m_platform_list_client[i].nEntries = 1;
+    m_platform_list_client[i].entryList = &m_platform_entry_client[i];
+    m_out_mem_ptr_client[i].pOutputPortPrivate = NULL;
+    m_out_mem_ptr_client[i].nAllocLen = handle->size;
+    m_out_mem_ptr_client[i].nFilledLen = 0;
+    m_out_mem_ptr_client[i].nFlags = 0;
+    m_out_mem_ptr_client[i].nOutputPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
+    m_out_mem_ptr_client[i].nSize = sizeof(OMX_BUFFERHEADERTYPE);
+    m_out_mem_ptr_client[i].nVersion.nVersion = OMX_SPEC_VERSION;
+    m_out_mem_ptr_client[i].pPlatformPrivate = &m_platform_list_client[i];
+    m_out_mem_ptr_client[i].pBuffer = buffer;
+    m_out_mem_ptr_client[i].pAppPrivate = appData;
+    *bufferHdr = &m_out_mem_ptr_client[i];
+    ALOGI("%s: allocated header[%d]=%p for native handle[fd=%d size=%d]",
+            func, i, *bufferHdr, handle->fd, handle->size);
+    allocated_count++;
+    return eRet;
+}
 bool omx_vdec::is_component_secure()
 {
   return secure_mode;

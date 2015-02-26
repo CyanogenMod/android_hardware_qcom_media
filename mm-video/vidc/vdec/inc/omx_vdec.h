@@ -874,12 +874,17 @@ private:
         OMX_ERRORTYPE allocate_buffers_color_convert(OMX_HANDLETYPE hComp,
              OMX_BUFFERHEADERTYPE **bufferHdr,OMX_U32 port,OMX_PTR appData,
              OMX_U32 bytes);
+        OMX_ERRORTYPE use_output_buffer(OMX_HANDLETYPE hComp,
+             OMX_BUFFERHEADERTYPE **bufferHdr, OMX_U32 port, OMX_PTR appData,
+             OMX_U32 bytes, OMX_U8 *buffer);
         OMX_ERRORTYPE free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
+        void enable_native_buffers(bool enable) {m_native_buffers_enabled = enable;}
         #define MAX_COUNT 32
         OMX_BUFFERHEADERTYPE  m_out_mem_ptr_client[MAX_COUNT];
     private:
         omx_vdec *omx;
         bool enabled;
+        bool m_native_buffers_enabled;
         OMX_COLOR_FORMATTYPE ColorFormat;
         void init_members();
         bool color_convert_mode;
