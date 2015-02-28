@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2014-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -79,7 +79,7 @@ omx_venc::omx_venc()
     property_get("vidc.enc.log.out", property_value, "0");
     m_debug.out_buffer_log = atoi(property_value);
 
-    sprintf(m_debug.log_loc, "%s", BUFFER_LOG_LOC);
+    snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX, "%s", BUFFER_LOG_LOC);
     property_value[0] = '\0';
     property_get("vidc.log.loc", property_value, "");
     if (*property_value)
@@ -2364,31 +2364,35 @@ SWVENC_STATUS omx_venc::swvenc_empty_buffer_done
         omxhdr = NULL;
         error = OMX_ErrorUndefined;
     }
-    // unmap the input buffer->pBuffer
-    omx_release_meta_buffer(omxhdr);
-#ifdef _ANDROID_ICS_
-    if (meta_mode_enable)
+
+    if (omxhdr != NULL)
     {
-       encoder_media_buffer_type *meta_buf = NULL;
-       unsigned int size = 0;
-       meta_buf = (encoder_media_buffer_type *)omxhdr->pBuffer;
-       if (meta_buf)
-       {
-          if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource)
-          {
-              size = meta_buf->meta_handle->data[2];
-          }
-          else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource)
-          {
-              private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
-              size = handle->size;
-          }
-       }
-       int status = munmap(p_ipbuffer->p_buffer, size);
-       DEBUG_PRINT_HIGH("Unmapped pBuffer <%p> size <%d> status <%d>", p_ipbuffer->p_buffer, size, status);
-    }
+        // unmap the input buffer->pBuffer
+        omx_release_meta_buffer(omxhdr);
+#ifdef _ANDROID_ICS_
+        if (meta_mode_enable)
+        {
+           encoder_media_buffer_type *meta_buf = NULL;
+           unsigned int size = 0;
+           meta_buf = (encoder_media_buffer_type *)omxhdr->pBuffer;
+           if (meta_buf)
+           {
+              if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource)
+              {
+                  size = meta_buf->meta_handle->data[2];
+              }
+              else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource)
+              {
+                  private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
+                  size = handle->size;
+              }
+           }
+           int status = munmap(p_ipbuffer->p_buffer, size);
+           DEBUG_PRINT_HIGH("Unmapped pBuffer <%p> size <%d> status <%d>", p_ipbuffer->p_buffer, size, status);
+        }
 #endif
-    post_event ((unsigned long)omxhdr,error,OMX_COMPONENT_GENERATE_EBD);
+        post_event ((unsigned long)omxhdr,error,OMX_COMPONENT_GENERATE_EBD);
+    }
 
     RETURN(eRet);
 }
@@ -2409,19 +2413,22 @@ SWVENC_STATUS omx_venc::swvenc_fill_buffer_done_cb
 
     (void)swvenc;
 
-    omxhdr = (OMX_BUFFERHEADERTYPE*)p_opbuffer->p_client_data;
-
-    DEBUG_PRINT_LOW("FBD: clientData (%p) buffer (%p) filled_lengh (%d) flags (0x%x) ts (%lld)",
-      p_opbuffer->p_client_data,
-      p_opbuffer->p_buffer,
-      p_opbuffer->filled_length,
-      p_opbuffer->flags,
-      p_opbuffer->timestamp);
+    if (p_opbuffer != NULL)
+    {
+        omxhdr = (OMX_BUFFERHEADERTYPE*)p_opbuffer->p_client_data;
+    }
 
     if ( (p_opbuffer != NULL) &&
          ((OMX_U32)(omxhdr - omx->m_out_mem_ptr)  < omx->m_sOutPortDef.nBufferCountActual)
        )
     {
+        DEBUG_PRINT_LOW("FBD: clientData (%p) buffer (%p) filled_lengh (%d) flags (0x%x) ts (%lld)",
+          p_opbuffer->p_client_data,
+          p_opbuffer->p_buffer,
+          p_opbuffer->filled_length,
+          p_opbuffer->flags,
+          p_opbuffer->timestamp);
+
         if (p_opbuffer->filled_length <=  omxhdr->nAllocLen)
         {
             omxhdr->pBuffer = p_opbuffer->p_buffer;
