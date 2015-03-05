@@ -969,6 +969,7 @@ class omx_vdec: public qc_omx_component
         OMX_U32 m_smoothstreaming_height;
         OMX_ERRORTYPE enable_smoothstreaming();
         OMX_ERRORTYPE enable_adaptive_playback(unsigned long width, unsigned long height);
+        bool is_thulium_v1;
 
         unsigned int m_fill_output_msg;
         bool client_set_fps;

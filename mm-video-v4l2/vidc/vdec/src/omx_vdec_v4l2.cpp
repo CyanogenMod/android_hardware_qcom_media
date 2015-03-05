@@ -1601,6 +1601,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     bool codec_ambiguous = false;
     OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_dec";
     char property_value[PROPERTY_VALUE_MAX] = {0};
+    FILE *soc_file = NULL;
+    char buffer[10];
 
 #ifdef _ANDROID_
     char platform_name[PROPERTY_VALUE_MAX];
@@ -1612,6 +1614,24 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         maxSmoothStreamingHeight = 720;
     }
 #endif
+
+    is_thulium_v1 = false;
+    soc_file = fopen("/sys/devices/soc0/soc_id", "r");
+    if (soc_file) {
+        fread(buffer, 1, 4, soc_file);
+        fclose(soc_file);
+        if (atoi(buffer) == 246) {
+            soc_file = fopen("/sys/devices/soc0/revision", "r");
+            if (soc_file) {
+                fread(buffer, 1, 4, soc_file);
+                fclose(soc_file);
+                if (atoi(buffer) == 1) {
+                    is_thulium_v1 = true;
+                    DEBUG_PRINT_HIGH("is_thulium_v1 = TRUE");
+                }
+            }
+        }
+    }
 
 #ifdef _ANDROID_
     /*
@@ -1774,6 +1794,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         codec_type_parse = CODEC_TYPE_H264;
         m_frame_parser.init_start_codes(codec_type_parse);
         m_frame_parser.init_nal_length(nal_length);
+        if (is_thulium_v1) {
+            arbitrary_bytes = true;
+            DEBUG_PRINT_HIGH("Enable arbitrary_bytes for h264");
+        }
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.mvc",\
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.mvc", OMX_MAX_STRINGNAME_SIZE);
@@ -1820,6 +1844,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         DEBUG_PRINT_ERROR("ERROR:Unknown Component");
         eRet = OMX_ErrorInvalidComponentName;
     }
+
     if (eRet == OMX_ErrorNone) {
         OMX_COLOR_FORMATTYPE dest_color_format;
 #ifdef _UBWC_
@@ -1967,6 +1992,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             if (ret) {
                 DEBUG_PRINT_ERROR("Failed to set MVC buffer layout");
                 return OMX_ErrorInsufficientResources;
+            }
+        }
+
+        if (is_thulium_v1) {
+            eRet = enable_smoothstreaming();
+            if (eRet != OMX_ErrorNone) {
+               DEBUG_PRINT_ERROR("Failed to enable smooth streaming on driver");
+               return eRet;
             }
         }
 
@@ -3020,9 +3053,13 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #if _ANDROID_
                                     useNonSurfaceMode = (m_enable_android_native_buffers == OMX_FALSE);
 #endif
-                                    portFmt->eColorFormat = useNonSurfaceMode ?
-                                        getPreferredColorFormatNonSurfaceMode(portFmt->nIndex) :
-                                        getPreferredColorFormatDefaultMode(portFmt->nIndex);
+                                    if (is_thulium_v1) {
+                                        portFmt->eColorFormat = getPreferredColorFormatDefaultMode(portFmt->nIndex);
+                                    } else {
+                                        portFmt->eColorFormat = useNonSurfaceMode ?
+                                            getPreferredColorFormatNonSurfaceMode(portFmt->nIndex) :
+                                            getPreferredColorFormatDefaultMode(portFmt->nIndex);
+                                    }
 
                                     if (portFmt->eColorFormat == OMX_COLOR_FormatMax ) {
                                         eRet = OMX_ErrorNoMore;
@@ -3610,6 +3647,11 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     }
                                 }
                             }
+                        }
+                        if (is_thulium_v1 && !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",
+                                    OMX_MAX_STRINGNAME_SIZE)) {
+                            arbitrary_bytes = true;
+                            DEBUG_PRINT_HIGH("Force arbitrary_bytes to true for h264");
                         }
                         break;
 
