@@ -1458,6 +1458,9 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
         } else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
                 snprintf(m_debug.infile_name, OMX_MAX_STRINGNAME_SIZE, "%s/input_dec_%d_%d_%p.ivf",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        } else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9", OMX_MAX_STRINGNAME_SIZE)) {
+                snprintf(m_debug.infile_name, OMX_MAX_STRINGNAME_SIZE, "%s/input_dec_%d_%d_%p.ivf",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         } else {
                snprintf(m_debug.infile_name, OMX_MAX_STRINGNAME_SIZE, "%s/input_dec_%d_%d_%p.divx",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
@@ -1468,7 +1471,8 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
             m_debug.infile_name[0] = '\0';
             return -1;
         }
-        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
+        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE) ||
+                !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9", OMX_MAX_STRINGNAME_SIZE)) {
             struct ivf_file_header {
                 OMX_U8 signature[4]; //='DKIF';
                 OMX_U8 version         ; //= 0;
@@ -1489,24 +1493,35 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
             file_header.signature[3] = 'F';
             file_header.version = 0;
             file_header.headersize = 32;
-            file_header.FourCC = 0x30385056;
+            switch (drv_ctx.decoder_format) {
+                case VDEC_CODECTYPE_VP8:
+                    file_header.FourCC = 0x30385056;
+                    break;
+                case VDEC_CODECTYPE_VP9:
+                    file_header.FourCC = 0x30395056;
+                    break;
+                default:
+                    DEBUG_PRINT_ERROR("unsupported format for VP8/VP9");
+                    break;
+            }
             fwrite((const char *)&file_header,
                     sizeof(file_header),1,m_debug.infile);
          }
     }
     if (m_debug.infile && buffer_addr && buffer_len) {
-        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
-            struct vp8_ivf_frame_header {
+        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE) ||
+                !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9", OMX_MAX_STRINGNAME_SIZE)) {
+            struct vpx_ivf_frame_header {
                 OMX_U32 framesize;
                 OMX_U32 timestamp_lo;
                 OMX_U32 timestamp_hi;
-            } vp8_frame_header;
-            vp8_frame_header.framesize = buffer_len;
+            } vpx_frame_header;
+            vpx_frame_header.framesize = buffer_len;
             /* Currently FW doesn't use timestamp values */
-            vp8_frame_header.timestamp_lo = 0;
-            vp8_frame_header.timestamp_hi = 0;
-            fwrite((const char *)&vp8_frame_header,
-                    sizeof(vp8_frame_header),1,m_debug.infile);
+            vpx_frame_header.timestamp_lo = 0;
+            vpx_frame_header.timestamp_hi = 0;
+            fwrite((const char *)&vpx_frame_header,
+                    sizeof(vpx_frame_header),1,m_debug.infile);
         }
         fwrite(buffer_addr, buffer_len, 1, m_debug.infile);
     }
@@ -1811,11 +1826,19 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",    \
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
-        output_capability=V4L2_PIX_FMT_VP8;
+        drv_ctx.decoder_format = VDEC_CODECTYPE_VP8;
+        output_capability = V4L2_PIX_FMT_VP8;
         eCompressionFormat = OMX_VIDEO_CodingVP8;
         codec_type_parse = CODEC_TYPE_VP8;
         arbitrary_bytes = false;
-
+    } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9",    \
+                OMX_MAX_STRINGNAME_SIZE)) {
+        strlcpy((char *)m_cRole, "video_decoder.vp9",OMX_MAX_STRINGNAME_SIZE);
+        drv_ctx.decoder_format = VDEC_CODECTYPE_VP9;
+        output_capability = V4L2_PIX_FMT_VP9;
+        eCompressionFormat = OMX_VIDEO_CodingVP9;
+        codec_type_parse = CODEC_TYPE_VP9;
+        arbitrary_bytes = false;
     } else {
         DEBUG_PRINT_ERROR("ERROR:Unknown Component");
         eRet = OMX_ErrorInvalidComponentName;
@@ -2000,9 +2023,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
-        if (strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
-                OMX_MAX_STRINGNAME_SIZE)
-                && (eRet == OMX_ErrorNone))
+        if ((strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
+                    OMX_MAX_STRINGNAME_SIZE) &&
+                strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9",
+                        OMX_MAX_STRINGNAME_SIZE)) &&
+                (eRet == OMX_ErrorNone))
                 enable_extradata(DEFAULT_EXTRADATA, true, true);
 #endif
         eRet = get_buffer_req(&drv_ctx.ip_buf);
@@ -2916,7 +2941,8 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
                                 (unsigned int)profileLevelType->nProfileIndex);
                 eRet = OMX_ErrorNoMore;
             }
-        } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE)) {
+        } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE) ||
+                !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9",OMX_MAX_STRINGNAME_SIZE)) {
             eRet = OMX_ErrorNoMore;
         } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.mpeg2",OMX_MAX_STRINGNAME_SIZE)) {
             if (profileLevelType->nProfileIndex == 0) {
@@ -3683,8 +3709,16 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                       }
                                   } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
                                       if (!strncmp((const char*)comp_role->cRole, "video_decoder.vp8", OMX_MAX_STRINGNAME_SIZE) ||
-                                              (!strncmp((const char*)comp_role->cRole, "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE))) {
+                                              !strncmp((const char*)comp_role->cRole, "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE)) {
                                           strlcpy((char*)m_cRole, "video_decoder.vp8", OMX_MAX_STRINGNAME_SIZE);
+                                      } else {
+                                          DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
+                                          eRet = OMX_ErrorUnsupportedSetting;
+                                      }
+                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9", OMX_MAX_STRINGNAME_SIZE)) {
+                                      if (!strncmp((const char*)comp_role->cRole, "video_decoder.vp9", OMX_MAX_STRINGNAME_SIZE) ||
+                                              !strncmp((const char*)comp_role->cRole, "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE)) {
+                                          strlcpy((char*)m_cRole, "video_decoder.vp9", OMX_MAX_STRINGNAME_SIZE);
                                       } else {
                                           DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
                                           eRet = OMX_ErrorUnsupportedSetting;
@@ -6841,6 +6875,14 @@ OMX_ERRORTYPE  omx_vdec::component_role_enum(OMX_IN OMX_HANDLETYPE hComp,
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE)) {
         if ((0 == index) && role) {
             strlcpy((char *)role, "video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
+            DEBUG_PRINT_LOW("component_role_enum: role %s",role);
+        } else {
+            DEBUG_PRINT_LOW("No more roles");
+            eRet = OMX_ErrorNoMore;
+        }
+    } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9",OMX_MAX_STRINGNAME_SIZE)) {
+        if ((0 == index) && role) {
+            strlcpy((char *)role, "video_decoder.vp9",OMX_MAX_STRINGNAME_SIZE);
             DEBUG_PRINT_LOW("component_role_enum: role %s",role);
         } else {
             DEBUG_PRINT_LOW("No more roles");
