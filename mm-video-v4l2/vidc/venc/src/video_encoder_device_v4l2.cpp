@@ -851,6 +851,8 @@ bool venc_dev::venc_open(OMX_U32 codec)
     OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_enc";
     char property_value[PROPERTY_VALUE_MAX] = {0};
     char platform_name[PROPERTY_VALUE_MAX] = {0};
+    FILE *soc_file = NULL;
+    char buffer[10];
 
     property_get("ro.board.platform", platform_name, "0");
     property_get("vidc.enc.narrow.searchrange", property_value, "0");
@@ -956,6 +958,24 @@ bool venc_dev::venc_open(OMX_U32 codec)
         DEBUG_PRINT_LOW("fmt: description: %s, fmt: %x, flags = %x", fdesc.description,
                 fdesc.pixelformat, fdesc.flags);
         fdesc.index++;
+    }
+
+    is_thulium_v1 = false;
+    soc_file= fopen("/sys/devices/soc0/soc_id", "r");
+    if (soc_file) {
+        fread(buffer, 1, 4, soc_file);
+        fclose(soc_file);
+        if (atoi(buffer) == 246) {
+            soc_file = fopen("/sys/devices/soc0/revision", "r");
+            if (soc_file) {
+                fread(buffer, 1, 4, soc_file);
+                fclose(soc_file);
+                if (atoi(buffer) == 1) {
+                    is_thulium_v1 = true;
+                    DEBUG_PRINT_HIGH("is_thulium_v1 = TRUE");
+                }
+            }
+        }
     }
 
     if (venc_handle->is_secure_session()) {
@@ -1607,6 +1627,10 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 if (!venc_set_inloop_filter(OMX_VIDEO_AVCLoopFilterEnable))
                     DEBUG_PRINT_HIGH("WARN: Request for setting Inloop filter failed for HEVC encoder");
 
+                if (is_thulium_v1 && !venc_set_intra_period (0, 0)) {
+                    DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
+                    return false;
+                }
                 break;
             }
         case OMX_IndexParamVideoIntraRefresh:
@@ -3528,7 +3552,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
         nBFrames=0;
     }
 
-    if (!venc_validate_hybridhp_params(0, nBFrames, 0, 0)) {
+    if (!venc_validate_hybridhp_params(0, nBFrames, 0, 0) && !is_thulium_v1) {
         DEBUG_PRINT_ERROR("Invalid settings, bframes cannot be enabled with HybridHP");
         return false;
     }
@@ -3536,7 +3560,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
     intra_period.num_pframes = nPFrames;
     intra_period.num_bframes = nBFrames;
 
-    if (!venc_calibrate_gop())
+    if (!venc_calibrate_gop() && !is_thulium_v1)
     {
         DEBUG_PRINT_ERROR("Invalid settings, Hybrid HP enabled with LTR OR Hier-pLayers OR bframes");
         return false;
