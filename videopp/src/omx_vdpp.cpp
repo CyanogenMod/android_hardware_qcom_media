@@ -1,5 +1,5 @@
 ﻿/*---------------------------------------------------------------------------------------
-Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -2829,8 +2829,7 @@ OMX_ERRORTYPE  omx_vdpp::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 DEBUG_PRINT_HIGH("ION:720P: nUsage 0x%x",nativeBuffersUsage->nUsage);
 #else
                 {
-                    nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP |
-                                                        GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+                    nativeBuffersUsage->nUsage = GRALLOC_USAGE_PRIVATE_MM_HEAP;
                     DEBUG_PRINT_HIGH("ION:non_secure_mode: nUsage 0x%lx",nativeBuffersUsage->nUsage);
                 }
 #endif //(MAX_RES_720P)

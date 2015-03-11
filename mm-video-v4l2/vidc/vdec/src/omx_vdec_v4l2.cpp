@@ -3150,9 +3150,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                 nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PROTECTED |
                                                         GRALLOC_USAGE_PRIVATE_UNCACHED);
                                             } else {
-                                                nativeBuffersUsage->nUsage =
-                                                    (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP |
-                                                     GRALLOC_USAGE_PRIVATE_UNCACHED);
+                                                nativeBuffersUsage->nUsage = GRALLOC_USAGE_PRIVATE_UNCACHED;
                                             }
                                         } else {
                                             DEBUG_PRINT_HIGH("get_parameter: OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage failed!");
