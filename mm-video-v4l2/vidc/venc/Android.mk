@@ -23,7 +23,7 @@ libmm-venc-def += -D_MSM8974_
 
 TARGETS_THAT_USE_FLAG_MSM8226 := msm8226 msm8916 msm8909 msm8952
 TARGETS_THAT_NEED_SW_VENC_MPEG4 := msm8909
-TARGETS_THAT_NEED_SW_VENC_HEVC := msm8992
+TARGETS_THAT_NEED_SW_VENC_HEVC := msm8992 msm8952
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 libmm-venc-def += -DMAX_RES_720P
@@ -84,6 +84,11 @@ LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
 
 include $(BUILD_SHARED_LIBRARY)
 
+# QCPATH is defined if /vendor/qcom/proprietary folder is present in the build.
+# This folder is removed in OSS (open source) builds.
+# Don't build software codec OMX components in OSS builds.
+ifneq "$(wildcard $(QCPATH) )" ""
+
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_MPEG4)),true)
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxSwVencMpeg4)
@@ -114,7 +119,7 @@ endif
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_HEVC)),true)
 # ---------------------------------------------------------------------------------
-#                            Make the Shared library (libOmxSwVenc)
+#                       Make the Shared library (libOmxSwVencHevc)
 # ---------------------------------------------------------------------------------
 include $(CLEAR_VARS)
 
@@ -136,6 +141,8 @@ LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_swvenc_hevc.cpp
 
 include $(BUILD_SHARED_LIBRARY)
+endif
+
 endif
 
 # ---------------------------------------------------------------------------------
