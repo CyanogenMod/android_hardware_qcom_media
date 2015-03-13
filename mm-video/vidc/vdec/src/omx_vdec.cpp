@@ -3098,7 +3098,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         DEBUG_PRINT_HIGH("ION:secure_mode: nUsage 0x%x",nativeBuffersUsage->nUsage);
                 } else {
                         DEBUG_PRINT_HIGH("get_parameter: CACHED buffers from IOMMU heap");
-                        nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+                        nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED);
                 }
 #else
 #if defined (MAX_RES_720P) ||  defined (MAX_RES_1080P_EBI)
@@ -5493,7 +5493,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     drv_ctx.op_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
                     drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.alignment,
                     &drv_ctx.op_buf_ion_info[i].ion_alloc_data,
-                    &drv_ctx.op_buf_ion_info[i].fd_ion_data, ION_FLAG_CACHED);
+                    &drv_ctx.op_buf_ion_info[i].fd_ion_data, 0);
     if (drv_ctx.op_buf_ion_info[i].ion_device_fd < 0) {
         return OMX_ErrorInsufficientResources;
      }
