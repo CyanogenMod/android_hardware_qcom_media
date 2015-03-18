@@ -1,2 +1,2 @@
-OMX_VIDEO_PATH := $(call my-dir)
-include $(call all-makefiles-under,$(OMX_VIDEO_PATH))
+LOCAL_PATH := $(call my-dir)
+include $(call all-makefiles-under,$(LOCAL_PATH))
