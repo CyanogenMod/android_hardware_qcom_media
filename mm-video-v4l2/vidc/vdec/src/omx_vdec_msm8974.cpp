@@ -3011,8 +3011,10 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     // Distinguish non-surface mode from normal playback use-case based on
                                     // usage hinted via "OMX.google.android.index.useAndroidNativeBuffer2"
                                     // For non-android, use the default list
+                                    // Also use default format-list if FLEXIBLE YUV is supported,
+                                    // as the client negotiates the standard color-format if it needs to
                                     bool useNonSurfaceMode = false;
-#if _ANDROID_
+#if defined(_ANDROID_) && !defined(FLEXYUV_SUPPORTED)
                                     useNonSurfaceMode = (m_enable_android_native_buffers == OMX_FALSE);
 #endif
                                     portFmt->eColorFormat = useNonSurfaceMode ?
@@ -3898,6 +3900,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            if (enableNativeBuffers) {
                                                m_enable_android_native_buffers = enableNativeBuffers->enable;
                                            }
+#if !defined(FLEXYUV_SUPPORTED)
                                            if (m_enable_android_native_buffers) {
                                                // Use the most-preferred-native-color-format as surface-mode is hinted here
                                                if(!client_buffers.set_color_format(getPreferredColorFormatDefaultMode(0))) {
@@ -3905,6 +3908,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                    eRet = OMX_ErrorUnsupportedSetting;
                                                }
                                            }
+#endif
                                        }
                                        break;
         case OMX_GoogleAndroidIndexUseAndroidNativeBuffer: {
