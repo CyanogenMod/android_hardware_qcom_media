@@ -82,6 +82,11 @@ ifeq ($(call is-platform-sdk-version-at-least, 19),true)
 libmm-vdec-def += -DADAPTIVE_PLAYBACK_SUPPORTED
 endif
 
+ifeq ($(call is-platform-sdk-version-at-least, 22),true)
+# This feature is enabled for Android LMR1
+libmm-vdec-def += -DFLEXYUV_SUPPORTED
+endif
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------
