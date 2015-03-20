@@ -10284,7 +10284,7 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr
     m_out_mem_ptr_client[index].nFlags = (bufadd->nFlags & OMX_BUFFERFLAG_EOS);
     m_out_mem_ptr_client[index].nTimeStamp = bufadd->nTimeStamp;
     bool status;
-    if (!omx->in_reconfig && !omx->output_flush_progress) {
+    if (!omx->in_reconfig && !omx->output_flush_progress && (bufadd->nFilledLen > 0)) {
       pthread_mutex_lock(&omx->c_lock);
       status = c2d.convert(omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
                   bufadd->pBuffer,pmem_fd[index],pmem_baseaddress[index]);
