@@ -214,6 +214,7 @@ omx_video::omx_video():
     mUsesColorConversion(false),
     psource_frame(NULL),
     pdest_frame(NULL),
+    mEmptyEosBuffer(NULL),
     m_pInput_pmem(NULL),
     m_pOutput_pmem(NULL),
 #ifdef USE_ION
@@ -3981,7 +3982,13 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
             DEBUG_PRINT_LOW("empty_buffer_done pdest_frame address is %p",pdest_frame);
             return push_input_buffer(hComp);
         }
-        if (mUsesColorConversion) {
+        //check if empty-EOS-buffer is being returned, treat this same as the
+        //color-conversion case as we queued a color-conversion buffer to encoder
+        bool handleEmptyEosBuffer = (mEmptyEosBuffer == buffer);
+        if (mUsesColorConversion || handleEmptyEosBuffer) {
+            if (handleEmptyEosBuffer) {
+                mEmptyEosBuffer = NULL;
+            }
             // return color-conversion buffer back to the pool
             DEBUG_PRINT_LOW("empty_buffer_done insert address is %p",buffer);
             if (!m_opq_pmem_q.insert_entry((unsigned int)buffer, 0, 0)) {
@@ -4297,7 +4304,7 @@ void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
         bool meta_error = false;
 
         index_pmem = (buffer - m_inp_mem_ptr);
-        if (mUseProxyColorFormat &&
+        if (mUsesColorConversion &&
                 (index_pmem < m_sInPortDef.nBufferCountActual)) {
             if (!dev_free_buf((&m_pInput_pmem[index_pmem]),PORT_INDEX_IN)) {
                 DEBUG_PRINT_ERROR("omx_release_meta_buffer dev free failed");
@@ -4490,6 +4497,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         return OMX_ErrorBadParameter;
     }
     private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
+
     /*Enable following code once private handle color format is
       updated correctly*/
 
@@ -4686,6 +4694,14 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
                     index,m_sInPortDef.nBufferCountActual);
             return OMX_ErrorBadParameter;
         }
+
+        //Meta-Buffer with empty filled-length can contain garbage handle
+        //Some clients queue such buffers to signal EOS. Handle this case
+        // separately by queueing an intermediate color-conversion buffer
+        // and propagate the EOS.
+        if (psource_frame->nFilledLen == 0 && (psource_frame->nFlags & OMX_BUFFERFLAG_EOS)) {
+            return push_empty_eos_buffer(hComp, psource_frame);
+        }
         media_buffer = (encoder_media_buffer_type *)psource_frame->pBuffer;
         /*Will enable to verify camcorder in current TIPS can be removed*/
         if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
@@ -4697,8 +4713,6 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
                     Input_pmem_info.offset,
                     Input_pmem_info.size);
             ret = queue_meta_buffer(hComp,Input_pmem_info);
-        } else if ((psource_frame->nFlags & OMX_BUFFERFLAG_EOS) && mUseProxyColorFormat) {
-            ret = convert_queue_buffer(hComp,Input_pmem_info,index);
         } else {
             private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
             Input_pmem_info.buffer = media_buffer;
@@ -4714,4 +4728,64 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
         }
     }
     return ret;
+}
+
+OMX_ERRORTYPE omx_video::push_empty_eos_buffer(OMX_HANDLETYPE hComp,
+        OMX_BUFFERHEADERTYPE* buffer) {
+    OMX_BUFFERHEADERTYPE* opqBuf = NULL;
+    OMX_ERRORTYPE retVal = OMX_ErrorNone;
+    do {
+        if (pdest_frame) {
+            //[1] use a checked out conversion buffer, if one is available
+            opqBuf = pdest_frame;
+            pdest_frame = NULL;
+        } else if (m_opq_pmem_q.m_size) {
+            //[2] else pop out one from the queue, if available
+            unsigned address = 0, p2, id;
+            m_opq_pmem_q.pop_entry(&address,&p2,&id);
+            opqBuf = (OMX_BUFFERHEADERTYPE* ) address;
+        }
+        unsigned index = opqBuf - m_inp_mem_ptr;
+        if (!opqBuf || index >= m_sInPortDef.nBufferCountActual) {
+            DEBUG_PRINT_ERROR("push_empty_eos_buffer: Could not find a "
+                    "color-conversion buffer to queue ! defer until available");
+            //[3] else, returning back will defer calling this function again
+            //until a conversion buffer is returned by the encoder and also
+            //hold on to the client's buffer
+            return OMX_ErrorNone;
+        }
+        struct pmem Input_pmem_info;
+        Input_pmem_info.buffer = opqBuf;
+        Input_pmem_info.fd = m_pInput_pmem[index].fd;
+        Input_pmem_info.offset = 0;
+        Input_pmem_info.size = m_pInput_pmem[index].size;
+
+        if (dev_use_buf(&Input_pmem_info, PORT_INDEX_IN, 0) != true) {
+            DEBUG_PRINT_ERROR("ERROR: in dev_use_buf for empty eos buffer");
+            retVal = OMX_ErrorBadParameter;
+            break;
+        }
+
+        //Queue with null pBuffer, as pBuffer in client's hdr can be junk
+        //Clone the color-conversion buffer to avoid overwriting original buffer
+        OMX_BUFFERHEADERTYPE emptyEosBufHdr;
+        memcpy(&emptyEosBufHdr, opqBuf, sizeof(OMX_BUFFERHEADERTYPE));
+        emptyEosBufHdr.nFilledLen = 0;
+        emptyEosBufHdr.nTimeStamp = buffer->nTimeStamp;
+        emptyEosBufHdr.nFlags = buffer->nFlags;
+        emptyEosBufHdr.pBuffer = NULL;
+        if (dev_empty_buf(&emptyEosBufHdr, 0, index, m_pInput_pmem[index].fd) != true) {
+            DEBUG_PRINT_ERROR("ERROR: in dev_empty_buf for empty eos buffer");
+            dev_free_buf(&Input_pmem_info, PORT_INDEX_IN);
+            retVal = OMX_ErrorBadParameter;
+            break;
+        }
+        mEmptyEosBuffer = opqBuf;
+    } while(false);
+
+    //return client's buffer regardless since intermediate color-conversion
+    //buffer is sent to the the encoder
+    m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
+    --pending_input_buffers;
+    return retVal;
 }
