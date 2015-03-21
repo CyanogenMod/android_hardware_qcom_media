@@ -1079,6 +1079,7 @@ private:
     int log_input_buffers(const char *, int);
     int log_output_buffers(OMX_BUFFERHEADERTYPE *);
     int log_im_buffer(OMX_BUFFERHEADERTYPE * buffer);
+    static OMX_ERRORTYPE describeColorFormat(OMX_PTR params);
 };
 
 #ifdef _MSM8974_

@@ -86,6 +86,11 @@ endif
 
 vdec-inc          = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
+ifeq ($(call is-platform-sdk-version-at-least, 22),true)
+# This feature is enabled for Android LMR1
+libOmxVdec-def += -DFLEXYUV_SUPPORTED
+endif
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------
