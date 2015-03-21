@@ -2655,7 +2655,7 @@ OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
         OMX_PTR              appData,
         OMX_U32              bytes)
 {
-    unsigned index = 0;
+    unsigned int index = 0;
     if (!bufferHdr || bytes != sizeof(encoder_media_buffer_type)) {
         DEBUG_PRINT_ERROR("wrong params allocate_input_meta_buffer Hdr %p len %u",
                 bufferHdr, (unsigned int)bytes);
@@ -3346,7 +3346,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
     (void)hComp;
     OMX_U8 *pmem_data_buf = NULL;
     int push_cnt = 0;
-    unsigned nBufIndex = 0;
+    unsigned int nBufIndex = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     encoder_media_buffer_type *media_buffer = NULL;
 
@@ -3974,7 +3974,7 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
         OMX_BUFFERHEADERTYPE * buffer)
 {
 #ifdef _MSM8974_
-    int index = buffer - m_out_mem_ptr;
+    unsigned int index = buffer - m_out_mem_ptr;
 #endif
     DEBUG_PRINT_LOW("fill_buffer_done: buffer->pBuffer[%p], flags=0x%x size = %u",
             buffer->pBuffer, (unsigned)buffer->nFlags, (unsigned int)buffer->nFilledLen);
@@ -4022,12 +4022,12 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
 OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
         OMX_BUFFERHEADERTYPE* buffer)
 {
-    int buffer_index  = -1;
+    unsigned int buffer_index  = -1;
 
     buffer_index = buffer - ((mUseProxyColorFormat && !mUsesColorConversion) ? meta_buffer_hdr : m_inp_mem_ptr);
     DEBUG_PRINT_LOW("empty_buffer_done: buffer[%p]", buffer);
     if (buffer == NULL ||
-            ((buffer_index > (int)m_sInPortDef.nBufferCountActual))) {
+            ((buffer_index > m_sInPortDef.nBufferCountActual))) {
         DEBUG_PRINT_ERROR("ERROR in empty_buffer_done due to index buffer");
         return OMX_ErrorBadParameter;
     }
@@ -4035,7 +4035,7 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
     pending_input_buffers--;
 
     if (mUseProxyColorFormat &&
-        (buffer_index >= 0 && (buffer_index < (int)m_sInPortDef.nBufferCountActual))) {
+        (buffer_index < m_sInPortDef.nBufferCountActual)) {
         if (!pdest_frame  && !input_flush_progress && mUsesColorConversion) {
             pdest_frame = buffer;
             DEBUG_PRINT_LOW("empty_buffer_done pdest_frame address is %p",pdest_frame);
@@ -4546,7 +4546,7 @@ bool omx_video::omx_c2d_conv::get_buffer_size(int port,unsigned int &buf_size)
 OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         OMX_IN OMX_BUFFERHEADERTYPE* buffer)
 {
-    unsigned nBufIndex = 0;
+    unsigned int nBufIndex = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     encoder_media_buffer_type *media_buffer;
     DEBUG_PRINT_LOW("ETBProxyOpaque: buffer[%p]", buffer);
@@ -4660,7 +4660,7 @@ OMX_ERRORTYPE omx_video::queue_meta_buffer(OMX_HANDLETYPE hComp,
 }
 
 OMX_ERRORTYPE omx_video::convert_queue_buffer(OMX_HANDLETYPE hComp,
-        struct pmem &Input_pmem_info,unsigned long &index)
+        struct pmem &Input_pmem_info,unsigned long index)
 {
 
     unsigned char *uva;
@@ -4745,7 +4745,8 @@ OMX_ERRORTYPE omx_video::convert_queue_buffer(OMX_HANDLETYPE hComp,
 
 OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
 {
-    unsigned long address = 0,p2,id, index = 0;
+    unsigned long address = 0,p2,id;
+    unsigned int index = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
 
     DEBUG_PRINT_LOW("In push input buffer");
@@ -4793,7 +4794,7 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
             Input_pmem_info.offset = 0;
             Input_pmem_info.size = handle->size;
             if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888)
-                ret = convert_queue_buffer(hComp,Input_pmem_info,index);
+                ret = convert_queue_buffer(hComp,Input_pmem_info, (unsigned long)index);
             else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE)
                 ret = queue_meta_buffer(hComp,Input_pmem_info);
             else
@@ -4807,7 +4808,7 @@ OMX_ERRORTYPE omx_video::push_empty_eos_buffer(OMX_HANDLETYPE hComp,
         OMX_BUFFERHEADERTYPE* buffer) {
     OMX_BUFFERHEADERTYPE* opqBuf = NULL;
     OMX_ERRORTYPE retVal = OMX_ErrorNone;
-    unsigned index = 0;
+    unsigned int index = 0;
 
     DEBUG_PRINT_LOW("In push empty eos buffer");
     do {
