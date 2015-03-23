@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -58,8 +58,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define MPEG4_ASP_START (MPEG4_SP_START + 10)
 #define H263_BP_START 0
 #define H264_BP_START 0
-#define H264_HP_START (H264_BP_START + 17)
-#define H264_MP_START (H264_BP_START + 34)
+#define H264_HP_START (H264_BP_START + 18)
+#define H264_MP_START (H264_BP_START + 36)
 #define HEVC_MAIN_START 0
 #define HEVC_MAIN10_START (HEVC_MAIN_START + 12)
 #define POLL_TIMEOUT 1000
@@ -80,6 +80,7 @@ static const unsigned int mpeg4_profile_level_table[][MAX_PROFILE_PARAMS]= {
     {3600,108000,12000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple,0},
     {32400,972000,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple,0},
     {34560,1036800,20000000,OMX_VIDEO_MPEG4Level5,OMX_VIDEO_MPEG4ProfileSimple,0},
+    /* Please update MPEG4_ASP_START accordingly, while adding new element */
     {0,0,0,0,0,0},
 
     {99,1485,128000,OMX_VIDEO_MPEG4Level0,OMX_VIDEO_MPEG4ProfileAdvancedSimple,0},
@@ -113,6 +114,7 @@ static const unsigned int h264_profile_level_table[][MAX_PROFILE_PARAMS]= {
     {22080,589824,135000000,OMX_VIDEO_AVCLevel5,OMX_VIDEO_AVCProfileBaseline,110400},
     {36864,983040,240000000,OMX_VIDEO_AVCLevel51,OMX_VIDEO_AVCProfileBaseline,184320},
     {36864,2073600,240000000,OMX_VIDEO_AVCLevel52,OMX_VIDEO_AVCProfileBaseline,184320},
+    /* Please update H264_HP_START accordingly, while adding new element */
     {0,0,0,0,0,0},
 
     {99,1485,64000,OMX_VIDEO_AVCLevel1,OMX_VIDEO_AVCProfileHigh,396},
@@ -132,6 +134,7 @@ static const unsigned int h264_profile_level_table[][MAX_PROFILE_PARAMS]= {
     {22080,589824,135000000,OMX_VIDEO_AVCLevel5,OMX_VIDEO_AVCProfileHigh,110400},
     {36864,983040,240000000,OMX_VIDEO_AVCLevel51,OMX_VIDEO_AVCProfileHigh,184320},
     {36864,2073600,240000000,OMX_VIDEO_AVCLevel52,OMX_VIDEO_AVCProfileHigh,184320},
+    /* Please update H264_MP_START accordingly, while adding new element */
     {0,0,0,0,0,0},
 
     {99,1485,64000,OMX_VIDEO_AVCLevel1,OMX_VIDEO_AVCProfileMain,396},
@@ -186,6 +189,7 @@ static const unsigned int hevc_profile_level_table[][MAX_PROFILE_PARAMS]= {
     {138240,4147200,50000000,OMX_VIDEO_HEVCHighTierLevel41,OMX_VIDEO_HEVCProfileMain,0},
     {138240,4147200,100000000,OMX_VIDEO_HEVCHighTierLevel5,OMX_VIDEO_HEVCProfileMain,0},
     {138240,4147200,1600000000,OMX_VIDEO_HEVCHighTierLevel51,OMX_VIDEO_HEVCProfileMain,0},
+    /* Please update HEVC_MAIN_START accordingly, while adding new element */
     {0,0,0,0,0},
 
     {99,1485,128000,OMX_VIDEO_HEVCMainTierLevel1,OMX_VIDEO_HEVCProfileMain10,0},
