@@ -131,6 +131,7 @@ char ouputextradatafilename [] = "/data/extradata";
 #define DEVICE_SCRATCH 64
 #endif
 
+#define C2D_SP_YBUF_ALIGN 16
 /*
 #ifdef _ANDROID_
     extern "C"{
@@ -8515,10 +8516,13 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
   portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
   portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
   portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
-  if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
-      (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
+  if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) {
       portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
       portDefn->format.video.nFrameHeight = drv_ctx.video_resolution.frame_height;
+  } else if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar) {
+      portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width + (C2D_SP_YBUF_ALIGN-1)&~(C2D_SP_YBUF_ALIGN-1);
+      portDefn->format.video.nFrameHeight = drv_ctx.video_resolution.frame_height;
+      portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
   }
   DEBUG_PRINT_LOW("update_portdef: PortIndex = %u, Width = %d Height = %d "
     "Stride = %u SliceHeight = %u output format = 0x%x, eColorFormat = 0x%x",
