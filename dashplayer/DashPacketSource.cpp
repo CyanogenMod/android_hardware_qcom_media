@@ -184,8 +184,7 @@ void DashPacketSource::queueDiscontinuity(
         const sp<AMessage> &extra) {
     Mutex::Autolock autoLock(mLock);
 
-    if (type == ATSParser::DISCONTINUITY_SEEK ||
-        type == ATSParser::DISCONTINUITY_SEEK) {
+    if (type == ATSParser::DISCONTINUITY_TIME) {
         ALOGI("Flushing all Access units for seek");
         mBuffers.clear();
         mEOSResult = OK;
