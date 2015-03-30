@@ -223,7 +223,9 @@ PARAMETERS
 RETURN VALUE
   None.
 ========================================================================== */
-omx_video::omx_video(): m_state(OMX_StateInvalid),
+omx_video::omx_video(): msg_thread_id(0),
+                        async_thread_id(0),
+                        m_state(OMX_StateInvalid),
                         m_app_data(NULL),
                         m_inp_mem_ptr(NULL),
                         m_out_mem_ptr(NULL),
@@ -282,9 +284,13 @@ omx_video::~omx_video()
   if(m_pipe_in) close(m_pipe_in);
   if(m_pipe_out) close(m_pipe_out);
   DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit\n");
-  pthread_join(msg_thread_id,NULL);
+  if (msg_thread_id != 0) {
+    pthread_join(msg_thread_id,NULL);
+  }
   DEBUG_PRINT_HIGH("omx_video: Waiting on Async Thread exit\n");
-  pthread_join(async_thread_id,NULL);
+  if (async_thread_id != 0) {
+    pthread_join(async_thread_id,NULL);
+  }
   pthread_mutex_destroy(&m_lock);
   sem_destroy(&m_cmd_lock);
   DEBUG_PRINT_HIGH("\n m_etb_count = %u, m_fbd_count = %u\n", m_etb_count,

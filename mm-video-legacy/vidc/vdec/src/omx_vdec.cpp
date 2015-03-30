@@ -437,7 +437,9 @@ PARAMETERS
 RETURN VALUE
   None.
 ========================================================================== */
-omx_vdec::omx_vdec(): m_state(OMX_StateInvalid),
+omx_vdec::omx_vdec(): msg_thread_id(0),
+                      async_thread_id(0),
+                      m_state(OMX_StateInvalid),
                       m_app_data(NULL),
                       m_inp_mem_ptr(NULL),
                       m_out_mem_ptr(NULL),
@@ -582,9 +584,13 @@ omx_vdec::~omx_vdec()
   m_pipe_in = -1;
   m_pipe_out = -1;
   DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
-  pthread_join(msg_thread_id,NULL);
+  if (msg_thread_id != 0) {
+    pthread_join(msg_thread_id,NULL);
+  }
   DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
-  pthread_join(async_thread_id,NULL);
+  if (async_thread_id != 0) {
+    pthread_join(async_thread_id,NULL);
+  }
   pthread_mutex_destroy(&m_lock);
   pthread_mutex_destroy(&c_lock);
   sem_destroy(&m_cmd_lock);
