@@ -10137,6 +10137,7 @@ omx_vdec::allocate_color_convert_buf::allocate_color_convert_buf()
   init_members();
   ColorFormat = OMX_COLOR_FormatMax;
   dest_format = YCbCr420P;
+  m_native_buffers_enabled = false;
 }
 
 void omx_vdec::allocate_color_convert_buf::set_vdec_client(void *client)
@@ -10155,7 +10156,6 @@ void omx_vdec::allocate_color_convert_buf::init_members() {
   memset(op_buf_ion_info,0,sizeof(m_platform_entry_client));
   for (int i = 0; i < MAX_COUNT;i++)
     pmem_fd[i] = -1;
-  m_native_buffers_enabled = false;
 }
 
 omx_vdec::allocate_color_convert_buf::~allocate_color_convert_buf() {
