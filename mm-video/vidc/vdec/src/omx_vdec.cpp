@@ -10165,7 +10165,6 @@ void omx_vdec::allocate_color_convert_buf::init_members() {
   memset(op_buf_ion_info,0,sizeof(m_platform_entry_client));
   for (int i = 0; i < MAX_COUNT;i++)
     pmem_fd[i] = -1;
-  m_native_buffers_enabled = false;
 }
 
 omx_vdec::allocate_color_convert_buf::~allocate_color_convert_buf() {
