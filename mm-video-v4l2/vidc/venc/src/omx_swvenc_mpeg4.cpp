@@ -723,6 +723,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                 else
                 {
                     m_sInPortFormat.eColorFormat = portFmt->eColorFormat;
+                    m_sInPortDef.format.video.eColorFormat = portFmt->eColorFormat;
                     m_input_msg_id = OMX_COMPONENT_GENERATE_ETB;
                     mUseProxyColorFormat = false;
                 }
