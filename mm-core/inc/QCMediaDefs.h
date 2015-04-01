@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012 - 2013, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012 - 2014, The Linux Foundation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -51,7 +51,6 @@ extern const char *MEDIA_MIMETYPE_AUDIO_DTS_LBR;
 extern const char *MEDIA_MIMETYPE_AUDIO_EAC3;
 extern const char *MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG2TS;
-extern const char *MEDIA_MIMETYPE_VIDEO_HEVC;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCAMR_NB;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCAMR_WB;
@@ -63,6 +62,7 @@ extern const char *MEDIA_MIMETYPE_CONTAINER_QCMATROSKA;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCOGG;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QTIFLAC;
 extern const char *MEDIA_MIMETYPE_VIDEO_VPX; //backward compatibility
+extern const char *MEDIA_MIMETYPE_AUDIO_EAC3_JOC;
 }  // namespace android
 
 #endif  //QC_MEDIA_DEFS_H_

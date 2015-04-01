@@ -38,14 +38,18 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "omx_video_base.h"
 #include "omx_video_encoder.h"
 #include <linux/videodev2.h>
-#include <linux/fb.h>
 #include <poll.h>
-#include <gui/ISurfaceComposer.h>
-#include <gui/SurfaceComposerClient.h>
-#include <ui/DisplayInfo.h>
 
 #define TIMEOUT 5*60*1000
+#define BIT(num) (1 << (num))
+#define MAX_HYB_HIERP_LAYERS 6
 
+enum hier_type {
+    HIER_NONE = 0x0,
+    HIER_P = 0x1,
+    HIER_B = 0x2,
+    HIER_P_HYBRID = 0x3,
+};
 
 struct msm_venc_switch {
     unsigned char    status;
@@ -187,6 +191,7 @@ struct msm_venc_slice_delivery {
 
 struct msm_venc_hierlayers {
     unsigned int numlayers;
+    enum hier_type hier_mode;
 };
 
 struct msm_venc_ltrinfo {
@@ -206,6 +211,10 @@ struct msm_venc_peak_bitrate {
     unsigned int peakbitrate;
 };
 
+struct msm_venc_vpx_error_resilience {
+    unsigned int enable;
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -221,6 +230,15 @@ struct extradata_buffer_info {
 #ifdef USE_ION
     struct venc_ion ion;
 #endif
+};
+
+enum rc_modes {
+    RC_VBR_VFR = BIT(0),
+    RC_VBR_CFR = BIT(1),
+    RC_CBR_VFR = BIT(2),
+    RC_CBR_CFR = BIT(3),
+    RC_ALL = (RC_VBR_VFR | RC_VBR_CFR
+        | RC_CBR_VFR | RC_CBR_CFR)
 };
 
 class venc_dev
@@ -255,7 +273,7 @@ class venc_dev
         bool venc_set_param(void *,OMX_INDEXTYPE);
         bool venc_set_config(void *configData, OMX_INDEXTYPE index);
         bool venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel);
-        bool venc_get_seq_hdr(void *, unsigned, OMX_U32 *);
+        bool venc_get_seq_hdr(void *, unsigned, unsigned *);
         bool venc_loaded_start(void);
         bool venc_loaded_stop(void);
         bool venc_loaded_start_done(void);
@@ -302,6 +320,7 @@ class venc_dev
         bool handle_extradata(void *, int);
         int venc_set_format(int);
         bool deinterlace_enabled;
+        bool hw_overload;
     private:
         OMX_U32                             m_codec;
         struct msm_venc_basecfg             m_sVenc_cfg;
@@ -327,10 +346,12 @@ class venc_dev
         struct msm_venc_video_capability    capability;
         struct msm_venc_idrperiod           idrperiod;
         struct msm_venc_slice_delivery      slice_mode;
-        struct msm_venc_hierlayers          hier_p_layers;
+        struct msm_venc_hierlayers          hier_layers;
         struct msm_venc_perf_level          performance_level;
         struct msm_venc_vui_timing_info     vui_timing_info;
         struct msm_venc_peak_bitrate        peak_bitrate;
+        struct msm_venc_ltrinfo             ltrinfo;
+        struct msm_venc_vpx_error_resilience vpx_err_resilience;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -356,9 +377,9 @@ class venc_dev
         bool venc_set_vpe_rotation(OMX_S32 rotation_angle);
         bool venc_set_deinterlace(OMX_U32 enable);
         bool venc_set_ltrmode(OMX_U32 enable, OMX_U32 count);
-        bool venc_set_useltr();
-        bool venc_set_markltr();
 	bool venc_enable_initial_qp(QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp);
+        bool venc_set_useltr(OMX_U32 frameIdx);
+        bool venc_set_markltr(OMX_U32 frameIdx);
         bool venc_set_inband_video_header(OMX_BOOL enable);
         bool venc_set_au_delimiter(OMX_BOOL enable);
         bool venc_set_hier_layers(QOMX_VIDEO_HIERARCHICALCODINGTYPE type, OMX_U32 num_layers);
@@ -366,6 +387,11 @@ class venc_dev
         bool venc_set_vui_timing_info(OMX_BOOL enable);
         bool venc_set_peak_bitrate(OMX_U32 nPeakBitrate);
         bool venc_set_searchrange();
+        bool venc_set_vpx_error_resilience(OMX_BOOL enable);
+        bool venc_set_perf_mode(OMX_U32 mode);
+        bool venc_set_hybrid_hierp(OMX_U32 layers);
+        bool venc_calibrate_gop();
+        bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
@@ -392,7 +418,8 @@ class venc_dev
         int color_format;
         bool is_searchrange_set;
         bool enable_mv_narrow_searchrange;
-        DisplayInfo display_info;
+        int supported_rc_modes;
+        bool camera_mode_enabled;
 };
 
 enum instance_state {

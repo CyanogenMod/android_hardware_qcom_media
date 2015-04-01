@@ -78,7 +78,7 @@ class omx_venc: public omx_video
         bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
         bool dev_set_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
         bool update_profile_level();
-        bool dev_get_seq_hdr(void *, unsigned, OMX_U32 *);
+        bool dev_get_seq_hdr(void *, unsigned, unsigned *);
         bool dev_loaded_start(void);
         bool dev_loaded_stop(void);
         bool dev_loaded_start_done(void);

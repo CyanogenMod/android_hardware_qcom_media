@@ -31,7 +31,6 @@
 #define C2D_ColorConverter_H_
 
 #include <c2d2.h>
-#include <ColorConverter.h>
 #include <sys/types.h>
 
 typedef C2D_STATUS (*LINK_c2dCreateSurface)( uint32 *surface_id,

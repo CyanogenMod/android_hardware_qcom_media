@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1292,7 +1292,7 @@ void h264_stream_parser::get_frame_rate(OMX_U32 *frame_rate)
 void h264_stream_parser::parse_nal(OMX_U8* data_ptr, OMX_U32 data_len, OMX_U32 nal_type, bool enable_emu_sc)
 {
     OMX_U32 nal_unit_type = NALU_TYPE_UNSPECIFIED, cons_bytes = 0;
-    ALOGV("parse_nal(): IN nal_type(%lu)", nal_type);
+    ALOGV("parse_nal(): IN nal_type(%u)", nal_type);
     if (!data_len)
         return;
     init_bitstream(data_ptr, data_len);
@@ -1320,7 +1320,7 @@ void h264_stream_parser::parse_nal(OMX_U8* data_ptr, OMX_U32 data_len, OMX_U32 n
             parse_vui(true);
             break;
         default:
-            ALOGV("nal_unit_type received : %lu", nal_type);
+            ALOGV("nal_unit_type received : %u", nal_type);
     }
     ALOGV("parse_nal(): OUT");
 }

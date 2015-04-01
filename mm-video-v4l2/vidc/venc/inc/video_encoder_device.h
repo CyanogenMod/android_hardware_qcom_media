@@ -73,7 +73,7 @@ class venc_dev
         bool venc_set_config(void *configData, OMX_INDEXTYPE index);
         bool venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel);
         bool venc_max_allowed_bitrate_check(OMX_U32 nTargetBitrate);
-        bool venc_get_seq_hdr(void *, unsigned, OMX_U32 *);
+        bool venc_get_seq_hdr(void *, unsigned, unsigned *);
         bool venc_loaded_start(void);
         bool venc_loaded_stop(void);
         bool venc_loaded_start_done(void);

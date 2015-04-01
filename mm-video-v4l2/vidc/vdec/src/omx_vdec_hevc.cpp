@@ -136,8 +136,6 @@ extern "C" {
 
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 
-int debug_level = PRIO_ERROR;
-
 void* async_message_thread (void *input)
 {
     OMX_BUFFERHEADERTYPE *buffer;
@@ -462,7 +460,7 @@ void *get_omx_component_factory_fn(void)
 #ifdef _ANDROID_
 #ifdef USE_ION
 VideoHeap::VideoHeap(int devicefd, size_t size, void* base,
-        struct ion_handle *handle, int ionMapfd)
+        ion_user_handle_t handle, int ionMapfd)
 {
     //    ionInit(devicefd, base, size, 0 , MEM_DEVICE,handle,ionMapfd);
 }
@@ -5252,6 +5250,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         OMX_IN OMX_BUFFERHEADERTYPE* buffer)
 {
+    unsigned nPortIndex = buffer - client_buffers.get_il_buf_hdr();
 
     if (m_state == OMX_StateInvalid) {
         DEBUG_PRINT_ERROR("FTB in Invalid State");
@@ -5264,7 +5263,9 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
     }
 
     if (buffer == NULL ||
-            ((buffer - client_buffers.get_il_buf_hdr()) >= drv_ctx.op_buf.actualcount)) {
+            (nPortIndex >= drv_ctx.op_buf.actualcount)) {
+        DEBUG_PRINT_ERROR("FTB: ERROR: invalid buffer index,  nPortIndex %u bufCount %u",
+            nPortIndex, drv_ctx.op_buf.actualcount);
         return OMX_ErrorBadParameter;
     }
 
@@ -5305,8 +5306,11 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 
     nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
 
-    if (bufferAdd == NULL || nPortIndex > drv_ctx.op_buf.actualcount)
+    if (bufferAdd == NULL || nPortIndex > drv_ctx.op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("FTBProxy: ERROR: invalid buffer index, nPortIndex %u bufCount %u",
+            nPortIndex, drv_ctx.op_buf.actualcount);
         return OMX_ErrorBadParameter;
+    }
 
     DEBUG_PRINT_LOW("FTBProxy: bufhdr = %p, bufhdr->pBuffer = %p",
             bufferAdd, bufferAdd->pBuffer);
@@ -6941,12 +6945,12 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
         alloc_data->flags |= ION_SECURE;
 
 #ifdef _HEVC_USE_ADSP_HEAP_
-    alloc_data->ION_HEAP_MASK = ION_HEAP(ION_ADSP_HEAP_ID);
+    alloc_data->heap_id_mask = ION_HEAP(ION_ADSP_HEAP_ID);
 #else
-    alloc_data->ION_HEAP_MASK = ION_HEAP(ION_IOMMU_HEAP_ID);
+    alloc_data->heap_id_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
 #endif
     if (secure_mode) {
-        alloc_data->ION_HEAP_MASK = ION_HEAP(MEM_HEAP_ID);
+        alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
     }
     rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
     if (rc || !alloc_data->handle) {

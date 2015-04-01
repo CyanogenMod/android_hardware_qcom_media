@@ -125,10 +125,10 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
         (unsigned)((OMX_BUFFERHEADERTYPE *)bufHdr)->nTimeStamp)
 
 // BitMask Management logic
-#define BITS_PER_BYTE        32
-#define BITMASK_SIZE(mIndex) (((mIndex) + BITS_PER_BYTE - 1)/BITS_PER_BYTE)
-#define BITMASK_OFFSET(mIndex) ((mIndex)/BITS_PER_BYTE)
-#define BITMASK_FLAG(mIndex) (1 << ((mIndex) % BITS_PER_BYTE))
+#define BITS_PER_INDEX        64
+#define BITMASK_SIZE(mIndex) (((mIndex) + BITS_PER_INDEX - 1)/BITS_PER_INDEX)
+#define BITMASK_OFFSET(mIndex) ((mIndex)/BITS_PER_INDEX)
+#define BITMASK_FLAG(mIndex) ((uint64_t)1 << ((mIndex) % BITS_PER_INDEX))
 #define BITMASK_CLEAR(mArray,mIndex) (mArray)[BITMASK_OFFSET(mIndex)] \
     &=  ~(BITMASK_FLAG(mIndex))
 #define BITMASK_SET(mArray,mIndex)  (mArray)[BITMASK_OFFSET(mIndex)] \
@@ -142,7 +142,7 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 #define BITMASK_ABSENT(mArray,mIndex) (((mArray)[BITMASK_OFFSET(mIndex)] \
             & BITMASK_FLAG(mIndex)) == 0x0)
 #ifdef _ANDROID_ICS_
-#define MAX_NUM_INPUT_BUFFERS 32
+#define MAX_NUM_INPUT_BUFFERS 64
 #endif
 void* message_thread(void *);
 
@@ -155,13 +155,11 @@ class omx_video: public qc_omx_component
         bool c2d_opened;
         encoder_media_buffer_type meta_buffers[MAX_NUM_INPUT_BUFFERS];
         OMX_BUFFERHEADERTYPE *opaque_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
-        bool mUseProxyColorFormat;
-        //RGB or non-native input, and we have pre-allocated conversion buffers
-        bool mUsesColorConversion;
         bool get_syntaxhdr_enable;
         OMX_BUFFERHEADERTYPE  *psource_frame;
         OMX_BUFFERHEADERTYPE  *pdest_frame;
         bool secure_session;
+        bool hier_b_enabled;
         //intermediate conversion buffer queued to encoder in case of invalid EOS input
         OMX_BUFFERHEADERTYPE  *mEmptyEosBuffer;
 
@@ -190,6 +188,11 @@ class omx_video: public qc_omx_component
         omx_c2d_conv c2d_conv;
 #endif
     public:
+
+        bool mUseProxyColorFormat;
+        //RGB or non-native input, and we have pre-allocated conversion buffers
+        bool mUsesColorConversion;
+
         omx_video();  // constructor
         virtual ~omx_video();  // destructor
 
@@ -221,7 +224,7 @@ class omx_video: public qc_omx_component
         virtual bool dev_empty_buf(void *, void *,unsigned,unsigned) = 0;
         virtual bool dev_fill_buf(void *buffer, void *,unsigned,unsigned) = 0;
         virtual bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32) = 0;
-        virtual bool dev_get_seq_hdr(void *, unsigned, OMX_U32 *) = 0;
+        virtual bool dev_get_seq_hdr(void *, unsigned, unsigned *) = 0;
         virtual bool dev_loaded_start(void) = 0;
         virtual bool dev_loaded_stop(void) = 0;
         virtual bool dev_loaded_start_done(void) = 0;
@@ -522,8 +525,19 @@ class omx_video: public qc_omx_component
         inline void omx_report_error () {
             if (m_pCallbacks.EventHandler && !m_error_propogated) {
                 m_error_propogated = true;
+                DEBUG_PRINT_ERROR("ERROR: send OMX_ErrorHardware to Client");
                 m_pCallbacks.EventHandler(&m_cmp,m_app_data,
                         OMX_EventError,OMX_ErrorHardware,0,NULL);
+            }
+        }
+
+        inline void omx_report_hw_overload ()
+        {
+            if (m_pCallbacks.EventHandler && !m_error_propogated) {
+                m_error_propogated = true;
+                DEBUG_PRINT_ERROR("ERROR: send OMX_ErrorInsufficientResources to Client");
+                m_pCallbacks.EventHandler(&m_cmp, m_app_data,
+                        OMX_EventError, OMX_ErrorInsufficientResources, 0, NULL);
             }
         }
 
@@ -575,6 +589,7 @@ class omx_video: public qc_omx_component
         OMX_VIDEO_PARAM_H263TYPE m_sParamH263;
         OMX_VIDEO_PARAM_AVCTYPE m_sParamAVC;
         OMX_VIDEO_PARAM_VP8TYPE m_sParamVP8;
+        OMX_VIDEO_PARAM_HEVCTYPE m_sParamHEVC;
         OMX_PORT_PARAM_TYPE m_sPortParam_img;
         OMX_PORT_PARAM_TYPE m_sPortParam_audio;
         OMX_VIDEO_CONFIG_BITRATETYPE m_sConfigBitrate;
@@ -623,11 +638,11 @@ class omx_video: public qc_omx_component
         int pending_input_buffers;
         int pending_output_buffers;
 
-        unsigned int m_out_bm_count;
-        unsigned int m_inp_bm_count;
-        unsigned int m_flags;
-        unsigned int m_etb_count;
-        unsigned int m_fbd_count;
+        uint64_t m_out_bm_count;
+        uint64_t m_inp_bm_count;
+        uint64_t m_flags;
+        uint64_t m_etb_count;
+        uint64_t m_fbd_count;
 #ifdef _ANDROID_
         // Heap pointer to frame buffers
         sp<MemoryHeapBase>    m_heap_ptr;
@@ -636,6 +651,7 @@ class omx_video: public qc_omx_component
         bool m_event_port_settings_sent;
         OMX_U8                m_cRole[OMX_MAX_STRINGNAME_SIZE];
         extra_data_handler extra_data_handle;
+        bool hw_overload;
 
 };
 

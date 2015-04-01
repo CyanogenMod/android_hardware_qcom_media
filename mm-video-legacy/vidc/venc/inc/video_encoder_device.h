@@ -65,10 +65,10 @@ public:
   bool venc_empty_buf(void *, void *,unsigned,unsigned);
   bool venc_fill_buf(void *, void *,unsigned,unsigned);
 
-  bool venc_get_buf_req(unsigned long *,unsigned long *,
-                        unsigned long *,unsigned long);
-  bool venc_set_buf_req(unsigned long *,unsigned long *,
-                        unsigned long *,unsigned long);
+  bool venc_get_buf_req(OMX_U32 *,OMX_U32 *,
+                        OMX_U32 *,OMX_U32);
+  bool venc_set_buf_req(OMX_U32 *,OMX_U32 *,
+                        OMX_U32 *,OMX_U32);
   bool venc_set_param(void *,OMX_INDEXTYPE);
   bool venc_set_config(void *configData, OMX_INDEXTYPE index);
   bool venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel);

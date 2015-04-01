@@ -39,6 +39,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //                             Include Files
 //////////////////////////////////////////////////////////////////////////////
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
+
 #include <string.h>
 #include <pthread.h>
 #include <sys/prctl.h>
@@ -83,11 +86,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef OUTPUT_EXTRADATA_LOG
 FILE *outputExtradataFile;
-char output_extradata_filename [] = "/data/misc/extradata";
+char output_extradata_filename [] = "/data/misc/media/extradata";
 #endif
 
 #define DEFAULT_FPS 30
-#define MAX_INPUT_ERROR DEFAULT_FPS
 #define MAX_SUPPORTED_FPS 120
 #define DEFAULT_WIDTH_ALIGNMENT 128
 #define DEFAULT_HEIGHT_ALIGNMENT 32
@@ -124,11 +126,11 @@ extern "C" {
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
+#define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
 
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
-#define DEFAULT_CONCEAL_COLOR "32896" //0x8080, black by default
+#define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
-int debug_level = PRIO_ERROR;
 
 static OMX_U32 maxSmoothStreamingWidth = 1920;
 static OMX_U32 maxSmoothStreamingHeight = 1088;
@@ -176,6 +178,8 @@ void* async_message_thread (void *input)
                     vdec_msg.msgdata.output_frame.framesize.top = plane[0].reserved[3];
                     vdec_msg.msgdata.output_frame.framesize.right = plane[0].reserved[4];
                     vdec_msg.msgdata.output_frame.framesize.bottom = plane[0].reserved[5];
+                    vdec_msg.msgdata.output_frame.picsize.frame_width = plane[0].reserved[6];
+                    vdec_msg.msgdata.output_frame.picsize.frame_height = plane[0].reserved[7];
                 }
                 if (omx->async_message_process(input,&vdec_msg) < 0) {
                     DEBUG_PRINT_HIGH("async_message_thread Exited");
@@ -229,6 +233,24 @@ void* async_message_thread (void *input)
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE) {
                 DEBUG_PRINT_HIGH("VIDC Close Done Recieved and async_message_thread Exited");
                 break;
+            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_HW_OVERLOAD) {
+                struct vdec_msginfo vdec_msg;
+                vdec_msg.msgcode=VDEC_MSG_EVT_HW_OVERLOAD;
+                vdec_msg.status_code=VDEC_S_SUCCESS;
+                DEBUG_PRINT_ERROR("HW Overload received");
+                if (omx->async_message_process(input,&vdec_msg) < 0) {
+                    DEBUG_PRINT_HIGH("async_message_thread Exited");
+                    break;
+                }
+            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_HW_UNSUPPORTED) {
+                struct vdec_msginfo vdec_msg;
+                vdec_msg.msgcode=VDEC_MSG_EVT_HW_UNSUPPORTED;
+                vdec_msg.status_code=VDEC_S_SUCCESS;
+                DEBUG_PRINT_ERROR("HW Unsupported received");
+                if (omx->async_message_process(input,&vdec_msg) < 0) {
+                    DEBUG_PRINT_HIGH("async_message_thread Exited");
+                    break;
+                }
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_SYS_ERROR) {
                 struct vdec_msginfo vdec_msg;
                 vdec_msg.msgcode=VDEC_MSG_EVT_HW_ERROR;
@@ -470,7 +492,7 @@ void *get_omx_component_factory_fn(void)
 #ifdef _ANDROID_
 #ifdef USE_ION
 VideoHeap::VideoHeap(int devicefd, size_t size, void* base,
-        struct ion_handle *handle, int ionMapfd)
+        ion_user_handle_t handle, int ionMapfd)
 {
     (void) devicefd;
     (void) size;
@@ -505,7 +527,6 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_app_data(NULL),
     m_inp_mem_ptr(NULL),
     m_out_mem_ptr(NULL),
-    m_inp_err_count(0),
     input_flush_progress (false),
     output_flush_progress (false),
     input_use_buffer (false),
@@ -570,10 +591,11 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_profile(0),
     client_set_fps(false),
     m_last_rendered_TS(-1),
-    m_queued_codec_config_count(0)
+    m_queued_codec_config_count(0),
+    secure_scaling_to_non_secure_opb(false)
 {
     /* Assumption is that , to begin with , we have all the frames with decoder */
-    DEBUG_PRINT_HIGH("In %d bit OMX vdec Constructor", sizeof(long) * 8);
+    DEBUG_PRINT_HIGH("In %u bit OMX vdec Constructor", (unsigned int)sizeof(long) * 8);
     memset(&m_debug,0,sizeof(m_debug));
 #ifdef _ANDROID_
     char property_value[PROPERTY_VALUE_MAX] = {0};
@@ -645,6 +667,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     memset (&h264_scratch,0,sizeof (OMX_BUFFERHEADERTYPE));
     memset (m_hwdevice_name,0,sizeof(m_hwdevice_name));
     memset(m_demux_offsets, 0, ( sizeof(OMX_U32) * 8192) );
+    memset(&m_custom_buffersize, 0, sizeof(m_custom_buffersize));
     m_demux_entries = 0;
     msg_thread_id = 0;
     async_thread_id = 0;
@@ -692,7 +715,9 @@ static const int event_type[] = {
     V4L2_EVENT_MSM_VIDC_RELEASE_BUFFER_REFERENCE,
     V4L2_EVENT_MSM_VIDC_RELEASE_UNQUEUED_BUFFER,
     V4L2_EVENT_MSM_VIDC_CLOSE_DONE,
-    V4L2_EVENT_MSM_VIDC_SYS_ERROR
+    V4L2_EVENT_MSM_VIDC_SYS_ERROR,
+    V4L2_EVENT_MSM_VIDC_HW_OVERLOAD,
+    V4L2_EVENT_MSM_VIDC_HW_UNSUPPORTED
 };
 
 static OMX_ERRORTYPE subscribe_to_events(int fd)
@@ -947,11 +972,16 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                         pThis->omx_report_error ();
                     }
                     break;
-                case OMX_COMPONENT_GENERATE_ETB:
-                    if (pThis->empty_this_buffer_proxy((OMX_HANDLETYPE)(intptr_t)p1,\
-                                (OMX_BUFFERHEADERTYPE *)(intptr_t)p2) != OMX_ErrorNone) {
+                case OMX_COMPONENT_GENERATE_ETB: {
+                        OMX_ERRORTYPE iret;
+                        iret = pThis->empty_this_buffer_proxy((OMX_HANDLETYPE)p1, (OMX_BUFFERHEADERTYPE *)p2);
+                        if (iret == OMX_ErrorInsufficientResources) {
+                            DEBUG_PRINT_ERROR("empty_this_buffer_proxy failure due to HW overload");
+                            pThis->omx_report_hw_overload ();
+                        } else if (iret != OMX_ErrorNone) {
                         DEBUG_PRINT_ERROR("empty_this_buffer_proxy failure");
                         pThis->omx_report_error ();
+                    }
                     }
                     break;
 
@@ -975,21 +1005,14 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                         pThis->omx_report_error ();
                     } else {
                         if (p2 == VDEC_S_INPUT_BITSTREAM_ERR && p1) {
-                            pThis->m_inp_err_count++;
                             pThis->time_stamp_dts.remove_time_stamp(
                                     ((OMX_BUFFERHEADERTYPE *)(intptr_t)p1)->nTimeStamp,
                                     (pThis->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
                                     ?true:false);
-                        } else {
-                            pThis->m_inp_err_count = 0;
                         }
                         if ( pThis->empty_buffer_done(&pThis->m_cmp,
                                     (OMX_BUFFERHEADERTYPE *)(intptr_t)p1) != OMX_ErrorNone) {
                             DEBUG_PRINT_ERROR("empty_buffer_done failure");
-                            pThis->omx_report_error ();
-                        }
-                        if (pThis->m_inp_err_count >= MAX_INPUT_ERROR) {
-                            DEBUG_PRINT_ERROR("Input bitstream error for consecutive %d frames.", MAX_INPUT_ERROR);
                             pThis->omx_report_error ();
                         }
                     }
@@ -1218,10 +1241,87 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         break;
 
                 case OMX_COMPONENT_GENERATE_PORT_RECONFIG:
-                                        DEBUG_PRINT_HIGH("Rxd OMX_COMPONENT_GENERATE_PORT_RECONFIG");
-
                                         if (p2 == OMX_IndexParamPortDefinition) {
+                                            DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexParamPortDefinition");
                                             pThis->in_reconfig = true;
+
+                                        }  else if (p2 == OMX_IndexConfigCommonOutputCrop) {
+                                            DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexConfigCommonOutputCrop");
+
+                                            /* Check if resolution is changed in smooth streaming mode */
+                                            if (pThis->m_smoothstreaming_mode &&
+                                                (pThis->framesize.nWidth !=
+                                                    pThis->drv_ctx.video_resolution.frame_width) ||
+                                                (pThis->framesize.nHeight !=
+                                                    pThis->drv_ctx.video_resolution.frame_height)) {
+
+                                                DEBUG_PRINT_HIGH("Resolution changed from: wxh = %dx%d to: wxh = %dx%d",
+                                                        pThis->framesize.nWidth,
+                                                        pThis->framesize.nHeight,
+                                                        pThis->drv_ctx.video_resolution.frame_width,
+                                                        pThis->drv_ctx.video_resolution.frame_height);
+
+                                                /* Update new resolution */
+                                                pThis->framesize.nWidth =
+                                                       pThis->drv_ctx.video_resolution.frame_width;
+                                                pThis->framesize.nHeight =
+                                                       pThis->drv_ctx.video_resolution.frame_height;
+
+                                                /* Update C2D with new resolution */
+                                                if (!pThis->client_buffers.update_buffer_req()) {
+                                                    DEBUG_PRINT_ERROR("Setting C2D buffer requirements failed");
+                                                }
+                                            }
+
+                                            /* Update new crop information */
+                                            pThis->rectangle.nLeft = pThis->drv_ctx.frame_size.left;
+                                            pThis->rectangle.nTop = pThis->drv_ctx.frame_size.top;
+                                            pThis->rectangle.nWidth = pThis->drv_ctx.frame_size.right;
+                                            pThis->rectangle.nHeight = pThis->drv_ctx.frame_size.bottom;
+
+                                            /* Validate the new crop information */
+                                            if (pThis->rectangle.nLeft + pThis->rectangle.nWidth >
+                                                pThis->drv_ctx.video_resolution.frame_width) {
+
+                                                DEBUG_PRINT_HIGH("Crop L[%u] + R[%u] > W[%u]",
+                                                        pThis->rectangle.nLeft, pThis->rectangle.nWidth,
+                                                        pThis->drv_ctx.video_resolution.frame_width);
+                                                pThis->rectangle.nLeft = 0;
+
+                                                if (pThis->rectangle.nWidth >
+                                                    pThis->drv_ctx.video_resolution.frame_width) {
+
+                                                    DEBUG_PRINT_HIGH("Crop R[%u] > W[%u]",
+                                                            pThis->rectangle.nWidth,
+                                                            pThis->drv_ctx.video_resolution.frame_width);
+                                                    pThis->rectangle.nWidth =
+                                                        pThis->drv_ctx.video_resolution.frame_width;
+                                                }
+                                            }
+                                            if (pThis->rectangle.nTop + pThis->rectangle.nHeight >
+                                                pThis->drv_ctx.video_resolution.frame_height) {
+
+                                                DEBUG_PRINT_HIGH("Crop T[%u] + B[%u] > H[%u]",
+                                                    pThis->rectangle.nTop, pThis->rectangle.nHeight,
+                                                    pThis->drv_ctx.video_resolution.frame_height);
+                                                pThis->rectangle.nTop = 0;
+
+                                                if (pThis->rectangle.nHeight >
+                                                    pThis->drv_ctx.video_resolution.frame_height) {
+
+                                                    DEBUG_PRINT_HIGH("Crop B[%u] > H[%u]",
+                                                        pThis->rectangle.nHeight,
+                                                        pThis->drv_ctx.video_resolution.frame_height);
+                                                    pThis->rectangle.nHeight =
+                                                        pThis->drv_ctx.video_resolution.frame_height;
+                                                }
+                                            }
+                                            DEBUG_PRINT_HIGH("Updated Crop Info: L: %u, T: %u, R: %u, B: %u",
+                                                    pThis->rectangle.nLeft, pThis->rectangle.nTop,
+                                                    pThis->rectangle.nWidth, pThis->rectangle.nHeight);
+                                        } else {
+                                            DEBUG_PRINT_ERROR("Rxd Invalid PORT_RECONFIG event (%lu)", p2);
+                                            break;
                                         }
                                         if (pThis->m_cb.EventHandler) {
                                             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
@@ -1254,6 +1354,11 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         pThis->omx_report_unsupported_setting();
                                         break;
 
+                case OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD:
+                                        DEBUG_PRINT_ERROR("OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD");
+                                        pThis->omx_report_hw_overload();
+                                        break;
+
                 default:
                                         break;
             }
@@ -1281,10 +1386,12 @@ int omx_vdec::update_resolution(int width, int height, int stride, int scan_line
     drv_ctx.video_resolution.frame_width = width;
     drv_ctx.video_resolution.scan_lines = scan_lines;
     drv_ctx.video_resolution.stride = stride;
+    if(!is_down_scalar_enabled) {
     rectangle.nLeft = 0;
     rectangle.nTop = 0;
     rectangle.nWidth = drv_ctx.video_resolution.frame_width;
     rectangle.nHeight = drv_ctx.video_resolution.frame_height;
+    }
     return format_changed;
 }
 
@@ -1338,6 +1445,10 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
                 sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.264",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         }
+        else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevc", OMX_MAX_STRINGNAME_SIZE)) {
+                sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.265",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
         else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vc1", OMX_MAX_STRINGNAME_SIZE)) {
                 sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.vc1",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
@@ -1348,6 +1459,10 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
         }
         else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
                 sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.ivf",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
+        else {
+               sprintf(m_debug.infile_name, "%s/input_dec_%d_%d_%p.divx",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         }
         m_debug.infile = fopen (m_debug.infile_name, "ab");
@@ -1402,7 +1517,7 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
 }
 
 int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer) {
-    if (m_debug.out_buffer_log && !m_debug.outfile) {
+    if (m_debug.out_buffer_log && !m_debug.outfile && buffer->nFilledLen) {
         sprintf(m_debug.outfile_name, "%s/output_%d_%d_%p.yuv",
                 m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         m_debug.outfile = fopen (m_debug.outfile_name, "ab");
@@ -1473,7 +1588,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     int fds[2];
     int r,ret=0;
     bool codec_ambiguous = false;
-    OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_dec";
+    OMX_STRING device_name = (OMX_STRING)"/dev/video32";
     char property_value[PROPERTY_VALUE_MAX] = {0};
 
 #ifdef _ANDROID_
@@ -1493,10 +1608,15 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
      * Clients may configure OMX_QCOM_FramePacking_Arbitrary to enable this mode
      */
     arbitrary_bytes = false;
+    property_get("vidc.dec.debug.arbitrarybytes.mode", property_value, "0");
+    if (atoi(property_value)) {
+        DEBUG_PRINT_HIGH("arbitrary_bytes mode enabled via property command");
+        arbitrary_bytes = true;
+    }
 #endif
 
-    if (!strncmp(role, "OMX.qcom.video.decoder.avc.secure",OMX_MAX_STRINGNAME_SIZE)) {
-        struct v4l2_control control;
+    if (!strncmp(role, "OMX.qcom.video.decoder.avc.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
         secure_mode = true;
         arbitrary_bytes = false;
         role = (OMX_STRING)"OMX.qcom.video.decoder.avc";
@@ -1505,6 +1625,26 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         secure_mode = true;
         arbitrary_bytes = false;
         role = (OMX_STRING)"OMX.qcom.video.decoder.mpeg2";
+    } else if (!strncmp(role, "OMX.qcom.video.decoder.hevc.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
+        secure_mode = true;
+        arbitrary_bytes = false;
+        role = (OMX_STRING)"OMX.qcom.video.decoder.hevc";
+    } else if (!strncmp(role, "OMX.qcom.video.decoder.vc1.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
+        secure_mode = true;
+        arbitrary_bytes = false;
+        role = (OMX_STRING)"OMX.qcom.video.decoder.vc1";
+    } else if (!strncmp(role, "OMX.qcom.video.decoder.wmv.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
+        secure_mode = true;
+        arbitrary_bytes = false;
+        role = (OMX_STRING)"OMX.qcom.video.decoder.wmv";
+    } else if (!strncmp(role, "OMX.qcom.video.decoder.mpeg4.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
+        secure_mode = true;
+        arbitrary_bytes = false;
+        role = (OMX_STRING)"OMX.qcom.video.decoder.mpeg4";
     }
 
     drv_ctx.video_driver_fd = open(device_name, O_RDWR);
@@ -1643,7 +1783,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         strlcpy((char *)m_cRole, "video_decoder.hevc",OMX_MAX_STRINGNAME_SIZE);
         drv_ctx.decoder_format = VDEC_CODECTYPE_HEVC;
         output_capability = V4L2_PIX_FMT_HEVC;
-        eCompressionFormat = OMX_VIDEO_CodingHEVC;
+        eCompressionFormat = (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingHevc;
         codec_type_parse = CODEC_TYPE_HEVC;
         m_frame_parser.init_start_codes(codec_type_parse);
         m_frame_parser.init_nal_length(nal_length);
@@ -1779,6 +1919,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             m_decoder_capability.max_height = frmsize.stepwise.max_height;
         }
 
+        memset(&fmt, 0x0, sizeof(struct v4l2_format));
         fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
         fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -1788,6 +1929,14 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             /*TODO: How to handle this case */
             DEBUG_PRINT_ERROR("Failed to set format on capture port");
         }
+        memset(&framesize, 0, sizeof(OMX_FRAMESIZETYPE));
+        framesize.nWidth = drv_ctx.video_resolution.frame_width;
+        framesize.nHeight = drv_ctx.video_resolution.frame_height;
+
+        memset(&rectangle, 0, sizeof(OMX_CONFIG_RECTTYPE));
+        rectangle.nWidth = drv_ctx.video_resolution.frame_width;
+        rectangle.nHeight = drv_ctx.video_resolution.frame_height;
+
         DEBUG_PRINT_HIGH("Set Format was successful");
         if (secure_mode) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_SECURE;
@@ -1827,6 +1976,16 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
         drv_ctx.idr_only_decoding = 0;
 
+        property_get("vidc.debug.turbo", property_value, "0");
+        if (atoi(property_value)) {
+            DEBUG_PRINT_HIGH("Turbo mode debug property enabled");
+            control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+            control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO;
+            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                DEBUG_PRINT_ERROR("Failed to set turbo mode");
+            }
+        }
+
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
         if (strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
@@ -1835,7 +1994,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
                 enable_extradata(DEFAULT_EXTRADATA, true, true);
 #endif
         eRet=get_buffer_req(&drv_ctx.ip_buf);
-        DEBUG_PRINT_HIGH("Input Buffer Size =%d",drv_ctx.ip_buf.buffer_size);
+        DEBUG_PRINT_HIGH("Input Buffer Size =%u",(unsigned int)drv_ctx.ip_buf.buffer_size);
         get_buffer_req(&drv_ctx.op_buf);
         if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264 ||
                 drv_ctx.decoder_format == VDEC_CODECTYPE_HEVC ||
@@ -1977,18 +2136,6 @@ OMX_ERRORTYPE  omx_vdec::send_command(OMX_IN OMX_HANDLETYPE hComp,
         DEBUG_PRINT_ERROR("send_command(): ERROR OMX_CommandFlush "
                 "to invalid port: %u", (unsigned int)param1);
         return OMX_ErrorBadPortIndex;
-    } else if (cmd == OMX_CommandFlush && (param1 == OMX_CORE_INPUT_PORT_INDEX ||
-                param1 == OMX_ALL)) {
-        while (android_atomic_add(0, &m_queued_codec_config_count) > 0) {
-            struct timespec ts;
-
-            clock_gettime(CLOCK_REALTIME, &ts);
-            ts.tv_sec += 2;
-            if (sem_timedwait(&m_safe_flush, &ts)) {
-                DEBUG_PRINT_ERROR("Failed to wait for EBDs of CODEC CONFIG buffers");
-                break;
-            }
-        }
     }
 
     post_event((unsigned)cmd,(unsigned)param1,OMX_COMPONENT_GENERATE_COMMAND);
@@ -2325,6 +2472,23 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
 #ifdef _MSM8974_
         send_codec_config();
 #endif
+        if (cmd == OMX_CommandFlush && (param1 == OMX_CORE_INPUT_PORT_INDEX ||
+                    param1 == OMX_ALL)) {
+            if (android_atomic_add(0, &m_queued_codec_config_count) > 0) {
+               struct timespec ts;
+
+               clock_gettime(CLOCK_REALTIME, &ts);
+               ts.tv_sec += 2;
+               DEBUG_PRINT_LOW("waiting for %d EBDs of CODEC CONFIG buffers ",
+                       m_queued_codec_config_count);
+               BITMASK_SET(&m_flags, OMX_COMPONENT_FLUSH_DEFERRED);
+               if (sem_timedwait(&m_safe_flush, &ts)) {
+                   DEBUG_PRINT_ERROR("Failed to wait for EBDs of CODEC CONFIG buffers");
+               }
+               BITMASK_CLEAR (&m_flags,OMX_COMPONENT_FLUSH_DEFERRED);
+            }
+        }
+
         if (OMX_CORE_INPUT_PORT_INDEX == param1 || OMX_ALL == param1) {
             BITMASK_SET(&m_flags, OMX_COMPONENT_INPUT_FLUSH_PENDING);
         }
@@ -2646,11 +2810,26 @@ bool omx_vdec::post_event(unsigned long p1,
 {
     bool bRet = false;
 
+    /* Just drop messages typically generated by hardware (w/o client request),
+     * if we've reported an error to client. */
+    if (m_error_propogated) {
+        switch (id) {
+            case OMX_COMPONENT_GENERATE_PORT_RECONFIG:
+            case OMX_COMPONENT_GENERATE_HARDWARE_ERROR:
+                DEBUG_PRINT_ERROR("Dropping message %lx "
+                        "since client expected to be in error state", id);
+                return false;
+            default:
+                /* whatever */
+                break;
+        }
+    }
 
     pthread_mutex_lock(&m_lock);
 
     if (id == m_fill_output_msg ||
-            id == OMX_COMPONENT_GENERATE_FBD) {
+            id == OMX_COMPONENT_GENERATE_FBD ||
+            id == OMX_COMPONENT_GENERATE_PORT_RECONFIG) {
         m_ftb_q.insert_entry(p1,p2,id);
     } else if (id == OMX_COMPONENT_GENERATE_ETB ||
             id == OMX_COMPONENT_GENERATE_EBD ||
@@ -2702,9 +2881,14 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
                 eRet = OMX_ErrorNoMore;
             }
         } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevc", OMX_MAX_STRINGNAME_SIZE)) {
+            if (profileLevelType->nProfileIndex == 0) {
+                profileLevelType->eProfile = OMX_VIDEO_HEVCProfileMain;
+                profileLevelType->eLevel   = OMX_VIDEO_HEVCMainTierLevel51;
+            } else {
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
                         (unsigned int)profileLevelType->nProfileIndex);
                 eRet = OMX_ErrorNoMore;
+            }
         } else if ((!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.h263",OMX_MAX_STRINGNAME_SIZE))) {
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_H263ProfileBaseline;
@@ -2822,7 +3006,19 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     }
                                 } else if (1 == portFmt->nPortIndex) {
                                     portFmt->eCompressionFormat =  OMX_VIDEO_CodingUnused;
-                                    portFmt->eColorFormat = getColorFormatAt(portFmt->nIndex);
+
+                                    // Distinguish non-surface mode from normal playback use-case based on
+                                    // usage hinted via "OMX.google.android.index.useAndroidNativeBuffer2"
+                                    // For non-android, use the default list
+                                    // Also use default format-list if FLEXIBLE YUV is supported,
+                                    // as the client negotiates the standard color-format if it needs to
+                                    bool useNonSurfaceMode = false;
+#if defined(_ANDROID_) && !defined(FLEXYUV_SUPPORTED)
+                                    useNonSurfaceMode = (m_enable_android_native_buffers == OMX_FALSE);
+#endif
+                                    portFmt->eColorFormat = useNonSurfaceMode ?
+                                        getPreferredColorFormatNonSurfaceMode(portFmt->nIndex) :
+                                        getPreferredColorFormatDefaultMode(portFmt->nIndex);
 
                                     if (portFmt->eColorFormat == OMX_COLOR_FormatMax ) {
                                         eRet = OMX_ErrorNoMore;
@@ -2946,7 +3142,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                         GetAndroidNativeBufferUsageParams* nativeBuffersUsage = (GetAndroidNativeBufferUsageParams *) paramData;
                                         if (nativeBuffersUsage->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
 
-                                            if (secure_mode) {
+                                            if (secure_mode && !secure_scaling_to_non_secure_opb) {
                                                 nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_MM_HEAP | GRALLOC_USAGE_PROTECTED |
                                                         GRALLOC_USAGE_PRIVATE_UNCACHED);
                                             } else {
@@ -2961,11 +3157,15 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     }
                                     break;
 #endif
+
+#ifdef FLEXYUV_SUPPORTED
         case OMX_QcomIndexFlexibleYUVDescription: {
                 DEBUG_PRINT_LOW("get_parameter: describeColorFormat");
-                eRet = describeColorFormat((DescribeColorFormatParams *)paramData);
+                eRet = describeColorFormat(paramData);
                 break;
             }
+#endif
+
         default: {
                  DEBUG_PRINT_ERROR("get_parameter: unknown param %08x", paramIndex);
                  eRet =OMX_ErrorUnsupportedIndex;
@@ -3050,6 +3250,9 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
     int ret=0;
     struct v4l2_format fmt;
+#ifdef _ANDROID_
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+#endif
     if (m_state == OMX_StateInvalid) {
         DEBUG_PRINT_ERROR("Set Param in Invalid State");
         return OMX_ErrorInvalidState;
@@ -3077,6 +3280,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                        (int)portDefn->format.video.nFrameWidth);
                                if (OMX_DirOutput == portDefn->eDir) {
                                    DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port");
+                                   bool port_format_changed = false;
                                    m_display_id = portDefn->format.video.pNativeWindow;
                                    unsigned int buffer_size;
                                    /* update output port resolution with client supplied dimensions
@@ -3088,13 +3292,34 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                (unsigned int)portDefn->format.video.nFrameHeight);
                                        if (portDefn->format.video.nFrameHeight != 0x0 &&
                                                portDefn->format.video.nFrameWidth != 0x0) {
+                                           memset(&fmt, 0x0, sizeof(struct v4l2_format));
+                                           fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+                                           fmt.fmt.pix_mp.pixelformat = capture_capability;
+                                           ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+                                           if (ret) {
+                                               DEBUG_PRINT_ERROR("Get Resolution failed");
+                                               eRet = OMX_ErrorHardware;
+                                               break;
+                                           }
+                                           if ((portDefn->format.video.nFrameHeight != (unsigned int)fmt.fmt.pix_mp.height) ||
+                                               (portDefn->format.video.nFrameWidth != (unsigned int)fmt.fmt.pix_mp.width)) {
+                                                   port_format_changed = true;
+                                           }
                                            update_resolution(portDefn->format.video.nFrameWidth,
                                                    portDefn->format.video.nFrameHeight,
                                                    portDefn->format.video.nFrameWidth,
                                                    portDefn->format.video.nFrameHeight);
+
+                                           /* set crop info */
+                                           rectangle.nLeft = 0;
+                                           rectangle.nTop = 0;
+                                           rectangle.nWidth = portDefn->format.video.nFrameWidth;
+                                           rectangle.nHeight = portDefn->format.video.nFrameHeight;
+
                                            eRet = is_video_session_supported();
                                            if (eRet)
                                                break;
+                                           memset(&fmt, 0x0, sizeof(struct v4l2_format));
                                            fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
                                            fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
                                            fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -3108,11 +3333,56 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            } else
                                                eRet = get_buffer_req(&drv_ctx.op_buf);
                                        }
+
+                                       if (eRet) {
+                                           break;
+                                       }
+
+                                       if (secure_mode) {
+                                           struct v4l2_control control;
+                                           control.id = V4L2_CID_MPEG_VIDC_VIDEO_SECURE_SCALING_THRESHOLD;
+                                           if (ioctl(drv_ctx.video_driver_fd, VIDIOC_G_CTRL, &control) < 0) {
+                                               DEBUG_PRINT_ERROR("Failed getting secure scaling threshold : %d, id was : %x", errno, control.id);
+                                               eRet = OMX_ErrorHardware;
+                                           } else {
+                                               /* This is a workaround for a bug in fw which uses stride
+                                                * and slice instead of width and height to check against
+                                                * the threshold.
+                                                */
+                                               OMX_U32 stride, slice;
+                                               if (drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
+                                                   stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, portDefn->format.video.nFrameWidth);
+                                                   slice = VENUS_Y_SCANLINES(COLOR_FMT_NV12, portDefn->format.video.nFrameHeight);
+                                               } else {
+                                                   stride = portDefn->format.video.nFrameWidth;
+                                                   slice = portDefn->format.video.nFrameHeight;
+                                               }
+
+                                               DEBUG_PRINT_LOW("Stride is %d, slice is %d, sxs is %d\n", stride, slice, stride * slice);
+                                               DEBUG_PRINT_LOW("Threshold value is %d\n", control.value);
+
+                                               if (stride * slice <= (OMX_U32)control.value) {
+                                                   secure_scaling_to_non_secure_opb = true;
+                                                   DEBUG_PRINT_HIGH("Enabling secure scalar out of CPZ");
+                                                   control.id = V4L2_CID_MPEG_VIDC_VIDEO_NON_SECURE_OUTPUT2;
+                                                   control.value = 1;
+                                                   if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control) < 0) {
+                                                       DEBUG_PRINT_ERROR("Enabling non-secure output2 failed");
+                                                       eRet = OMX_ErrorUnsupportedSetting;
+                                                   }
                                    }
+                                           }
+                                       }
+                                   }
+
+                                   if (eRet) {
+                                       break;
+                                   }
+
                                    if (!client_buffers.get_buffer_req(buffer_size)) {
                                        DEBUG_PRINT_ERROR("Error in getting buffer requirements");
                                        eRet = OMX_ErrorBadParameter;
-                                   } else {
+                                   } else if (!port_format_changed) {
                                        if ( portDefn->nBufferCountActual >= drv_ctx.op_buf.mincount &&
                                                portDefn->nBufferSize >=  drv_ctx.op_buf.buffer_size ) {
                                            drv_ctx.op_buf.actualcount = portDefn->nBufferCountActual;
@@ -3125,7 +3395,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                m_port_def = *portDefn;
                                        } else {
                                            DEBUG_PRINT_ERROR("ERROR: OP Requirements(#%d: %u) Requested(#%u: %u)",
-                                                   drv_ctx.op_buf.mincount, drv_ctx.op_buf.buffer_size,
+                                                   drv_ctx.op_buf.mincount, (unsigned int)drv_ctx.op_buf.buffer_size,
                                                    (unsigned int)portDefn->nBufferCountActual, (unsigned int)portDefn->nBufferSize);
                                            eRet = OMX_ErrorBadParameter;
                                        }
@@ -3170,7 +3440,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            eRet = OMX_ErrorHardware;
                                            break;
                                    }
-                                       m_perf_control.request_cores(frm_int);
+                                       //m_perf_control.request_cores(frm_int);
                                    }
 
                                    if (drv_ctx.video_resolution.frame_height !=
@@ -3198,6 +3468,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            eRet = is_video_session_supported();
                                            if (eRet)
                                                break;
+                                           memset(&fmt, 0x0, sizeof(struct v4l2_format));
                                            fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
                                            fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
                                            fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -3207,9 +3478,18 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            if (ret) {
                                                DEBUG_PRINT_ERROR("Set Resolution failed");
                                                eRet = OMX_ErrorUnsupportedSetting;
-                                           } else
+                                           } else {
+                                               if (!is_down_scalar_enabled)
                                                eRet = get_buffer_req(&drv_ctx.op_buf);
                                        }
+                                   }
+                                   }
+                                   if (m_custom_buffersize.input_buffersize
+                                        && (portDefn->nBufferSize > m_custom_buffersize.input_buffersize)) {
+                                       DEBUG_PRINT_ERROR("ERROR: Custom buffer size set by client: %d, trying to set: %d",
+                                               m_custom_buffersize.input_buffersize, portDefn->nBufferSize);
+                                       eRet = OMX_ErrorBadParameter;
+                                       break;
                                    }
                                    if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
                                            || portDefn->nBufferSize != drv_ctx.ip_buf.buffer_size) {
@@ -3222,7 +3502,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    }
                                    if (false == port_format_changed) {
                                        DEBUG_PRINT_ERROR("ERROR: IP Requirements(#%d: %u) Requested(#%u: %u)",
-                                               drv_ctx.ip_buf.mincount, drv_ctx.ip_buf.buffer_size,
+                                               drv_ctx.ip_buf.mincount, (unsigned int)drv_ctx.ip_buf.buffer_size,
                                                (unsigned int)portDefn->nBufferCountActual, (unsigned int)portDefn->nBufferSize);
                                        eRet = OMX_ErrorBadParameter;
                                    }
@@ -3241,6 +3521,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoPortFormat 0x%x, port: %u",
                                         portFmt->eColorFormat, (unsigned int)portFmt->nPortIndex);
 
+                                memset(&fmt, 0x0, sizeof(struct v4l2_format));
                                 if (1 == portFmt->nPortIndex) {
                                     fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
                                     fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
@@ -3297,6 +3578,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 } else if (portFmt->nFramePackingFormat ==
                                         OMX_QCOM_FramePacking_OnlyOneCompleteFrame) {
                                     arbitrary_bytes = false;
+#ifdef _ANDROID_
+                                    property_get("vidc.dec.debug.arbitrarybytes.mode", property_value, "0");
+                                    if (atoi(property_value)) {
+                                        DEBUG_PRINT_HIGH("arbitrary_bytes enabled via property command");
+                                        arbitrary_bytes = true;
+                                    }
+#endif
                                 } else {
                                     DEBUG_PRINT_ERROR("Setparameter: unknown FramePacking format %u",
                                             (unsigned int)portFmt->nFramePackingFormat);
@@ -3525,6 +3813,10 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 eRet = enable_extradata(OMX_EXTNUSER_EXTRADATA, false,
                                     ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
+        case OMX_QcomIndexParamMpeg2SeqDispExtraData:
+                                eRet = enable_extradata(OMX_MPEG2SEQDISP_EXTRADATA, false,
+                                    ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                                break;
         case OMX_QcomIndexParamVideoDivx: {
                               QOMX_VIDEO_PARAM_DIVXTYPE* divXType = (QOMX_VIDEO_PARAM_DIVXTYPE *) paramData;
                           }
@@ -3607,6 +3899,15 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            if (enableNativeBuffers) {
                                                m_enable_android_native_buffers = enableNativeBuffers->enable;
                                            }
+#if !defined(FLEXYUV_SUPPORTED)
+                                           if (m_enable_android_native_buffers) {
+                                               // Use the most-preferred-native-color-format as surface-mode is hinted here
+                                               if(!client_buffers.set_color_format(getPreferredColorFormatDefaultMode(0))) {
+                                                   DEBUG_PRINT_ERROR("Failed to set native color format!");
+                                                   eRet = OMX_ErrorUnsupportedSetting;
+                                               }
+                                           }
+#endif
                                        }
                                        break;
         case OMX_GoogleAndroidIndexUseAndroidNativeBuffer: {
@@ -3727,36 +4028,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                              (unsigned int)maxSmoothStreamingWidth, (unsigned int)maxSmoothStreamingHeight);
                     eRet = OMX_ErrorBadParameter;
                 } else {
-                    eRet = enable_smoothstreaming();
-                    if (eRet != OMX_ErrorNone) {
-                         DEBUG_PRINT_ERROR("Failed to enable Adaptive Playback on driver.");
-                         eRet = OMX_ErrorHardware;
-                     } else  {
-                         DEBUG_PRINT_HIGH("Enabling Adaptive playback for %u x %u",
-                                 (unsigned int)pParams->nMaxFrameWidth,
-                                 (unsigned int)pParams->nMaxFrameHeight);
-                         m_smoothstreaming_mode = true;
-                         m_smoothstreaming_width = pParams->nMaxFrameWidth;
-                         m_smoothstreaming_height = pParams->nMaxFrameHeight;
-                     }
-                     struct v4l2_format fmt;
-                     update_resolution(m_smoothstreaming_width, m_smoothstreaming_height,
-                                                  m_smoothstreaming_width, m_smoothstreaming_height);
-                     eRet = is_video_session_supported();
-                     if (eRet)
-                         break;
-                     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-                     fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
-                     fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
-                     fmt.fmt.pix_mp.pixelformat = output_capability;
-                     DEBUG_PRINT_LOW("fmt.fmt.pix_mp.height = %d , fmt.fmt.pix_mp.width = %d",
-                                                     fmt.fmt.pix_mp.height,fmt.fmt.pix_mp.width);
-                     ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
-                     if (ret) {
-                         DEBUG_PRINT_ERROR("Set Resolution failed");
-                         eRet = OMX_ErrorUnsupportedSetting;
-                     } else
-                         eRet = get_buffer_req(&drv_ctx.op_buf);
+                    eRet = enable_adaptive_playback(pParams->nMaxFrameWidth, pParams->nMaxFrameHeight);
                  }
             } else {
                 DEBUG_PRINT_ERROR(
@@ -3767,6 +4039,33 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         }
 
 #endif
+        case OMX_QcomIndexParamVideoCustomBufferSize:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoCustomBufferSize");
+            QOMX_VIDEO_CUSTOM_BUFFERSIZE* pParam = (QOMX_VIDEO_CUSTOM_BUFFERSIZE*)paramData;
+            if (pParam->nPortIndex == OMX_CORE_INPUT_PORT_INDEX) {
+                struct v4l2_control control;
+                control.id = V4L2_CID_MPEG_VIDC_VIDEO_BUFFER_SIZE_LIMIT;
+                control.value = pParam->nBufferSize;
+                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                    DEBUG_PRINT_ERROR("Failed to set input buffer size");
+                    eRet = OMX_ErrorUnsupportedSetting;
+                } else {
+                    eRet = get_buffer_req(&drv_ctx.ip_buf);
+                    if (eRet == OMX_ErrorNone) {
+                        m_custom_buffersize.input_buffersize = drv_ctx.ip_buf.buffer_size;
+                        DEBUG_PRINT_HIGH("Successfully set custom input buffer size = %d",
+                            m_custom_buffersize.input_buffersize);
+                    } else {
+                        DEBUG_PRINT_ERROR("Failed to get buffer requirement");
+                    }
+                }
+            } else {
+                DEBUG_PRINT_ERROR("ERROR: Custom buffer size in not supported on output port");
+                eRet = OMX_ErrorBadParameter;
+            }
+            break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("Setparameter: unknown param %d", paramIndex);
                  eRet = OMX_ErrorUnsupportedIndex;
@@ -3850,6 +4149,36 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
         case OMX_IndexConfigCommonOutputCrop: {
                                   OMX_CONFIG_RECTTYPE *rect = (OMX_CONFIG_RECTTYPE *) configData;
                                   memcpy(rect, &rectangle, sizeof(OMX_CONFIG_RECTTYPE));
+                                  DEBUG_PRINT_HIGH("get_config: crop info: L: %u, T: %u, R: %u, B: %u",
+                                        rectangle.nLeft, rectangle.nTop,
+                                        rectangle.nWidth, rectangle.nHeight);
+                                  break;
+                              }
+        case OMX_QcomIndexConfigPerfLevel: {
+                struct v4l2_control control;
+                OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *perf =
+                        (OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *)configData;
+
+                control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_G_CTRL, &control) < 0) {
+                    DEBUG_PRINT_ERROR("Failed getting performance level: %d", errno);
+                    eRet = OMX_ErrorHardware;
+                }
+
+                if (eRet == OMX_ErrorNone) {
+                    switch (control.value) {
+                        case V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO:
+                            perf->ePerfLevel = OMX_QCOM_PerfLevelTurbo;
+                            break;
+                        default:
+                            DEBUG_PRINT_HIGH("Unknown perf level %d, reporting Nominal instead", control.value);
+                            /* Fall through */
+                        case V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL:
+                            perf->ePerfLevel = OMX_QCOM_PerfLevelNominal;
+                            break;
+                    }
+                }
+
                                   break;
                               }
         default: {
@@ -4082,6 +4411,33 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
         }
 
         return ret;
+    } else if ((int)configIndex == (int)OMX_QcomIndexConfigPerfLevel) {
+        OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *perf =
+            (OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL *)configData;
+        struct v4l2_control control;
+
+        DEBUG_PRINT_LOW("Set perf level: %d", perf->ePerfLevel);
+
+        control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+
+        switch (perf->ePerfLevel) {
+            case OMX_QCOM_PerfLevelNominal:
+                control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL;
+                break;
+            case OMX_QCOM_PerfLevelTurbo:
+                control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO;
+                break;
+            default:
+                ret = OMX_ErrorUnsupportedSetting;
+                break;
+        }
+
+        if (ret == OMX_ErrorNone) {
+            ret = (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control) < 0) ?
+                OMX_ErrorUnsupportedSetting : OMX_ErrorNone;
+        }
+
+        return ret;
     }
 
     return OMX_ErrorNotImplemented;
@@ -4125,6 +4481,8 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoInputBitsInfoExtraData;
     } else if (extn_equals(paramName, OMX_QCOM_INDEX_PARAM_VIDEO_EXTNUSER_EXTRADATA)) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexEnableExtnUserData;
+    } else if (extn_equals(paramName, OMX_QCOM_INDEX_PARAM_VIDEO_MPEG2SEQDISP_EXTRADATA)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamMpeg2SeqDispExtraData;
     }
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
     else if (extn_equals(paramName, "OMX.google.android.index.enableAndroidNativeBuffers")) {
@@ -4141,14 +4499,16 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     else if (extn_equals(paramName, "OMX.google.android.index.storeMetaDataInBuffers")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
     }
-#if ADAPTIVE_PLAYBACK_SUPPORTED
+#ifdef ADAPTIVE_PLAYBACK_SUPPORTED
     else if (extn_equals(paramName, "OMX.google.android.index.prepareForAdaptivePlayback")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoAdaptivePlaybackMode;
     }
 #endif
+#ifdef FLEXYUV_SUPPORTED
     else if (extn_equals(paramName,"OMX.google.android.index.describeColorFormat")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexFlexibleYUVDescription;
     }
+#endif
     else {
         DEBUG_PRINT_ERROR("Extension: %s not implemented", paramName);
         return OMX_ErrorNotImplemented;
@@ -4318,6 +4678,9 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
         eRet = OMX_ErrorInsufficientResources;
     }
 
+    if (eRet != OMX_ErrorNone)
+       return eRet;
+
     if (dynamic_buf_mode) {
         *bufferHdr = (m_out_mem_ptr + i );
         (*bufferHdr)->pBuffer = NULL;
@@ -4352,13 +4715,24 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                 handle = (private_handle_t *)buff;
                 privateAppData = appData;
             }
-
-            if ((OMX_U32)handle->size < drv_ctx.op_buf.buffer_size) {
-                DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
-                        " expected %u, got %u",
-                        drv_ctx.op_buf.buffer_size, (unsigned int)handle->size);
+            if (!handle) {
+                DEBUG_PRINT_ERROR("handle is invalid");
                 return OMX_ErrorBadParameter;
             }
+
+            if ((OMX_U32)handle->size < drv_ctx.op_buf.buffer_size) {
+                if (secure_mode && secure_scaling_to_non_secure_opb) {
+                    DEBUG_PRINT_HIGH("Buffer size expected %u, got %u, but it's ok since we will never map it",
+                        (unsigned int)drv_ctx.op_buf.buffer_size, (unsigned int)handle->size);
+                } else {
+                DEBUG_PRINT_ERROR("Insufficient sized buffer given for playback,"
+                        " expected %u, got %u",
+                            (unsigned int)drv_ctx.op_buf.buffer_size, (unsigned int)handle->size);
+                return OMX_ErrorBadParameter;
+            }
+            }
+
+            drv_ctx.op_buf.buffer_size = handle->size;
 
             if (!m_use_android_native_buffers) {
                 if (!secure_mode) {
@@ -4454,7 +4828,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                 OMX_QCOM_PLATFORM_PRIVATE_LIST *pmem_list;
                 OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *pmem_info;
                 pmem_list = (OMX_QCOM_PLATFORM_PRIVATE_LIST*) appData;
-                if (!pmem_list->entryList || !pmem_list->entryList->entry ||
+                if (!pmem_list || !pmem_list->entryList || !pmem_list->entryList->entry ||
                         !pmem_list->nEntries ||
                         pmem_list->entryList->type != OMX_QCOM_PLATFORM_PRIVATE_PMEM) {
                     DEBUG_PRINT_ERROR("Pmem info not valid in use buffer");
@@ -4627,12 +5001,10 @@ OMX_ERRORTYPE  omx_vdec::use_buffer(
     OMX_ERRORTYPE error = OMX_ErrorNone;
     struct vdec_setbuffer_cmd setbuffers;
 
-    if (bufferHdr == NULL || bytes == 0) {
-        if (!secure_mode && buffer == NULL) {
+    if (bufferHdr == NULL || bytes == 0 || (!secure_mode && buffer == NULL)) {
             DEBUG_PRINT_ERROR("bad param 0x%p %u 0x%p",bufferHdr, (unsigned int)bytes, buffer);
             return OMX_ErrorBadParameter;
         }
-    }
     if (m_state == OMX_StateInvalid) {
         DEBUG_PRINT_ERROR("Use Buffer in Invalid State");
         return OMX_ErrorInvalidState;
@@ -4703,8 +5075,8 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
             if (!secure_mode) {
                 DEBUG_PRINT_LOW("unmap the input buffer fd=%d",
                         drv_ctx.ptr_inputbuffer[index].pmem_fd);
-                DEBUG_PRINT_LOW("unmap the input buffer size=%d  address = %p",
-                        drv_ctx.ptr_inputbuffer[index].mmaped_size,
+                DEBUG_PRINT_LOW("unmap the input buffer size=%u  address = %p",
+                        (unsigned int)drv_ctx.ptr_inputbuffer[index].mmaped_size,
                         drv_ctx.ptr_inputbuffer[index].bufferaddr);
                 munmap (drv_ctx.ptr_inputbuffer[index].bufferaddr,
                         drv_ctx.ptr_inputbuffer[index].mmaped_size);
@@ -4762,8 +5134,8 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
                     if (!secure_mode) {
                         DEBUG_PRINT_LOW("unmap the output buffer fd = %d",
                                 drv_ctx.ptr_outputbuffer[0].pmem_fd);
-                        DEBUG_PRINT_LOW("unmap the ouput buffer size=%d  address = %p",
-                                drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
+                        DEBUG_PRINT_LOW("unmap the ouput buffer size=%u  address = %p",
+                                (unsigned int)drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount,
                                 drv_ctx.ptr_outputbuffer[0].bufferaddr);
                         munmap (drv_ctx.ptr_outputbuffer[0].bufferaddr,
                                 drv_ctx.ptr_outputbuffer[0].mmaped_size * drv_ctx.op_buf.actualcount);
@@ -4811,8 +5183,8 @@ OMX_ERRORTYPE omx_vdec::allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
                   calloc( (sizeof(OMX_BUFFERHEADERTYPE*)),
                           drv_ctx.ip_buf.actualcount);
 
-        if (m_inp_heap_ptr == NULL) {
-            DEBUG_PRINT_ERROR("m_inp_heap_ptr Allocation failed ");
+        if (m_inp_heap_ptr == NULL || m_phdr_pmem_ptr == NULL) {
+            DEBUG_PRINT_ERROR("m_inp_heap_ptr or m_phdr_pmem_ptr Allocation failed ");
             return OMX_ErrorInsufficientResources;
         }
     }
@@ -4893,15 +5265,15 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
 
 
     if (bytes != drv_ctx.ip_buf.buffer_size) {
-        DEBUG_PRINT_LOW("Requested Size is wrong %u epected is %d",
-                (unsigned int)bytes, drv_ctx.ip_buf.buffer_size);
+        DEBUG_PRINT_LOW("Requested Size is wrong %u epected is %u",
+                (unsigned int)bytes, (unsigned int)drv_ctx.ip_buf.buffer_size);
         return OMX_ErrorBadParameter;
     }
 
     if (!m_inp_mem_ptr) {
-        DEBUG_PRINT_HIGH("Allocate i/p buffer Header: Cnt(%d) Sz(%d)",
+        DEBUG_PRINT_HIGH("Allocate i/p buffer Header: Cnt(%d) Sz(%u)",
                 drv_ctx.ip_buf.actualcount,
-                drv_ctx.ip_buf.buffer_size);
+                (unsigned int)drv_ctx.ip_buf.buffer_size);
 
         m_inp_mem_ptr = (OMX_BUFFERHEADERTYPE*) \
                 calloc( (sizeof(OMX_BUFFERHEADERTYPE)), drv_ctx.ip_buf.actualcount);
@@ -4949,7 +5321,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
         drv_ctx.ip_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
                 drv_ctx.ip_buf.buffer_size,drv_ctx.op_buf.alignment,
                 &drv_ctx.ip_buf_ion_info[i].ion_alloc_data,
-                &drv_ctx.ip_buf_ion_info[i].fd_ion_data, secure_mode ? ION_SECURE : 0);
+                &drv_ctx.ip_buf_ion_info[i].fd_ion_data, secure_mode ? ION_SECURE : ION_FLAG_CACHED);
         if (drv_ctx.ip_buf_ion_info[i].ion_device_fd < 0) {
             return OMX_ErrorInsufficientResources;
         }
@@ -5085,9 +5457,9 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     struct ion_fd_data fd_ion_data;
 #endif
     if (!m_out_mem_ptr) {
-        DEBUG_PRINT_HIGH("Allocate o/p buffer Header: Cnt(%d) Sz(%d)",
+        DEBUG_PRINT_HIGH("Allocate o/p buffer Header: Cnt(%d) Sz(%u)",
                 drv_ctx.op_buf.actualcount,
-                drv_ctx.op_buf.buffer_size);
+                (unsigned int)drv_ctx.op_buf.buffer_size);
         int nBufHdrSize        = 0;
         int nPlatformEntrySize = 0;
         int nPlatformListSize  = 0;
@@ -5111,17 +5483,23 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         nPlatformEntrySize = drv_ctx.op_buf.actualcount *
             sizeof(OMX_QCOM_PLATFORM_PRIVATE_ENTRY);
 
-        DEBUG_PRINT_LOW("TotalBufHdr %d BufHdrSize %d PMEM %d PL %d",nBufHdrSize,
-                sizeof(OMX_BUFFERHEADERTYPE),
+        DEBUG_PRINT_LOW("TotalBufHdr %d BufHdrSize %u PMEM %d PL %d",nBufHdrSize,
+                (unsigned int)sizeof(OMX_BUFFERHEADERTYPE),
                 nPMEMInfoSize,
                 nPlatformListSize);
         DEBUG_PRINT_LOW("PE %d OutputBuffer Count %d",nPlatformEntrySize,
                 drv_ctx.op_buf.actualcount);
 #ifdef USE_ION
+        // Allocate output buffers as cached to improve performance of software-reading
+        // of the YUVs. Output buffers are cache-invalidated in driver.
+        // If color-conversion is involved, Only the C2D output buffers are cached, no
+        // need to cache the decoder's output buffers
+        int cache_flag = client_buffers.is_color_conversion_enabled() ? 0 : ION_FLAG_CACHED;
         ion_device_fd = alloc_map_ion_memory(
                 drv_ctx.op_buf.buffer_size * drv_ctx.op_buf.actualcount,
-                drv_ctx.op_buf.alignment,
-                &ion_alloc_data, &fd_ion_data, secure_mode ? ION_SECURE : 0);
+                secure_scaling_to_non_secure_opb ? SZ_4K : drv_ctx.op_buf.alignment,
+                &ion_alloc_data, &fd_ion_data,
+                (secure_mode && !secure_scaling_to_non_secure_opb) ? ION_SECURE : cache_flag);
         if (ion_device_fd < 0) {
             return OMX_ErrorInsufficientResources;
         }
@@ -5159,8 +5537,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
                      drv_ctx.op_buf.actualcount),
                     PROT_READ|PROT_WRITE,MAP_SHARED,pmem_fd,0);
             if (pmem_baseaddress == MAP_FAILED) {
-                DEBUG_PRINT_ERROR("MMAP failed for Size %d",
-                        drv_ctx.op_buf.buffer_size);
+                DEBUG_PRINT_ERROR("MMAP failed for Size %u",
+                        (unsigned int)drv_ctx.op_buf.buffer_size);
                 close(pmem_fd);
 #ifdef USE_ION
                 free_ion_memory(&drv_ctx.op_buf_ion_info[i]);
@@ -5179,10 +5557,19 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
         drv_ctx.ptr_respbuffer = (struct vdec_output_frameinfo  *)\
                      calloc (sizeof (struct vdec_output_frameinfo),
                              drv_ctx.op_buf.actualcount);
+        if (!drv_ctx.ptr_outputbuffer || !drv_ctx.ptr_respbuffer) {
+            DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.ptr_outputbuffer or drv_ctx.ptr_respbuffer ");
+            return OMX_ErrorInsufficientResources;
+        }
+
 #ifdef USE_ION
         drv_ctx.op_buf_ion_info = (struct vdec_ion *)\
                       calloc (sizeof(struct vdec_ion),
                               drv_ctx.op_buf.actualcount);
+        if (!drv_ctx.op_buf_ion_info) {
+            DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.op_buf_ion_info");
+            return OMX_ErrorInsufficientResources;
+        }
 #endif
 
         if (m_out_mem_ptr && pPtr && drv_ctx.ptr_outputbuffer
@@ -5248,8 +5635,8 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
                 m_pmem_info[i].mapped_size = drv_ctx.ptr_outputbuffer[i].mmaped_size;
                 m_pmem_info[i].buffer = drv_ctx.ptr_outputbuffer[i].bufferaddr;
 
-                DEBUG_PRINT_LOW("pmem_fd = %d offset = %d address = %p",
-                        pmem_fd, drv_ctx.ptr_outputbuffer[i].offset,
+                DEBUG_PRINT_LOW("pmem_fd = %d offset = %u address = %p",
+                        pmem_fd, (unsigned int)drv_ctx.ptr_outputbuffer[i].offset,
                         drv_ctx.ptr_outputbuffer[i].bufferaddr);
                 // Move the buffer and buffer header pointers
                 bufHdr++;
@@ -5308,7 +5695,12 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
 
             *bufferHdr = (m_out_mem_ptr + i );
             if (secure_mode) {
+#ifdef USE_ION
+                drv_ctx.ptr_outputbuffer[i].bufferaddr =
+                    (OMX_U8 *)(intptr_t)drv_ctx.op_buf_ion_info[i].fd_ion_data.fd;
+#else
                 drv_ctx.ptr_outputbuffer[i].bufferaddr = *bufferHdr;
+#endif
             }
             drv_ctx.ptr_outputbuffer[i].mmaped_size = drv_ctx.op_buf.buffer_size;
 
@@ -5684,6 +6076,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     } else {
         post_event ((unsigned long)hComp,(unsigned long)buffer,OMX_COMPONENT_GENERATE_ETB);
     }
+    time_stamp_dts.insert_timestamp(buffer);
     return OMX_ErrorNone;
 }
 
@@ -5713,7 +6106,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
     struct vdec_bufferpayload *temp_buffer;
     struct vdec_seqheader seq_header;
     bool port_setting_changed = true;
-    bool not_coded_vop = false;
 
     /*Should we generate a Aync error event*/
     if (buffer == NULL || buffer->pInputPortPrivate == NULL) {
@@ -5740,30 +6132,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorNone;
     }
 
-
-    if (codec_type_parse == CODEC_TYPE_MPEG4 || codec_type_parse == CODEC_TYPE_DIVX) {
-        mp4StreamType psBits;
-        psBits.data = (unsigned char *)(buffer->pBuffer + buffer->nOffset);
-        psBits.numBytes = buffer->nFilledLen;
-        mp4_headerparser.parseHeader(&psBits);
-        not_coded_vop = mp4_headerparser.is_notcodec_vop(
-                (buffer->pBuffer + buffer->nOffset),buffer->nFilledLen);
-        if (not_coded_vop) {
-            DEBUG_PRINT_HIGH("Found Not coded vop len %u frame number %u",
-                    (unsigned int)buffer->nFilledLen,frame_count);
-            if (buffer->nFlags & OMX_BUFFERFLAG_EOS) {
-                DEBUG_PRINT_HIGH("Eos and Not coded Vop set len to zero");
-                not_coded_vop = false;
-                buffer->nFilledLen = 0;
-            }
-        }
-    }
-
-    if (input_flush_progress == true
-
-            || not_coded_vop
-
-       ) {
+    if (input_flush_progress == true) {
         DEBUG_PRINT_LOW("Flush in progress return buffer ");
         post_event ((unsigned long)buffer,VDEC_S_SUCCESS,
                 OMX_COMPONENT_GENERATE_EBD);
@@ -5904,14 +6273,15 @@ log_input_buffers((const char *)temp_buffer->bufferaddr, temp_buffer->buffer_len
     buf.flags |= (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) ? V4L2_QCOM_BUF_FLAG_CODECCONFIG: 0;
     buf.flags |= (buffer->nFlags & OMX_BUFFERFLAG_DECODEONLY) ? V4L2_QCOM_BUF_FLAG_DECODEONLY: 0;
 
+    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+        DEBUG_PRINT_LOW("Increment codec_config buffer counter");
+        android_atomic_inc(&m_queued_codec_config_count);
+    }
+
     rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
     if (rc) {
         DEBUG_PRINT_ERROR("Failed to qbuf Input buffer to driver");
         return OMX_ErrorHardware;
-    }
-
-    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-        android_atomic_inc(&m_queued_codec_config_count);
     }
 
     if (codec_config_flag && !(buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG)) {
@@ -5927,6 +6297,11 @@ log_input_buffers((const char *)temp_buffer->bufferaddr, temp_buffer->buffer_len
         if (!ret) {
             DEBUG_PRINT_HIGH("Streamon on OUTPUT Plane was successful");
             streaming[OUTPUT_PORT] = true;
+        } else if (errno == EBUSY) {
+            DEBUG_PRINT_ERROR("Failed to call stream on OUTPUT due to HW_OVERLOAD");
+            post_event ((unsigned long)buffer, VDEC_S_SUCCESS,
+                    OMX_COMPONENT_GENERATE_EBD);
+            return OMX_ErrorInsufficientResources;
         } else {
             DEBUG_PRINT_ERROR("Failed to call streamon on OUTPUT");
             DEBUG_PRINT_LOW("If Stream on failed no buffer should be queued");
@@ -5935,9 +6310,9 @@ log_input_buffers((const char *)temp_buffer->bufferaddr, temp_buffer->buffer_len
             return OMX_ErrorBadParameter;
         }
     }
-    DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%d)",
-            frameinfo.bufferaddr, frameinfo.timestamp, frameinfo.datalen);
-    time_stamp_dts.insert_timestamp(buffer);
+    DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%u)",
+            frameinfo.bufferaddr, (long long)frameinfo.timestamp,
+            (unsigned int)frameinfo.datalen);
 
     return ret;
 }
@@ -5960,13 +6335,14 @@ log_input_buffers((const char *)temp_buffer->bufferaddr, temp_buffer->buffer_len
 OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         OMX_IN OMX_BUFFERHEADERTYPE* buffer)
 {
+    unsigned nPortIndex = 0;
     if (dynamic_buf_mode) {
         private_handle_t *handle = NULL;
         struct VideoDecoderOutputMetaData *meta;
         unsigned int nPortIndex = 0;
 
         if (!buffer || !buffer->pBuffer) {
-            DEBUG_PRINT_ERROR("%s: invalid params: %p %p", __FUNCTION__, buffer, buffer->pBuffer);
+            DEBUG_PRINT_ERROR("%s: invalid params: %p", __FUNCTION__, buffer);
             return OMX_ErrorBadParameter;
         }
 
@@ -5988,6 +6364,12 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         //Store private handle from GraphicBuffer
         native_buffer[nPortIndex].privatehandle = handle;
         native_buffer[nPortIndex].nativehandle = handle;
+
+        //buffer->nAllocLen will be sizeof(struct VideoDecoderOutputMetaData). Overwrite
+        //this with a more sane size so that we don't compensate in rest of code
+        //We'll restore this size later on, so that it's transparent to client
+        buffer->nFilledLen = 0;
+        buffer->nAllocLen = handle->size;
     }
 
 
@@ -6001,8 +6383,11 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorIncorrectStateOperation;
     }
 
+    nPortIndex = buffer - client_buffers.get_il_buf_hdr();
     if (buffer == NULL ||
-            ((buffer - client_buffers.get_il_buf_hdr()) >= (int)drv_ctx.op_buf.actualcount)) {
+            (nPortIndex >= drv_ctx.op_buf.actualcount)) {
+        DEBUG_PRINT_ERROR("FTB: ERROR: invalid buffer index, nPortIndex %u bufCount %u",
+            nPortIndex, drv_ctx.op_buf.actualcount);
         return OMX_ErrorBadParameter;
     }
 
@@ -6043,8 +6428,11 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 
     nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
 
-    if (bufferAdd == NULL || nPortIndex > drv_ctx.op_buf.actualcount)
+    if (bufferAdd == NULL || nPortIndex > drv_ctx.op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("FTBProxy: ERROR: invalid buffer index, nPortIndex %u bufCount %u",
+            nPortIndex, drv_ctx.op_buf.actualcount);
         return OMX_ErrorBadParameter;
+    }
 
     DEBUG_PRINT_LOW("FTBProxy: bufhdr = %p, bufhdr->pBuffer = %p",
             bufferAdd, bufferAdd->pBuffer);
@@ -6073,6 +6461,10 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 
     pending_output_buffers++;
     buffer = client_buffers.get_dr_buf_hdr(bufferAdd);
+    if (!buffer) {
+       DEBUG_PRINT_ERROR("err: client_buffer ptr invalid");
+       return OMX_ErrorBadParameter;
+    }
     ptr_respbuffer = (struct vdec_output_frameinfo*)buffer->pOutputPortPrivate;
     if (ptr_respbuffer) {
         ptr_outputbuffer =  (struct vdec_bufferpayload*)ptr_respbuffer->client_data;
@@ -6091,7 +6483,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
     struct v4l2_plane plane[VIDEO_MAX_PLANES];
     memset( (void *)&buf, 0, sizeof(buf));
     memset( (void *)plane, 0, (sizeof(struct v4l2_plane)*VIDEO_MAX_PLANES));
-    int extra_idx = 0;
+    unsigned int extra_idx = 0;
 
     buf.index = nPortIndex;
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -6115,7 +6507,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
         plane[extra_idx].reserved[1] = nPortIndex * drv_ctx.extradata_info.buffer_size;
         plane[extra_idx].data_offset = 0;
     } else if (extra_idx >= VIDEO_MAX_PLANES) {
-        DEBUG_PRINT_ERROR("Extradata index higher than expected: %d", extra_idx);
+        DEBUG_PRINT_ERROR("Extradata index higher than expected: %u", extra_idx);
         return OMX_ErrorBadParameter;
     }
     buf.m.planes = plane;
@@ -6721,6 +7113,28 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         handle_extradata(buffer);
     }
 
+#ifdef OUTPUT_EXTRADATA_LOG
+    if (outputExtradataFile) {
+        int buf_index = buffer - m_out_mem_ptr;
+        OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr);
+
+        OMX_OTHER_EXTRADATATYPE *p_extra = NULL;
+        p_extra = (OMX_OTHER_EXTRADATATYPE *)
+            ((unsigned long)(pBuffer + buffer->nOffset + buffer->nFilledLen + 3)&(~3));
+
+        while (p_extra && (OMX_U8*)p_extra < (pBuffer + buffer->nAllocLen) ) {
+            DEBUG_PRINT_LOW("WRITING extradata, size=%d,type=%x",
+                                    p_extra->nSize, p_extra->eType);
+            fwrite (p_extra,1,p_extra->nSize,outputExtradataFile);
+
+            if (p_extra->eType == OMX_ExtraDataNone) {
+                break;
+            }
+            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+        }
+    }
+#endif
+
     /* For use buffer we need to copy the data */
     if (!output_flush_progress) {
         /* This is the error check for non-recoverable errros */
@@ -6759,13 +7173,16 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                     }
                 }
             }
-        } else {
-            time_stamp_dts.remove_time_stamp(
-                    buffer->nTimeStamp,
-                    is_interlaced && is_duplicate_ts_valid);
+        }
         }
 
-
+    /* Since we're passing around handles, adjust nFilledLen and nAllocLen
+     * to size of the handle.  Do it _after_ handle_extradata() which
+     * requires the respective sizes to be accurate. */
+    if (dynamic_buf_mode) {
+        buffer->nAllocLen = sizeof(struct VideoDecoderOutputMetaData);
+        buffer->nFilledLen = buffer->nFilledLen ?
+            sizeof(struct VideoDecoderOutputMetaData) : 0;
     }
     if (m_cb.FillBufferDone) {
         if (buffer->nFilledLen > 0) {
@@ -6793,25 +7210,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                     proc_frms = 0;
                 }
             }
-
-#ifdef OUTPUT_EXTRADATA_LOG
-            if (outputExtradataFile) {
-
-                OMX_OTHER_EXTRADATATYPE *p_extra = NULL;
-                p_extra = (OMX_OTHER_EXTRADATATYPE *)
-                    ((unsigned)(buffer->pBuffer + buffer->nOffset +
-                        buffer->nFilledLen + 3)&(~3));
-                while (p_extra &&
-                        (OMX_U8*)p_extra < (buffer->pBuffer + buffer->nAllocLen) ) {
-                    DEBUG_PRINT_LOW("WRITING extradata, size=%d,type=%d",p_extra->nSize, p_extra->eType);
-                    fwrite (p_extra,1,p_extra->nSize,outputExtradataFile);
-                    if (p_extra->eType == OMX_ExtraDataNone) {
-                        break;
-                    }
-                    p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-                }
-            }
-#endif
         }
         if (buffer->nFlags & OMX_BUFFERFLAG_EOS) {
             prev_ts = LLONG_MAX;
@@ -6877,12 +7275,14 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     }
 
 #ifdef ADAPTIVE_PLAYBACK_SUPPORTED
-    if (m_smoothstreaming_mode) {
+    if (m_smoothstreaming_mode && m_out_mem_ptr) {
         OMX_U32 buf_index = buffer - m_out_mem_ptr;
         BufferDim_t dim;
-        dim.sliceWidth = drv_ctx.video_resolution.frame_width;
-        dim.sliceHeight = drv_ctx.video_resolution.frame_height;
-        private_handle_t *private_handle = native_buffer[buf_index].privatehandle;
+        private_handle_t *private_handle = NULL;
+        dim.sliceWidth = framesize.nWidth;
+        dim.sliceHeight = framesize.nHeight;
+        if (native_buffer[buf_index].privatehandle)
+            private_handle = native_buffer[buf_index].privatehandle;
         if (private_handle) {
             DEBUG_PRINT_LOW("set metadata: update buf-geometry with stride %d slice %d",
                 dim.sliceWidth, dim.sliceHeight);
@@ -6903,21 +7303,9 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
         return OMX_ErrorBadParameter;
     }
 
-    DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p",
-            buffer, buffer->pBuffer);
+    DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p, bufhdr->nFlags = %x",
+            buffer, buffer->pBuffer, buffer->nFlags);
     pending_input_buffers--;
-    if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-        int pending_flush_waiters;
-
-        while (pending_flush_waiters = INT_MAX,
-                sem_getvalue(&m_safe_flush, &pending_flush_waiters),
-                /* 0 == there /are/ waiters depending on POSIX implementation */
-                pending_flush_waiters <= 0 ) {
-            sem_post(&m_safe_flush);
-        }
-
-        android_atomic_and(0, &m_queued_codec_config_count); /* no clearer way to set to 0 */
-    }
 
     if (arbitrary_bytes) {
         if (pdest_frame == NULL && input_flush_progress == false) {
@@ -6967,6 +7355,16 @@ int omx_vdec::async_message_process (void *context, void* message)
                     OMX_COMPONENT_GENERATE_HARDWARE_ERROR);
             break;
 
+        case VDEC_MSG_EVT_HW_OVERLOAD:
+            omx->post_event ((unsigned)NULL, vdec_msg->status_code,\
+                    OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD);
+            break;
+
+        case VDEC_MSG_EVT_HW_UNSUPPORTED:
+            omx->post_event ((unsigned)NULL, vdec_msg->status_code,\
+                    OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING);
+            break;
+
         case VDEC_MSG_RESP_START_DONE:
             omx->post_event ((unsigned)NULL, vdec_msg->status_code,\
                     OMX_COMPONENT_GENERATE_START_DONE);
@@ -7007,14 +7405,27 @@ int omx_vdec::async_message_process (void *context, void* message)
                     ((omxhdr - omx->m_inp_mem_ptr) > (int)omx->drv_ctx.ip_buf.actualcount) ) {
                 omxhdr = NULL;
                 vdec_msg->status_code = VDEC_S_EFATAL;
+                break;
             }
             if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_INPUT_UNSUPPORTED) {
                 DEBUG_PRINT_HIGH("Unsupported input");
                 omx->omx_report_error ();
             }
             if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT) {
+                omxhdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
                 vdec_msg->status_code = VDEC_S_INPUT_BITSTREAM_ERR;
             }
+            if (omxhdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
+
+                DEBUG_PRINT_LOW("Decrement codec_config buffer counter");
+                android_atomic_dec(&omx->m_queued_codec_config_count);
+                if ((android_atomic_add(0, &omx->m_queued_codec_config_count) == 0) &&
+                    BITMASK_PRESENT(&omx->m_flags, OMX_COMPONENT_FLUSH_DEFERRED)) {
+                    DEBUG_PRINT_LOW("sem post for CODEC CONFIG buffer");
+                    sem_post(&omx->m_safe_flush);
+                }
+            }
+
             omx->post_event ((unsigned long)omxhdr,vdec_msg->status_code,
                     OMX_COMPONENT_GENERATE_EBD);
             break;
@@ -7026,7 +7437,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                 omx->post_event ((unsigned long)timestamp, vdec_msg->status_code,
                         OMX_COMPONENT_GENERATE_INFO_FIELD_DROPPED);
                 DEBUG_PRINT_HIGH("Field dropped time stamp is %lld",
-                        vdec_msg->msgdata.output_frame.time_stamp);
+                        (long long)vdec_msg->msgdata.output_frame.time_stamp);
             }
             break;
         case VDEC_MSG_RESP_OUTPUT_FLUSHED:
@@ -7034,17 +7445,21 @@ int omx_vdec::async_message_process (void *context, void* message)
 
             v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.output_frame.client_data;
             omxhdr=omx->m_out_mem_ptr+v4l2_buf_ptr->index;
-            DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) Pic_type(%u)",
-                    omxhdr, vdec_msg->msgdata.output_frame.time_stamp,
-                    vdec_msg->msgdata.output_frame.pic_type);
+
+            DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x) FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
+                    omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
+                    vdec_msg->msgdata.output_frame.pic_type, v4l2_buf_ptr->flags,
+                    (unsigned int)vdec_msg->msgdata.output_frame.len,
+                    vdec_msg->msgdata.output_frame.framesize.left,
+                    vdec_msg->msgdata.output_frame.framesize.top,
+                    vdec_msg->msgdata.output_frame.framesize.right,
+                    vdec_msg->msgdata.output_frame.framesize.bottom);
 
             if (omxhdr && omxhdr->pOutputPortPrivate &&
                     ((omxhdr - omx->m_out_mem_ptr) < (int)omx->drv_ctx.op_buf.actualcount) &&
                     (((struct vdec_output_frameinfo *)omxhdr->pOutputPortPrivate
                       - omx->drv_ctx.ptr_respbuffer) < (int)omx->drv_ctx.op_buf.actualcount)) {
-                if (omx->dynamic_buf_mode && vdec_msg->msgdata.output_frame.len) {
-                    vdec_msg->msgdata.output_frame.len = omxhdr->nAllocLen;
-                }
+
                 if ( vdec_msg->msgdata.output_frame.len <=  omxhdr->nAllocLen) {
                     omxhdr->nFilledLen = vdec_msg->msgdata.output_frame.len;
                     omxhdr->nOffset = vdec_msg->msgdata.output_frame.offset;
@@ -7062,6 +7477,9 @@ int omx_vdec::async_message_process (void *context, void* message)
                         omxhdr->nFlags |= OMX_BUFFERFLAG_SYNCFRAME;
                     } else {
                         omxhdr->nFlags &= ~OMX_BUFFERFLAG_SYNCFRAME;
+                    }
+                    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOSEQ) {
+                        omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
                     }
                     if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) {
                         omxhdr->nFlags |= OMX_BUFFERFLAG_DECODEONLY;
@@ -7097,75 +7515,51 @@ int omx_vdec::async_message_process (void *context, void* message)
                     }
                     vdec_msg->msgdata.output_frame.bufferaddr =
                         omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
-                    int format_notably_changed = 0;
-                    if (omxhdr->nFilledLen &&
-                            (omxhdr->nFilledLen != (unsigned)omx->prev_n_filled_len)) {
-                        if ((vdec_msg->msgdata.output_frame.framesize.bottom != omx->drv_ctx.video_resolution.frame_height) ||
-                                (vdec_msg->msgdata.output_frame.framesize.right != omx->drv_ctx.video_resolution.frame_width)) {
-                            DEBUG_PRINT_HIGH("Height/Width information has changed");
-                            omx->drv_ctx.video_resolution.frame_height = vdec_msg->msgdata.output_frame.framesize.bottom;
-                            omx->drv_ctx.video_resolution.frame_width = vdec_msg->msgdata.output_frame.framesize.right;
-                            format_notably_changed = 1;
-                        }
-                    }
-                    if (omxhdr->nFilledLen && (((unsigned)omx->rectangle.nLeft !=
-                                    vdec_msg->msgdata.output_frame.framesize.left)
-                                || ((unsigned)omx->rectangle.nTop != vdec_msg->msgdata.output_frame.framesize.top)
-                                || (omx->rectangle.nWidth != vdec_msg->msgdata.output_frame.framesize.right)
-                                || (omx->rectangle.nHeight != vdec_msg->msgdata.output_frame.framesize.bottom))) {
-                        if ((vdec_msg->msgdata.output_frame.framesize.bottom != omx->drv_ctx.video_resolution.frame_height) ||
-                                (vdec_msg->msgdata.output_frame.framesize.right != omx->drv_ctx.video_resolution.frame_width)) {
-                            omx->drv_ctx.video_resolution.frame_height = vdec_msg->msgdata.output_frame.framesize.bottom;
-                            omx->drv_ctx.video_resolution.frame_width = vdec_msg->msgdata.output_frame.framesize.right;
-                            DEBUG_PRINT_HIGH("Height/Width information has changed. W: %d --> %d, H: %d --> %d",
-                                    omx->drv_ctx.video_resolution.frame_width, vdec_msg->msgdata.output_frame.framesize.right,
-                                    omx->drv_ctx.video_resolution.frame_height, vdec_msg->msgdata.output_frame.framesize.bottom);
-                        }
-                        DEBUG_PRINT_HIGH("Crop information changed. W: %u --> %d, H: %u -> %d",
-                                (unsigned int)omx->rectangle.nWidth, vdec_msg->msgdata.output_frame.framesize.right,
-                                (unsigned int)omx->rectangle.nHeight, vdec_msg->msgdata.output_frame.framesize.bottom);
-                        if (vdec_msg->msgdata.output_frame.framesize.left + vdec_msg->msgdata.output_frame.framesize.right >=
-                            omx->drv_ctx.video_resolution.frame_width) {
-                            vdec_msg->msgdata.output_frame.framesize.left = 0;
-                            if (vdec_msg->msgdata.output_frame.framesize.right > omx->drv_ctx.video_resolution.frame_width) {
-                                vdec_msg->msgdata.output_frame.framesize.right =  omx->drv_ctx.video_resolution.frame_width;
-                            }
-                        }
-                        if (vdec_msg->msgdata.output_frame.framesize.top + vdec_msg->msgdata.output_frame.framesize.bottom >=
-                            omx->drv_ctx.video_resolution.frame_height) {
-                            vdec_msg->msgdata.output_frame.framesize.top = 0;
-                            if (vdec_msg->msgdata.output_frame.framesize.bottom > omx->drv_ctx.video_resolution.frame_height) {
-                                vdec_msg->msgdata.output_frame.framesize.bottom =  omx->drv_ctx.video_resolution.frame_height;
-                            }
-                        }
-                        DEBUG_PRINT_LOW("omx_vdec: Adjusted Dim L: %d, T: %d, R: %d, B: %d, W: %d, H: %d",
+
+                    /* Post event if resolution OR crop changed */
+                    /* filled length will be changed if resolution changed */
+                    /* Crop parameters can be changed even without resolution change */
+                    if (omxhdr->nFilledLen
+                        && ((omx->prev_n_filled_len != omxhdr->nFilledLen)
+                        || (omx->drv_ctx.frame_size.left != vdec_msg->msgdata.output_frame.framesize.left)
+                        || (omx->drv_ctx.frame_size.top != vdec_msg->msgdata.output_frame.framesize.top)
+                        || (omx->drv_ctx.frame_size.right != vdec_msg->msgdata.output_frame.framesize.right)
+                        || (omx->drv_ctx.frame_size.bottom != vdec_msg->msgdata.output_frame.framesize.bottom)
+                        || (omx->drv_ctx.video_resolution.frame_width != vdec_msg->msgdata.output_frame.picsize.frame_width)
+                        || (omx->drv_ctx.video_resolution.frame_height != vdec_msg->msgdata.output_frame.picsize.frame_height) )) {
+
+                        DEBUG_PRINT_HIGH("Paramters Changed From: Len: %u, WxH: %dx%d, L: %u, T: %u, R: %u, B: %u --> Len: %u, WxH: %dx%d, L: %u, T: %u, R: %u, B: %u",
+                                omx->prev_n_filled_len,
+                                omx->drv_ctx.video_resolution.frame_width,
+                                omx->drv_ctx.video_resolution.frame_height,
+                                omx->drv_ctx.frame_size.left, omx->drv_ctx.frame_size.top,
+                                omx->drv_ctx.frame_size.right, omx->drv_ctx.frame_size.bottom,
+                                omxhdr->nFilledLen, vdec_msg->msgdata.output_frame.picsize.frame_width,
+                                vdec_msg->msgdata.output_frame.picsize.frame_height,
                                         vdec_msg->msgdata.output_frame.framesize.left,
                                         vdec_msg->msgdata.output_frame.framesize.top,
                                         vdec_msg->msgdata.output_frame.framesize.right,
-                                        vdec_msg->msgdata.output_frame.framesize.bottom,
-                                        omx->drv_ctx.video_resolution.frame_width,
-                                        omx->drv_ctx.video_resolution.frame_height);
-                        omx->rectangle.nLeft = vdec_msg->msgdata.output_frame.framesize.left;
-                        omx->rectangle.nTop = vdec_msg->msgdata.output_frame.framesize.top;
-                        omx->rectangle.nWidth = vdec_msg->msgdata.output_frame.framesize.right;
-                        omx->rectangle.nHeight = vdec_msg->msgdata.output_frame.framesize.bottom;
-                        format_notably_changed = 1;
-                    }
-                    DEBUG_PRINT_HIGH("Left: %d, Right: %d, top: %d, Bottom: %d",
-                                      vdec_msg->msgdata.output_frame.framesize.left,vdec_msg->msgdata.output_frame.framesize.right,
-                                      vdec_msg->msgdata.output_frame.framesize.top, vdec_msg->msgdata.output_frame.framesize.bottom);
-                    if (format_notably_changed) {
-                        if (omx->is_video_session_supported()) {
-                            omx->post_event (0, vdec_msg->status_code,
-                                    OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING);
-                        } else {
-                            if (!omx->client_buffers.update_buffer_req()) {
-                                DEBUG_PRINT_ERROR("Setting c2D buffer requirements failed");
-                            }
-                            omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexConfigCommonOutputCrop,
+                                vdec_msg->msgdata.output_frame.framesize.bottom);
+
+                        omx->drv_ctx.video_resolution.frame_width =
+                                vdec_msg->msgdata.output_frame.picsize.frame_width;
+                        omx->drv_ctx.video_resolution.frame_height =
+                                vdec_msg->msgdata.output_frame.picsize.frame_height;
+                        if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
+                            omx->drv_ctx.video_resolution.stride =
+                                VENUS_Y_STRIDE(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_width);
+                            omx->drv_ctx.video_resolution.scan_lines =
+                                VENUS_Y_SCANLINES(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_height);
+                        }
+                        memcpy(&omx->drv_ctx.frame_size,
+                                &vdec_msg->msgdata.output_frame.framesize,
+                                sizeof(struct vdec_framesize));
+
+                        omx->post_event(OMX_CORE_OUTPUT_PORT_INDEX,
+                                OMX_IndexConfigCommonOutputCrop,
                                     OMX_COMPONENT_GENERATE_PORT_RECONFIG);
                         }
-                    }
+
                     if (omxhdr->nFilledLen)
                         omx->prev_n_filled_len = omxhdr->nFilledLen;
 
@@ -7188,16 +7582,23 @@ int omx_vdec::async_message_process (void *context, void* message)
                                 ((unsigned long)vdec_msg->msgdata.output_frame.bufferaddr +
                                  (unsigned long)vdec_msg->msgdata.output_frame.offset),
                                 vdec_msg->msgdata.output_frame.len);
-                } else
+                } else {
+                    DEBUG_PRINT_ERROR("Invalid filled length = %u, buffer size = %u, prev_length = %u",
+                            (unsigned int)vdec_msg->msgdata.output_frame.len,
+                            omxhdr->nAllocLen, omx->prev_n_filled_len);
                     omxhdr->nFilledLen = 0;
+                }
+
                 omx->post_event ((unsigned long)omxhdr, vdec_msg->status_code,
                         OMX_COMPONENT_GENERATE_FBD);
-            } else if (vdec_msg->msgdata.output_frame.flags & OMX_BUFFERFLAG_EOS)
+
+            } else if (vdec_msg->msgdata.output_frame.flags & OMX_BUFFERFLAG_EOS) {
                 omx->post_event ((unsigned long)NULL, vdec_msg->status_code,
                         OMX_COMPONENT_GENERATE_EOS_DONE);
-            else
+            } else {
                 omx->post_event ((unsigned int)NULL, vdec_msg->status_code,
                         OMX_COMPONENT_GENERATE_HARDWARE_ERROR);
+            }
             break;
         case VDEC_MSG_EVT_CONFIG_CHANGED:
             DEBUG_PRINT_HIGH("Port settings changed");
@@ -7247,7 +7648,9 @@ OMX_ERRORTYPE omx_vdec::empty_this_buffer_proxy_arbitrary (
         }
     }
 
-
+    if (codec_config_flag && !(buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG)) {
+        codec_config_flag = false;
+    }
     return OMX_ErrorNone;
 }
 
@@ -7609,6 +8012,7 @@ OMX_ERRORTYPE omx_vdec::push_input_h264 (OMX_HANDLETYPE hComp)
                                      h264_scratch.pBuffer,h264_scratch.nFilledLen);
                              pdest_frame->nFilledLen += h264_scratch.nFilledLen;
                              h264_scratch.nFilledLen = 0;
+                             if (h264_last_au_ts != LLONG_MAX)
                              pdest_frame->nTimeStamp = h264_last_au_ts;
                         } else {
                             /* Completely new frame, let's just push what
@@ -8111,12 +8515,12 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
     struct v4l2_requestbuffers bufreq;
-    unsigned int buf_size = 0, extra_data_size = 0, client_extra_data_size = 0;
+    unsigned int buf_size = 0, extra_data_size = 0, default_extra_data_size = 0;
     unsigned int final_extra_data_size = 0;
     struct v4l2_format fmt;
     int ret = 0;
-    DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d)",
-            buffer_prop->actualcount, buffer_prop->buffer_size);
+    DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%u)",
+            buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size);
     bufreq.memory = V4L2_MEMORY_USERPTR;
     bufreq.count = 1;
     if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_INPUT) {
@@ -8143,8 +8547,8 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
         buffer_prop->mincount = bufreq.count;
         DEBUG_PRINT_HIGH("Count = %d",bufreq.count);
     }
-    DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%d)",
-            buffer_prop->actualcount, buffer_prop->buffer_size);
+    DEBUG_PRINT_LOW("GetBufReq IN: ActCnt(%d) Size(%u)",
+            buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size);
 
     fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
     fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
@@ -8179,53 +8583,24 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
             DEBUG_PRINT_ERROR("Extradata index is more than allowed: %d", extra_idx);
             return OMX_ErrorBadParameter;
         }
-        if (client_extradata & OMX_FRAMEINFO_EXTRADATA) {
-            DEBUG_PRINT_HIGH("Frame info extra data enabled!");
-            client_extra_data_size += OMX_FRAMEINFO_EXTRADATA_SIZE;
-        }
-        if (client_extradata & OMX_INTERLACE_EXTRADATA) {
-            client_extra_data_size += OMX_INTERLACE_EXTRADATA_SIZE;
-        }
-        if (client_extradata & OMX_PORTDEF_EXTRADATA) {
-            client_extra_data_size += OMX_PORTDEF_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("Smooth streaming enabled extra_data_size=%d",
-                    client_extra_data_size);
-        }
-        if ((client_extradata & OMX_FRAMEDIMENSION_EXTRADATA)) {
-            client_extra_data_size += OMX_FRAMEDIMENSION_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("Frame dimension enabled extra_data_size = %d\n",
-                    client_extra_data_size);
-        }
-        if (client_extradata & OMX_FRAMEPACK_EXTRADATA) {
-            client_extra_data_size += OMX_FRAMEPACK_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("framepack extradata enabled");
-        }
-        if (client_extradata & OMX_QP_EXTRADATA) {
-            client_extra_data_size += OMX_QP_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("QP extradata enabled");
-        }
-        if (client_extradata & OMX_BITSINFO_EXTRADATA) {
-            client_extra_data_size += OMX_BITSINFO_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("Input bits info extradata enabled");
-        }
-        if (client_extradata & OMX_EXTNUSER_EXTRADATA) {
-            client_extra_data_size += OMX_USERDATA_EXTRADATA_SIZE;
-            DEBUG_PRINT_HIGH("Userdata extradata enabled");
-        }
 
-        if (client_extra_data_size) {
-            client_extra_data_size += sizeof(OMX_OTHER_EXTRADATATYPE); //Space for terminator
-            buf_size = ((buf_size + 3)&(~3)); //Align extradata start address to 64Bit
-        }
-        final_extra_data_size = (extra_data_size > client_extra_data_size ?
-            extra_data_size : client_extra_data_size);
+        default_extra_data_size = VENUS_EXTRADATA_SIZE(
+                drv_ctx.video_resolution.frame_height,
+                drv_ctx.video_resolution.frame_width);
+        final_extra_data_size = extra_data_size > default_extra_data_size ?
+            extra_data_size : default_extra_data_size;
+
+        final_extra_data_size = (final_extra_data_size + buffer_prop->alignment - 1) &
+            (~(buffer_prop->alignment - 1));
+
         drv_ctx.extradata_info.size = buffer_prop->actualcount * final_extra_data_size;
         drv_ctx.extradata_info.count = buffer_prop->actualcount;
         drv_ctx.extradata_info.buffer_size = final_extra_data_size;
-        buf_size += client_extra_data_size;
+        if (!secure_mode)
+            buf_size += final_extra_data_size;
         buf_size = (buf_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
-        DEBUG_PRINT_LOW("GetBufReq UPDATE: ActCnt(%d) Size(%d) BufSize(%d)",
-                buffer_prop->actualcount, buffer_prop->buffer_size, buf_size);
+        DEBUG_PRINT_LOW("GetBufReq UPDATE: ActCnt(%d) Size(%u) BufSize(%d)",
+                buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size, buf_size);
         if (extra_data_size)
             DEBUG_PRINT_LOW("GetBufReq UPDATE: extradata: TotalSize(%d) BufferSize(%lu)",
                 drv_ctx.extradata_info.size, drv_ctx.extradata_info.buffer_size);
@@ -8237,8 +8612,8 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
             eRet = set_buffer_req(buffer_prop);
         }
     }
-    DEBUG_PRINT_LOW("GetBufReq OUT: ActCnt(%d) Size(%d)",
-            buffer_prop->actualcount, buffer_prop->buffer_size);
+    DEBUG_PRINT_LOW("GetBufReq OUT: ActCnt(%d) Size(%u)",
+            buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size);
     return eRet;
 }
 
@@ -8249,14 +8624,15 @@ OMX_ERRORTYPE omx_vdec::set_buffer_req(vdec_allocatorproperty *buffer_prop)
     struct v4l2_format fmt;
     struct v4l2_requestbuffers bufreq;
     int ret;
-    DEBUG_PRINT_LOW("SetBufReq IN: ActCnt(%d) Size(%d)",
-            buffer_prop->actualcount, buffer_prop->buffer_size);
+    DEBUG_PRINT_LOW("SetBufReq IN: ActCnt(%d) Size(%u)",
+            buffer_prop->actualcount, (unsigned int)buffer_prop->buffer_size);
     buf_size = (buffer_prop->buffer_size + buffer_prop->alignment - 1)&(~(buffer_prop->alignment - 1));
     if (buf_size != buffer_prop->buffer_size) {
-        DEBUG_PRINT_ERROR("Buffer size alignment error: Requested(%d) Required(%d)",
-                buffer_prop->buffer_size, buf_size);
+        DEBUG_PRINT_ERROR("Buffer size alignment error: Requested(%u) Required(%d)",
+                (unsigned int)buffer_prop->buffer_size, buf_size);
         eRet = OMX_ErrorBadParameter;
     } else {
+        memset(&fmt, 0x0, sizeof(struct v4l2_format));
         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
         fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
 
@@ -8320,6 +8696,7 @@ OMX_ERRORTYPE omx_vdec::update_picture_resolution()
 OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
+    struct v4l2_format fmt;
     if (!portDefn) {
         return OMX_ErrorBadParameter;
     }
@@ -8334,6 +8711,7 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
         DEBUG_PRINT_ERROR("Error: Divide by zero");
         return OMX_ErrorBadParameter;
     }
+    memset(&fmt, 0x0, sizeof(struct v4l2_format));
     if (0 == portDefn->nPortIndex) {
         portDefn->eDir =  OMX_DirInput;
         portDefn->nBufferCountActual = drv_ctx.ip_buf.actualcount;
@@ -8343,6 +8721,9 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
         portDefn->format.video.eCompressionFormat = eCompressionFormat;
         portDefn->bEnabled   = m_inp_bEnabled;
         portDefn->bPopulated = m_inp_bPopulated;
+
+        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+        fmt.fmt.pix_mp.pixelformat = output_capability;
     } else if (1 == portDefn->nPortIndex) {
         unsigned int buf_size = 0;
         if (!client_buffers.update_buffer_req()) {
@@ -8364,19 +8745,36 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
             DEBUG_PRINT_ERROR("Error in getting color format");
             return OMX_ErrorHardware;
         }
+        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+        fmt.fmt.pix_mp.pixelformat = capture_capability;
     } else {
         portDefn->eDir = OMX_DirMax;
         DEBUG_PRINT_LOW(" get_parameter: Bad Port idx %d",
                 (int)portDefn->nPortIndex);
         eRet = OMX_ErrorBadPortIndex;
     }
+    if (is_down_scalar_enabled) {
+        int ret = 0;
+        ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+        if (ret) {
+            DEBUG_PRINT_ERROR("update_portdef : Error in getting port resolution");
+            return OMX_ErrorHardware;
+        } else {
+            portDefn->format.video.nFrameWidth = fmt.fmt.pix_mp.width;
+            portDefn->format.video.nFrameHeight = fmt.fmt.pix_mp.height;
+            portDefn->format.video.nStride = fmt.fmt.pix_mp.plane_fmt[0].bytesperline;
+            portDefn->format.video.nSliceHeight = fmt.fmt.pix_mp.plane_fmt[0].reserved[0];
+        }
+    } else {
     portDefn->format.video.nFrameHeight =  drv_ctx.video_resolution.frame_height;
     portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
     portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
     portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
+    }
+
     if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
        (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
-        portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
+           portDefn->format.video.nStride = ALIGN(drv_ctx.video_resolution.frame_width, 16);
         portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
     }
     DEBUG_PRINT_HIGH("update_portdef(%u): Width = %u Height = %u Stride = %d "
@@ -8421,11 +8819,11 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
         nPlatformEntrySize = drv_ctx.op_buf.actualcount *
             sizeof(OMX_QCOM_PLATFORM_PRIVATE_ENTRY);
 
-        DEBUG_PRINT_LOW("TotalBufHdr %d BufHdrSize %d PMEM %d PL %d",nBufHdrSize,
-                sizeof(OMX_BUFFERHEADERTYPE),
+        DEBUG_PRINT_LOW("TotalBufHdr %d BufHdrSize %u PMEM %d PL %d",nBufHdrSize,
+                (unsigned int)sizeof(OMX_BUFFERHEADERTYPE),
                 nPMEMInfoSize,
                 nPlatformListSize);
-        DEBUG_PRINT_LOW("PE %d bmSize %d",nPlatformEntrySize,
+        DEBUG_PRINT_LOW("PE %d bmSize % " PRId64 , nPlatformEntrySize,
                 m_out_bm_count);
         m_out_mem_ptr = (OMX_BUFFERHEADERTYPE  *)calloc(nBufHdrSize,1);
         // Alloc mem for platform specific info
@@ -8438,9 +8836,18 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
         drv_ctx.ptr_respbuffer = (struct vdec_output_frameinfo  *)\
                      calloc (sizeof (struct vdec_output_frameinfo),
                              drv_ctx.op_buf.actualcount);
+        if (!drv_ctx.ptr_outputbuffer || !drv_ctx.ptr_respbuffer) {
+            DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.ptr_outputbuffer or drv_ctx.ptr_respbuffer");
+            return OMX_ErrorInsufficientResources;
+        }
+
 #ifdef USE_ION
         drv_ctx.op_buf_ion_info = (struct vdec_ion * ) \
                       calloc (sizeof(struct vdec_ion),drv_ctx.op_buf.actualcount);
+        if (!drv_ctx.op_buf_ion_info) {
+            DEBUG_PRINT_ERROR("Failed to alloc drv_ctx.op_buf_ion_info");
+            return OMX_ErrorInsufficientResources;
+        }
 #endif
         if (dynamic_buf_mode) {
             out_dynamic_list = (struct dynamic_buf_list *) \
@@ -8593,7 +9000,7 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
             && llabs(act_timestamp - prev_ts) > 2000) {
         new_frame_interval = client_set_fps ? frm_int :
             llabs(act_timestamp - prev_ts);
-        if (new_frame_interval < frm_int || frm_int == 0) {
+        if (new_frame_interval != frm_int || frm_int == 0) {
             frm_int = new_frame_interval;
             if (frm_int) {
                 drv_ctx.frame_rate.fps_numerator = 1e6;
@@ -8601,7 +9008,7 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
                 DEBUG_PRINT_LOW("set_frame_rate: frm_int(%u) fps(%f)",
                         (unsigned int)frm_int, drv_ctx.frame_rate.fps_numerator /
                         (float)drv_ctx.frame_rate.fps_denominator);
-                m_perf_control.request_cores(frm_int);
+                //m_perf_control.request_cores(frm_int);
                 /* We need to report the difference between this FBD and the previous FBD
                  * back to the driver for clock scaling purposes. */
                 struct v4l2_outputparm oparm;
@@ -8631,16 +9038,20 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
         rst_prev_ts = false;
     } else if (VALID_TS(prev_ts)) {
         bool codec_cond = (drv_ctx.timestamp_adjust)?
-            (!VALID_TS(act_timestamp) || (((act_timestamp > prev_ts)?
-                               (act_timestamp - prev_ts):(prev_ts - act_timestamp)) <= 2000)):
-            (!VALID_TS(act_timestamp) || act_timestamp == prev_ts);
+            (!VALID_TS(act_timestamp) || act_timestamp < prev_ts || llabs(act_timestamp - prev_ts) <= 2000) :
+            (!VALID_TS(act_timestamp) || act_timestamp <= prev_ts);
         if (frm_int > 0 && codec_cond) {
             DEBUG_PRINT_LOW("adjust_timestamp: original ts[%lld]", act_timestamp);
             act_timestamp = prev_ts + frm_int;
             DEBUG_PRINT_LOW("adjust_timestamp: predicted ts[%lld]", act_timestamp);
             prev_ts = act_timestamp;
-        } else
+        } else {
+            if (drv_ctx.picture_order == VDEC_ORDER_DISPLAY && act_timestamp < prev_ts) {
+                // ensure that timestamps can never step backwards when in display order
+                act_timestamp = prev_ts;
+            }
             set_frame_rate(act_timestamp);
+        }
     } else if (frm_int > 0)          // In this case the frame rate was set along
     {                               // with the port definition, start ts with 0
         act_timestamp = prev_ts = 0;  // and correct if a valid ts is received.
@@ -8658,6 +9069,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     OMX_U32 num_MB_in_frame;
     OMX_U32 recovery_sei_flags = 1;
     int enable = 0;
+
+    //TODO: disable extradata
+    return;
 
     int buf_index = p_buf_hdr - m_out_mem_ptr;
     if (buf_index >= drv_ctx.extradata_info.count) {
@@ -8687,6 +9101,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 
     if (!secure_mode && ((OMX_U8*)p_extra > (pBuffer + p_buf_hdr->nAllocLen))) {
         p_extra = NULL;
+        DEBUG_PRINT_ERROR("Error: out of bound memory access by p_extra");
         return;
     }
     OMX_OTHER_EXTRADATATYPE *data = (struct OMX_OTHER_EXTRADATATYPE *)p_extradata;
@@ -8793,6 +9208,10 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     if (seqdisp_payload) {
                         m_disp_hor_size = seqdisp_payload->disp_width;
                         m_disp_vert_size = seqdisp_payload->disp_height;
+                        if (client_extradata & OMX_MPEG2SEQDISP_EXTRADATA) {
+                            append_mpeg2_seqdisplay_extradata(p_extra, seqdisp_payload);
+                            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                        }
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_S3D_FRAME_PACKING:
@@ -8850,7 +9269,7 @@ unrecognized_extradata:
         p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
         append_terminator_extradata(p_extra);
     }
-    if (secure_mode) {
+    if (secure_mode && p_extradata && m_other_extradata) {
         struct vdec_output_frameinfo  *ptr_extradatabuff = NULL;
         memcpy(p_extradata, m_other_extradata, drv_ctx.extradata_info.buffer_size);
         ptr_extradatabuff = (struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate;
@@ -8917,13 +9336,6 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
                 DEBUG_PRINT_HIGH("Failed to set panscan extradata");
             }
-            if (output_capability == V4L2_PIX_FMT_MPEG2) {
-                control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
-                control.value =  V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
-                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
-                    DEBUG_PRINT_HIGH("Failed to set panscan extradata");
-                }
-                }
             }
         if (requested_extradata & OMX_TIMEINFO_EXTRADATA) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
@@ -8963,6 +9375,18 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             control.value = V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA;
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
                 DEBUG_PRINT_HIGH("Failed to set stream userdata extradata");
+            }
+        }
+        if (requested_extradata & OMX_MPEG2SEQDISP_EXTRADATA) {
+            if (output_capability == V4L2_PIX_FMT_MPEG2) {
+                DEBUG_PRINT_HIGH("Enable seq display extradata");
+                control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+                control.value =  V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
+                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                    DEBUG_PRINT_HIGH("Failed to set seqdisp extradata");
+                }
+            } else {
+                DEBUG_PRINT_HIGH("Seq display extradata is supported for MPEG2 only");
             }
         }
     }
@@ -9125,6 +9549,14 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
                 }
         DEBUG_PRINT_HIGH(
                 "=========== End of Userdata ===========");
+    } else if (extra->eType == (OMX_EXTRADATATYPE)OMX_ExtraDataMpeg2SeqDisplay) {
+        OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY *seq_display = (OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY*)(void*)extra->data;
+        DEBUG_PRINT_HIGH(
+                "------Mpeg2SeqDisplay ------\n"
+                "     Frame Width: %d\n"
+                "    Frame Height: %d\n"
+                "=========== End of Mpeg2SeqDisplay ===========",
+                seq_display->disp_width, seq_display->disp_height);
     } else if (extra->eType == OMX_ExtraDataNone) {
         DEBUG_PRINT_HIGH("========== End of Terminator ===========");
     } else {
@@ -9173,7 +9605,6 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 void omx_vdec::append_frame_dimension_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 {
     OMX_QCOM_EXTRADATA_FRAMEDIMENSION *frame_dimension;
-    OMX_U8* tmp = extra->data;
     if (!(client_extradata & OMX_FRAMEDIMENSION_EXTRADATA)) {
         return;
     }
@@ -9207,7 +9638,6 @@ void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 {
     OMX_QCOM_EXTRADATA_FRAMEINFO *frame_info = NULL;
     struct msm_vidc_panscan_window *panscan_window;
-    OMX_U8 *tmp = extra->data;
     if (!(client_extradata & OMX_FRAMEINFO_EXTRADATA)) {
         return;
     }
@@ -9269,7 +9699,6 @@ void omx_vdec::append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 void omx_vdec::append_portdef_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 {
     OMX_PARAM_PORTDEFINITIONTYPE *portDefn = NULL;
-    OMX_U8 *tmp = extra->data;
     extra->nSize = OMX_PORTDEF_EXTRADATA_SIZE;
     extra->nVersion.nVersion = OMX_SPEC_VERSION;
     extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
@@ -9288,7 +9717,6 @@ void omx_vdec::append_framepack_extradata(OMX_OTHER_EXTRADATATYPE *extra,
         struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload)
 {
     OMX_QCOM_FRAME_PACK_ARRANGEMENT *framepack;
-    OMX_U8* tmp = extra->data;
     if (FRAME_PACK_SIZE*sizeof(OMX_U32) != sizeof(struct msm_vidc_s3d_frame_packing_payload)) {
         DEBUG_PRINT_ERROR("frame packing size mismatch");
         return;
@@ -9313,7 +9741,6 @@ void omx_vdec::append_qp_extradata(OMX_OTHER_EXTRADATATYPE *extra,
             struct msm_vidc_frame_qp_payload *qp_payload)
 {
     OMX_QCOM_EXTRADATA_QP * qp = NULL;
-    OMX_U8* tmp = extra->data;
     if (!qp_payload) {
         DEBUG_PRINT_ERROR("QP payload is NULL");
         return;
@@ -9332,7 +9759,6 @@ void omx_vdec::append_bitsinfo_extradata(OMX_OTHER_EXTRADATATYPE *extra,
             struct msm_vidc_frame_bits_info_payload *bits_payload)
 {
     OMX_QCOM_EXTRADATA_BITS_INFO * bits = NULL;
-    OMX_U8* tmp = extra->data;
     if (!bits_payload) {
         DEBUG_PRINT_ERROR("bits info payload is NULL");
         return;
@@ -9353,11 +9779,10 @@ void omx_vdec::append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra,
 {
     int userdata_size = 0;
     struct msm_vidc_stream_userdata_payload *userdata_payload = NULL;
-    OMX_U8* tmp = p_user->data;
     userdata_payload =
         (struct msm_vidc_stream_userdata_payload *)(void *)p_user->data;
     userdata_size = p_user->nDataSize;
-    extra->nSize = OMX_USERDATA_EXTRADATA_SIZE;
+    extra->nSize = OMX_USERDATA_EXTRADATA_SIZE + userdata_size;
     extra->nVersion.nVersion = OMX_SPEC_VERSION;
     extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
     extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMP2UserData;
@@ -9367,6 +9792,20 @@ void omx_vdec::append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     print_debug_extradata(extra);
 }
 
+void omx_vdec::append_mpeg2_seqdisplay_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+        struct msm_vidc_mpeg2_seqdisp_payload *seq_display_payload)
+{
+    OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY *seq_display = NULL;
+    extra->nSize = OMX_MPEG2SEQDISP_EXTRADATA_SIZE;
+    extra->nVersion.nVersion = OMX_SPEC_VERSION;
+    extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
+    extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMpeg2SeqDisplay;
+    extra->nDataSize = sizeof(OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY);
+    seq_display = (OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY *)(void *)extra->data;
+    seq_display->disp_width = seq_display_payload->disp_width;
+    seq_display->disp_height = seq_display_payload->disp_height;
+    print_debug_extradata(extra);
+}
 void omx_vdec::append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 {
     if (!client_extradata) {
@@ -9609,8 +10048,9 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
         if (!src_size || src_size > omx->drv_ctx.op_buf.buffer_size ||
                 !destination_size) {
             DEBUG_PRINT_ERROR("ERROR: Size mismatch in C2D src_size %d"
-                    "driver size %d destination size %d",
-                    src_size,omx->drv_ctx.op_buf.buffer_size,destination_size);
+                    "driver size %u destination size %d",
+                    src_size, (unsigned int)omx->drv_ctx.op_buf.buffer_size,
+                    destination_size);
             status = false;
             c2d.close();
             buffer_size_req = 0;
@@ -9708,6 +10148,7 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr()
         bool status;
         if (!omx->in_reconfig && !omx->output_flush_progress && bufadd->nFilledLen) {
             pthread_mutex_lock(&omx->c_lock);
+            cache_clean_buffer(index);
             status = c2d.convert(omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
                     omx->m_out_mem_ptr->pBuffer, bufadd->pBuffer, pmem_fd[index],
                     pmem_baseaddress[index], pmem_baseaddress[index]);
@@ -9720,6 +10161,7 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr()
                 unsigned int filledLen = 0;
                 c2d.get_output_filled_length(filledLen);
                 m_out_mem_ptr_client[index].nFilledLen = filledLen;
+                cache_clean_invalidate_buffer(index);
             }
             pthread_mutex_unlock(&omx->c_lock);
         } else
@@ -9841,16 +10283,19 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::allocate_buffers_color_conve
     }
     if ((temp_bufferHdr - omx->m_out_mem_ptr) >=
             (int)omx->drv_ctx.op_buf.actualcount) {
-        DEBUG_PRINT_ERROR("Invalid header index %d",
-                (temp_bufferHdr - omx->m_out_mem_ptr));
+        DEBUG_PRINT_ERROR("Invalid header index %ld",
+               (long int)(temp_bufferHdr - omx->m_out_mem_ptr));
         return OMX_ErrorUndefined;
     }
     unsigned int i = allocated_count;
 #ifdef USE_ION
+    // Allocate color-conversion buffers as cached to improve software-reading
+    // performance of YUV (thumbnails). NOTE: These buffers will need an explicit
+    // cache invalidation.
     op_buf_ion_info[i].ion_device_fd = omx->alloc_map_ion_memory(
             buffer_size_req,buffer_alignment_req,
             &op_buf_ion_info[i].ion_alloc_data,&op_buf_ion_info[i].fd_ion_data,
-            0);
+            ION_FLAG_CACHED);
     pmem_fd[i] = op_buf_ion_info[i].fd_ion_data.fd;
     if (op_buf_ion_info[i].ion_device_fd < 0) {
         DEBUG_PRINT_ERROR("alloc_map_ion failed in color_convert");
@@ -9867,7 +10312,7 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::allocate_buffers_color_conve
     }
     m_heap_ptr[i].video_heap_ptr = new VideoHeap (
             op_buf_ion_info[i].ion_device_fd,buffer_size_req,
-            pmem_baseaddress[i],(ion_handle*)op_buf_ion_info[i].ion_alloc_data.handle,pmem_fd[i]);
+            pmem_baseaddress[i],op_buf_ion_info[i].ion_alloc_data.handle,pmem_fd[i]);
 #endif
     m_pmem_info_client[i].pmem_fd = (unsigned long)m_heap_ptr[i].video_heap_ptr.get();
     m_pmem_info_client[i].offset = 0;
@@ -9919,10 +10364,59 @@ bool omx_vdec::allocate_color_convert_buf::get_color_format(OMX_COLOR_FORMATTYPE
     return status;
 }
 
+OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::cache_ops(
+        unsigned int index, unsigned int cmd)
+{
+    if (!enabled) {
+        return OMX_ErrorNone;
+    }
+
+    if (!omx || index >= omx->drv_ctx.op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("%s: Invalid param", __func__);
+        return OMX_ErrorBadParameter;
+    }
+
+    struct ion_flush_data flush_data;
+    struct ion_custom_data custom_data;
+
+    memset(&flush_data, 0x0, sizeof(flush_data));
+    memset(&custom_data, 0x0, sizeof(custom_data));
+
+    flush_data.vaddr = pmem_baseaddress[index];
+    flush_data.fd = op_buf_ion_info[index].fd_ion_data.fd;
+    flush_data.handle = op_buf_ion_info[index].fd_ion_data.handle;
+    flush_data.length = buffer_size_req;
+    custom_data.cmd = cmd;
+    custom_data.arg = (unsigned long)&flush_data;
+
+    DEBUG_PRINT_LOW("Cache %s: fd=%d handle=%d va=%p size=%d",
+            (cmd == ION_IOC_CLEAN_CACHES) ? "Clean" : "Invalidate",
+            flush_data.fd, flush_data.handle, flush_data.vaddr,
+            flush_data.length);
+    int ret = ioctl(op_buf_ion_info[index].ion_device_fd, ION_IOC_CUSTOM, &custom_data);
+    if (ret < 0) {
+        DEBUG_PRINT_ERROR("Cache %s failed: %s\n",
+                (cmd == ION_IOC_CLEAN_CACHES) ? "Clean" : "Invalidate",
+                strerror(errno));
+        return OMX_ErrorUndefined;
+    }
+    return OMX_ErrorNone;
+}
+
 void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
 {
     unsigned long i = 0;
     bool buf_present = false;
+
+    if (!dynamic_buf_mode) {
+        return;
+    }
+
+    if (!out_dynamic_list) {
+        DEBUG_PRINT_ERROR("buf_ref_add: out_dynamic_list is NULL");
+        return;
+    }
+
     pthread_mutex_lock(&m_lock);
     for (i = 0; i < drv_ctx.op_buf.actualcount; i++) {
         //check the buffer fd, offset, uv addr with list contents
@@ -9956,6 +10450,16 @@ void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
 void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
 {
     unsigned long i = 0;
+
+    if (!dynamic_buf_mode) {
+        return;
+    }
+
+    if (!out_dynamic_list) {
+        DEBUG_PRINT_ERROR("buf_ref_add: out_dynamic_list is NULL");
+        return;
+    }
+
     pthread_mutex_lock(&m_lock);
     for (i = 0; i < drv_ctx.op_buf.actualcount; i++) {
         //check the buffer fd, offset, uv addr with list contents
@@ -10084,13 +10588,111 @@ void omx_vdec::perf_control::load_lib()
     }
 }
 
+OMX_ERRORTYPE omx_vdec::enable_adaptive_playback(unsigned long nMaxFrameWidth,
+                            unsigned long nMaxFrameHeight)
+{
+
+    OMX_ERRORTYPE eRet = OMX_ErrorNone;
+    int ret = 0;
+    unsigned long min_res_buf_count = 0;
+
+    eRet = enable_smoothstreaming();
+    if (eRet != OMX_ErrorNone) {
+         DEBUG_PRINT_ERROR("Failed to enable Adaptive Playback on driver");
+         return eRet;
+     }
+
+     DEBUG_PRINT_HIGH("Enabling Adaptive playback for %lu x %lu",
+             nMaxFrameWidth,
+             nMaxFrameHeight);
+     m_smoothstreaming_mode = true;
+     m_smoothstreaming_width = nMaxFrameWidth;
+     m_smoothstreaming_height = nMaxFrameHeight;
+
+     //Get upper limit buffer count for min supported resolution
+     struct v4l2_format fmt;
+     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+     fmt.fmt.pix_mp.height = m_decoder_capability.min_height;
+     fmt.fmt.pix_mp.width = m_decoder_capability.min_width;
+     fmt.fmt.pix_mp.pixelformat = output_capability;
+
+     ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+     if (ret) {
+         DEBUG_PRINT_ERROR("Set Resolution failed for HxW = %ux%u",
+                           m_decoder_capability.min_height,
+                           m_decoder_capability.min_width);
+         return OMX_ErrorUnsupportedSetting;
+     }
+
+     eRet = get_buffer_req(&drv_ctx.op_buf);
+     if (eRet != OMX_ErrorNone) {
+         DEBUG_PRINT_ERROR("failed to get_buffer_req");
+         return eRet;
+     }
+
+     min_res_buf_count = drv_ctx.op_buf.mincount;
+     DEBUG_PRINT_LOW("enable adaptive - upper limit buffer count = %lu for HxW %ux%u",
+                     min_res_buf_count, m_decoder_capability.min_height, m_decoder_capability.min_width);
+
+     update_resolution(m_smoothstreaming_width, m_smoothstreaming_height,
+                       m_smoothstreaming_width, m_smoothstreaming_height);
+     eRet = is_video_session_supported();
+     if (eRet != OMX_ErrorNone) {
+         DEBUG_PRINT_ERROR("video session is not supported");
+         return eRet;
+     }
+
+     //Get upper limit buffer size for max smooth streaming resolution set
+     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+     fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
+     fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+     fmt.fmt.pix_mp.pixelformat = output_capability;
+     ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+     if (ret) {
+         DEBUG_PRINT_ERROR("Set Resolution failed for adaptive playback");
+         return OMX_ErrorUnsupportedSetting;
+     }
+
+     eRet = get_buffer_req(&drv_ctx.op_buf);
+     if (eRet != OMX_ErrorNone) {
+         DEBUG_PRINT_ERROR("failed to get_buffer_req!!");
+         return eRet;
+     }
+     DEBUG_PRINT_LOW("enable adaptive - upper limit buffer size = %u",
+                     (unsigned int)drv_ctx.op_buf.buffer_size);
+
+     drv_ctx.op_buf.mincount = min_res_buf_count;
+     drv_ctx.op_buf.actualcount = min_res_buf_count;
+     eRet = set_buffer_req(&drv_ctx.op_buf);
+     if (eRet != OMX_ErrorNone) {
+         DEBUG_PRINT_ERROR("failed to set_buffer_req");
+         return eRet;
+     }
+
+     eRet = get_buffer_req(&drv_ctx.op_buf);
+     if (eRet != OMX_ErrorNone) {
+         DEBUG_PRINT_ERROR("failed to get_buffer_req!!!");
+         return eRet;
+     }
+     DEBUG_PRINT_HIGH("adaptive playback enabled, buf count = %u bufsize = %u",
+                      drv_ctx.op_buf.mincount, (unsigned int)drv_ctx.op_buf.buffer_size);
+     return eRet;
+}
 
 //static
-OMX_ERRORTYPE omx_vdec::describeColorFormat(DescribeColorFormatParams *params) {
-    if (params == NULL) {
+OMX_ERRORTYPE omx_vdec::describeColorFormat(OMX_PTR pParam) {
+
+#ifndef FLEXYUV_SUPPORTED
+    (void) pParam;
+    return OMX_ErrorUndefined;
+#else
+
+    if (pParam == NULL) {
         DEBUG_PRINT_ERROR("describeColorFormat: invalid params");
         return OMX_ErrorBadParameter;
     }
+
+    DescribeColorFormatParams *params = (DescribeColorFormatParams*)pParam;
 
     MediaImage *img = &(params->sMediaImage);
     switch(params->eColorFormat) {
@@ -10149,4 +10751,5 @@ OMX_ERRORTYPE omx_vdec::describeColorFormat(DescribeColorFormatParams *params) {
                 i, img->mPlane[i].mOffset, img->mPlane[i].mColInc, img->mPlane[i].mRowInc);
     }
     return OMX_ErrorNone;
+#endif //FLEXYUV_SUPPORTED
 }

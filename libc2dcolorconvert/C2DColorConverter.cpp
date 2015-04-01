@@ -35,6 +35,8 @@
 #include <sys/ioctl.h>
 #include <utils/Log.h>
 #include <dlfcn.h>
+#include <string.h>
+#include <errno.h>
 
 #undef LOG_TAG
 #define LOG_TAG "C2DColorConvert"
