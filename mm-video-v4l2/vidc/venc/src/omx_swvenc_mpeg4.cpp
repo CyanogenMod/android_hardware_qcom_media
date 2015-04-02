@@ -578,17 +578,6 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                 DEBUG_PRINT_LOW("i/p previous min cnt = %u", m_sInPortDef.nBufferCountMin);
                 DEBUG_PRINT_LOW("i/p previous buffersize = %u", m_sInPortDef.nBufferSize);
 
-                /* set the buffer requirement */
-                bResult = dev_set_buf_req(&portDefn->nBufferCountMin,
-                  &portDefn->nBufferCountActual,
-                  &portDefn->nBufferSize,
-                  portDefn->nPortIndex);
-                if (bResult != true)
-                {
-                   DEBUG_PRINT_ERROR("%s, dev_set_buf_req failed",
-                     __FUNCTION__);
-                   RETURN(OMX_ErrorUnsupportedSetting);
-                }
                 memcpy(&m_sInPortDef, portDefn,sizeof(OMX_PARAM_PORTDEFINITIONTYPE));
 
                 /* update the input buffer requirement */
