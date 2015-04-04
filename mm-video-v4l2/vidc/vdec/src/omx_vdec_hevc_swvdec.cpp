@@ -8630,7 +8630,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     if ((OMX_U8*)p_extra >= (pBuffer + p_buf_hdr->nAllocLen))
         p_extra = NULL;
     OMX_OTHER_EXTRADATATYPE *data = (struct OMX_OTHER_EXTRADATATYPE *)p_extradata;
-    if (data) {
+    if (data && p_extra) {
         while((consumed_len < drv_ctx.extradata_info.buffer_size)
             && (data->eType != (OMX_EXTRADATATYPE)EXTRADATA_NONE)) {
                 if ((consumed_len + data->nSize) > (int)drv_ctx.extradata_info.buffer_size) {
