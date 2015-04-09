@@ -314,6 +314,19 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.qcom.audio.decoder.alac",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxAlacDec.so",
+    {
+      "audio_decoder.alac"
+    }
+  },
+  {
     "OMX.qcom.audio.encoder.aac",
     NULL, // Create instance function
     // Unique instance handle
