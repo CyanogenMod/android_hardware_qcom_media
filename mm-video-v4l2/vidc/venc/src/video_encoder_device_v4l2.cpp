@@ -267,6 +267,8 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 
     snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
              "%s", BUFFER_LOG_LOC);
+
+    mInputBatchMode = false;
 }
 
 venc_dev::~venc_dev()
@@ -390,6 +392,21 @@ void* venc_dev::async_venc_message_thread (void *input)
             while (!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
                 venc_msg.msgcode=VEN_MSG_INPUT_BUFFER_DONE;
                 venc_msg.statuscode=VEN_S_SUCCESS;
+
+                if (omx->handle->mInputBatchMode) {
+                    int bufIndex = omx->handle->mBatchInfo.retrieveBufferAt(v4l2_buf.index);
+                    if (bufIndex < 0) {
+                        DEBUG_PRINT_ERROR("Retrieved invalid buffer %d", v4l2_buf.index);
+                        break;
+                    }
+                    if (omx->handle->mBatchInfo.isPending(bufIndex)) {
+                        DEBUG_PRINT_LOW(" EBD for %d [v4l2-id=%d].. batch still pending",
+                                bufIndex, v4l2_buf.index);
+                        //do not return to client yet
+                        break;
+                    }
+                    v4l2_buf.index = bufIndex;
+                }
                 if (omx_venc_base->mUseProxyColorFormat && !omx_venc_base->mUsesColorConversion)
                     omxhdr = &omx_venc_base->meta_buffer_hdr[v4l2_buf.index];
                 else
@@ -398,6 +415,7 @@ void* venc_dev::async_venc_message_thread (void *input)
                 venc_msg.buf.clientdata=(void*)omxhdr;
                 omx->handle->ebd++;
 
+                DEBUG_PRINT_LOW("sending EBD %p [id=%d]", omxhdr, v4l2_buf.index);
                 if (omx->async_message_process(input,&venc_msg) < 0) {
                     DEBUG_PRINT_ERROR("ERROR: Wrong ioctl message");
                     break;
@@ -1039,6 +1057,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
         }
     }
 
+    mInputBatchMode = false;
     return true;
 }
 
@@ -1102,6 +1121,7 @@ void venc_dev::venc_close()
         fclose(m_debug.extradatafile);
         m_debug.extradatafile = NULL;
     }
+    mInputBatchMode = false;
 }
 
 bool venc_dev::venc_set_buf_req(OMX_U32 *min_buff_count,
@@ -1184,9 +1204,16 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         // Increase buffer-header count for metadata-mode on input port
         // to improve buffering and reduce bottlenecks in clients
         if (metadatamode && (bufreq.count < 9)) {
-            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 16",
+            DEBUG_PRINT_ERROR("FW returned buffer count = %d , overwriting with 9",
                 bufreq.count);
             bufreq.count = 9;
+        }
+
+        int actualCount = bufreq.count;
+        // Request VB2_MAX_FRAME (64) buffers from V4L2 in anticipation of batch mode.
+        // Keep the original count for the client
+        if (metadatamode) {
+            bufreq.count = MAX_v4L2_INPUT_BUFS;
         }
 
         bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -1197,7 +1224,7 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
             return false;
         }
 
-        m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
+        m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = actualCount;
         *min_buff_count = m_sInput_buff_property.mincount;
         *actual_buff_count = m_sInput_buff_property.actualcount;
 #ifdef USE_ION
@@ -2394,6 +2421,8 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
         buf.m.planes = plane;
         buf.length = 1;
 
+        DEBUG_PRINT_LOW("Registering [%d] fd=%d size=%d userptr=%p", index,
+                pmem_tmp->fd, plane[0].length, plane[0].m.userptr);
         rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
 
         if (rc)
@@ -2608,11 +2637,18 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     return false;
                 }
             } else if (!color_format) {
+
                 if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
-                    if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 3 &&
-                        meta_buf->meta_handle->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
-                        buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
-                    if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 2) {
+                    native_handle_t *hnd = (native_handle_t*)meta_buf->meta_handle;
+                    // Setting batch mode is sticky. We do not expect camera to change
+                    // between batch and normal modes at runtime.
+                    if (hnd->numFds > 1) {
+                        mInputBatchMode = true;
+                    }
+
+                    if (mInputBatchMode) {
+                        return venc_empty_batch ((OMX_BUFFERHEADERTYPE*)buffer, index);
+                    } else if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 2) {
                         plane.data_offset = meta_buf->meta_handle->data[1];
                         plane.length = meta_buf->meta_handle->data[2];
                         plane.bytesused = meta_buf->meta_handle->data[2];
@@ -2708,6 +2744,127 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 
     return true;
 }
+
+bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
+{
+    struct v4l2_buffer buf;
+    struct v4l2_plane plane;
+    int rc = 0;
+    struct v4l2_control control;
+    encoder_media_buffer_type * meta_buf = NULL;
+
+    memset (&buf, 0, sizeof(buf));
+    memset (&plane, 0, sizeof(plane));
+
+    native_handle_t *hnd = NULL;
+
+    if (bufhdr == NULL) {
+        DEBUG_PRINT_ERROR("ERROR: %s: buffer is NULL", __func__);
+        return false;
+    }
+
+    bool status = true;
+    if (metadatamode) {
+        plane.m.userptr = index;
+        meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
+
+        if (!color_format) {
+            if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
+                hnd = (native_handle_t*)meta_buf->meta_handle;
+                if (!hnd) {
+                    DEBUG_PRINT_ERROR("venc_empty_batch: invalid handle !");
+                    status = false;
+                } else if (hnd->numFds > kMaxBuffersInBatch) {
+                    DEBUG_PRINT_ERROR("venc_empty_batch: Too many buffers (%d) in batch. "
+                            "Max = %d", hnd->numFds, kMaxBuffersInBatch);
+                    status = false;
+                }
+                DEBUG_PRINT_LOW("venc_empty_batch: Batch of %d bufs", hnd->numFds);
+            } else {
+                DEBUG_PRINT_ERROR("Batch supported for CameraSource buffers only !");
+                status = false;
+            }
+        } else {
+            DEBUG_PRINT_ERROR("Batch supported for Camera buffers only !");
+            status = false;
+        }
+    } else {
+        DEBUG_PRINT_ERROR("Batch supported for metabuffer mode only !");
+        status = false;
+    }
+
+    if (status) {
+        OMX_TICKS bufTimeStamp = 0ll;
+        int numBufs = hnd->numFds;
+        int v4l2Ids[kMaxBuffersInBatch] = {-1};
+        for (int i = 0; i < numBufs; ++i) {
+            v4l2Ids[i] = mBatchInfo.registerBuffer(index);
+            if (v4l2Ids[i] < 0) {
+                DEBUG_PRINT_ERROR("Failed to register buffer");
+                // TODO: cleanup the map and purge all slots of current index
+                status = false;
+                break;
+            }
+        }
+        for (int i = 0; i < numBufs; ++i) {
+            int v4l2Id = v4l2Ids[i];
+            DEBUG_PRINT_LOW("Batch: registering %d as %d", index, v4l2Id);
+            buf.index = (unsigned)v4l2Id;
+            buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+            buf.memory = V4L2_MEMORY_USERPTR;
+            plane.reserved[0] = BatchInfo::getFdAt(hnd, i);
+            plane.reserved[1] = 0;
+            plane.data_offset = BatchInfo::getOffsetAt(hnd, i);
+            plane.m.userptr = (unsigned long)meta_buf;
+            plane.length = plane.bytesused = BatchInfo::getSizeAt(hnd, i);
+            buf.m.planes = &plane;
+            buf.length = 1;
+
+            rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
+            if (rc)
+                DEBUG_PRINT_LOW("VIDIOC_PREPARE_BUF Failed");
+
+            if (bufhdr->nFlags & OMX_BUFFERFLAG_EOS)
+                buf.flags |= V4L2_QCOM_BUF_FLAG_EOS;
+
+            // timestamp differences from camera are in nano-seconds
+            bufTimeStamp = bufhdr->nTimeStamp + BatchInfo::getTimeStampAt(hnd, i) / 1000;
+
+            DEBUG_PRINT_LOW(" Q Batch [%d of %d] : buf=%x fd=%d len=%d TS=%lld",
+                i, numBufs, bufhdr, plane.reserved[0], plane.length, bufTimeStamp);
+            buf.timestamp.tv_sec = bufTimeStamp / 1000000;
+            buf.timestamp.tv_usec = (bufTimeStamp % 1000000);
+
+            rc = ioctl(m_nDriver_fd, VIDIOC_QBUF, &buf);
+            if (rc) {
+                DEBUG_PRINT_ERROR("Failed to qbuf (etb) to driver");
+                return false;
+            }
+
+            etb++;
+        }
+    }
+
+    if (status && !streaming[OUTPUT_PORT]) {
+        enum v4l2_buf_type buf_type;
+        buf_type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+        int ret;
+        ret = ioctl(m_nDriver_fd, VIDIOC_STREAMON, &buf_type);
+
+        if (ret) {
+            DEBUG_PRINT_ERROR("Failed to call streamon");
+            if (errno == EBUSY) {
+                hw_overload = true;
+            }
+            status = false;
+        } else {
+            streaming[OUTPUT_PORT] = true;
+        }
+    }
+
+    return status;
+}
+
 bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,unsigned fd)
 {
     struct pmem *temp_buffer = NULL;
@@ -5210,3 +5367,76 @@ bool venc_dev::venc_is_video_session_supported(unsigned long width,
     DEBUG_PRINT_LOW("video session supported");
     return true;
 }
+
+venc_dev::BatchInfo::BatchInfo()
+    : mNumPending(0) {
+    pthread_mutex_init(&mLock, NULL);
+    for (int i = 0; i < kMaxBufs; ++i) {
+        mBufMap[i] = kBufIDFree;
+    }
+}
+
+int venc_dev::BatchInfo::registerBuffer(int bufferId) {
+    pthread_mutex_lock(&mLock);
+    int availId = 0;
+    for( ; availId < kMaxBufs && mBufMap[availId] != kBufIDFree; ++availId);
+    if (availId >= kMaxBufs) {
+        DEBUG_PRINT_ERROR("Failed to find free entry !");
+        pthread_mutex_unlock(&mLock);
+        return -1;
+    }
+    mBufMap[availId] = bufferId;
+    mNumPending++;
+    pthread_mutex_unlock(&mLock);
+    return availId;
+}
+
+int venc_dev::BatchInfo::retrieveBufferAt(int v4l2Id) {
+    pthread_mutex_lock(&mLock);
+    if (v4l2Id >= kMaxBufs || v4l2Id < 0) {
+        DEBUG_PRINT_ERROR("Batch: invalid index %d", v4l2Id);
+        pthread_mutex_unlock(&mLock);
+        return -1;
+    }
+    if (mBufMap[v4l2Id] == kBufIDFree) {
+        DEBUG_PRINT_ERROR("Batch: buffer @ %d was not registered !", v4l2Id);
+        pthread_mutex_unlock(&mLock);
+        return -1;
+    }
+    int bufferId = mBufMap[v4l2Id];
+    mBufMap[v4l2Id] = kBufIDFree;
+    mNumPending--;
+    pthread_mutex_unlock(&mLock);
+    return bufferId;
+}
+
+bool venc_dev::BatchInfo::isPending(int bufferId) {
+    pthread_mutex_lock(&mLock);
+    int existsId = 0;
+    for(; existsId < kMaxBufs && mBufMap[existsId] != bufferId; ++existsId);
+    pthread_mutex_unlock(&mLock);
+    return existsId < kMaxBufs;
+}
+
+int venc_dev::BatchInfo::getFdAt(native_handle_t *hnd, int index) {
+    int fd = hnd && index < hnd->numFds ? hnd->data[index] : -1;
+    return fd;
+}
+
+int venc_dev::BatchInfo::getOffsetAt(native_handle_t *hnd, int index) {
+    int off = hnd && index < hnd->numInts ? hnd->data[hnd->numFds + index] : -1;
+    return off;
+}
+
+int venc_dev::BatchInfo::getSizeAt(native_handle_t *hnd, int index) {
+    int size = hnd && (index + hnd->numFds) < hnd->numInts ?
+            hnd->data[2*hnd->numFds + index] : -1;
+    return size;
+}
+
+int venc_dev::BatchInfo::getTimeStampAt(native_handle_t *hnd, int index) {
+    int size = hnd && (index + 2*hnd->numFds) < hnd->numInts ?
+            hnd->data[3*hnd->numFds + index] : -1;
+    return size;
+}
+
