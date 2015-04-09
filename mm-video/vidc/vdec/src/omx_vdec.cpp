@@ -476,7 +476,7 @@ VideoHeap::VideoHeap(int devicefd, size_t size, void* base,
 {
     m_ion_device_fd = devicefd;
     m_ion_handle = handle;
-    MemoryHeapBase::init(ionMapfd, base, size, 0, MEM_DEVICE);
+    MemoryHeapBase::init(dup(ionMapfd), base, size, 0, MEM_DEVICE);
     //ionInit(devicefd, base, size, 0 , MEM_DEVICE,handle,ionMapfd);
 }
 #else
