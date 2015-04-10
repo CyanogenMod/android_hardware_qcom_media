@@ -1195,9 +1195,13 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         // Increase buffer-header count for metadata-mode on input port
         // to improve buffering and reduce bottlenecks in clients
         if (metadatamode && (bufreq.count < 9)) {
-            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 16",
+            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 9",
                 bufreq.count);
             bufreq.count = 9;
+        }
+        if (m_sVenc_cfg.input_height * m_sVenc_cfg.input_width >= 3840*2160) {
+            DEBUG_PRINT_LOW("Increasing buffer count = %d to 11", bufreq.count);
+            bufreq.count = 11;
         }
 
         bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -1335,6 +1339,11 @@ bool venc_dev::venc_set_param(void *paramData,OMX_INDEXTYPE index )
 
                     DEBUG_PRINT_LOW("input: actual: %u, min: %u, count_req: %u",
                             (unsigned int)portDefn->nBufferCountActual, (unsigned int)m_sInput_buff_property.mincount, bufreq.count);
+                    if (m_sVenc_cfg.input_width * m_sVenc_cfg.input_height >= 3840 * 2160) {
+                        if (venc_set_perf_mode(V4L2_MPEG_VIDC_VIDEO_PERF_POWER_SAVE) == false) {
+                            DEBUG_PRINT_ERROR("ERROR: Failed to set Power save mode");
+                        }
+                    }
                 } else if (portDefn->nPortIndex == PORT_INDEX_OUT) {
                     m_sVenc_cfg.dvs_height = portDefn->format.video.nFrameHeight;
                     m_sVenc_cfg.dvs_width = portDefn->format.video.nFrameWidth;
