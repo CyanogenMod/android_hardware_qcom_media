@@ -8901,10 +8901,8 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
 
     if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
        (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
-        portDefn->format.video.nStride = VENUS_Y_STRIDE(COLOR_FMT_NV12,
-            drv_ctx.video_resolution.frame_width);
-        portDefn->format.video.nSliceHeight = VENUS_Y_SCANLINES(COLOR_FMT_NV12,
-            drv_ctx.video_resolution.frame_height);
+           portDefn->format.video.nStride = ALIGN(drv_ctx.video_resolution.frame_width, 16);
+           portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
     }
     DEBUG_PRINT_HIGH("update_portdef(%u): Width = %u Height = %u Stride = %d "
             "SliceHeight = %u eColorFormat = %d nBufSize %u nBufCnt %u",
