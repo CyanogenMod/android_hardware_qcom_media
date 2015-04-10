@@ -3819,10 +3819,6 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 eRet = enable_extradata(OMX_EXTNUSER_EXTRADATA, false,
                                     ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                 break;
-        case OMX_QcomIndexParamMpeg2SeqDispExtraData:
-                                eRet = enable_extradata(OMX_MPEG2SEQDISP_EXTRADATA, false,
-                                    ((QOMX_ENABLETYPE *)paramData)->bEnable);
-                                break;
         case OMX_QcomIndexParamVideoDivx: {
                               QOMX_VIDEO_PARAM_DIVXTYPE* divXType = (QOMX_VIDEO_PARAM_DIVXTYPE *) paramData;
                           }
@@ -4487,8 +4483,6 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoInputBitsInfoExtraData;
     } else if (extn_equals(paramName, OMX_QCOM_INDEX_PARAM_VIDEO_EXTNUSER_EXTRADATA)) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexEnableExtnUserData;
-    } else if (extn_equals(paramName, OMX_QCOM_INDEX_PARAM_VIDEO_MPEG2SEQDISP_EXTRADATA)) {
-        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamMpeg2SeqDispExtraData;
     }
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
     else if (extn_equals(paramName, "OMX.google.android.index.enableAndroidNativeBuffers")) {
@@ -9232,10 +9226,6 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     if (seqdisp_payload) {
                         m_disp_hor_size = seqdisp_payload->disp_width;
                         m_disp_vert_size = seqdisp_payload->disp_height;
-                        if (client_extradata & OMX_MPEG2SEQDISP_EXTRADATA) {
-                            append_mpeg2_seqdisplay_extradata(p_extra, seqdisp_payload);
-                            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-                        }
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_S3D_FRAME_PACKING:
@@ -9377,6 +9367,13 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
                 DEBUG_PRINT_HIGH("Failed to set panscan extradata");
             }
+            if (output_capability == V4L2_PIX_FMT_MPEG2) {
+                control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+                control.value =  V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
+                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                    DEBUG_PRINT_HIGH("Failed to set panscan extradata");
+                }
+            }
         }
         if (requested_extradata & OMX_TIMEINFO_EXTRADATA) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
@@ -9416,18 +9413,6 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             control.value = V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA;
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
                 DEBUG_PRINT_HIGH("Failed to set stream userdata extradata");
-            }
-        }
-        if (requested_extradata & OMX_MPEG2SEQDISP_EXTRADATA) {
-            if (output_capability == V4L2_PIX_FMT_MPEG2) {
-                DEBUG_PRINT_HIGH("Enable seq display extradata");
-                control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
-                control.value =  V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
-                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
-                    DEBUG_PRINT_HIGH("Failed to set seqdisp extradata");
-                }
-            } else {
-                DEBUG_PRINT_HIGH("Seq display extradata is supported for MPEG2 only");
             }
         }
     }
@@ -9590,14 +9575,6 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
                 }
         DEBUG_PRINT_HIGH(
                 "=========== End of Userdata ===========");
-    } else if (extra->eType == (OMX_EXTRADATATYPE)OMX_ExtraDataMpeg2SeqDisplay) {
-        OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY *seq_display = (OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY*)(void*)extra->data;
-        DEBUG_PRINT_HIGH(
-                "------Mpeg2SeqDisplay ------\n"
-                "     Frame Width: %d\n"
-                "    Frame Height: %d\n"
-                "=========== End of Mpeg2SeqDisplay ===========",
-                seq_display->disp_width, seq_display->disp_height);
     } else if (extra->eType == OMX_ExtraDataNone) {
         DEBUG_PRINT_HIGH("========== End of Terminator ===========");
     } else {
@@ -9833,20 +9810,6 @@ void omx_vdec::append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     print_debug_extradata(extra);
 }
 
-void omx_vdec::append_mpeg2_seqdisplay_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-        struct msm_vidc_mpeg2_seqdisp_payload *seq_display_payload)
-{
-    OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY *seq_display = NULL;
-    extra->nSize = OMX_MPEG2SEQDISP_EXTRADATA_SIZE;
-    extra->nVersion.nVersion = OMX_SPEC_VERSION;
-    extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
-    extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMpeg2SeqDisplay;
-    extra->nDataSize = sizeof(OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY);
-    seq_display = (OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY *)(void *)extra->data;
-    seq_display->disp_width = seq_display_payload->disp_width;
-    seq_display->disp_height = seq_display_payload->disp_height;
-    print_debug_extradata(extra);
-}
 void omx_vdec::append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 {
     if (!client_extradata) {

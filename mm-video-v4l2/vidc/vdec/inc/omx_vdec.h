@@ -192,7 +192,6 @@ class VideoHeap : public MemoryHeapBase
 #define OMX_FRAMEPACK_EXTRADATA 0x00400000
 #define OMX_QP_EXTRADATA        0x00800000
 #define OMX_BITSINFO_EXTRADATA  0x01000000
-#define OMX_MPEG2SEQDISP_EXTRADATA 0x02000000
 #define DRIVER_EXTRADATA_MASK   0x0000FFFF
 
 #define OMX_INTERLACE_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
@@ -209,8 +208,6 @@ class VideoHeap : public MemoryHeapBase
             sizeof(OMX_QCOM_EXTRADATA_QP) + 3)&(~3))
 #define OMX_BITSINFO_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
             sizeof(OMX_QCOM_EXTRADATA_BITS_INFO) + 3)&(~3))
-#define OMX_MPEG2SEQDISP_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
-            sizeof(OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY) + 3)&(~3))
 #define OMX_USERDATA_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
             + 3)&(~3))
 
@@ -687,8 +684,6 @@ class omx_vdec: public qc_omx_component
                 struct msm_vidc_frame_qp_payload *qp_payload);
         void append_bitsinfo_extradata(OMX_OTHER_EXTRADATATYPE *extra,
                 struct msm_vidc_frame_bits_info_payload *bits_payload);
-        void append_mpeg2_seqdisplay_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                struct msm_vidc_mpeg2_seqdisp_payload* seq_display_payload);
         void insert_demux_addr_offset(OMX_U32 address_offset);
         void extract_demux_addr_offsets(OMX_BUFFERHEADERTYPE *buf_hdr);
         OMX_ERRORTYPE handle_demux_data(OMX_BUFFERHEADERTYPE *buf_hdr);
