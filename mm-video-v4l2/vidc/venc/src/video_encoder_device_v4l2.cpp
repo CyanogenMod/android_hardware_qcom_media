@@ -1227,9 +1227,13 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         // Increase buffer-header count for metadata-mode on input port
         // to improve buffering and reduce bottlenecks in clients
         if (metadatamode && (bufreq.count < 9)) {
-            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 16",
+            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 9",
                 bufreq.count);
             bufreq.count = 9;
+        }
+        if (m_sVenc_cfg.input_height * m_sVenc_cfg.input_width >= 3840*2160) {
+            DEBUG_PRINT_LOW("Increasing buffer count = %d to 11", bufreq.count);
+            bufreq.count = 11;
         }
 
         bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
