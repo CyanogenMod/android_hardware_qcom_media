@@ -1,5 +1,4 @@
 QCOM_MEDIA_ROOT := $(call my-dir)
-$(warning target list is : $(MSM_VIDC_TARGET_LIST))
 
 #Compile these for all targets under QCOM_BOARD_PLATFORMS list.
 ifeq ($(call is-board-platform-in-list, $(QCOM_BOARD_PLATFORMS)),true)
