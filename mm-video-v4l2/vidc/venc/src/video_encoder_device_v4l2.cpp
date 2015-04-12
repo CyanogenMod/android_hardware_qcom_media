@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -899,7 +899,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
     if (ret) {
         DEBUG_PRINT_ERROR("Subscribe Event Failed");
-        return false;
+        goto ioctl_failed;
     }
 
     struct v4l2_capability cap;
@@ -954,7 +954,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
     if (ret) {
         DEBUG_PRINT_ERROR("Failed to set format on capture port");
-        return false;
+        goto ioctl_failed;
     }
 
     m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
@@ -986,7 +986,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
         ret=ioctl(m_nDriver_fd, VIDIOC_S_CTRL,&control);
         if (ret) {
             DEBUG_PRINT_ERROR("ioctl: open secure dev fail, rc %d", ret);
-            return false;
+            goto ioctl_failed;
         }
     }
 
@@ -1012,7 +1012,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
     if (ret || frmsize.type != V4L2_FRMSIZE_TYPE_STEPWISE) {
         DEBUG_PRINT_ERROR("Failed to get framesizes");
-        return false;
+        goto ioctl_failed;
     }
 
     if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE) {
@@ -1040,6 +1040,10 @@ bool venc_dev::venc_open(OMX_U32 codec)
     }
 
     return true;
+ioctl_failed:
+    close(m_nDriver_fd);
+    m_nDriver_fd = -1;
+    return false;
 }
 
 
