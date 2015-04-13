@@ -76,6 +76,7 @@ extern "C"
 #define OMX_QCOM_INDEX_CONFIG_DUALMONO       "OMX.Qualcomm.index.audio.dualmono"
 #define OMX_QCOM_INDEX_CONFIG_AAC_SEL_MIX_COEF "OMX.Qualcomm.index.audio.aac_sel_mix_coef"
 #define OMX_QCOM_INDEX_PARAM_ALAC            "OMX.Qualcomm.index.audio.alac"
+#define OMX_QCOM_INDEX_PARAM_APE             "OMX.Qualcomm.index.audio.ape"
 
 typedef enum QOMX_AUDIO_AMRBANDMODETYPE {
     QOMX_AUDIO_AMRBandModeWB9              = 0x7F000001,/**< AMRWB Mode 9 = SID*/
@@ -524,6 +525,21 @@ typedef struct QOMX_AUDIO_PARAM_ALACTYPE {
     OMX_U32 nChannelLayoutTag; /*Indicates whether channel layout information is present in the bitstream */
 } QOMX_AUDIO_PARAM_ALACTYPE;
 
+typedef struct QOMX_AUDIO_PARAM_APETYPE {
+    OMX_U32 nSize; /* Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion; /**< OMX specification version information */
+    OMX_U32 nPortIndex; /* Port that this structure applies to */
+    OMX_U16 nCompatibleVersion; /* Indicates the compatible version */
+    OMX_U16 nCompressionLevel; /* The compression level present in the encoded packet */
+    OMX_U32 nFormatFlags; /* Reserved parameter for future use */
+    OMX_U32 nBlocksPerFrame; /* Indicates the number of audio blocks in one frame present in the encoded packet header */
+    OMX_U32 nFinalFrameBlocks; /* Indicates the number of audio blocks in the final frame present in the encoded packet header */
+    OMX_U32 nTotalFrames; /* Indicates the total number of frames */
+    OMX_U16 nBitsPerSample; /* Bit depth of the source PCM data */
+    OMX_U16 nChannels; /* Number of channels for decoding */
+    OMX_U32 nSampleRate; /* Samples per second in Hertz */
+    OMX_U32 nSeekTablePresent; /* Flag to indicate if seek table is present or not */
+} QOMX_AUDIO_PARAM_APETYPE;
 
 #if defined( __cplusplus )
 }
