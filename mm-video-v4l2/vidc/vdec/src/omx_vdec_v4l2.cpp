@@ -9247,6 +9247,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
             switch ((unsigned long)data->eType) {
                 case MSM_VIDC_EXTRADATA_INTERLACE_VIDEO:
                     struct msm_vidc_interlace_payload *payload;
+                    int interlace_color_format;
                     payload = (struct msm_vidc_interlace_payload *)(void *)data->data;
                     if (payload) {
                         enable = 1;
@@ -9265,12 +9266,28 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                                 DEBUG_PRINT_LOW("default case - set interlace to topfield");
                                 drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
                         }
+                        switch (payload->color_format) {
+                           case MSM_VIDC_HAL_INTERLACE_COLOR_FORMAT_NV12:
+                               interlace_color_format = (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+                               drv_ctx.output_format = VDEC_YUV_FORMAT_NV12;
+                               break;
+                           case MSM_VIDC_HAL_INTERLACE_COLOR_FORMAT_NV12_UBWC:
+                               interlace_color_format = (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed;
+                               drv_ctx.output_format = VDEC_YUV_FORMAT_NV12_UBWC;
+                               break;
+                           default:
+                               interlace_color_format = (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+                               DEBUG_PRINT_ERROR("Error - Unknown color format hint for interlaced frame");
+                        }
                     }
 
                     if (m_enable_android_native_buffers) {
-                        DEBUG_PRINT_LOW("setMetaData INTERLACED format:%d enable:%d mbaff:%d",
-                                         payload->format, enable,
+                        DEBUG_PRINT_LOW("setMetaData INTERLACED format:%d color_format: %x enable:%d mbaff:%d",
+                                         payload->format, interlace_color_format ,enable,
                                         (p_buf_hdr->nFlags & QOMX_VIDEO_BUFFERFLAG_MBAFF)?true:false);
+
+                        native_buffer[buf_index].privatehandle->format = interlace_color_format;
+
                         setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
                                PP_PARAM_INTERLACED, (void*)&enable);
                     }
