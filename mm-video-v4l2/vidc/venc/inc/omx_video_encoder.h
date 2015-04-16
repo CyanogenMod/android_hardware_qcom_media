@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -95,4 +95,11 @@ class omx_venc: public omx_video
         int dev_extradata_log_buffers(char *buffer);
 };
 
+#ifdef _UBWC_
+    #define QOMX_DEFAULT_COLOR_FMT    QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed
+    #define V4L2_DEFAULT_OUTPUT_COLOR_FMT   V4L2_PIX_FMT_NV12_UBWC
+#else
+    #define QOMX_DEFAULT_COLOR_FMT    QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m
+    #define V4L2_DEFAULT_OUTPUT_COLOR_FMT   V4L2_PIX_FMT_NV12
+#endif
 #endif //__OMX_VENC__H

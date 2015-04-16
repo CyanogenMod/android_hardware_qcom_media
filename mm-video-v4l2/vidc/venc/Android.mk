@@ -37,6 +37,10 @@ libmm-venc-def += -DMAX_RES_1080P_EBI
 endif
 endif
 
+ifeq ($(TARGET_BOARD_PLATFORM),msm8996)
+libmm-venc-def += -D_UBWC_
+endif
+
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_FLAG_MSM8226)),true)
 libmm-venc-def += -D_MSM8226_
 endif
