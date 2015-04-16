@@ -216,7 +216,17 @@ void* async_message_thread (void *input)
                 struct vdec_msginfo vdec_msg;
                 vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
                 vdec_msg.status_code=VDEC_S_SUCCESS;
-                DEBUG_PRINT_HIGH("VIDC Port Reconfig recieved insufficient");
+                DEBUG_PRINT_HIGH("VIDC Port Reconfig received insufficient");
+                if (omx->async_message_process(input,&vdec_msg) < 0) {
+                    DEBUG_PRINT_HIGH("async_message_thread Exited");
+                    break;
+                }
+            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_BITDEPTH_CHANGED_INSUFFICIENT ) {
+                struct vdec_msginfo vdec_msg;
+                vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
+                vdec_msg.status_code=VDEC_S_SUCCESS;
+                omx->dpb_bit_depth = dqevent.u.data[0];
+                DEBUG_PRINT_HIGH("VIDC Port Reconfig Bitdepth change - %d", dqevent.u.data[0]);
                 if (omx->async_message_process(input,&vdec_msg) < 0) {
                     DEBUG_PRINT_HIGH("async_message_thread Exited");
                     break;
@@ -296,8 +306,7 @@ void* async_message_thread (void *input)
                     DEBUG_PRINT_HIGH("async_message_thread Exitedn");
                     break;
                 }
-            }
-            else {
+            } else {
                 DEBUG_PRINT_HIGH("VIDC Some Event recieved");
                 continue;
             }
@@ -719,6 +728,7 @@ static const int event_type[] = {
     V4L2_EVENT_MSM_VIDC_FLUSH_DONE,
     V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_SUFFICIENT,
     V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT,
+    V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_BITDEPTH_CHANGED_INSUFFICIENT,
     V4L2_EVENT_MSM_VIDC_RELEASE_BUFFER_REFERENCE,
     V4L2_EVENT_MSM_VIDC_RELEASE_UNQUEUED_BUFFER,
     V4L2_EVENT_MSM_VIDC_CLOSE_DONE,
@@ -845,6 +855,87 @@ int release_buffers(omx_vdec* obj, enum vdec_buffer buffer_type)
         rc = ioctl(obj->drv_ctx.video_driver_fd,VIDIOC_REQBUFS, &bufreq);
     }
     return rc;
+}
+
+OMX_ERRORTYPE omx_vdec::set_dpb(bool is_split_mode, int dpb_color_format)
+{
+    int rc = 0;
+    struct v4l2_ext_control ctrl[2];
+    struct v4l2_ext_controls controls;
+
+    DEBUG_PRINT_HIGH("DPB mode: %s DPB color format: %s OPB color format: %s",
+         is_split_mode ? "split" : "combined",
+         dpb_color_format == V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_UBWC ? "nv12_ubwc":
+         dpb_color_format == V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_TP10_UBWC ? "nv12_10bit_ubwc":
+         dpb_color_format == V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_NONE ? "same as opb":
+         "unknown",
+         capture_capability == V4L2_PIX_FMT_NV12 ? "nv12":
+         capture_capability == V4L2_PIX_FMT_NV12_UBWC ? "nv12_ubwc":
+         "unknown");
+
+    ctrl[0].id = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_MODE;
+    if (is_split_mode) {
+        ctrl[0].value = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_SECONDARY;
+    } else {
+        ctrl[0].value = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_PRIMARY;
+    }
+
+    ctrl[1].id = V4L2_CID_MPEG_VIDC_VIDEO_DPB_COLOR_FORMAT;
+    ctrl[1].value = dpb_color_format;
+
+    controls.count = 2;
+    controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+    controls.controls = ctrl;
+
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_EXT_CTRLS, &controls);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set ext ctrls for opb_dpb: %d\n", rc);
+        return OMX_ErrorUnsupportedSetting;
+    }
+    return OMX_ErrorNone;
+}
+
+
+OMX_ERRORTYPE omx_vdec::decide_dpb_buffer_mode()
+{
+    OMX_ERRORTYPE eRet = OMX_ErrorNone;
+
+    bool cpu_access = capture_capability != V4L2_PIX_FMT_NV12_UBWC;
+
+    bool is_res_above_1080p = (drv_ctx.video_resolution.frame_width > 1920 &&
+            drv_ctx.video_resolution.frame_height > 1088) ||
+            (drv_ctx.video_resolution.frame_height > 1088 &&
+             drv_ctx.video_resolution.frame_width > 1920);
+
+    if (cpu_access) {
+        if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_8) {
+            if (is_res_above_1080p) {
+                //split DPB-OPB
+                //DPB -> UBWC , OPB -> Linear
+                eRet = set_dpb(true, V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_UBWC);
+            } else {
+                //DPB-OPB combined linear
+                eRet = set_dpb(false, V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_NONE);
+            }
+        } else if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_10) {
+            //split DPB-OPB
+            //DPB -> UBWC, OPB -> Linear
+            eRet = set_dpb(true, V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_TP10_UBWC);
+        }
+    } else { //no cpu access
+        if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_8) {
+            //DPB-OPB combined UBWC
+            eRet = set_dpb(false, V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_NONE);
+        } else if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_10) {
+            //split DPB-OPB
+            //DPB -> UBWC, OPB -> UBWC
+            eRet = set_dpb(true, V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_TP10_UBWC);
+        }
+    }
+    if (eRet) {
+        DEBUG_PRINT_HIGH("Failed to set DPB buffer mode: %d", eRet);
+    }
+    return eRet;
 }
 
 /* ======================================================================
@@ -1893,6 +1984,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             DEBUG_PRINT_ERROR("Setting color format failed");
             eRet = OMX_ErrorInsufficientResources;
         }
+
+        dpb_bit_depth = MSM_VIDC_BIT_DEPTH_8;
 
 #ifdef _UBWC_
         capture_capability = V4L2_PIX_FMT_NV12_UBWC;
@@ -3052,6 +3145,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                OMX_PARAM_PORTDEFINITIONTYPE *portDefn =
                                    (OMX_PARAM_PORTDEFINITIONTYPE *) paramData;
                                DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamPortDefinition");
+                               decide_dpb_buffer_mode();
                                eRet = update_portdef(portDefn);
                                if (eRet == OMX_ErrorNone)
                                    m_port_def = *portDefn;
@@ -3369,6 +3463,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    /* update output port resolution with client supplied dimensions
                                       in case scaling is enabled, else it follows input resolution set
                                    */
+                                   decide_dpb_buffer_mode();
                                    if (is_down_scalar_enabled) {
                                        DEBUG_PRINT_LOW("SetParam OP: WxH(%u x %u)",
                                                (unsigned int)portDefn->format.video.nFrameWidth,
