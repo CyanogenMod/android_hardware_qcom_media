@@ -492,6 +492,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Set Hybrid Hier-p layers */
     OMX_QcomIndexParamVideoHybridHierpMode = 0x7F000043,
+
+    OMX_QcomIndexFlexibleYUVDescription = 0x7F000044,
 };
 
 /**
