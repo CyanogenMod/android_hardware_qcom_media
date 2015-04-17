@@ -10292,6 +10292,10 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             }
         }
         if (requested_extradata & OMX_FRAMEPACK_EXTRADATA) {
+            if (secure_mode) {
+                DEBUG_PRINT_HIGH("S3D frame packing not supported for secure sessions");
+                return OMX_ErrorUnsupportedSetting;
+            }
             if (output_capability == V4L2_PIX_FMT_H264) {
                 DEBUG_PRINT_HIGH("enable OMX_FRAMEPACK_EXTRADATA");
                 control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
