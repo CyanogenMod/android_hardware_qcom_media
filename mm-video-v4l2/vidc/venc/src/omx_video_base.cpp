@@ -1502,14 +1502,18 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     //we support following formats
                     //index 0 - Compressed (UBWC) Venus flavour of YUV420SP
                     //index 1 - Venus flavour of YUV420SP
-                    //index 2 - opaque which internally maps to YUV420SP.
-                    //index 3 - vannilla YUV420SP
+                    //index 2 - Compressed (UBWC) Venus flavour of RGBA8888
+                    //index 3 - Venus flavour of RGBA8888
+                    //index 4 - opaque which internally maps to YUV420SP.
+                    //index 5 - vannilla YUV420SP
                     //this can be extended in the future
                     int supportedFormats[] = {
                         [0] = QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed,
                         [1] = QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
-                        [2] = QOMX_COLOR_FormatAndroidOpaque,
-                        [3] = OMX_COLOR_FormatYUV420SemiPlanar,
+                        [2] = QOMX_COLOR_Format32bitRGBA8888Compressed,
+                        [3] = QOMX_COLOR_Format32bitRGBA8888,
+                        [4] = QOMX_COLOR_FormatAndroidOpaque,
+                        [5] = OMX_COLOR_FormatYUV420SemiPlanar,
                     };
 #else
                     //we support two formats
@@ -4558,6 +4562,16 @@ bool omx_video::omx_c2d_conv::get_buffer_size(int port,unsigned int &buf_size)
     return ret;
 }
 
+bool omx_video::is_rgba_conv_needed()
+{
+    bool bRet = true;
+#ifdef _HW_RGBA
+    bRet = false;
+#endif
+    DEBUG_PRINT_LOW("RGBA conversion %s", bRet ? "Needed":"Not-Needed");
+    return bRet;
+}
+
 OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         OMX_IN OMX_BUFFERHEADERTYPE* buffer)
 {
@@ -4595,7 +4609,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
             c2d_opened = false;
         }
         if (!c2d_opened) {
-            if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888) {
+            if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888 &&
+                is_rgba_conv_needed()) {
                 DEBUG_PRINT_INFO("open Color conv for RGBA888 W: %u, H: %u",
                         (unsigned int)m_sInPortDef.format.video.nFrameWidth,
                         (unsigned int)m_sInPortDef.format.video.nFrameHeight);
@@ -4613,7 +4628,9 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
 #endif
             } else if (handle->format != HAL_PIXEL_FORMAT_NV12_ENCODEABLE &&
                     handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m &&
-                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed) {
+                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed &&
+                    handle->format != HAL_PIXEL_FORMAT_RGBA_8888 &&
+                    handle->format != QOMX_COLOR_Format32bitRGBA8888Compressed) {
                 mUsesColorConversion = false;
             } else {
                 DEBUG_PRINT_ERROR("Incorrect color format");
@@ -4812,11 +4829,14 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
             Input_pmem_info.fd = handle->fd;
             Input_pmem_info.offset = 0;
             Input_pmem_info.size = handle->size;
-            if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888)
+            if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888 &&
+                is_rgba_conv_needed())
                 ret = convert_queue_buffer(hComp,Input_pmem_info,index);
             else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE ||
                     handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m ||
-                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed)
+                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed ||
+                    handle->format == HAL_PIXEL_FORMAT_RGBA_8888 ||
+                    handle->format == QOMX_COLOR_Format32bitRGBA8888Compressed)
                 ret = queue_meta_buffer(hComp,Input_pmem_info);
             else
                 ret = OMX_ErrorBadParameter;
