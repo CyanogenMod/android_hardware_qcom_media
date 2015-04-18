@@ -156,6 +156,8 @@ class omx_video: public qc_omx_component
         OMX_BUFFERHEADERTYPE  *psource_frame;
         OMX_BUFFERHEADERTYPE  *pdest_frame;
         bool secure_session;
+        //intermediate conversion buffer queued to encoder in case of invalid EOS input
+        OMX_BUFFERHEADERTYPE  *mEmptyEosBuffer;
 
         class omx_c2d_conv
         {
@@ -493,6 +495,8 @@ class omx_video: public qc_omx_component
                 struct pmem &Input_pmem_info,unsigned &index);
         OMX_ERRORTYPE queue_meta_buffer(OMX_HANDLETYPE hComp,
                 struct pmem &Input_pmem_info);
+        OMX_ERRORTYPE push_empty_eos_buffer(OMX_HANDLETYPE hComp,
+                OMX_BUFFERHEADERTYPE *buffer);
         OMX_ERRORTYPE fill_this_buffer_proxy(OMX_HANDLETYPE hComp,
                 OMX_BUFFERHEADERTYPE *buffer);
         bool release_done();

@@ -2418,13 +2418,20 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
         // CPU (Eg: MediaCodec)  0            --             0              bufhdr
         // ---------------------------------------------------------------------------------------
         if (metadatamode) {
+            plane.m.userptr = index;
             meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
 
-            if (!meta_buf)
-                return false;
-
-            if (!color_format) {
-                plane.m.userptr = index;
+            if (!meta_buf) {
+                //empty EOS buffer
+                if (!bufhdr->nFilledLen && (bufhdr->nFlags & OMX_BUFFERFLAG_EOS)) {
+                    plane.data_offset = bufhdr->nOffset;
+                    plane.length = bufhdr->nAllocLen;
+                    plane.bytesused = bufhdr->nFilledLen;
+                    DEBUG_PRINT_LOW("venc_empty_buf: empty EOS buffer");
+                } else {
+                    return false;
+                }
+            } else if (!color_format) {
                 if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
                     plane.data_offset = meta_buf->meta_handle->data[1];
                     plane.length = meta_buf->meta_handle->data[2];
@@ -2437,19 +2444,17 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     plane.data_offset = 0;
                     plane.length = handle->size;
                     plane.bytesused = handle->size;
-                    DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d filled %d of %d",
-                            fd, plane.bytesused, plane.length);
+                        DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
+                                ": filled %d of %d", fd, plane.bytesused, plane.length);
                 }
             } else {
-                plane.m.userptr = (unsigned long) bufhdr->pBuffer;
                 plane.data_offset = bufhdr->nOffset;
                 plane.length = bufhdr->nAllocLen;
                 plane.bytesused = bufhdr->nFilledLen;
-                DEBUG_PRINT_LOW("venc_empty_buf: Opaque non-camera buf: fd = %d filled %d of %d",
-                        fd, plane.bytesused, plane.length);
+                DEBUG_PRINT_LOW("venc_empty_buf: Opaque non-camera buf: fd = %d "
+                        ": filled %d of %d", fd, plane.bytesused, plane.length);
             }
         } else {
-            plane.m.userptr = (unsigned long) bufhdr->pBuffer;
             plane.data_offset = bufhdr->nOffset;
             plane.length = bufhdr->nAllocLen;
             plane.bytesused = bufhdr->nFilledLen;
