@@ -409,11 +409,49 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
   if(handle)
   {
     struct stat sd;
-
     *handle = NULL;
+    char optComponentName[OMX_MAX_STRINGNAME_SIZE];
+    strlcpy(optComponentName, componentName, OMX_MAX_STRINGNAME_SIZE);
 
-    cmp_index = get_cmp_index(componentName);
+    if(strstr(componentName, "avc") && strstr(componentName, "decoder"))
+    {
+      void *libhandle = dlopen("libOmxVideoDSMode.so", RTLD_NOW);
+      if(libhandle)
+      {
+        int (*fn_ptr)()  = dlsym(libhandle, "isDSModeActive");
 
+        if(fn_ptr == NULL)
+        {
+          DEBUG_PRINT_ERROR("Error: isDSModeActive Not Found %s\n",
+                    dlerror());
+        }
+        else
+        {
+          int isActive = fn_ptr();
+          char *pSubString = strstr(componentName, ".dsmode");
+          if(pSubString)
+          {
+            optComponentName[pSubString - componentName] = 0;
+          }
+          else if(isActive)
+          {
+            strlcat(optComponentName, ".dsmode", OMX_MAX_STRINGNAME_SIZE);
+          }
+          cmp_index = get_cmp_index(optComponentName);
+        }
+        dlclose(libhandle);
+      }
+      else
+      {
+        DEBUG_PRINT_ERROR("Failed to load dsmode library");
+      }
+    }
+
+    if(cmp_index < 0)
+    {
+      cmp_index = get_cmp_index(componentName);
+      strlcpy(optComponentName, componentName, OMX_MAX_STRINGNAME_SIZE);
+    }
     if(cmp_index >= 0)
     {
       char value[PROPERTY_VALUE_MAX];
@@ -450,7 +488,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
         {
           void *hComp = NULL;
           hComp = qc_omx_create_component_wrapper((OMX_PTR)pThis);
-          if((eRet = qc_omx_component_init(hComp, componentName)) !=
+          if((eRet = qc_omx_component_init(hComp, optComponentName)) !=
                            OMX_ErrorNone)
           {
               DEBUG_PRINT("Component not created succesfully\n");
@@ -459,7 +497,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
 
           }
           qc_omx_component_set_callbacks(hComp,callBacks,appData);
-          hnd_index = get_comp_handle_index(core[cmp_index].name);
+          hnd_index = get_comp_handle_index(optComponentName);
           if(hnd_index >= 0)
           {
             core[cmp_index].inst[hnd_index]= *handle = (OMX_HANDLETYPE) hComp;
