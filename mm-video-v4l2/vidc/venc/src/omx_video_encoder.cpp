@@ -295,7 +295,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sInPortDef.format.video.nBitrate = 64000;
     m_sInPortDef.format.video.xFramerate = 15 << 16;
     m_sInPortDef.format.video.eColorFormat = (OMX_COLOR_FORMATTYPE)
-        QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+        QOMX_DEFAULT_COLOR_FMT;
     m_sInPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingUnused;
 
     if (dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
@@ -342,7 +342,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sInPortFormat.nPortIndex = (OMX_U32) PORT_INDEX_IN;
     m_sInPortFormat.nIndex = 0;
     m_sInPortFormat.eColorFormat = (OMX_COLOR_FORMATTYPE)
-        QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+        QOMX_DEFAULT_COLOR_FMT;
     m_sInPortFormat.eCompressionFormat = OMX_VIDEO_CodingUnused;
 
 

@@ -4020,17 +4020,28 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
     struct v4l2_format fmt;
     DEBUG_PRINT_LOW("venc_set_color_format: color_format = %u ", color_format);
 
-    if ((int)color_format == (int)OMX_COLOR_FormatYUV420SemiPlanar ||
-            (int)color_format == (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
-        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
-    } else if ((int)color_format == (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed) {
-        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12_UBWC;
-    } else if ((int)color_format == (int)QOMX_COLOR_FormatYVU420SemiPlanar) {
-        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV21;
-    } else {
-        DEBUG_PRINT_HIGH("WARNING: Unsupported Color format [%d]", color_format);
-        m_sVenc_cfg.inputformat = V4L2_DEFAULT_OUTPUT_COLOR_FMT;
-        DEBUG_PRINT_HIGH("Default color format YUV420SemiPlanar is set");
+    switch ((int)color_format) {
+        case OMX_COLOR_FormatYUV420SemiPlanar:
+        case QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m:
+            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+            break;
+        case QOMX_COLOR_FormatYVU420SemiPlanar:
+            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV21;
+            break;
+        case QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed:
+            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12_UBWC;
+            break;
+        case QOMX_COLOR_Format32bitRGBA8888:
+            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_RGB32;
+            break;
+        case QOMX_COLOR_Format32bitRGBA8888Compressed:
+            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_RGBA8888_UBWC;
+            break;
+        default:
+            DEBUG_PRINT_HIGH("WARNING: Unsupported Color format [%d]", color_format);
+            m_sVenc_cfg.inputformat = V4L2_DEFAULT_OUTPUT_COLOR_FMT;
+            DEBUG_PRINT_HIGH("Default color format NV12 UBWC is set");
+            break;
     }
 
     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
