@@ -84,9 +84,7 @@ LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
 
 include $(BUILD_SHARED_LIBRARY)
 
-# QCPATH is defined if /vendor/qcom/proprietary folder is present in the build.
-# This folder is removed in OSS (open source) builds.
-# Don't build software codec OMX components in OSS builds.
+# SW codec OMX components not built in OSS builds as QCPATH is null in OSS builds.
 ifneq "$(wildcard $(QCPATH) )" ""
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_MPEG4)),true)
