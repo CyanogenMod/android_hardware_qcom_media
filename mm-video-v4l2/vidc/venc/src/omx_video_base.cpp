@@ -4626,14 +4626,14 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
                 if (!dev_set_format(handle->format))
                     DEBUG_PRINT_ERROR("cannot set color format for RGBA8888");
 #endif
-            } else if (handle->format != HAL_PIXEL_FORMAT_NV12_ENCODEABLE &&
-                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m &&
-                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed &&
-                    handle->format != HAL_PIXEL_FORMAT_RGBA_8888 &&
-                    handle->format != QOMX_COLOR_Format32bitRGBA8888Compressed) {
+            } else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE ||
+                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m ||
+                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed ||
+                    handle->format == HAL_PIXEL_FORMAT_RGBA_8888 ||
+                    handle->format == QOMX_COLOR_Format32bitRGBA8888Compressed) {
                 mUsesColorConversion = false;
             } else {
-                DEBUG_PRINT_ERROR("Incorrect color format");
+                DEBUG_PRINT_ERROR("Incorrect color format %x", handle->format);
                 mUsesColorConversion = false;
                 m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
                 return OMX_ErrorBadParameter;
