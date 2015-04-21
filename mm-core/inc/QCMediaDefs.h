@@ -53,6 +53,7 @@ extern const char *MEDIA_MIMETYPE_AUDIO_EAC3;
 extern const char *MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS;
 extern const char *MEDIA_MIMETYPE_AUDIO_AIFF;
 extern const char *MEDIA_MIMETYPE_AUDIO_ALAC;
+extern const char *MEDIA_MIMETYPE_AUDIO_APE;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG2TS;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCMPEG;
 extern const char *MEDIA_MIMETYPE_CONTAINER_QCAMR_NB;
