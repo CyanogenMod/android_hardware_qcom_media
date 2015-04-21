@@ -48,6 +48,7 @@ enum {
     kKeyWMABitspersample     = 'bsps',  // int64_t
     kKeyWMAVirPktSize        = 'vpks',  // int64_t
     kKeyWMAChannelMask       = 'chmk',  // int32_t
+    kKeyVorbisData           = 'vdat',  // raw data
 
     kKeyFileFormat           = 'ffmt',  // cstring
 
