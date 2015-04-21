@@ -1985,6 +1985,14 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             memcpy(&m_sRectangleData, configData, sizeof(m_sRectangleData));
             break;
         }
+        case OMX_IndexConfigPriority:
+            {
+                if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)OMX_IndexConfigPriority)) {
+                    DEBUG_PRINT_ERROR("Failed to set OMX_IndexConfigPriority");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             break;
