@@ -4438,6 +4438,23 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
         }
 
         return ret;
+    } else if ((int)configIndex == (int)OMX_IndexConfigPriority) {
+        OMX_PARAM_U32TYPE *priority = (OMX_PARAM_U32TYPE *)configData;
+        DEBUG_PRINT_LOW("Set_config: priority %d",priority->nU32);
+
+        struct v4l2_control control;
+
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY;
+        if (priority->nU32 == 0)
+            control.value = V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_ENABLE;
+        else
+            control.value = V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_DISABLE;
+
+        if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to set Priority");
+            ret = OMX_ErrorUnsupportedSetting;
+        }
+        return ret;
     }
 
     return OMX_ErrorNotImplemented;
