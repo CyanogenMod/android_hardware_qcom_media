@@ -129,14 +129,24 @@ extern "C" {
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
-#ifdef ION_FLAG_CP_BITSTREAM
+#ifndef ION_FLAG_CP_BITSTREAM
+#define ION_FLAG_CP_BITSTREAM 0
+#endif
+
+#ifndef ION_FLAG_CP_PIXEL
+#define ION_FLAG_CP_PIXEL 0
+#endif
+
+#ifdef MASTER_SIDE_CP
 #define MEM_HEAP_ID ION_SECURE_HEAP_ID
 #define SECURE_ALIGN SZ_4K
-#else
-#define SECURE_ALIGN SZ_1M
-#define ION_FLAG_CP_BITSTREAM 0
-#define ION_FLAG_CP_PIXEL 0
+#define SECURE_FLAGS_INPUT_BUFFER (ION_SECURE | ION_FLAG_CP_BITSTREAM)
+#define SECURE_FLAGS_OUTPUT_BUFFER (ION_SECURE | ION_FLAG_CP_PIXEL)
+#else //SLAVE_SIDE_CP
 #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
+#define SECURE_ALIGN SZ_1M
+#define SECURE_FLAGS_INPUT_BUFFER ION_SECURE
+#define SECURE_FLAGS_OUTPUT_BUFFER ION_SECURE
 #endif
 
 static OMX_U32 maxSmoothStreamingWidth = 1920;
@@ -4969,7 +4979,7 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                         drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.alignment,
                         &drv_ctx.op_buf_ion_info[i].ion_alloc_data,
                         &drv_ctx.op_buf_ion_info[i].fd_ion_data,
-                        secure_mode ? ION_SECURE | ION_FLAG_CP_PIXEL : 0);
+                        secure_mode ? SECURE_FLAGS_OUTPUT_BUFFER : 0);
                 if (drv_ctx.op_buf_ion_info[i].ion_device_fd < 0) {
                     DEBUG_PRINT_ERROR("ION device fd is bad %d", drv_ctx.op_buf_ion_info[i].ion_device_fd);
                     return OMX_ErrorInsufficientResources;
@@ -5534,7 +5544,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
                 drv_ctx.ip_buf.buffer_size,drv_ctx.op_buf.alignment,
                 &drv_ctx.ip_buf_ion_info[i].ion_alloc_data,
                 &drv_ctx.ip_buf_ion_info[i].fd_ion_data, secure_mode ?
-                ION_SECURE | ION_FLAG_CP_BITSTREAM : ION_FLAG_CACHED);
+                SECURE_FLAGS_INPUT_BUFFER : ION_FLAG_CACHED);
         if (drv_ctx.ip_buf_ion_info[i].ion_device_fd < 0) {
             return OMX_ErrorInsufficientResources;
         }
@@ -5713,7 +5723,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
                 secure_scaling_to_non_secure_opb ? SZ_4K : drv_ctx.op_buf.alignment,
                 &ion_alloc_data, &fd_ion_data,
                 (secure_mode && !secure_scaling_to_non_secure_opb) ?
-                ION_SECURE | ION_FLAG_CP_PIXEL : cache_flag);
+                SECURE_FLAGS_OUTPUT_BUFFER : cache_flag);
         if (ion_device_fd < 0) {
             return OMX_ErrorInsufficientResources;
         }
