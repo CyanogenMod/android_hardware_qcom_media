@@ -8656,11 +8656,11 @@ OMX_ERRORTYPE omx_vdec::set_buffer_req(vdec_allocatorproperty *buffer_prop)
         memset(&fmt, 0x0, sizeof(struct v4l2_format));
         fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
         fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+        fmt.fmt.pix_mp.plane_fmt[0].sizeimage = buf_size;
 
         if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_INPUT) {
             fmt.type =V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
             fmt.fmt.pix_mp.pixelformat = output_capability;
-            fmt.fmt.pix_mp.plane_fmt[0].sizeimage = buf_size;
         } else if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT) {
             fmt.type =V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
             fmt.fmt.pix_mp.pixelformat = capture_capability;
@@ -10716,6 +10716,7 @@ OMX_ERRORTYPE omx_vdec::enable_adaptive_playback(unsigned long nMaxFrameWidth,
 
      drv_ctx.op_buf.mincount = min_res_buf_count;
      drv_ctx.op_buf.actualcount = min_res_buf_count;
+     drv_ctx.op_buf.buffer_size = drv_ctx.op_buf.buffer_size;
      eRet = set_buffer_req(&drv_ctx.op_buf);
      if (eRet != OMX_ErrorNone) {
          DEBUG_PRINT_ERROR("failed to set_buffer_req");
