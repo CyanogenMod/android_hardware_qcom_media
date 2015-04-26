@@ -27,10 +27,14 @@ libmm-vidc-inc      += $(TOP)/$(call project-path-for,qcom-media)/libc2dcolorcon
 libmm-vidc-inc      += $(TOP)/frameworks/av/include/media/stagefright
 libmm-vidc-inc      += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
+# Common Dependencies
+libmm-vidc-add-dep  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
 LOCAL_MODULE                    := libOmxVidcCommon
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-vidc-def)
 LOCAL_C_INCLUDES                := $(libmm-vidc-inc)
+LOCAL_ADDITIONAL_DEPENDENCIES   := $(libmm-vidc-add-dep)
 
 LOCAL_PRELINK_MODULE      := false
 LOCAL_SHARED_LIBRARIES    := liblog libutils libcutils libdl
