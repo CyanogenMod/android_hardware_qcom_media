@@ -88,7 +88,7 @@ LOCAL_C_INCLUDES        += $(LOCAL_PATH)/inc
 LOCAL_PRELINK_MODULE    := false
 LOCAL_MODULE            := libOmxCore
 LOCAL_MODULE_TAGS       := optional
-LOCAL_SHARED_LIBRARIES  := liblog libdl
+LOCAL_SHARED_LIBRARIES  := liblog libdl libcutils
 LOCAL_CFLAGS            := $(OMXCORE_CFLAGS)
 
 LOCAL_SRC_FILES         := src/common/omx_core_cmp.cpp
@@ -112,7 +112,7 @@ LOCAL_C_INCLUDES        += $(LOCAL_PATH)/inc
 LOCAL_PRELINK_MODULE    := false
 LOCAL_MODULE            := libmm-omxcore
 LOCAL_MODULE_TAGS       := optional
-LOCAL_SHARED_LIBRARIES  := liblog libdl
+LOCAL_SHARED_LIBRARIES  := liblog libdl libcutils
 LOCAL_CFLAGS            := $(OMXCORE_CFLAGS)
 
 LOCAL_SRC_FILES         := src/common/omx_core_cmp.cpp
