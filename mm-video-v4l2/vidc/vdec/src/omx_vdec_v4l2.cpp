@@ -1785,6 +1785,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         secure_mode = true;
         arbitrary_bytes = false;
         role = (OMX_STRING)"OMX.qcom.video.decoder.wmv";
+    } else if (!strncmp(role, "OMX.qcom.video.decoder.mpeg4.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
+        secure_mode = true;
+        arbitrary_bytes = false;
+        role = (OMX_STRING)"OMX.qcom.video.decoder.mpeg4";
     }
 
     drv_ctx.video_driver_fd = open(device_name, O_RDWR);
