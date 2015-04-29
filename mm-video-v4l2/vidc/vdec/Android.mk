@@ -67,8 +67,6 @@ include $(CLEAR_VARS)
 libmm-vdec-inc          := $(LOCAL_PATH)/inc
 libmm-vdec-inc          += $(TOP)/hardware/qcom/media/mm-video-v4l2/vidc/common/inc
 libmm-vdec-inc          += $(TOP)/hardware/qcom/media/mm-core/inc
-#DRM include - Interface which loads the DRM library
-libmm-vdec-inc	        += $(TOP)/hardware/qcom/media/mm-video-v4l2/DivxDrmDecrypt/inc
 libmm-vdec-inc          += $(TARGET_OUT_HEADERS)/qcom/display
 libmm-vdec-inc          += $(TARGET_OUT_HEADERS)/adreno
 libmm-vdec-inc          += $(TOP)/frameworks/native/include/media/openmax
@@ -111,7 +109,6 @@ LOCAL_ADDITIONAL_DEPENDENCIES   := $(libmm-vdec-add-dep)
 LOCAL_PRELINK_MODULE    := false
 LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
 
-LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
 LOCAL_SHARED_LIBRARIES  += libqdMetaData
 
 LOCAL_SRC_FILES         := src/frameparser.cpp
@@ -145,7 +142,6 @@ LOCAL_ADDITIONAL_DEPENDENCIES   := $(libmm-vdec-add-dep)
 LOCAL_PRELINK_MODULE    := false
 LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
 
-LOCAL_SHARED_LIBRARIES  += libdivxdrmdecrypt
 LOCAL_SHARED_LIBRARIES  += libqdMetaData
 
 LOCAL_SRC_FILES         := src/frameparser.cpp
