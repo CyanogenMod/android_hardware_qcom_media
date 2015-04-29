@@ -253,10 +253,6 @@ struct video_driver_context {
 #endif
 };
 
-#ifdef _ANDROID_
-class DivXDrmDecrypt;
-#endif //_ANDROID_
-
 // OMX video decoder class
 class omx_vdec: public qc_omx_component
 {
@@ -670,9 +666,6 @@ class omx_vdec: public qc_omx_component
                         OMX_EventError,OMX_ErrorHardware,0,NULL);
             }
         }
-#ifdef _ANDROID_
-        OMX_ERRORTYPE createDivxDrmContext();
-#endif //_ANDROID_
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
         OMX_ERRORTYPE use_android_native_buffer(OMX_IN OMX_HANDLETYPE hComp, OMX_PTR data);
 #endif
@@ -836,9 +829,6 @@ class omx_vdec: public qc_omx_component
         };
         meta_buffer meta_buff;
         extra_data_handler extra_data_handle;
-#ifdef _ANDROID_
-        DivXDrmDecrypt* iDivXDrmDecrypt;
-#endif //_ANDROID_
         OMX_PARAM_PORTDEFINITIONTYPE m_port_def;
         omx_time_stamp_reorder time_stamp_dts;
         desc_buffer_hdr *m_desc_buffer_ptr;

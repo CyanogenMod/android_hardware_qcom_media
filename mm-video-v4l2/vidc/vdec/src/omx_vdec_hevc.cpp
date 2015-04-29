@@ -65,10 +65,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gralloc_priv.h>
 #endif
 
-#ifdef _ANDROID_
-#include "DivXDrmDecrypt.h"
-#endif //_ANDROID_
-
 #ifdef USE_EGL_IMAGE_GPU
 #include <EGL/egl.h>
 #include <EGL/eglQCOM.h>
@@ -542,7 +538,6 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 #ifdef _ANDROID_
     m_enable_android_native_buffers(OMX_FALSE),
     m_use_android_native_buffers(OMX_FALSE),
-    iDivXDrmDecrypt(NULL),
 #endif
     m_desc_buffer_ptr(NULL),
     secure_mode(false)
@@ -1330,11 +1325,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         codec_type_parse = CODEC_TYPE_DIVX;
         m_frame_parser.init_start_codes (codec_type_parse);
 
-        eRet = createDivxDrmContext();
-        if (eRet != OMX_ErrorNone) {
-            DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-            return eRet;
-        }
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx4",\
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.divx",OMX_MAX_STRINGNAME_SIZE);
@@ -1346,11 +1336,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         codec_ambiguous = true;
         m_frame_parser.init_start_codes (codec_type_parse);
 
-        eRet = createDivxDrmContext();
-        if (eRet != OMX_ErrorNone) {
-            DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-            return eRet;
-        }
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx",\
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.divx",OMX_MAX_STRINGNAME_SIZE);
@@ -1361,12 +1346,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         codec_type_parse = CODEC_TYPE_DIVX;
         codec_ambiguous = true;
         m_frame_parser.init_start_codes (codec_type_parse);
-
-        eRet = createDivxDrmContext();
-        if (eRet != OMX_ErrorNone) {
-            DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-            return eRet;
-        }
 
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",\
                 OMX_MAX_STRINGNAME_SIZE)) {
@@ -4986,15 +4965,6 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         return OMX_ErrorBadPortIndex;
     }
 
-#ifdef _ANDROID_
-    if (iDivXDrmDecrypt) {
-        OMX_ERRORTYPE drmErr = iDivXDrmDecrypt->Decrypt(buffer);
-        if (drmErr != OMX_ErrorNone) {
-            // this error can be ignored
-            DEBUG_PRINT_LOW("ERROR:iDivXDrmDecrypt->Decrypt %d", drmErr);
-        }
-    }
-#endif //_ANDROID_
     if (perf_flag) {
         if (!latency) {
             dec_time.stop();
@@ -5461,12 +5431,6 @@ OMX_ERRORTYPE  omx_vdec::set_callbacks(OMX_IN OMX_HANDLETYPE        hComp,
    ========================================================================== */
 OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
 {
-#ifdef _ANDROID_
-    if (iDivXDrmDecrypt) {
-        delete iDivXDrmDecrypt;
-        iDivXDrmDecrypt=NULL;
-    }
-#endif //_ANDROID_
 
     unsigned i = 0;
     if (OMX_StateLoaded != m_state) {
@@ -8173,24 +8137,6 @@ OMX_ERRORTYPE omx_vdec::handle_demux_data(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     m_demux_entries = 0;
     DEBUG_PRINT_LOW("Demux table complete!");
     return OMX_ErrorNone;
-}
-
-OMX_ERRORTYPE omx_vdec::createDivxDrmContext()
-{
-    OMX_ERRORTYPE err = OMX_ErrorNone;
-    iDivXDrmDecrypt = DivXDrmDecrypt::Create();
-    if (iDivXDrmDecrypt) {
-        OMX_ERRORTYPE err = iDivXDrmDecrypt->Init();
-        if (err!=OMX_ErrorNone) {
-            DEBUG_PRINT_ERROR("ERROR :iDivXDrmDecrypt->Init %d", err);
-            delete iDivXDrmDecrypt;
-            iDivXDrmDecrypt = NULL;
-        }
-    } else {
-        DEBUG_PRINT_ERROR("Unable to Create DIVX DRM");
-        err = OMX_ErrorUndefined;
-    }
-    return err;
 }
 
 omx_vdec::allocate_color_convert_buf::allocate_color_convert_buf()
