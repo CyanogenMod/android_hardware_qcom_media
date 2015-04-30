@@ -9648,7 +9648,7 @@ bool omx_vdec::allocate_color_convert_buf::set_color_format(
         DEBUG_PRINT_ERROR("Incorrect color format");
         status = false;
     }
-    if (status &&
+    if (status && !omx->is_component_secure() &&
         drv_color_format != dest_color_format &&
         drv_color_format != (OMX_COLOR_FORMATTYPE)
                 QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView) {
