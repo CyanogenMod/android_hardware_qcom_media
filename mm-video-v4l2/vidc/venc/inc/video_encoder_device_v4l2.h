@@ -355,6 +355,7 @@ class venc_dev
         struct msm_venc_ltrinfo             ltrinfo;
         struct msm_venc_vpx_error_resilience vpx_err_resilience;
         struct msm_venc_priority            sess_priority;
+        OMX_U32                             operating_rate;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -393,6 +394,7 @@ class venc_dev
         bool venc_set_vpx_error_resilience(OMX_BOOL enable);
         bool venc_set_perf_mode(OMX_U32 mode);
 	bool venc_set_session_priority(OMX_U32 priority);
+	bool venc_set_operatingrate(OMX_U32 rate);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
