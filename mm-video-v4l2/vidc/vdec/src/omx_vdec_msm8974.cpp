@@ -4459,6 +4459,22 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             ret = OMX_ErrorUnsupportedSetting;
         }
         return ret;
+    } else if ((int)configIndex == (int)OMX_IndexConfigOperatingRate) {
+        OMX_PARAM_U32TYPE *rate = (OMX_PARAM_U32TYPE *)configData;
+        DEBUG_PRINT_LOW("Set_config: operating-rate %u fps", rate->nU32 >> 16);
+
+        struct v4l2_control control;
+
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_OPERATING_RATE;
+        control.value = rate->nU32;
+
+        if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+            ret = errno == -EBUSY ? OMX_ErrorInsufficientResources :
+                    OMX_ErrorUnsupportedSetting;
+            DEBUG_PRINT_ERROR("Failed to set operating rate %u fps (%s)",
+                    rate->nU32 >> 16, errno == -EBUSY ? "HW Overload" : strerror(errno));
+        }
+        return ret;
     }
 
     return OMX_ErrorNotImplemented;
