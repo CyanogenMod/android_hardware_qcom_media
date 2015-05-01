@@ -1497,15 +1497,17 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
                 if (portFmt->nPortIndex == (OMX_U32) PORT_INDEX_IN) {
                     unsigned index = portFmt->nIndex;
-                    //we support two formats
+                    //we support three formats
                     //index 0 - Venus flavour of YUV420SP
                     //index 1 - opaque which internally maps to YUV420SP.
                     //index 2 - vannilla YUV420SP
+                    //index 3 - vannilla YVU420SP
                     //this can be extended in the future
                     int supportedFormats[] = {
                         [0] = QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
                         [1] = QOMX_COLOR_FormatAndroidOpaque,
                         [2] = OMX_COLOR_FormatYUV420SemiPlanar,
+                        [3] = QOMX_COLOR_FormatYVU420SemiPlanar,
                     };
 
                     if (index > (sizeof(supportedFormats)/sizeof(*supportedFormats) - 1))
