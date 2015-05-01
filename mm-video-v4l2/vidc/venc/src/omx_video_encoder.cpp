@@ -1827,9 +1827,12 @@ OMX_ERRORTYPE  omx_venc::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     m_heap_ptr.clear();
 #endif // _ANDROID_
     DEBUG_PRINT_HIGH("Calling venc_close()");
-    handle->venc_close();
-    DEBUG_PRINT_HIGH("Deleting HANDLE[%p]", handle);
-    delete (handle);
+    if (handle) {
+        handle->venc_close();
+        DEBUG_PRINT_HIGH("Deleting HANDLE[%p]", handle);
+        delete (handle);
+        handle = NULL;
+    }
     DEBUG_PRINT_INFO("Component Deinit");
     return OMX_ErrorNone;
 }
