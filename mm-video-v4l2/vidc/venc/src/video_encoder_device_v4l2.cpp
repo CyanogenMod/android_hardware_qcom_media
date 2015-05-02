@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -44,7 +44,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef _ANDROID_
 #include <media/hardware/HardwareAPI.h>
 #include <gralloc_priv.h>
-#include <qdMetaData.h>
 #endif
 
 #define ALIGN(x, to_align) ((((unsigned long) x) + (to_align - 1)) & ~(to_align - 1))
@@ -2415,18 +2414,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     plane.data_offset = 0;
                     plane.length = handle->size;
                     plane.bytesused = handle->size;
-                    if (handle->base_metadata) {
-                        MetaData_t *pMeta =
-                                reinterpret_cast<MetaData_t*>(handle->base_metadata);
-                        ColorSpace_t csc = pMeta->operation & UPDATE_COLOR_SPACE ?
-                                pMeta->colorSpace : (ColorSpace_t)-1;
-                        if (csc == ITU_R_709) {
-                            buf.flags |= V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
-                            DEBUG_PRINT_LOW("venc_empty_buf: force 601 -> 709 clamping");
-                        }
-                    } else {
-                        DEBUG_PRINT_LOW("venc_empty_buf: gralloc metadata is NULL");
-                    }
                         DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
                                 ": filled %d of %d", fd, plane.bytesused, plane.length);
                 }
