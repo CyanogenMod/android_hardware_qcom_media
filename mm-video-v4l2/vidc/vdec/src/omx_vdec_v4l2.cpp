@@ -3358,6 +3358,122 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
 #endif
 
+        case OMX_IndexParamVideoProfileLevelCurrent: {
+             OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam = (OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
+             struct v4l2_control profile_control, level_control;
+
+             switch (drv_ctx.decoder_format) {
+                 case VDEC_CODECTYPE_H264:
+                     profile_control.id = V4L2_CID_MPEG_VIDEO_H264_PROFILE;
+                     level_control.id = V4L2_CID_MPEG_VIDEO_H264_LEVEL;
+                     break;
+                 default:
+                     DEBUG_PRINT_ERROR("get_param of OMX_IndexParamVideoProfileLevelCurrent only available for H264");
+                     eRet = OMX_ErrorNotImplemented;
+                     break;
+             }
+
+             if (!eRet && !ioctl(drv_ctx.video_driver_fd, VIDIOC_G_CTRL, &profile_control)) {
+                switch ((enum v4l2_mpeg_video_h264_profile)profile_control.value) {
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_BASELINE:
+                        pParam->eProfile = OMX_VIDEO_AVCProfileBaseline;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_MAIN:
+                        pParam->eProfile = OMX_VIDEO_AVCProfileMain;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_EXTENDED:
+                        pParam->eProfile = OMX_VIDEO_AVCProfileExtended;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH:
+                        pParam->eProfile = OMX_VIDEO_AVCProfileHigh;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_10:
+                        pParam->eProfile = OMX_VIDEO_AVCProfileHigh10;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_422:
+                        pParam->eProfile = OMX_VIDEO_AVCProfileHigh422;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_444_PREDICTIVE:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_10_INTRA:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_422_INTRA:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_HIGH_444_INTRA:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_CAVLC_444_INTRA:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_SCALABLE_BASELINE:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_SCALABLE_HIGH:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_SCALABLE_HIGH_INTRA:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_STEREO_HIGH:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_MULTIVIEW_HIGH:
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_HIGH:
+                        eRet = OMX_ErrorUnsupportedIndex;
+                        break;
+                }
+             } else {
+                 eRet = OMX_ErrorUnsupportedIndex;
+             }
+
+
+             if (!eRet && !ioctl(drv_ctx.video_driver_fd, VIDIOC_G_CTRL, &level_control)) {
+                switch ((enum v4l2_mpeg_video_h264_level)level_control.value) {
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_1_0:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel1;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_1B:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel1b;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_1_1:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel11;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_1_2:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel12;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_1_3:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel13;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_2_0:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel2;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_2_1:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel21;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_2_2:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel22;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_3_0:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel3;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_3_1:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel31;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_3_2:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel32;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_4_0:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel4;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_4_1:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel41;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_4_2:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel42;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_5_0:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel5;
+                        break;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_5_1:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel51;
+                    case V4L2_MPEG_VIDEO_H264_LEVEL_5_2:
+                        pParam->eLevel = OMX_VIDEO_AVCLevel52;
+                        break;
+                }
+             } else {
+                 eRet = OMX_ErrorUnsupportedIndex;
+             }
+
+             break;
+
+         }
+
         default: {
                  DEBUG_PRINT_ERROR("get_parameter: unknown param %08x", paramIndex);
                  eRet =OMX_ErrorUnsupportedIndex;
