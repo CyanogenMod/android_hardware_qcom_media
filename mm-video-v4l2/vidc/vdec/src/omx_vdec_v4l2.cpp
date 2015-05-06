@@ -4517,6 +4517,23 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
 
                 break;
         }
+        case OMX_QcomIndexConfigH264EntropyCodingCabac: {
+            QOMX_VIDEO_H264ENTROPYCODINGTYPE *coding = (QOMX_VIDEO_H264ENTROPYCODINGTYPE *)configData;
+            struct v4l2_control control;
+
+            control.id = V4L2_CID_MPEG_VIDEO_H264_ENTROPY_MODE;
+            if (!ioctl(drv_ctx.video_driver_fd, VIDIOC_G_CTRL, &control)) {
+                coding->bCabac = (OMX_BOOL)
+                    (control.value == V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CABAC);
+                /* We can't query driver at the moment for the cabac mode, so
+                 * just use 0xff...f as a place holder for future improvement */
+                coding->nCabacInitIdc = ~0;
+            } else {
+                eRet = OMX_ErrorUnsupportedIndex;
+            }
+
+            break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("get_config: unknown param %d",configIndex);
                  eRet = OMX_ErrorBadParameter;
