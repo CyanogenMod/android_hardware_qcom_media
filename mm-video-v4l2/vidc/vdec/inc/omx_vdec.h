@@ -110,6 +110,7 @@ extern "C" {
 #else
 #define PROPERTY_VALUE_MAX 92
 #endif
+#define PROPERTY_FILENAME_MAX 128
 extern "C" {
     OMX_API void * get_omx_component_factory_fn(void);
 }
@@ -289,8 +290,8 @@ struct video_decoder_capability {
 struct debug_cap {
     bool in_buffer_log;
     bool out_buffer_log;
-    char infile_name[PROPERTY_VALUE_MAX + 36];
-    char outfile_name[PROPERTY_VALUE_MAX + 36];
+    char infile_name[PROPERTY_FILENAME_MAX];
+    char outfile_name[PROPERTY_FILENAME_MAX];
     char log_loc[PROPERTY_VALUE_MAX];
     FILE *infile;
     FILE *outfile;
