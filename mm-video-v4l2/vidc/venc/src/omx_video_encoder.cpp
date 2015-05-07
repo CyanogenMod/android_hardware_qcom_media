@@ -539,6 +539,10 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sHierLayers.nNumLayers = 0;
     m_sHierLayers.eHierarchicalCodingType = QOMX_HIERARCHICALCODING_P;
 
+    OMX_INIT_STRUCT(&m_sMBIStatistics, OMX_QOMX_VIDEO_MBI_STATISTICS);
+    m_sMBIStatistics.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sMBIStatistics.eMBIStatisticsType = QOMX_MBI_STATISTICS_MODE_DEFAULT;
+
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
 
@@ -1418,6 +1422,17 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     DEBUG_PRINT_ERROR("%s: %s",
                             "OMX_QComIndexParamh264AUDelimiter:",
                             "request for AU Delimiters failed.");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
+        case OMX_QcomIndexParamMBIStatisticsMode:
+            {
+                if(!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE)OMX_QcomIndexParamMBIStatisticsMode)) {
+                    DEBUG_PRINT_ERROR("%s: %s",
+                            "OMX_QcomIndexParamMBIStatisticsMode:",
+                            "MBI Statistics mode setting failed.");
                     return OMX_ErrorUnsupportedSetting;
                 }
                 break;

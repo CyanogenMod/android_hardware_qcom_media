@@ -1836,6 +1836,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(hierp, &m_sHierLayers, sizeof(m_sHierLayers));
                 break;
             }
+         case OMX_QcomIndexParamMBIStatisticsMode:
+            {
+                OMX_QOMX_VIDEO_MBI_STATISTICS* mbi_mode = (OMX_QOMX_VIDEO_MBI_STATISTICS*) paramData;
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamMBIStatisticsMode");
+                memcpy(mbi_mode, &m_sMBIStatistics, sizeof(m_sMBIStatistics));
+                break;
+            }
         case OMX_QcomIndexParamPerfLevel:
             {
                 OMX_U32 perflevel;

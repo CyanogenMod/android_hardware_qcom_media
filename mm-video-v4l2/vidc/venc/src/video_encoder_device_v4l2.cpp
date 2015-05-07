@@ -1813,6 +1813,20 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
 
                 break;
             }
+        case OMX_QcomIndexParamMBIStatisticsMode:
+            {
+                OMX_QOMX_VIDEO_MBI_STATISTICS * pParam =
+                    (OMX_QOMX_VIDEO_MBI_STATISTICS *)paramData;
+
+                DEBUG_PRINT_LOW("set MBI Dump mode: %d", pParam->eMBIStatisticsType);
+                if(venc_set_mbi_statistics_mode(pParam->eMBIStatisticsType) == false) {
+                    DEBUG_PRINT_ERROR("ERROR: set MBI Statistics mode failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+
+                break;
+            }
+
          case OMX_QcomIndexHierarchicalStructure:
            {
                QOMX_VIDEO_HIERARCHICALLAYERS* pParam =
@@ -2848,6 +2862,21 @@ bool venc_dev::venc_set_au_delimiter(OMX_BOOL enable)
     DEBUG_PRINT_HIGH("Set au delimiter: %d", enable);
     if(ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control) < 0) {
         DEBUG_PRINT_ERROR("Request to set AU delimiter failed");
+        return false;
+    }
+    return true;
+}
+
+bool venc_dev::venc_set_mbi_statistics_mode(OMX_U32 mode)
+{
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_MBI_STATISTICS_MODE;
+    control.value = mode;
+
+    DEBUG_PRINT_HIGH("Set MBI dumping mode: %d", mode);
+    if(ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control) < 0) {
+        DEBUG_PRINT_ERROR("Setting MBI mode failed");
         return false;
     }
     return true;
