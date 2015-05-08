@@ -672,7 +672,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     }
                     if (handle->venc_set_param(paramData,OMX_IndexParamPortDefinition) != true) {
                         DEBUG_PRINT_ERROR("ERROR: venc_set_param input failed");
-                        return OMX_ErrorUnsupportedSetting;
+                        return handle->hw_overload ? OMX_ErrorInsufficientResources :
+                                OMX_ErrorUnsupportedSetting;
                     }
 
                     DEBUG_PRINT_LOW("i/p previous actual cnt = %u", (unsigned int)m_sInPortDef.nBufferCountActual);
