@@ -268,6 +268,9 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     property_get("vidc.enc.log.extradata", property_value, "0");
     m_debug.extradata_log = atoi(property_value);
 
+    property_get("persist.camera.video.ubwc", property_value, "1");
+    is_camera_source_ubwc = atoi(property_value);
+
     snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
              "%s", BUFFER_LOG_LOC);
 }
@@ -2658,6 +2661,20 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                 }
             } else if (!color_format) {
                 if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
+                    if (!streaming[OUTPUT_PORT]) {
+                        struct v4l2_format fmt;
+                        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+                        m_sVenc_cfg.inputformat = is_camera_source_ubwc ?
+                                V4L2_PIX_FMT_NV12_UBWC : V4L2_PIX_FMT_NV12;
+                        fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
+                        fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
+                        fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+                        if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
+                            DEBUG_PRINT_ERROR("Failed setting color format %x", m_sVenc_cfg.inputformat);
+                            return false;
+                        }
+                    }
+
                     if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 3 &&
                         meta_buf->meta_handle->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
                         buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
