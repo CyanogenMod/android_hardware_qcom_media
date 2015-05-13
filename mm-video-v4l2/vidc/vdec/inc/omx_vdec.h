@@ -180,7 +180,7 @@ class VideoHeap : public MemoryHeapBase
 #define DESC_BUFFER_SIZE (8192 * 16)
 
 #ifdef _ANDROID_
-#define MAX_NUM_INPUT_OUTPUT_BUFFERS 32
+#define MAX_NUM_INPUT_OUTPUT_BUFFERS 64
 #endif
 
 #define OMX_FRAMEINFO_EXTRADATA 0x00010000
@@ -826,7 +826,7 @@ class omx_vdec: public qc_omx_component
         //Output port Populated
         OMX_BOOL m_out_bPopulated;
         // encapsulate the waiting states.
-        unsigned int m_flags;
+        uint64_t m_flags;
 
 #ifdef _ANDROID_
         // Heap pointer to frame buffers
@@ -995,7 +995,7 @@ class omx_vdec: public qc_omx_component
                 OMX_ERRORTYPE free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
                 bool is_color_conversion_enabled() {return enabled;}
             private:
-#define MAX_COUNT 32
+#define MAX_COUNT MAX_NUM_INPUT_OUTPUT_BUFFERS
                 omx_vdec *omx;
                 bool enabled;
                 OMX_COLOR_FORMATTYPE ColorFormat;

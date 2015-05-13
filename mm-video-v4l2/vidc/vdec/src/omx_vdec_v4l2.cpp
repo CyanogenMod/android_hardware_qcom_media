@@ -3470,6 +3470,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition H= %d, W = %d",
                                        (int)portDefn->format.video.nFrameHeight,
                                        (int)portDefn->format.video.nFrameWidth);
+
+                               if (portDefn->nBufferCountActual >= MAX_NUM_INPUT_OUTPUT_BUFFERS) {
+                                   DEBUG_PRINT_ERROR("ERROR: Buffers requested exceeds max limit %d",
+                                                          portDefn->nBufferCountActual);
+                                   eRet = OMX_ErrorBadParameter;
+                                   break;
+                               }
                                if (OMX_DirOutput == portDefn->eDir) {
                                    DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port");
                                    bool port_format_changed = false;
