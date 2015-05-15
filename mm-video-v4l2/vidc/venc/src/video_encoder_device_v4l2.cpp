@@ -2613,6 +2613,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
     struct pmem *temp_buffer;
     struct v4l2_buffer buf;
     struct v4l2_plane plane;
+    struct v4l2_requestbuffers bufreq;
     int rc=0;
     struct OMX_BUFFERHEADERTYPE *bufhdr;
     encoder_media_buffer_type * meta_buf = NULL;
@@ -2627,6 +2628,9 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
     }
 
     bufhdr = (OMX_BUFFERHEADERTYPE *)buffer;
+    bufreq.memory = V4L2_MEMORY_USERPTR;
+    bufreq.count = m_sInput_buff_property.actualcount;
+    bufreq.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 
     DEBUG_PRINT_LOW("Input buffer length %u", (unsigned int)bufhdr->nFilledLen);
 
@@ -2673,6 +2677,10 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                             DEBUG_PRINT_ERROR("Failed setting color format %x", m_sVenc_cfg.inputformat);
                             return false;
                         }
+                        if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
+                            DEBUG_PRINT_ERROR("VIDIOC_REQBUFS OUTPUT_MPLANE Failed");
+                            return false;
+                        }
                     }
 
                     if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 3 &&
@@ -2687,6 +2695,25 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                             fd, plane.bytesused, plane.length, buf.flags);
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
                     private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
+                    if (!streaming[OUTPUT_PORT]) {
+                        struct v4l2_format fmt;
+                        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+                        if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE) {
+                            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+                        }
+                        fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
+                        fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
+                        fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+                        if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
+                            DEBUG_PRINT_ERROR("Failed setting color format in gralloc %x", m_sVenc_cfg.inputformat);
+                            return false;
+                        }
+                        if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
+                            DEBUG_PRINT_ERROR("VIDIOC_REQBUFS OUTPUT_MPLANE Failed");
+                            return false;
+                        }
+                    }
+
                     fd = handle->fd;
                     plane.data_offset = 0;
                     plane.length = handle->size;
