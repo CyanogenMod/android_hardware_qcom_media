@@ -523,6 +523,12 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexConfigQp = 0x7F000050,
 
     OMX_QcomIndexParamVencAspectRatio = 0x7F000051,
+
+    OMX_QTIIndexParamVQZipSEIExtraData = 0x7F000052,
+
+    /* Enable VQZIP SEI NAL type */
+    OMX_QTIIndexParamVQZIPSEIType = 0x7F000053,
+
 };
 
 /**
@@ -1020,6 +1026,17 @@ typedef struct OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO {
 
 /**
  * This structure describes the parameters corresponding
+ * to OMX_QcomIndexParamVQZIPSEIType extension. It
+ * will enable/disable the VQZIP SEI info.
+ */
+typedef struct OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE {
+    OMX_U32 nSize;              /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;   /** OMX specification version information */
+    OMX_BOOL bEnable;           /** Enable/disable the setting */
+} OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE;
+
+/**
+ * This structure describes the parameters corresponding
  * to OMX_QcomIndexParamPeakBitrate extension. It will
  * set the peak bitrate specified by nPeakBitrate.
  */
@@ -1203,6 +1220,11 @@ typedef struct OMX_QCOM_EXTRADATA_MBINFO
    OMX_U8  data[0];
 } OMX_QCOM_EXTRADATA_MBINFO;
 
+typedef struct OMX_QCOM_EXTRADATA_VQZIPSEI {
+    OMX_U32 nSize;
+    OMX_U8 data[0];
+} OMX_QCOM_EXTRADATA_VQZIPSEI;
+
 typedef enum OMX_QCOM_EXTRADATATYPE
 {
     OMX_ExtraDataFrameInfo =               0x7F000001,
@@ -1220,6 +1242,7 @@ typedef enum OMX_QCOM_EXTRADATATYPE
     OMX_ExtraDataQP =                      0x7F00000d,
     OMX_ExtraDataInputBitsInfo =           0x7F00000e,
     OMX_ExtraDataVideoEncoderMBInfo =      0x7F00000f,
+    OMX_ExtraDataVQZipSEI  =               0x7F000010,
 } OMX_QCOM_EXTRADATATYPE;
 
 typedef struct  OMX_STREAMINTERLACEFORMATTYPE {
