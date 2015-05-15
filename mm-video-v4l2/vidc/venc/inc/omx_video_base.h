@@ -55,8 +55,10 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pthread.h>
 #include <semaphore.h>
 #include <linux/msm_vidc_enc.h>
+#include <media/hardware/HardwareAPI.h>
 #include "OMX_Core.h"
 #include "OMX_QCOMExtns.h"
+#include "OMX_Skype_VideoExtensions.h"
 #include "OMX_VideoExt.h"
 #include "OMX_IndexExt.h"
 #include "qc_omx_component.h"
@@ -612,6 +614,13 @@ class omx_video: public qc_omx_component
         QOMX_VIDEO_HIERARCHICALLAYERS m_sHierLayers;
         OMX_QOMX_VIDEO_MBI_STATISTICS m_sMBIStatistics;
         QOMX_EXTNINDEX_VIDEO_INITIALQP m_sParamInitqp;
+        QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS m_sMaxHPlayers;
+        OMX_CONFIG_RECTTYPE m_sRectangleData;
+        OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID m_sBaseLayerID;
+        OMX_SKYPE_VIDEO_PARAM_DRIVERVER m_sDriverVer;
+        OMX_SKYPE_VIDEO_CONFIG_QP m_sConfigQP;
+        QOMX_EXTNINDEX_VIDEO_VENC_SAR m_sSar;
+        PrependSPSPPSToIDRFramesParams m_sPrependSPSPPS;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
 

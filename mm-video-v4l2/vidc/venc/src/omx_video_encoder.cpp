@@ -1333,6 +1333,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             "request for inband sps/pps failed.");
                     return OMX_ErrorUnsupportedSetting;
                 }
+                memcpy((void *) &m_sPrependSPSPPS, &paramData, sizeof(m_sPrependSPSPPS));
                 break;
             }
         case OMX_QcomIndexParamH264AUDelimiter:
@@ -1442,6 +1443,16 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                    DEBUG_PRINT_ERROR("Attempting to set batch size failed");
                    return OMX_ErrorUnsupportedSetting;
                 }
+                break;
+            }
+        case OMX_QcomIndexParamVencAspectRatio:
+            {
+                if (!handle->venc_set_param(paramData,
+                        (OMX_INDEXTYPE)OMX_QcomIndexParamVencAspectRatio)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexParamVencAspectRatio failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                memcpy(&m_sSar, paramData, sizeof(m_sSar));
                 break;
             }
         case OMX_IndexParamVideoSliceFMO:
@@ -1789,6 +1800,49 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
+        case OMX_QcomIndexConfigMaxHierPLayers:
+        {
+            QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS* pParam =
+                (QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS*)configData;
+            if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers)) {
+                DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigMaxHierPLayers failed");
+                return OMX_ErrorUnsupportedSetting;
+            }
+            memcpy(&m_sMaxHPlayers, pParam, sizeof(m_sMaxHPlayers));
+            break;
+        }
+        case OMX_QcomIndexConfigBaseLayerId:
+        {
+            OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID* pParam =
+                (OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID*) configData;
+            if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigBaseLayerId)) {
+                DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigBaseLayerId failed");
+                return OMX_ErrorUnsupportedSetting;
+            }
+            memcpy(&m_sBaseLayerID, pParam, sizeof(m_sBaseLayerID));
+            break;
+        }
+        case OMX_QcomIndexConfigQp:
+        {
+            OMX_SKYPE_VIDEO_CONFIG_QP* pParam =
+                (OMX_SKYPE_VIDEO_CONFIG_QP*) configData;
+            if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigQp)) {
+                DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigQp failed");
+                return OMX_ErrorUnsupportedSetting;
+            }
+            memcpy(&m_sConfigQP, pParam, sizeof(m_sConfigQP));
+            break;
+        }
+        case OMX_QcomIndexConfigRectType:
+        {
+            if (!handle->venc_set_config(configData,
+                    (OMX_INDEXTYPE)OMX_QcomIndexConfigRectType)) {
+                DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigRectType failed");
+                return OMX_ErrorUnsupportedSetting;
+            }
+            memcpy(&m_sRectangleData, configData, sizeof(m_sRectangleData));
+            break;
+        }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             break;

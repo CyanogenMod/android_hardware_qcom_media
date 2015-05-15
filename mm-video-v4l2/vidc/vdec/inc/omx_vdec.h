@@ -92,6 +92,7 @@ extern "C" {
 #endif
 #include "OMX_Core.h"
 #include "OMX_QCOMExtns.h"
+#include "OMX_Skype_VideoExtensions.h"
 #include "OMX_VideoExt.h"
 #include "qc_omx_component.h"
 #include <linux/msm_vidc_dec.h>
@@ -547,7 +548,7 @@ class omx_vdec: public qc_omx_component
             unsigned get_q_msg_type();
 
         };
-
+        struct v4l2_capability cap;
 #ifdef _ANDROID_
         struct ts_entry {
             OMX_TICKS timestamp;

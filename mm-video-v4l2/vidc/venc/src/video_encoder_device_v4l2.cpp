@@ -950,10 +950,10 @@ bool venc_dev::venc_open(OMX_U32 codec)
         return false;
     }
 
-    struct v4l2_capability cap;
     struct v4l2_fmtdesc fdesc;
     struct v4l2_format fmt;
     struct v4l2_requestbuffers bufreq;
+    struct v4l2_capability cap;
 
     ret = ioctl(m_nDriver_fd, VIDIOC_QUERYCAP, &cap);
 
@@ -1983,6 +1983,14 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexParamVencAspectRatio:
+            {
+                if (!venc_set_aspectratio(paramData)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexParamVencAspectRatio failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -2192,6 +2200,45 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 if (venc_set_perf_mode(pParam->nPerfMode) == false) {
                     DEBUG_PRINT_ERROR("Failed to set V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE");
                     return false;
+                }
+                break;
+            }
+        case OMX_QcomIndexConfigMaxHierPLayers:
+            {
+                QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS *pParam =
+                    (QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS *) configData;
+                DEBUG_PRINT_LOW("venc_set_config: OMX_QcomIndexConfigMaxHierPLayers");
+                if (venc_set_max_hierp(pParam->nMaxHierLayers) == false) {
+                    DEBUG_PRINT_ERROR("Failed to set OMX_QcomIndexConfigMaxHierPLayers");
+                    return false;
+                }
+                break;
+            }
+        case OMX_QcomIndexConfigBaseLayerId:
+            {
+                OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID* pParam =
+                    (OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID*) configData;
+                if (venc_set_baselayerid(pParam->nPID) == false) {
+                    DEBUG_PRINT_ERROR("Failed to set OMX_QcomIndexConfigBaseLayerId failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
+        case OMX_QcomIndexConfigQp:
+            {
+                OMX_SKYPE_VIDEO_CONFIG_QP* pParam =
+                    (OMX_SKYPE_VIDEO_CONFIG_QP*) configData;
+                if (venc_set_qp(pParam->nQP) == false) {
+                    DEBUG_PRINT_ERROR("Failed to set OMX_QcomIndexConfigQp failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
+        case OMX_QcomIndexConfigRectType:
+            {
+                if (!venc_set_recttype((OMX_CONFIG_RECTTYPE*) configData)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigRectType failed");
+                    return OMX_ErrorUnsupportedSetting;
                 }
                 break;
             }
@@ -3553,6 +3600,8 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
             requested_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_BASELINE;
         } else if(eProfile == QOMX_VIDEO_AVCProfileConstrainedBaseline) {
             requested_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_BASELINE;
+        } else if(eProfile == QOMX_VIDEO_AVCProfileConstrainedHigh) {
+            requested_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_HIGH;
         } else if (eProfile == OMX_VIDEO_AVCProfileMain) {
             requested_profile.profile = V4L2_MPEG_VIDEO_H264_PROFILE_MAIN;
         } else if (eProfile == OMX_VIDEO_AVCProfileExtended) {
@@ -4864,6 +4913,114 @@ bool venc_dev::venc_set_perf_mode(OMX_U32 mode)
     }
 }
 
+bool venc_dev::venc_set_qp(OMX_U32 nQp)
+{
+    struct v4l2_control control;
+    if (nQp) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_CONFIG_QP;
+        control.value = nQp;
+        DEBUG_PRINT_LOW("Going to set V4L2_CID_MPEG_VIDC_VIDEO_CONFIG_QP");
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to set V4L2_CID_MPEG_VIDC_VIDEO_CONFIG_QP");
+            return false;
+        }
+    } else {
+        DEBUG_PRINT_ERROR("Invalid qp set for V4L2_CID_MPEG_VIDC_VIDEO_CONFIG_QP: %d", nQp);
+        return false;
+    }
+    return true;
+}
+
+bool venc_dev::venc_set_aspectratio(void *nSar)
+{
+    int rc;
+    struct v4l2_control control;
+    struct v4l2_ext_control ctrl[2];
+    struct v4l2_ext_controls controls;
+    QOMX_EXTNINDEX_VIDEO_VENC_SAR *sar;
+
+    sar = (QOMX_EXTNINDEX_VIDEO_VENC_SAR *) nSar;
+
+    ctrl[0].id = V4L2_CID_MPEG_VIDC_VENC_PARAM_SAR_WIDTH;
+    ctrl[0].value = sar->nSARWidth;
+    ctrl[1].id = V4L2_CID_MPEG_VIDC_VENC_PARAM_SAR_HEIGHT;
+    ctrl[1].value = sar->nSARHeight;
+
+    controls.count = 2;
+    controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+    controls.controls = ctrl;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x val=%d, id=%x val=%d",
+                    controls.controls[0].id, controls.controls[0].value,
+                    controls.controls[1].id, controls.controls[1].value);
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_EXT_CTRLS, &controls);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set SAR %d", rc);
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%x val=%d, id=%x val=%d",
+                    controls.controls[0].id, controls.controls[0].value,
+                    controls.controls[1].id, controls.controls[1].value);
+    return true;
+}
+
+bool venc_dev::venc_set_recttype(OMX_CONFIG_RECTTYPE* rectdata)
+{
+    struct v4l2_crop crop;
+    crop.c.left = rectdata->nLeft;
+    crop.c.top = rectdata->nTop;
+    crop.c.width = rectdata->nWidth;
+    crop.c.height = rectdata->nHeight;
+    crop.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+    DEBUG_PRINT_LOW("Going to set VIDIOC_S_CROP");
+    if (ioctl(m_nDriver_fd, VIDIOC_S_CROP, &crop)) {
+        DEBUG_PRINT_ERROR("Failed to set VIDIOC_S_CROP");
+        return false;
+    }
+    return true;
+}
+
+bool venc_dev::venc_set_max_hierp(OMX_U32 hierp_layers)
+{
+    struct v4l2_control control;
+    if (hierp_layers && (hier_layers.hier_mode == HIER_P) &&
+            (hierp_layers <= hier_layers.numlayers)) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_MAX_HIERP_LAYERS;
+        control.value = hierp_layers;
+        DEBUG_PRINT_LOW("Going to set V4L2_CID_MPEG_VIDC_VIDEO_MAX_HIERP_LAYERS");
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to set MAX_HIERP_LAYERS");
+            return false;
+        }
+        return true;
+    } else {
+        DEBUG_PRINT_ERROR("Invalid layers set for MAX_HIERP_LAYERS: %d",
+                hierp_layers);
+        return false;
+    }
+}
+
+bool venc_dev::venc_set_baselayerid(OMX_U32 baseid)
+{
+    struct v4l2_control control;
+    if (hier_layers.hier_mode == HIER_P) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_BASELAYER_ID;
+        control.value = baseid;
+        DEBUG_PRINT_LOW("Going to set V4L2_CID_MPEG_VIDC_VIDEO_BASELAYER_ID");
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to set V4L2_CID_MPEG_VIDC_VIDEO_BASELAYER_ID");
+            return false;
+        }
+        return true;
+    } else {
+        DEBUG_PRINT_ERROR("Invalid mode set for V4L2_CID_MPEG_VIDC_VIDEO_BASELAYER_ID: %d",
+                hier_layers.hier_mode);
+        return false;
+    }
+}
+
 bool venc_dev::venc_set_vui_timing_info(OMX_BOOL enable)
 {
     struct v4l2_control control;
@@ -5031,6 +5188,9 @@ bool venc_dev::venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel)
                 break;
             case V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_BASELINE:
                 *eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
+                break;
+            case V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_HIGH:
+                *eProfile = QOMX_VIDEO_AVCProfileConstrainedHigh;
                 break;
             case V4L2_MPEG_VIDEO_H264_PROFILE_MAIN:
                 *eProfile = OMX_VIDEO_AVCProfileMain;
@@ -5301,6 +5461,9 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
                     case V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_BASELINE:
                         *eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
                         break;
+                    case V4L2_MPEG_VIDEO_H264_PROFILE_CONSTRAINED_HIGH:
+                         *eProfile = QOMX_VIDEO_AVCProfileConstrainedHigh;
+                        break;
                     case V4L2_MPEG_VIDEO_H264_PROFILE_MAIN:
                         *eProfile = OMX_VIDEO_AVCProfileMain;
                         break;
@@ -5333,7 +5496,8 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
         if ((*eProfile == OMX_VIDEO_AVCProfileBaseline) ||
             (*eProfile == QOMX_VIDEO_AVCProfileConstrainedBaseline)) {
             profile_tbl = (unsigned int const *)h264_profile_level_table;
-        } else if (*eProfile == OMX_VIDEO_AVCProfileHigh) {
+        } else if ((*eProfile == OMX_VIDEO_AVCProfileHigh) ||
+            (*eProfile == QOMX_VIDEO_AVCProfileConstrainedHigh)) {
             profile_tbl = (unsigned int const *)
                 (&h264_profile_level_table[H264_HP_START]);
         } else if (*eProfile == OMX_VIDEO_AVCProfileMain) {

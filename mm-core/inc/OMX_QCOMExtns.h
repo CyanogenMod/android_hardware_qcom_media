@@ -509,7 +509,60 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexConfigH264EntropyCodingCabac = 0x7F000049,
 
     OMX_QcomIndexParamBatchSize = 0x7F00004A,
+
+    OMX_QcomIndexConfigMaxHierPLayers = 0x7F00004B,
+
+    OMX_QcomIndexConfigRectType = 0x7F00004C,
+
+    OMX_QcomIndexSkypeExtensionBase = 0x7F00004D,
+
+    OMX_QcomIndexConfigBaseLayerId = 0x7F00004E,
+
+    OMX_QcomIndexParamDriverVersion = 0x7F00004F,
+
+    OMX_QcomIndexConfigQp = 0x7F000050,
+
+    OMX_QcomIndexParamVencAspectRatio = 0x7F000051,
 };
+
+/**
+* This is custom extension to configure Encoder Aspect Ratio.
+*
+* STRUCT MEMBERS
+*
+* nSize         : Size of Structure in bytes
+* nVersion      : OpenMAX IL specification version information
+* nSARWidth     : Horizontal aspect size
+* nSARHeight    : Vertical aspect size
+*/
+
+typedef struct QOMX_EXTNINDEX_VIDEO_VENC_SAR
+{
+   OMX_U32 nSize;
+   OMX_U32 nVersion;
+   OMX_U32 nSARWidth;
+   OMX_U32 nSARHeight;
+} QOMX_EXTNINDEX_VIDEO_VENC_SAR;
+
+/**
+* This is custom extension to configure Hier-p layers.
+* This mode configures Hier-p layers dynamically.
+*
+* STRUCT MEMBERS
+*
+* nSize         : Size of Structure in bytes
+* nVersion      : OpenMAX IL specification version information
+* nMaxHierLayers: Set the max number of Hier-p layers for the session
+*                  - This should be less than the Hier-P layers set
+*                    for the session.
+*/
+
+typedef struct QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS {
+   OMX_U32 nSize;
+   OMX_VERSIONTYPE nVersion;
+   OMX_U32 nMaxHierLayers;
+} QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS;
+
 
 /**
 * This is custom extension to configure Hybrid Hier-p settings.
@@ -1202,7 +1255,9 @@ typedef enum QOMX_VIDEO_AVCPROFILETYPE {
     QOMX_VIDEO_AVCProfileHigh422       = OMX_VIDEO_AVCProfileHigh422,
     QOMX_VIDEO_AVCProfileHigh444       = OMX_VIDEO_AVCProfileHigh444,
     /* QCom specific profile indexes */
-    QOMX_VIDEO_AVCProfileConstrainedBaseline   = OMX_VIDEO_AVCProfileVendorStartUnused + 1,
+    QOMX_VIDEO_AVCProfileConstrained           = OMX_VIDEO_AVCProfileVendorStartUnused,
+    QOMX_VIDEO_AVCProfileConstrainedBaseline,
+    QOMX_VIDEO_AVCProfileConstrainedHigh,
 } QOMX_VIDEO_AVCPROFILETYPE;
 
 
@@ -1432,6 +1487,32 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QCOM_INDEX_PARAM_VIDEO_INPUTBITSINFO_EXTRADATA "OMX.QCOM.index.param.video.InputBitsInfoExtradata"
 #define OMX_QCOM_INDEX_PARAM_VIDEO_EXTNUSER_EXTRADATA "OMX.QCOM.index.param.video.ExtnUserExtraData"
 #define OMX_QCOM_INDEX_CONFIG_VIDEO_FRAMEPACKING_INFO "OMX.QCOM.index.config.video.FramePackingInfo"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_MPEG2SEQDISP_EXTRADATA "OMX.QCOM.index.param.video.Mpeg2SeqDispExtraData"
+
+
+#define OMX_QCOM_INDEX_PARAM_VIDEO_HIERSTRUCTURE "OMX.QCOM.index.param.video.HierStructure"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_LTRCOUNT "OMX.QCOM.index.param.video.LTRCount"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_LTRPERIOD "OMX.QCOM.index.param.video.LTRPeriod"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_LTRUSE "OMX.QCOM.index.config.video.LTRUse"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_LTRMARK "OMX.QCOM.index.config.video.LTRMark"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_MAX_HIER_P_LAYERS "OMX.QCOM.index.config.video.hierplayers"
+#define OMX_QCOM_INDEX_CONFIG_RECTANGLE_TYPE "OMX.QCOM.index.config.video.rectangle"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_BASE_LAYER_ID "OMX.QCOM.index.param.video.baselayerid"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_DRIVERVERSION "OMX.QCOM.index.param.video.FramePackingInfo"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_QP "OMX.QCOM.index.config.video.qp"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_SAR "OMX.QCOM.index.param.video.sar"
+
+
+#define OMX_QCOM_INDEX_PARAM_VIDEO_HIERSTRUCTURE "OMX.QCOM.index.param.video.HierStructure"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_LTRCOUNT "OMX.QCOM.index.param.video.LTRCount"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_LTRPERIOD "OMX.QCOM.index.param.video.LTRPeriod"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_LTRUSE "OMX.QCOM.index.config.video.LTRUse"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_LTRMARK "OMX.QCOM.index.config.video.LTRMark"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_MAX_HIER_P_LAYERS "OMX.QCOM.index.config.video.hierplayers"
+#define OMX_QCOM_INDEX_CONFIG_RECTANGLE_TYPE "OMX.QCOM.index.config.video.rectangle"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_BASE_LAYER_ID "OMX.QCOM.index.param.video.baselayerid"
+#define OMX_QCOM_INDEX_CONFIG_VIDEO_QP "OMX.QCOM.index.config.video.qp"
+#define OMX_QCOM_INDEX_PARAM_VIDEO_SAR "OMX.QCOM.index.param.video.sar"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,

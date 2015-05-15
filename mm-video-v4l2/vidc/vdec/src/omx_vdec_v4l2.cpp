@@ -2023,9 +2023,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             DEBUG_PRINT_ERROR("Failed to query capabilities");
             /*TODO: How to handle this case */
         } else {
-            DEBUG_PRINT_INFO("Capabilities: driver_name = %s, card = %s, bus_info = %s,"
-                    " version = %d, capabilities = %x", cap.driver, cap.card,
-                    cap.bus_info, cap.version, cap.capabilities);
+            DEBUG_PRINT_LOW("Capabilities: driver_name = %s, card = %s, bus_info = %s,"
+                " version = %d, capabilities = %x", cap.driver, cap.card,
+                cap.bus_info, cap.version, cap.capabilities);
         }
         ret=0;
         fdesc.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
@@ -3367,7 +3367,6 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 break;
             }
 #endif
-
         case OMX_IndexParamVideoProfileLevelCurrent: {
              OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam = (OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
              struct v4l2_control profile_control, level_control;
@@ -3483,7 +3482,6 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
              break;
 
          }
-
         default: {
                  DEBUG_PRINT_ERROR("get_parameter: unknown param %08x", paramIndex);
                  eRet =OMX_ErrorUnsupportedIndex;
