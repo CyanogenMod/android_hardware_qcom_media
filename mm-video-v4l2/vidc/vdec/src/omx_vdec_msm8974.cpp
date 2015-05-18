@@ -1674,7 +1674,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     if (ret) {
         DEBUG_PRINT_ERROR("Failed to create async_message_thread");
         async_thread_created = false;
-        return OMX_ErrorInsufficientResources;
+        goto ioctl_failed;
     }
 
 #ifdef OUTPUT_EXTRADATA_LOG
@@ -1727,7 +1727,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eRet = createDivxDrmContext();
         if (eRet != OMX_ErrorNone) {
             DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-            return eRet;
+            goto ioctl_failed;
         }
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx4",\
                 OMX_MAX_STRINGNAME_SIZE)) {
@@ -1743,7 +1743,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eRet = createDivxDrmContext();
         if (eRet != OMX_ErrorNone) {
             DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-            return eRet;
+            goto ioctl_failed;
         }
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx",\
                 OMX_MAX_STRINGNAME_SIZE)) {
@@ -1759,7 +1759,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eRet = createDivxDrmContext();
         if (eRet != OMX_ErrorNone) {
             DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-            return eRet;
+            goto ioctl_failed;
         }
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",\
                 OMX_MAX_STRINGNAME_SIZE)) {
@@ -1867,7 +1867,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         if (ret) {
             /*TODO: How to handle this case */
             DEBUG_PRINT_ERROR("Failed to set format on output port");
-            return OMX_ErrorInsufficientResources;
+            goto ioctl_failed;
         }
         DEBUG_PRINT_HIGH("Set Format was successful");
         if (codec_ambiguous) {
@@ -1910,7 +1910,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
                 VIDIOC_ENUM_FRAMESIZES, &frmsize);
         if (ret || frmsize.type != V4L2_FRMSIZE_TYPE_STEPWISE) {
             DEBUG_PRINT_ERROR("Failed to get framesizes");
-            return OMX_ErrorHardware;
+            goto ioctl_failed;
         }
 
         if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE) {
@@ -1946,7 +1946,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
             if (ret) {
                 DEBUG_PRINT_ERROR("Omx_vdec:: Unable to open secure device %d", ret);
-                return OMX_ErrorInsufficientResources;
+                goto ioctl_failed;
             }
         }
         if (output_capability == V4L2_PIX_FMT_H264_MVC) {
@@ -1955,7 +1955,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
             if (ret) {
                 DEBUG_PRINT_ERROR("Failed to set MVC buffer layout");
-                return OMX_ErrorInsufficientResources;
+                goto ioctl_failed;
             }
         }
 
@@ -2007,7 +2007,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
                     if (h264_scratch.pBuffer == NULL) {
                         DEBUG_PRINT_ERROR("h264_scratch.pBuffer Allocation failed ");
-                        return OMX_ErrorInsufficientResources;
+                        goto ioctl_failed;
                     }
         }
         if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264 ||
@@ -2038,7 +2038,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             if (fds[0] == 0 || fds[1] == 0) {
                 if (pipe (temp1)) {
                     DEBUG_PRINT_ERROR("pipe creation failed");
-                    return OMX_ErrorInsufficientResources;
+                    goto ioctl_failed;
                 }
                 //close (fds[0]);
                 //close (fds[1]);
@@ -2066,6 +2066,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
     //memset(&h264_mv_buff,0,sizeof(struct h264_mv_buffer));
     return eRet;
+ioctl_failed:
+    close(drv_ctx.video_driver_fd);
+    drv_ctx.video_driver_fd = -1;
+    return OMX_ErrorInsufficientResources;
 }
 
 /* ======================================================================
@@ -3814,10 +3818,6 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 eRet = enable_extradata(OMX_EXTNUSER_EXTRADATA, false,
                                     ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                 break;
-        case OMX_QcomIndexParamMpeg2SeqDispExtraData:
-                                eRet = enable_extradata(OMX_MPEG2SEQDISP_EXTRADATA, false,
-                                    ((QOMX_ENABLETYPE *)paramData)->bEnable);
-                                break;
         case OMX_QcomIndexParamVideoDivx: {
                               QOMX_VIDEO_PARAM_DIVXTYPE* divXType = (QOMX_VIDEO_PARAM_DIVXTYPE *) paramData;
                           }
@@ -4482,8 +4482,6 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoInputBitsInfoExtraData;
     } else if (extn_equals(paramName, OMX_QCOM_INDEX_PARAM_VIDEO_EXTNUSER_EXTRADATA)) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexEnableExtnUserData;
-    } else if (extn_equals(paramName, OMX_QCOM_INDEX_PARAM_VIDEO_MPEG2SEQDISP_EXTRADATA)) {
-        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamMpeg2SeqDispExtraData;
     }
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
     else if (extn_equals(paramName, "OMX.google.android.index.enableAndroidNativeBuffers")) {
@@ -9220,10 +9218,6 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     if (seqdisp_payload) {
                         m_disp_hor_size = seqdisp_payload->disp_width;
                         m_disp_vert_size = seqdisp_payload->disp_height;
-                        if (client_extradata & OMX_MPEG2SEQDISP_EXTRADATA) {
-                            append_mpeg2_seqdisplay_extradata(p_extra, seqdisp_payload);
-                            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-                        }
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_S3D_FRAME_PACKING:
@@ -9345,6 +9339,13 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
                 DEBUG_PRINT_HIGH("Failed to set panscan extradata");
             }
+            if (output_capability == V4L2_PIX_FMT_MPEG2) {
+                control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+                control.value =  V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
+                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                    DEBUG_PRINT_HIGH("Failed to set panscan extradata");
+                }
+            }
         }
         if (requested_extradata & OMX_TIMEINFO_EXTRADATA) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
@@ -9384,18 +9385,6 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             control.value = V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA;
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
                 DEBUG_PRINT_HIGH("Failed to set stream userdata extradata");
-            }
-        }
-        if (requested_extradata & OMX_MPEG2SEQDISP_EXTRADATA) {
-            if (output_capability == V4L2_PIX_FMT_MPEG2) {
-                DEBUG_PRINT_HIGH("Enable seq display extradata");
-                control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
-                control.value =  V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
-                if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
-                    DEBUG_PRINT_HIGH("Failed to set seqdisp extradata");
-                }
-            } else {
-                DEBUG_PRINT_HIGH("Seq display extradata is supported for MPEG2 only");
             }
         }
     }
@@ -9558,14 +9547,6 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
                 }
         DEBUG_PRINT_HIGH(
                 "=========== End of Userdata ===========");
-    } else if (extra->eType == (OMX_EXTRADATATYPE)OMX_ExtraDataMpeg2SeqDisplay) {
-        OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY *seq_display = (OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY*)(void*)extra->data;
-        DEBUG_PRINT_HIGH(
-                "------Mpeg2SeqDisplay ------\n"
-                "     Frame Width: %d\n"
-                "    Frame Height: %d\n"
-                "=========== End of Mpeg2SeqDisplay ===========",
-                seq_display->disp_width, seq_display->disp_height);
     } else if (extra->eType == OMX_ExtraDataNone) {
         DEBUG_PRINT_HIGH("========== End of Terminator ===========");
     } else {
@@ -9801,20 +9782,6 @@ void omx_vdec::append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     print_debug_extradata(extra);
 }
 
-void omx_vdec::append_mpeg2_seqdisplay_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-        struct msm_vidc_mpeg2_seqdisp_payload *seq_display_payload)
-{
-    OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY *seq_display = NULL;
-    extra->nSize = OMX_MPEG2SEQDISP_EXTRADATA_SIZE;
-    extra->nVersion.nVersion = OMX_SPEC_VERSION;
-    extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
-    extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMpeg2SeqDisplay;
-    extra->nDataSize = sizeof(OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY);
-    seq_display = (OMX_QCOM_EXTRADATA_MPEG2SEQDISPLAY *)(void *)extra->data;
-    seq_display->disp_width = seq_display_payload->disp_width;
-    seq_display->disp_height = seq_display_payload->disp_height;
-    print_debug_extradata(extra);
-}
 void omx_vdec::append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 {
     if (!client_extradata) {

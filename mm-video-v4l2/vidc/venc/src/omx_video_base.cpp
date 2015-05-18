@@ -3377,9 +3377,16 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
                 if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
                     if (media_buffer->meta_handle == NULL)
                         met_error = true;
-                    else if ((media_buffer->meta_handle->numFds != 1 &&
-                                media_buffer->meta_handle->numInts != 2))
-                        met_error = true;
+                    else {
+                        int nFds = media_buffer->meta_handle->numFds,
+                            nInt = media_buffer->meta_handle->numInts;
+                        met_error = ((nFds == 1 && nInt >= 2) /*normal*/ ||
+                                (nFds < 16 && nInt >= nFds*3) /*batch*/) ? false : true;
+                        if (met_error) {
+                            DEBUG_PRINT_ERROR("Unbalanced fds in handle: fds=%d ints=%d",
+                                    nFds, nInt);
+                        }
+                    }
                 }
             }
         } else

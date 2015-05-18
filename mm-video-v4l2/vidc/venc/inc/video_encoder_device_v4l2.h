@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -43,6 +43,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define TIMEOUT 5*60*1000
 #define BIT(num) (1 << (num))
 #define MAX_HYB_HIERP_LAYERS 6
+#define MAX_v4L2_INPUT_BUFS (64) //VB2_MAX_FRAME
 
 enum hier_type {
     HIER_NONE = 0x0,
@@ -420,6 +421,37 @@ class venc_dev
         bool enable_mv_narrow_searchrange;
         int supported_rc_modes;
         bool camera_mode_enabled;
+
+        bool venc_empty_batch (OMX_BUFFERHEADERTYPE *buf, unsigned index);
+        static const int kMaxBuffersInBatch = 16;
+        bool mInputBatchMode;
+        struct BatchInfo {
+            BatchInfo();
+            /* register a buffer and obtain its unique id (v4l2-buf-id)
+             */
+            int registerBuffer(int bufferId);
+            /* retrieve the buffer given its v4l2-buf-id
+             */
+            int retrieveBufferAt(int v4l2Id);
+            bool isPending(int bufferId);
+
+          private:
+            static const int kMaxBufs = 64;
+            static const int kBufIDFree = -1;
+            pthread_mutex_t mLock;
+            int mBufMap[64];  // Map with slots for each buffer
+            size_t mNumPending;
+
+          public:
+            // utility methods to parse entities in batch
+            // payload format for batch of 3
+            //| fd0 | fd1 | fd2 | off0 | off1 | off2 | len0 | len1 | len2 | dTS0 | dTS1 | dTS2|
+            static inline int getFdAt(native_handle_t *, int index);
+            static inline int getOffsetAt(native_handle_t *, int index);
+            static inline int getSizeAt(native_handle_t *, int index);
+            static inline int getTimeStampAt(native_handle_t *, int index);
+        };
+        BatchInfo mBatchInfo;
 };
 
 enum instance_state {
