@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2014, Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -211,7 +211,6 @@ VideoHeap::VideoHeap(int fd, size_t size, void* base)
 omx_video::omx_video():
     secure_session(false),
     c2d_opened(false),
-    mUsesColorConversion(false),
     psource_frame(NULL),
     pdest_frame(NULL),
     mEmptyEosBuffer(NULL),
@@ -249,6 +248,7 @@ omx_video::omx_video():
     async_thread_created = false;
     msg_thread_created = false;
 
+    mUsesColorConversion = false;
     pthread_mutex_init(&m_lock, NULL);
     sem_init(&m_cmd_lock,0,0);
 }
@@ -3998,10 +3998,9 @@ OMX_ERRORTYPE omx_video::empty_buffer_done(OMX_HANDLETYPE         hComp,
         } else {
             // We are not dealing with color-conversion, Buffer being returned
             // here is client's buffer, return it back to client
-            OMX_BUFFERHEADERTYPE* il_buffer = &meta_buffer_hdr[buffer_index];
-            if (m_pCallbacks.EmptyBufferDone && il_buffer) {
-                m_pCallbacks.EmptyBufferDone(hComp, m_app_data, il_buffer);
-                DEBUG_PRINT_LOW("empty_buffer_done: Returning client buf %p",il_buffer);
+            if (m_pCallbacks.EmptyBufferDone && buffer) {
+                m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
+                DEBUG_PRINT_LOW("empty_buffer_done: Returning client buf %p", buffer);
             }
         }
     } else if (m_pCallbacks.EmptyBufferDone) {
