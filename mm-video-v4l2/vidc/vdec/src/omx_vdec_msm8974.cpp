@@ -127,6 +127,8 @@ extern "C" {
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA | OMX_FRAMEPACK_EXTRADATA)
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
+#define DOWNSCALAR_WIDTH 2560
+#define DOWNSCALAR_HEIGHT 1600
 
 static OMX_U32 maxSmoothStreamingWidth = 1920;
 static OMX_U32 maxSmoothStreamingHeight = 1088;
@@ -838,6 +840,123 @@ int release_buffers(omx_vdec* obj, enum vdec_buffer buffer_type)
     return rc;
 }
 
+int omx_vdec::enable_downscalar()
+{
+    int rc = 0;
+    struct v4l2_control control;
+    struct v4l2_format fmt;
+
+    if  (!is_downscalar_supported) {
+        DEBUG_PRINT_LOW("%s: downscalar not supported", __func__);
+        return 0;
+    }
+    if (is_down_scalar_enabled) {
+        DEBUG_PRINT_LOW("%s: already enabled", __func__);
+        return 0;
+    }
+
+    DEBUG_PRINT_LOW("omx_vdec::enable_downscalar");
+    memset(&control, 0x0, sizeof(struct v4l2_control));
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_MODE;
+    control.value = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_SECONDARY;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+    if (rc < 0) {
+        DEBUG_PRINT_ERROR("%s: Failed to set VIDEO_STREAM_OUTPUT_SECONDARY", __func__);
+        return rc;
+    }
+    is_down_scalar_enabled = 1;
+
+    memset(&control, 0x0, sizeof(struct v4l2_control));
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_KEEP_ASPECT_RATIO;
+    control.value = 1;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+    if (rc < 0) {
+        DEBUG_PRINT_ERROR("%s: Failed to set VIDEO_KEEP_ASPECT_RATIO", __func__);
+        return rc;
+    }
+
+    return 0;
+}
+
+int omx_vdec::disable_downscalar()
+{
+    int rc = 0;
+    struct v4l2_control control;
+
+    if  (!is_downscalar_supported) {
+        DEBUG_PRINT_LOW("%s: downscalar not supported", __func__);
+        return 0;
+    }
+    if (!is_down_scalar_enabled) {
+        DEBUG_PRINT_LOW("omx_vdec::disable_downscalar: already disabled");
+        return 0;
+    }
+
+    DEBUG_PRINT_LOW("omx_vdec::disable_downscalar");
+    memset(&control, 0x0, sizeof(struct v4l2_control));
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_MODE;
+    control.value = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_PRIMARY;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+    if (rc < 0) {
+        DEBUG_PRINT_ERROR("Failed to set down scalar on driver.");
+        return rc;
+    }
+    is_down_scalar_enabled = 0;
+
+    return 0;
+}
+
+int omx_vdec::decide_downscalar()
+{
+    int rc = 0;
+    struct v4l2_format fmt;
+
+    if  (!is_downscalar_supported) {
+        DEBUG_PRINT_LOW("%s: downscalar not supported", __func__);
+        return 0;
+    }
+    memset(&fmt, 0x0, sizeof(struct v4l2_format));
+    fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+    fmt.fmt.pix_mp.pixelformat = capture_capability;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+    if (rc < 0) {
+       DEBUG_PRINT_ERROR("%s: Failed to get format on capture mplane", __func__);
+       return rc;
+    }
+
+    DEBUG_PRINT_HIGH("%s: driver wxh = %dx%d, downscalar wxh = %dx%d", __func__,
+        fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, m_downscalar_width, m_downscalar_height);
+
+    if (fmt.fmt.pix_mp.width * fmt.fmt.pix_mp.height > m_downscalar_width * m_downscalar_height) {
+        rc = enable_downscalar();
+        if (rc < 0)
+            return rc;
+        rc = update_resolution(m_downscalar_width, m_downscalar_height, m_downscalar_width, m_downscalar_height);
+        if (rc < 0)
+            return rc;
+    } else {
+        rc = disable_downscalar();
+        if (rc < 0)
+            return rc;
+        rc = update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, fmt.fmt.pix_mp.plane_fmt[0].bytesperline, fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
+        if (rc < 0)
+            return rc;
+    }
+
+    memset(&fmt, 0x0, sizeof(struct v4l2_format));
+    fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+    fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
+    fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+    fmt.fmt.pix_mp.pixelformat = capture_capability;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+    if (rc < 0) {
+        DEBUG_PRINT_ERROR("%s: Failed set format on capture mplane", __func__);
+        return rc;
+    }
+
+    return rc;
+}
+
 /* ======================================================================
    FUNCTION
    omx_vdec::OMXCntrlProcessMsgCb
@@ -1243,7 +1362,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         if (p2 == OMX_IndexParamPortDefinition) {
                                             DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexParamPortDefinition");
                                             pThis->in_reconfig = true;
-
+                                            pThis->decide_downscalar();
                                         }  else if (p2 == OMX_IndexConfigCommonOutputCrop) {
                                             DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexConfigCommonOutputCrop");
 
@@ -1601,6 +1720,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         is_q6_platform = true;
         maxSmoothStreamingWidth = 1280;
         maxSmoothStreamingHeight = 720;
+    }
+    if (!strncmp(platform_name, "msm8956", 7) || !strncmp(platform_name, "msm8976", 7)) {
+        is_downscalar_supported = true;
+    } else {
+        is_downscalar_supported = false;
     }
 #endif
 
@@ -1971,7 +2095,22 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
                 DEBUG_PRINT_ERROR("Failed to set turbo mode");
             }
         }
-
+        if (is_downscalar_supported) {
+           m_downscalar_width = DOWNSCALAR_WIDTH;
+           m_downscalar_height = DOWNSCALAR_HEIGHT;
+           property_get("vidc.dec.downscalar_width",property_value,"0");
+           if (atoi(property_value)) {
+              m_downscalar_width = atoi(property_value);
+           }
+           property_get("vidc.dec.downscalar_height",property_value,"0");
+           if (atoi(property_value)) {
+              m_downscalar_height = atoi(property_value);
+           }
+           DEBUG_PRINT_INFO("Downscalar wxh = %dx%d", m_downscalar_width, m_downscalar_height);
+        } else {
+           m_downscalar_width = 0;
+           m_downscalar_height = 0;
+        }
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
         if (strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
