@@ -78,6 +78,9 @@ extern "C"
 #define OMX_QCOM_INDEX_PARAM_ALAC            "OMX.Qualcomm.index.audio.alac"
 #define OMX_QCOM_INDEX_PARAM_APE             "OMX.Qualcomm.index.audio.ape"
 
+#define ALAC_CSD_SIZE 24
+#define APE_CSD_SIZE 32
+
 typedef enum QOMX_AUDIO_AMRBANDMODETYPE {
     QOMX_AUDIO_AMRBandModeWB9              = 0x7F000001,/**< AMRWB Mode 9 = SID*/
     QOMX_AUDIO_AMRBandModeWB10             = 0x7F000002,/**< AMRWB Mode 10 = 13600 bps */
@@ -540,6 +543,42 @@ typedef struct QOMX_AUDIO_PARAM_APETYPE {
     OMX_U32 nSampleRate; /* Samples per second in Hertz */
     OMX_U32 nSeekTablePresent; /* Flag to indicate if seek table is present or not */
 } QOMX_AUDIO_PARAM_APETYPE;
+
+enum {
+    kKeyIndexAlacFrameLength = 0,
+    kKeyIndexAlacCompatibleVersion = 4,
+    kKeyIndexAlacBitDepth = 5,
+    kKeyIndexAlacPb = 6,
+    kKeyIndexAlacMb = 7,
+    kKeyIndexAlacKb = 8,
+    kKeyIndexAlacNumChannels = 9,
+    kKeyIndexAlacMaxRun = 10,
+    kKeyIndexAlacMaxFrameBytes = 12,
+    kKeyIndexAlacAvgBitRate = 16,
+    kKeyIndexAlacSamplingRate = 20,
+    kKeyIndexAlacChannelLayoutTag = 24,
+};
+
+enum {
+    kKeyIndexApeCompatibleVersion = 0,
+    kKeyIndexApeCompressionLevel = 2,
+    kKeyIndexApeFormatFlags = 4,
+    kKeyIndexApeBlocksPerFrame = 8,
+    kKeyIndexApeFinalFrameBlocks = 12,
+    kKeyIndexApeTotalFrames = 16,
+    kKeyIndexApeBitsPerSample = 20,
+    kKeyIndexApeNumChannels = 22,
+    kKeyIndexApeSampleRate = 24,
+    kKeyIndexApeSeekTablePresent = 28,
+};
+
+enum {
+    APE_COMPRESSION_LEVEL_FAST = 1000,
+    APE_COMPRESSION_LEVEL_NORMAL = 2000,
+    APE_COMPRESSION_LEVEL_HIGH = 3000,
+    APE_COMPRESSION_LEVEL_EXTRA_HIGH = 4000,
+    APE_COMPRESSION_LEVEL_INSANE = 5000,
+};
 
 #if defined( __cplusplus )
 }
