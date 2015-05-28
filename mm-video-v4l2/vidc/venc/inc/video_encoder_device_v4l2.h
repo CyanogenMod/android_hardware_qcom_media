@@ -208,6 +208,10 @@ struct msm_venc_vui_timing_info {
     unsigned int enabled;
 };
 
+struct msm_venc_vqzip_sei_info {
+    unsigned int enabled;
+};
+
 struct msm_venc_peak_bitrate {
     unsigned int peakbitrate;
 };
@@ -290,6 +294,7 @@ class venc_dev
                         OMX_U32 height);
         bool venc_get_performance_level(OMX_U32 *perflevel);
         bool venc_get_vui_timing_info(OMX_U32 *enabled);
+        bool venc_get_vqzip_sei_info(OMX_U32 *enabled);
         bool venc_get_peak_bitrate(OMX_U32 *peakbitrate);
         bool venc_get_batch_size(OMX_U32 *size);
         bool venc_get_output_log_flag();
@@ -359,6 +364,7 @@ class venc_dev
         struct msm_venc_hierlayers          hier_layers;
         struct msm_venc_perf_level          performance_level;
         struct msm_venc_vui_timing_info     vui_timing_info;
+        struct msm_venc_vqzip_sei_info      vqzip_sei_info;
         struct msm_venc_peak_bitrate        peak_bitrate;
         struct msm_venc_ltrinfo             ltrinfo;
         struct msm_venc_vpx_error_resilience vpx_err_resilience;
@@ -400,9 +406,11 @@ class venc_dev
         bool venc_set_vpx_error_resilience(OMX_BOOL enable);
         bool venc_set_perf_mode(OMX_U32 mode);
         bool venc_set_mbi_statistics_mode(OMX_U32 mode);
+        bool venc_set_vqzip_sei_type(OMX_BOOL enable);
         bool venc_set_hybrid_hierp(OMX_U32 layers);
         bool venc_set_batch_size(OMX_U32 size);
         bool venc_calibrate_gop();
+        void venc_set_vqzip_defaults();
         bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
         bool venc_set_max_hierp(OMX_U32 hierp_layers);
         bool venc_set_baselayerid(OMX_U32 baseid);

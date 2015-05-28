@@ -1522,10 +1522,18 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamBatchSize:
             {
-               if(!handle->venc_set_param(paramData,
+                if(!handle->venc_set_param(paramData,
                          (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize)) {
                    DEBUG_PRINT_ERROR("Attempting to set batch size failed");
                    return OMX_ErrorUnsupportedSetting;
+                }
+            }
+        case OMX_QTIIndexParamVQZIPSEIType:
+            {
+                if (!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE) OMX_QTIIndexParamVQZIPSEIType)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting VQZIP SEI type");
+                    return OMX_ErrorUnsupportedSetting;
                 }
                 break;
             }
@@ -2102,6 +2110,11 @@ bool omx_venc::dev_get_vui_timing_info(OMX_U32 *enabled)
     DEBUG_PRINT_ERROR("Get vui timing information is not supported");
     return false;
 #endif
+}
+
+bool omx_venc::dev_get_vqzip_sei_info(OMX_U32 *enabled)
+{
+    return handle->venc_get_vqzip_sei_info(enabled);
 }
 
 bool omx_venc::dev_get_peak_bitrate(OMX_U32 *peakbitrate)

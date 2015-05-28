@@ -1914,6 +1914,20 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 break;
             }
+        case OMX_QTIIndexParamVQZIPSEIType:
+            {
+                OMX_U32 enabled;
+                OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE *pParam =
+                    reinterpret_cast<OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE*>(paramData);
+                DEBUG_PRINT_LOW("get_parameter: OMX_QTIIndexParamVQZIPSEIType");
+                if (!dev_get_vqzip_sei_info(&enabled)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from get_vqzip_sei_type %d",
+                        pParam->bEnable);
+                } else {
+                    pParam->bEnable = (OMX_BOOL)enabled;
+                }
+                break;
+            }
         case OMX_QcomIndexParamPeakBitrate:
             {
                 OMX_U32 peakbitrate;
