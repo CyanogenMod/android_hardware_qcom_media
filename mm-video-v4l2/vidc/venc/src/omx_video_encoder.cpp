@@ -1435,6 +1435,15 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 break;
             }
+        case OMX_QcomIndexParamBatchSize:
+            {
+               if(!handle->venc_set_param(paramData,
+                         (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize)) {
+                   DEBUG_PRINT_ERROR("Attempting to set batch size failed");
+                   return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -1960,6 +1969,16 @@ bool omx_venc::dev_get_peak_bitrate(OMX_U32 *peakbitrate)
     return handle->venc_get_peak_bitrate(peakbitrate);
 #else
     DEBUG_PRINT_ERROR("Get peak bitrate is not supported");
+    return false;
+#endif
+}
+
+bool omx_venc::dev_get_batch_size(OMX_U32 *size)
+{
+#ifdef _MSM8974_
+    return handle->venc_get_batch_size(size);
+#else
+    DEBUG_PRINT_ERROR("Get batch size is not supported");
     return false;
 #endif
 }

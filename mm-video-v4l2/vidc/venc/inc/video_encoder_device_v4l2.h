@@ -43,7 +43,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define TIMEOUT 5*60*1000
 #define BIT(num) (1 << (num))
 #define MAX_HYB_HIERP_LAYERS 6
-#define MAX_v4L2_INPUT_BUFS (64) //VB2_MAX_FRAME
+#define MAX_V4L2_BUFS 64 //VB2_MAX_FRAME
 
 enum hier_type {
     HIER_NONE = 0x0,
@@ -291,6 +291,7 @@ class venc_dev
         bool venc_get_performance_level(OMX_U32 *perflevel);
         bool venc_get_vui_timing_info(OMX_U32 *enabled);
         bool venc_get_peak_bitrate(OMX_U32 *peakbitrate);
+        bool venc_get_batch_size(OMX_U32 *size);
         bool venc_get_output_log_flag();
         int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
         int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, int fd, int plane_offset);
@@ -399,6 +400,7 @@ class venc_dev
         bool venc_set_perf_mode(OMX_U32 mode);
         bool venc_set_mbi_statistics_mode(OMX_U32 mode);
         bool venc_set_hybrid_hierp(OMX_U32 layers);
+        bool venc_set_batch_size(OMX_U32 size);
         bool venc_calibrate_gop();
         bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
 
@@ -433,7 +435,7 @@ class venc_dev
 
         bool venc_empty_batch (OMX_BUFFERHEADERTYPE *buf, unsigned index);
         static const int kMaxBuffersInBatch = 16;
-        bool mInputBatchMode;
+        unsigned int mBatchSize;
         struct BatchInfo {
             BatchInfo();
             /* register a buffer and obtain its unique id (v4l2-buf-id)

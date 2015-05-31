@@ -507,6 +507,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexConfigPictureTypeDecode = 0x7F000048,
 
     OMX_QcomIndexConfigH264EntropyCodingCabac = 0x7F000049,
+
+    OMX_QcomIndexParamBatchSize = 0x7F00004A,
 };
 
 /**
@@ -1649,6 +1651,13 @@ typedef struct OMX_QOMX_VIDEO_MBI_STATISTICS {
     OMX_U32 nPortIndex;
     OMX_QOMX_VIDEO_MBISTATISTICSTYPE eMBIStatisticsType;
 } OMX_QOMX_VIDEO_MBI_STATISTICS;
+
+typedef struct QOMX_VIDEO_BATCHSIZETYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nBatchSize;
+} QOMX_VIDEO_BATCHSIZETYPE;
 
 #ifdef __cplusplus
 }

@@ -1935,6 +1935,22 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                      memcpy(initqp, &m_sParamInitqp, sizeof(m_sParamInitqp));
                 break;
             }
+         case OMX_QcomIndexParamBatchSize:
+            {
+                QOMX_VIDEO_BATCHSIZETYPE* batch =
+                    reinterpret_cast<QOMX_VIDEO_BATCHSIZETYPE *>(paramData);
+
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamBatchSize");
+                if (!dev_get_batch_size(&batch->nSize)) {
+                    DEBUG_PRINT_ERROR("Invalid entry returned from dev_get_batch_size %u",
+                        (unsigned int)batch->nSize);
+                    eRet = OMX_ErrorUnsupportedIndex;
+                    break;
+                }
+
+                batch->nPortIndex = PORT_INDEX_IN;
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {

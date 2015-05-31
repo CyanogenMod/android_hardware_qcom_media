@@ -273,8 +273,6 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 
     snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
              "%s", BUFFER_LOG_LOC);
-
-    mInputBatchMode = false;
 }
 
 venc_dev::~venc_dev()
@@ -403,7 +401,7 @@ void* venc_dev::async_venc_message_thread (void *input)
                 venc_msg.msgcode=VEN_MSG_INPUT_BUFFER_DONE;
                 venc_msg.statuscode=VEN_S_SUCCESS;
 
-                if (omx->handle->mInputBatchMode) {
+                if (omx->handle->mBatchSize) {
                     int bufIndex = omx->handle->mBatchInfo.retrieveBufferAt(v4l2_buf.index);
                     if (bufIndex < 0) {
                         DEBUG_PRINT_ERROR("Retrieved invalid buffer %d", v4l2_buf.index);
@@ -1106,7 +1104,6 @@ bool venc_dev::venc_open(OMX_U32 codec)
         }
     }
 
-    mInputBatchMode = false;
     return true;
 }
 
@@ -1170,7 +1167,6 @@ void venc_dev::venc_close()
         fclose(m_debug.extradatafile);
         m_debug.extradatafile = NULL;
     }
-    mInputBatchMode = false;
 }
 
 bool venc_dev::venc_set_buf_req(OMX_U32 *min_buff_count,
@@ -1259,10 +1255,10 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         }
 
         int actualCount = bufreq.count;
-        // Request VB2_MAX_FRAME (64) buffers from V4L2 in anticipation of batch mode.
+        // Request MAX_V4L2_BUFS from V4L2 in batch mode.
         // Keep the original count for the client
-        if (metadatamode) {
-            bufreq.count = MAX_v4L2_INPUT_BUFS;
+        if (metadatamode && mBatchSize) {
+            bufreq.count = MAX_V4L2_BUFS;
         }
 
         bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -1301,10 +1297,16 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         m_sOutput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
         bufreq.memory = V4L2_MEMORY_USERPTR;
 
-        if (*actual_buff_count)
+        if (mBatchSize) {
+            // If we're in batch mode, we'd like to end up in a situation where
+            // driver is able to own mBatchSize buffers and we'd also own atleast
+            // mBatchSize buffers
+            bufreq.count = MAX(*actual_buff_count, mBatchSize) + mBatchSize;
+        } else if (*actual_buff_count) {
             bufreq.count = *actual_buff_count;
-        else
+        } else {
             bufreq.count = 2;
+        }
 
         bufreq.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
         ret = ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq);
@@ -1964,6 +1966,23 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexParamBatchSize:
+            {
+                QOMX_VIDEO_BATCHSIZETYPE* pParam =
+                    (QOMX_VIDEO_BATCHSIZETYPE*)paramData;
+
+                if (pParam->nPortIndex == PORT_INDEX_OUT) {
+                    DEBUG_PRINT_ERROR("For the moment, client-driven batching not supported"
+                            " on output port");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+
+                if (!venc_set_batch_size(pParam->nBatchSize)) {
+                     DEBUG_PRINT_ERROR("Failed setting batch size as %d", pParam->nBatchSize);
+                     return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -2347,6 +2366,7 @@ unsigned venc_dev::venc_start(void)
         return 1;
     }
 
+
     stopped = 0;
     return 0;
 }
@@ -2651,6 +2671,17 @@ bool venc_dev::venc_get_peak_bitrate(OMX_U32 *peakbitrate)
     }
 }
 
+bool venc_dev::venc_get_batch_size(OMX_U32 *size)
+{
+    if (!size) {
+        DEBUG_PRINT_ERROR("Null pointer error");
+        return false;
+    } else {
+        *size = mBatchSize;
+        return true;
+    }
+}
+
 bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index, unsigned fd)
 {
     struct pmem *temp_buffer;
@@ -2728,23 +2759,28 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     }
 
                     native_handle_t *hnd = (native_handle_t*)meta_buf->meta_handle;
+                    if (!hnd)
+                        return false;
+
                     // Setting batch mode is sticky. We do not expect camera to change
                     // between batch and normal modes at runtime.
-                    if (hnd->numFds > 1) {
-                        mInputBatchMode = true;
-                    }
+                    if (mBatchSize) {
+                        if ((unsigned)hnd->numFds != mBatchSize) {
+                            DEBUG_PRINT_ERROR("Don't support dynamic batch sizes (changed from %d->%d)",
+                                    mBatchSize, hnd->numFds);
+                            return false;
+                        }
 
-                    if (mInputBatchMode) {
                         return venc_empty_batch ((OMX_BUFFERHEADERTYPE*)buffer, index);
                     }
 
-                    if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 3 &&
-                        meta_buf->meta_handle->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
+                    if (hnd->numFds + hnd->numInts > 3 &&
+                        hnd->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
                         buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
-                    if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 2) {
-                        plane.data_offset = meta_buf->meta_handle->data[1];
-                        plane.length = meta_buf->meta_handle->data[2];
-                        plane.bytesused = meta_buf->meta_handle->data[2];
+                    if (hnd->numFds + hnd->numInts > 2) {
+                        plane.data_offset = hnd->data[1];
+                        plane.length = hnd->data[2];
+                        plane.bytesused = hnd->data[2];
                     }
                     DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x",
                             fd, plane.bytesused, plane.length, buf.flags);
@@ -2844,10 +2880,6 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
     int rc = 0;
     struct v4l2_control control;
     encoder_media_buffer_type * meta_buf = NULL;
-
-    memset (&buf, 0, sizeof(buf));
-    memset (&plane, 0, sizeof(plane));
-
     native_handle_t *hnd = NULL;
 
     if (bufhdr == NULL) {
@@ -2900,6 +2932,10 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
         }
         for (int i = 0; i < numBufs; ++i) {
             int v4l2Id = v4l2Ids[i];
+
+            memset(&buf, 0, sizeof(buf));
+            memset(&plane, 0, sizeof(plane));
+
             DEBUG_PRINT_LOW("Batch: registering %d as %d", index, v4l2Id);
             buf.index = (unsigned)v4l2Id;
             buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -2918,6 +2954,12 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
 
             if (bufhdr->nFlags & OMX_BUFFERFLAG_EOS)
                 buf.flags |= V4L2_QCOM_BUF_FLAG_EOS;
+            if (i != numBufs - 1) {
+                buf.flags |= V4L2_MSM_BUF_FLAG_DEFER;
+                DEBUG_PRINT_LOW("for buffer %d (etb #%d) in batch of %d, marking as defer",
+                        i, etb + 1, numBufs);
+            }
+
 
             // timestamp differences from camera are in nano-seconds
             bufTimeStamp = bufhdr->nTimeStamp + BatchInfo::getTimeStampAt(hnd, i) / 1000;
@@ -2979,6 +3021,9 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,un
         plane[0].m.userptr = (unsigned long)bufhdr->pBuffer;
     }
 
+    memset(&buf, 0, sizeof(buf));
+    memset(&plane, 0, sizeof(plane));
+
     buf.index = index;
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     buf.memory = V4L2_MEMORY_USERPTR;
@@ -2989,6 +3034,17 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,un
     plane[0].data_offset = bufhdr->nOffset;
     buf.m.planes = plane;
     buf.length = num_planes;
+    buf.flags = 0;
+
+    if (mBatchSize) {
+        // Should always mark first buffer as DEFER, since 0 % anything is 0, just offset by 1
+        // This results in the first batch being only of size mBatchSize - 1, but it doesn't really
+        // matter, since we're aiming for consistent batch sizes only in the steady state
+        if ((ftb + 1) % mBatchSize) {
+            buf.flags |= V4L2_MSM_BUF_FLAG_DEFER;
+            DEBUG_PRINT_LOW("for ftb buffer %d marking as defer", ftb + 1);
+        }
+    }
 
     extra_idx = EXTRADATA_IDX(num_planes);
 
@@ -5475,6 +5531,25 @@ bool venc_dev::venc_is_video_session_supported(unsigned long width,
     }
 
     DEBUG_PRINT_LOW("video session supported");
+    return true;
+}
+
+bool venc_dev::venc_set_batch_size(OMX_U32 batchSize)
+{
+    struct v4l2_control control;
+    int ret;
+
+    control.id = V4L2_CID_VIDC_QBUF_MODE;
+    control.value = batchSize ? V4L2_VIDC_QBUF_BATCHED : V4L2_VIDC_QBUF_STANDARD;
+
+    ret = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (ret) {
+        DEBUG_PRINT_ERROR("Failed to set batching mode: %d", ret);
+        return false;
+    }
+
+    mBatchSize = batchSize;
+    DEBUG_PRINT_HIGH("Using batch size of %d", mBatchSize);
     return true;
 }
 
