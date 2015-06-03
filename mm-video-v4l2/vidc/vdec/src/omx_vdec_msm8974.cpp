@@ -1346,6 +1346,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         }
                                         pThis->prev_ts = LLONG_MAX;
                                         pThis->rst_prev_ts = true;
+                                        pThis->drv_ctx.fps_stats.reset();
                                         break;
 
                 case OMX_COMPONENT_GENERATE_HARDWARE_ERROR:
@@ -2678,6 +2679,7 @@ bool omx_vdec::execute_output_flush()
     if (arbitrary_bytes) {
         prev_ts = LLONG_MAX;
         rst_prev_ts = true;
+        drv_ctx.fps_stats.reset();
     }
     DEBUG_PRINT_HIGH("OMX flush o/p Port complete PenBuf(%d)", pending_output_buffers);
     return bRet;
@@ -2767,6 +2769,7 @@ bool omx_vdec::execute_input_flush()
     if (!arbitrary_bytes) {
         prev_ts = LLONG_MAX;
         rst_prev_ts = true;
+        drv_ctx.fps_stats.reset();
     }
 #ifdef _ANDROID_
     if (m_debug_timestamp) {
@@ -7242,6 +7245,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         if (buffer->nFlags & OMX_BUFFERFLAG_EOS) {
             prev_ts = LLONG_MAX;
             rst_prev_ts = true;
+            drv_ctx.fps_stats.reset();
         }
 
         pPMEMInfo = (OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO *)
@@ -7282,12 +7286,12 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                 current_framerate = 60;
             }
         }
-
+        OMX_U32 avg_framerate = drv_ctx.fps_stats.get_average(current_framerate);
         // add current framerate to gralloc meta data
         if (m_enable_android_native_buffers && m_out_mem_ptr) {
             OMX_U32 buf_index = buffer - m_out_mem_ptr;
             setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
-                         UPDATE_REFRESH_RATE, (void*)&current_framerate);
+                         UPDATE_REFRESH_RATE, (void*)&avg_framerate);
         }
 
         if (il_buffer) {
@@ -9100,6 +9104,7 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
     {                               // with the port definition, start ts with 0
         act_timestamp = prev_ts = 0;  // and correct if a valid ts is received.
         rst_prev_ts = true;
+        drv_ctx.fps_stats.reset();
     }
 }
 

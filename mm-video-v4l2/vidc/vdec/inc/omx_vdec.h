@@ -247,6 +247,44 @@ struct extradata_buffer_info {
 };
 #endif
 
+class video_fps_stats {
+private:
+    static const int MAX_SAMPLES = 10;
+    static const int FPS_RESET_THRESHOLD = 5;
+
+    OMX_U32 sum;
+    OMX_U32 samples[MAX_SAMPLES];
+    OMX_U64 index;
+    OMX_U32 avg;
+
+public:
+    video_fps_stats() {
+        reset();
+    }
+
+    OMX_U32 get_average(OMX_U32 sample) {
+        if (avg && abs(avg - sample) > FPS_RESET_THRESHOLD) {
+            reset();
+        }
+
+        if (index < MAX_SAMPLES) {
+            sum += sample;
+            avg = sum / (index + 1);
+        } else {
+            sum = sum + sample - samples[index % MAX_SAMPLES];
+            avg = (sum + (MAX_SAMPLES / 2)) / MAX_SAMPLES;
+        }
+
+        samples[index % MAX_SAMPLES] = sample;
+        index++;
+        return avg;
+    }
+
+    void reset() {
+        sum = index = avg = 0;
+    }
+};
+
 struct video_driver_context {
     int video_driver_fd;
     enum vdec_codec decoder_format;
@@ -268,6 +306,7 @@ struct video_driver_context {
     struct vdec_ion meta_buffer_iommu;
 #endif
     struct vdec_framerate frame_rate;
+    video_fps_stats fps_stats;
     unsigned extradata;
     bool timestamp_adjust;
     char kind[128];
