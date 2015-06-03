@@ -935,6 +935,7 @@ class omx_vdec: public qc_omx_component
         OMX_CONFIG_RECTTYPE rectangle;
         OMX_U32 prev_n_filled_len;
         bool is_down_scalar_enabled;
+        bool is_downscalar_supported;
 #endif
         struct custom_buffersize {
             OMX_U32 input_buffersize;
@@ -957,6 +958,11 @@ class omx_vdec: public qc_omx_component
         OMX_U32 m_smoothstreaming_height;
         OMX_ERRORTYPE enable_smoothstreaming();
         OMX_ERRORTYPE enable_adaptive_playback(unsigned long width, unsigned long height);
+        OMX_U32 m_downscalar_width;
+        OMX_U32 m_downscalar_height;
+        int decide_downscalar();
+        int enable_downscalar();
+        int disable_downscalar();
 
         unsigned int m_fill_output_msg;
         bool client_set_fps;
