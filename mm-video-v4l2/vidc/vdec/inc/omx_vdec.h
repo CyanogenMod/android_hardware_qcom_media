@@ -297,10 +297,12 @@ struct debug_cap {
 };
 
 struct dynamic_buf_list {
-    OMX_U32 fd;
-    OMX_U32 dup_fd;
+    long fd;
+    long dup_fd;
     OMX_U32 offset;
     OMX_U32 ref_count;
+    void *buffaddr;
+    long mapped_size;
 };
 
 // OMX video decoder class
@@ -440,8 +442,8 @@ class omx_vdec: public qc_omx_component
         pthread_t msg_thread_id;
         pthread_t async_thread_id;
         bool is_component_secure();
-        void buf_ref_add(OMX_U32 fd, OMX_U32 offset);
-        void buf_ref_remove(OMX_U32 fd, OMX_U32 offset);
+        void buf_ref_add(int nPortIndex);
+        void buf_ref_remove();
         OMX_ERRORTYPE set_dpb(bool is_split_mode, int dpb_color_format);
         OMX_ERRORTYPE decide_dpb_buffer_mode();
         int dpb_bit_depth;
