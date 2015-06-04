@@ -2655,7 +2655,12 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 
                     if (mInputBatchMode) {
                         return venc_empty_batch ((OMX_BUFFERHEADERTYPE*)buffer, index);
-                    } else if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 2) {
+                    }
+
+                    if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 3 &&
+                        meta_buf->meta_handle->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
+                        buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
+                    if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 2) {
                         plane.data_offset = meta_buf->meta_handle->data[1];
                         plane.length = meta_buf->meta_handle->data[2];
                         plane.bytesused = meta_buf->meta_handle->data[2];
