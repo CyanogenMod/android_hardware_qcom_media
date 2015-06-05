@@ -152,6 +152,8 @@ extern "C" {
 static OMX_U32 maxSmoothStreamingWidth = 1920;
 static OMX_U32 maxSmoothStreamingHeight = 1088;
 
+bool omx_vdec::m_disable_ubwc_mode;
+
 void* async_message_thread (void *input)
 {
     OMX_BUFFERHEADERTYPE *buffer;
@@ -686,6 +688,14 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_disable_dynamic_buf_mode = atoi(property_value);
     DEBUG_PRINT_HIGH("vidc.dec.debug.dyn.disabled value is %d",m_disable_dynamic_buf_mode);
 
+#ifdef _UBWC_
+    property_value[0] = '\0';
+    property_get("debug.gralloc.gfx_ubwc_disable", property_value, "0");
+    m_disable_ubwc_mode = atoi(property_value);
+    DEBUG_PRINT_HIGH("UBWC mode is %s", m_disable_ubwc_mode ? "disabled" : "enabled");
+#else
+    m_disable_ubwc_mode = true;
+#endif
 #endif
     memset(&m_cmp,0,sizeof(m_cmp));
     memset(&m_cb,0,sizeof(m_cb));
@@ -1984,11 +1994,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
     if (eRet == OMX_ErrorNone) {
         OMX_COLOR_FORMATTYPE dest_color_format;
-#ifdef _UBWC_
-        drv_ctx.output_format = VDEC_YUV_FORMAT_NV12_UBWC;
-#else
-        drv_ctx.output_format = VDEC_YUV_FORMAT_NV12;
-#endif
+        if (m_disable_ubwc_mode) {
+            drv_ctx.output_format = VDEC_YUV_FORMAT_NV12;
+        } else {
+            drv_ctx.output_format = VDEC_YUV_FORMAT_NV12_UBWC;
+        }
         if (eCompressionFormat == (OMX_VIDEO_CODINGTYPE)QOMX_VIDEO_CodingMVC)
             dest_color_format = (OMX_COLOR_FORMATTYPE)
                 QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView;
@@ -2002,11 +2012,12 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
         dpb_bit_depth = MSM_VIDC_BIT_DEPTH_8;
 
-#ifdef _UBWC_
-        capture_capability = V4L2_PIX_FMT_NV12_UBWC;
-#else
-        capture_capability = V4L2_PIX_FMT_NV12;
-#endif
+        if (m_disable_ubwc_mode) {
+            capture_capability = V4L2_PIX_FMT_NV12;
+        } else {
+            capture_capability = V4L2_PIX_FMT_NV12_UBWC;
+        }
+
         struct v4l2_capability cap;
         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_QUERYCAP, &cap);
         if (ret) {
