@@ -93,34 +93,6 @@ enum {
     CAN_SEEK_TO_ZERO   = 16, // the "previous button"
 };
 
-enum {
-    kKeyIndexAlacFrameLength = 0,
-    kKeyIndexAlacCompatibleVersion = 4,
-    kKeyIndexAlacBitDepth = 5,
-    kKeyIndexAlacPb = 6,
-    kKeyIndexAlacMb = 7,
-    kKeyIndexAlacKb = 8,
-    kKeyIndexAlacNumChannels = 9,
-    kKeyIndexAlacMaxRun = 10,
-    kKeyIndexAlacMaxFrameBytes = 12,
-    kKeyIndexAlacAvgBitRate = 16,
-    kKeyIndexAlacSamplingRate = 20,
-    kKeyIndexAlacChannelLayoutTag = 24,
-};
-
-enum {
-    kKeyIndexApeCompatibleVersion = 0,
-    kKeyIndexApeCompressionLevel = 2,
-    kKeyIndexApeFormatFlags = 4,
-    kKeyIndexApeBlocksPerFrame = 8,
-    kKeyIndexApeFinalFrameBlocks = 12,
-    kKeyIndexApeTotalFrames = 16,
-    kKeyIndexApeBitsPerSample = 20,
-    kKeyIndexApeNumChannels = 22,
-    kKeyIndexApeSampleRate = 24,
-    kKeyIndexApeSeekTablePresent = 28,
-};
-
 }  // namespace android
 
 #endif  // QC_META_DATA_H_
