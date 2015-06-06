@@ -502,6 +502,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* MBI statistics mode */
     OMX_QcomIndexParamMBIStatisticsMode = 0x7F000047,
+
+    /* Set PictureTypeDecode */
+    OMX_QcomIndexConfigPictureTypeDecode = 0x7F000048,
 };
 
 /**
@@ -929,6 +932,23 @@ typedef struct OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL {
     OMX_VERSIONTYPE nVersion;           /** OMX specification version information */
     QOMX_VIDEO_PERF_LEVEL ePerfLevel;   /** Performance level */
 } OMX_QCOM_VIDEO_CONFIG_PERF_LEVEL;
+
+typedef enum QOMX_VIDEO_PICTURE_TYPE_DECODE
+{
+    OMX_QCOM_PictypeDecode_IPB,
+    OMX_QCOM_PictypeDecode_I
+} QOMX_VIDEO_PICTURE_TYPE_DECODE;
+
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QcomIndexConfigPictureTypeDecode extension. It
+ * will set the picture type decode specified by eDecodeType.
+ */
+typedef struct OMX_QCOM_VIDEO_CONFIG_PICTURE_TYPE_DECODE {
+    OMX_U32 nSize;                      /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;           /** OMX specification version information */
+    QOMX_VIDEO_PICTURE_TYPE_DECODE eDecodeType;   /** Decode type */
+} OMX_QCOM_VIDEO_CONFIG_PICTURE_TYPE_DECODE;
 
 /**
  * This structure describes the parameters corresponding

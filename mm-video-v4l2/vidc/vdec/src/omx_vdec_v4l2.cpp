@@ -4775,6 +4775,28 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
         }
 
         return ret;
+    } else if ((int)configIndex == (int)OMX_QcomIndexConfigPictureTypeDecode) {
+        OMX_QCOM_VIDEO_CONFIG_PICTURE_TYPE_DECODE *config =
+            (OMX_QCOM_VIDEO_CONFIG_PICTURE_TYPE_DECODE *)configData;
+        struct v4l2_control control;
+        DEBUG_PRINT_LOW("Set picture type decode: %d", config->eDecodeType);
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_PICTYPE_DEC_MODE;
+
+        switch (config->eDecodeType) {
+            case OMX_QCOM_PictypeDecode_I:
+                control.value = V4L2_MPEG_VIDC_VIDEO_PICTYPE_DECODE_ON;
+                break;
+            case OMX_QCOM_PictypeDecode_IPB:
+            default:
+                control.value = V4L2_MPEG_VIDC_VIDEO_PICTYPE_DECODE_OFF;
+                break;
+        }
+
+        ret = (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control) < 0) ?
+                OMX_ErrorUnsupportedSetting : OMX_ErrorNone;
+        if (ret)
+            DEBUG_PRINT_ERROR("Failed to set picture type decode");
+        return ret;
     }
 
     return OMX_ErrorNotImplemented;
@@ -7439,8 +7461,8 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     }
 
 
-    DEBUG_PRINT_LOW("fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p",
-            buffer, buffer->pBuffer);
+    DEBUG_PRINT_LOW("fill_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p, flags: 0x%x, timestamp: %lld",
+            buffer, buffer->pBuffer, buffer->nFlags, buffer->nTimeStamp);
     pending_output_buffers --;
 
     if (buffer->nFlags & OMX_BUFFERFLAG_EOS) {
@@ -7670,7 +7692,7 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
         return OMX_ErrorBadParameter;
     }
 
-    DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p, bufhdr->nFlags = %x",
+    DEBUG_PRINT_LOW("empty_buffer_done: bufhdr = %p, bufhdr->pBuffer = %p, bufhdr->nFlags = 0x%x",
             buffer, buffer->pBuffer, buffer->nFlags);
     pending_input_buffers--;
 
@@ -7792,7 +7814,10 @@ int omx_vdec::async_message_process (void *context, void* message)
                     sem_post(&omx->m_safe_flush);
                 }
             }
-
+            if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_KEYFRAME ||
+                v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_IDRFRAME) {
+                omxhdr->nFlags |= OMX_BUFFERFLAG_SYNCFRAME;
+            }
             omx->post_event ((unsigned long)omxhdr,vdec_msg->status_code,
                     OMX_COMPONENT_GENERATE_EBD);
             break;
