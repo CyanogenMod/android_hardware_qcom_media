@@ -73,6 +73,7 @@ typedef enum QOMX_AUDIO_EXTENSIONS_INDEXTYPE
     QOMX_IndexParamAudioAacSelectMixCoef = 0x7F200007, /** "OMX.Qualcomm.index.audio.aac_sel_mix_coef**/
     QOMX_IndexParamAudioAlac            = 0x7F200008, /** "OMX.Qualcomm.index.audio.alac" */
     QOMX_IndexParamAudioApe             = 0x7F200009, /** "OMX.Qualcomm.index.audio.ape" */
+    QOMX_IndexParamAudioFlacDec         = 0x7F20000A, /** "OMX.Qualcomm.index.audio.flacdec**/
     QOMX_IndexParamAudioUnused          = 0x7F2FFFFF
 } QOMX_AUDIO_EXTENSIONS_INDEXTYPE;
 
