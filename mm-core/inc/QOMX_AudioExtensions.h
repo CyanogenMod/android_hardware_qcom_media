@@ -77,6 +77,7 @@ extern "C"
 #define OMX_QCOM_INDEX_CONFIG_AAC_SEL_MIX_COEF "OMX.Qualcomm.index.audio.aac_sel_mix_coef"
 #define OMX_QCOM_INDEX_PARAM_ALAC            "OMX.Qualcomm.index.audio.alac"
 #define OMX_QCOM_INDEX_PARAM_APE             "OMX.Qualcomm.index.audio.ape"
+#define OMX_QCOM_INDEX_PARAM_FLAC_DEC        "OMX.Qualcomm.index.audio.flacdec"
 
 #define ALAC_CSD_SIZE 24
 #define APE_CSD_SIZE 32
@@ -579,6 +580,19 @@ enum {
     APE_COMPRESSION_LEVEL_EXTRA_HIGH = 4000,
     APE_COMPRESSION_LEVEL_INSANE = 5000,
 };
+
+typedef struct QOMX_AUDIO_PARAM_FLAC_DEC_TYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nChannels;
+    OMX_U32 nSampleRate;
+    OMX_U32 nBitsPerSample;
+    OMX_U32 nMinBlkSize;
+    OMX_U32 nMaxBlkSize;
+    OMX_U32 nMinFrmSize;
+    OMX_U32 nMaxFrmSize;
+} QOMX_AUDIO_PARAM_FLAC_DEC_TYPE;
 
 #if defined( __cplusplus )
 }
