@@ -82,6 +82,9 @@ ifeq ($(TARGET_USES_ION),true)
 libOmxVdec-def += -DUSE_ION
 endif
 
+libOmxVdec-def += -DFLEXYUV_SUPPORTED
+libOmxVdec-def += -DADAPTIVE_PLAYBACK_SUPPORTED
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------
