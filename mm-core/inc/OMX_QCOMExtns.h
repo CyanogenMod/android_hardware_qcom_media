@@ -488,6 +488,13 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexParamVideoHybridHierpMode = 0x7F000043,
 
     OMX_QcomIndexFlexibleYUVDescription = 0x7F000044,
+
+    /* Set Vpp Hqv Control Type */
+    OMX_QcomIndexParamSetVppHqvControl = 0x7F000045,
+
+    /* Enable VPP */
+    OMX_QcomIndexParamEnableVpp = 0x7F000046,
+
 };
 
 /**
@@ -1531,6 +1538,67 @@ typedef struct QOMX_VIDEO_HIERARCHICALLAYERS {
     QOMX_VIDEO_HIERARCHICALCODINGTYPE eHierarchicalCodingType;
 } QOMX_VIDEO_HIERARCHICALLAYERS;
 
+/* VIDEO POSTPROCESSING CTRLS AND ENUMS */
+#define QOMX_VPP_HQV_CUSTOMPAYLOAD_SZ 256
+
+typedef enum QOMX_VPP_HQV_MODE {
+    VPP_HQV_MODE_OFF,
+    VPP_HQV_MODE_AUTO,
+    VPP_HQV_MODE_MANUAL,
+    VPP_HQV_MODE_MAX
+} QOMX_VPP_HQV_MODE;
+
+typedef enum QOMX_VPP_HQVCONTROLTYPE {
+    VPP_HQV_CONTROL_CADE,
+    VPP_HQV_CONTROL_CNR,
+    VPP_HQV_CONTROL_AIE,
+    VPP_HQV_CONTROL_CUST,
+    VPP_HQV_CONTROL_MAX,
+} QOMX_VPP_HQVCONTROLTYPE;
+
+typedef enum QOMX_VPP_HQV_HUE_MODE {
+    VPP_HQV_HUE_MODE_OFF,
+    VPP_HQV_HUE_MODE_ON,
+    VPP_HQV_HUE_MODE_MAX,
+} QOMX_VPP_HQV_HUE_MODE;
+
+typedef struct QOMX_VPP_HQVCTRL_CADE {
+    QOMX_VPP_HQV_MODE mode;
+    OMX_U32 level;
+} QOMX_VPP_HQVCTRL_CADE;
+
+typedef struct QOMX_VPP_HQVCTRL_CNR {
+    QOMX_VPP_HQV_MODE mode;
+    OMX_U32 level;
+} QOMX_VPP_HQVCTRL_CNR;
+
+typedef struct QOMX_VPP_HQVCTRL_AIE {
+    QOMX_VPP_HQV_MODE mode;
+    QOMX_VPP_HQV_HUE_MODE hue_mode;
+    OMX_U32 cade_level;
+    OMX_U32 ltm_level;
+} QOMX_VPP_HQVCTRL_AIE;
+
+typedef struct QOMX_VPP_HQVCTRL_CUSTOM {
+    OMX_U32 id;
+    OMX_U32 len;
+    OMX_U8 data[QOMX_VPP_HQV_CUSTOMPAYLOAD_SZ];
+} QOMX_VPP_HQVCTRL_CUSTOM;
+
+typedef struct QOMX_VPP_HQVCONTROL {
+    QOMX_VPP_HQV_MODE mode;
+    QOMX_VPP_HQVCONTROLTYPE ctrl_type;
+    union {
+        QOMX_VPP_HQVCTRL_CADE cade;
+        QOMX_VPP_HQVCTRL_CNR cnr;
+        QOMX_VPP_HQVCTRL_AIE aie;
+        QOMX_VPP_HQVCTRL_CUSTOM custom;
+    };
+} QOMX_VPP_HQVCONTROL;
+
+typedef struct QOMX_VPP_ENABLE {
+    OMX_BOOL enable_vpp;
+} QOMX_VPP_ENABLE;
 
 #ifdef __cplusplus
 }
