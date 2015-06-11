@@ -131,6 +131,7 @@ char ouputextradatafilename [] = "/data/extradata";
 #define DEVICE_SCRATCH 64
 #endif
 
+#define C2D_SP_YBUF_ALIGN 16
 /*
 #ifdef _ANDROID_
     extern "C"{
@@ -475,7 +476,7 @@ VideoHeap::VideoHeap(int devicefd, size_t size, void* base,
 {
     m_ion_device_fd = devicefd;
     m_ion_handle = handle;
-    MemoryHeapBase::init(ionMapfd, base, size, 0, MEM_DEVICE);
+    MemoryHeapBase::init(dup(ionMapfd), base, size, 0, MEM_DEVICE);
     //ionInit(devicefd, base, size, 0 , MEM_DEVICE,handle,ionMapfd);
 }
 #else
@@ -3097,7 +3098,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         DEBUG_PRINT_HIGH("ION:secure_mode: nUsage 0x%x",nativeBuffersUsage->nUsage);
                 } else {
                         DEBUG_PRINT_HIGH("get_parameter: CACHED buffers from IOMMU heap");
-                        nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP);
+                        nativeBuffersUsage->nUsage = (GRALLOC_USAGE_PRIVATE_IOMMU_HEAP | GRALLOC_USAGE_PRIVATE_UNCACHED);
                 }
 #else
 #if defined (MAX_RES_720P) ||  defined (MAX_RES_1080P_EBI)
@@ -5490,7 +5491,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
     drv_ctx.op_buf_ion_info[i].ion_device_fd = alloc_map_ion_memory(
                     drv_ctx.op_buf.buffer_size,drv_ctx.op_buf.alignment,
                     &drv_ctx.op_buf_ion_info[i].ion_alloc_data,
-                    &drv_ctx.op_buf_ion_info[i].fd_ion_data, ION_FLAG_CACHED);
+                    &drv_ctx.op_buf_ion_info[i].fd_ion_data, 0);
     if (drv_ctx.op_buf_ion_info[i].ion_device_fd < 0) {
         return OMX_ErrorInsufficientResources;
      }
@@ -8511,10 +8512,13 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
   portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
   portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
   portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
-  if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
-      (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
+  if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) {
       portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
       portDefn->format.video.nFrameHeight = drv_ctx.video_resolution.frame_height;
+  } else if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar) {
+      portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width + (C2D_SP_YBUF_ALIGN-1)&~(C2D_SP_YBUF_ALIGN-1);
+      portDefn->format.video.nFrameHeight = drv_ctx.video_resolution.frame_height;
+      portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
   }
   DEBUG_PRINT_LOW("update_portdef: PortIndex = %u, Width = %d Height = %d "
     "Stride = %u SliceHeight = %u output format = 0x%x, eColorFormat = 0x%x",
@@ -10129,6 +10133,7 @@ omx_vdec::allocate_color_convert_buf::allocate_color_convert_buf()
   init_members();
   ColorFormat = OMX_COLOR_FormatMax;
   dest_format = YCbCr420P;
+  m_native_buffers_enabled = false;
 }
 
 void omx_vdec::allocate_color_convert_buf::set_vdec_client(void *client)
@@ -10147,7 +10152,6 @@ void omx_vdec::allocate_color_convert_buf::init_members() {
   memset(op_buf_ion_info,0,sizeof(m_platform_entry_client));
   for (int i = 0; i < MAX_COUNT;i++)
     pmem_fd[i] = -1;
-  m_native_buffers_enabled = false;
 }
 
 omx_vdec::allocate_color_convert_buf::~allocate_color_convert_buf() {
@@ -10276,7 +10280,7 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr
     m_out_mem_ptr_client[index].nFlags = (bufadd->nFlags & OMX_BUFFERFLAG_EOS);
     m_out_mem_ptr_client[index].nTimeStamp = bufadd->nTimeStamp;
     bool status;
-    if (!omx->in_reconfig && !omx->output_flush_progress) {
+    if (!omx->in_reconfig && !omx->output_flush_progress && (bufadd->nFilledLen > 0)) {
       pthread_mutex_lock(&omx->c_lock);
       status = c2d.convert(omx->drv_ctx.ptr_outputbuffer[index].pmem_fd,
                   bufadd->pBuffer,pmem_fd[index],pmem_baseaddress[index]);
