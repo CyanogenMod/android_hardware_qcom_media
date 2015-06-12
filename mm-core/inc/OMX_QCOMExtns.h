@@ -505,6 +505,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Set PictureTypeDecode */
     OMX_QcomIndexConfigPictureTypeDecode = 0x7F000048,
+
+    OMX_QcomIndexConfigH264EntropyCodingCabac = 0x7F000049,
 };
 
 /**
@@ -1564,6 +1566,14 @@ typedef struct QOMX_VIDEO_HIERARCHICALLAYERS {
     OMX_U32 nNumLayers;
     QOMX_VIDEO_HIERARCHICALCODINGTYPE eHierarchicalCodingType;
 } QOMX_VIDEO_HIERARCHICALLAYERS;
+
+typedef struct QOMX_VIDEO_H264ENTROPYCODINGTYPE {
+   OMX_U32 nSize;
+   OMX_VERSIONTYPE nVersion;
+   OMX_BOOL bCabac;
+   OMX_U32 nCabacInitIdc;
+} QOMX_VIDEO_H264ENTROPYCODINGTYPE;
+
 
 /* VIDEO POSTPROCESSING CTRLS AND ENUMS */
 #define QOMX_VPP_HQV_CUSTOMPAYLOAD_SZ 256
