@@ -1674,7 +1674,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     if (ret) {
         DEBUG_PRINT_ERROR("Failed to create async_message_thread");
         async_thread_created = false;
-        goto ioctl_failed;
+        return OMX_ErrorInsufficientResources;
     }
 
 #ifdef OUTPUT_EXTRADATA_LOG
@@ -1727,7 +1727,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eRet = createDivxDrmContext();
         if (eRet != OMX_ErrorNone) {
             DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-            goto ioctl_failed;
+            return eRet;
         }
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx4",\
                 OMX_MAX_STRINGNAME_SIZE)) {
@@ -1743,7 +1743,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eRet = createDivxDrmContext();
         if (eRet != OMX_ErrorNone) {
             DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-            goto ioctl_failed;
+            return eRet;
         }
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.divx",\
                 OMX_MAX_STRINGNAME_SIZE)) {
@@ -1759,7 +1759,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         eRet = createDivxDrmContext();
         if (eRet != OMX_ErrorNone) {
             DEBUG_PRINT_ERROR("createDivxDrmContext Failed");
-            goto ioctl_failed;
+            return eRet;
         }
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",\
                 OMX_MAX_STRINGNAME_SIZE)) {
@@ -1867,7 +1867,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         if (ret) {
             /*TODO: How to handle this case */
             DEBUG_PRINT_ERROR("Failed to set format on output port");
-            goto ioctl_failed;
+            return OMX_ErrorInsufficientResources;
         }
         DEBUG_PRINT_HIGH("Set Format was successful");
         if (codec_ambiguous) {
@@ -1910,7 +1910,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
                 VIDIOC_ENUM_FRAMESIZES, &frmsize);
         if (ret || frmsize.type != V4L2_FRMSIZE_TYPE_STEPWISE) {
             DEBUG_PRINT_ERROR("Failed to get framesizes");
-            goto ioctl_failed;
+            return OMX_ErrorHardware;
         }
 
         if (frmsize.type == V4L2_FRMSIZE_TYPE_STEPWISE) {
@@ -1946,7 +1946,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL,&control);
             if (ret) {
                 DEBUG_PRINT_ERROR("Omx_vdec:: Unable to open secure device %d", ret);
-                goto ioctl_failed;
+                return OMX_ErrorInsufficientResources;
             }
         }
         if (output_capability == V4L2_PIX_FMT_H264_MVC) {
@@ -1955,7 +1955,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
             if (ret) {
                 DEBUG_PRINT_ERROR("Failed to set MVC buffer layout");
-                goto ioctl_failed;
+                return OMX_ErrorInsufficientResources;
             }
         }
 
@@ -2007,7 +2007,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
                     if (h264_scratch.pBuffer == NULL) {
                         DEBUG_PRINT_ERROR("h264_scratch.pBuffer Allocation failed ");
-                        goto ioctl_failed;
+                        return OMX_ErrorInsufficientResources;
                     }
         }
         if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264 ||
@@ -2038,7 +2038,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             if (fds[0] == 0 || fds[1] == 0) {
                 if (pipe (temp1)) {
                     DEBUG_PRINT_ERROR("pipe creation failed");
-                    goto ioctl_failed;
+                    return OMX_ErrorInsufficientResources;
                 }
                 //close (fds[0]);
                 //close (fds[1]);
@@ -2066,10 +2066,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
     //memset(&h264_mv_buff,0,sizeof(struct h264_mv_buffer));
     return eRet;
-ioctl_failed:
-    close(drv_ctx.video_driver_fd);
-    drv_ctx.video_driver_fd = -1;
-    return OMX_ErrorInsufficientResources;
 }
 
 /* ======================================================================
