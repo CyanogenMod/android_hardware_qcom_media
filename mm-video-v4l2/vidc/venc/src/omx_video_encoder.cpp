@@ -164,6 +164,7 @@ omx_venc::omx_venc()
     hybrid_hp = atoi(property_value);
     property_value[0] = '\0';
     m_perf_control.send_hint_to_mpctl(true);
+    handle = NULL;
 }
 
 omx_venc::~omx_venc()
@@ -263,6 +264,9 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
 
     if (handle->venc_open(codec_type) != true) {
         DEBUG_PRINT_ERROR("ERROR: venc_open failed");
+        handle->venc_close();
+        delete handle;
+        handle = NULL;
         return OMX_ErrorInsufficientResources;
     }
 
@@ -1915,6 +1919,7 @@ OMX_ERRORTYPE  omx_venc::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     handle->venc_close();
     DEBUG_PRINT_HIGH("Deleting HANDLE[%p]", handle);
     delete (handle);
+    handle = NULL;
     DEBUG_PRINT_INFO("Component Deinit");
     return OMX_ErrorNone;
 }
