@@ -4463,6 +4463,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
     unsigned nBufIndex = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     encoder_media_buffer_type *media_buffer;
+    private_handle_t *handle = NULL;
     DEBUG_PRINT_LOW("ETBProxyOpaque: buffer[%p]", buffer);
 
     if (buffer == NULL) {
@@ -4476,16 +4477,19 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         return OMX_ErrorBadParameter;
     }
     media_buffer = (encoder_media_buffer_type *)buffer->pBuffer;
-    if (!media_buffer || !media_buffer->meta_handle) {
+    if ((!media_buffer || !media_buffer->meta_handle) &&
+            !(buffer->nFlags & OMX_BUFFERFLAG_EOS)) {
         DEBUG_PRINT_ERROR("Incorrect Buffer queued media buffer = %p",
             media_buffer);
         m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
         return OMX_ErrorBadParameter;
+    } else if (media_buffer) {
+        handle = (private_handle_t *)media_buffer->meta_handle;
     }
+
     if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
         return empty_this_buffer_proxy(hComp, buffer);
     }
-    private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
 
     /*Enable following code once private handle color format is
       updated correctly*/
