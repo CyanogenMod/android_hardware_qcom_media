@@ -1738,7 +1738,9 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         maxSmoothStreamingWidth = 1280;
         maxSmoothStreamingHeight = 720;
     }
-    if (!strncmp(platform_name, "msm8956", 7) || !strncmp(platform_name, "msm8976", 7)) {
+    if (property_get("media.msm8956hw", property_value, "0") &&
+            atoi(property_value)) {
+        DEBUG_PRINT_HIGH("Downscalar enabled");
         is_downscalar_supported = true;
     } else {
         is_downscalar_supported = false;
