@@ -1362,7 +1362,6 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         if (p2 == OMX_IndexParamPortDefinition) {
                                             DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexParamPortDefinition");
                                             pThis->in_reconfig = true;
-                                            pThis->decide_downscalar();
                                         }  else if (p2 == OMX_IndexConfigCommonOutputCrop) {
                                             DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexConfigCommonOutputCrop");
 
@@ -2686,6 +2685,8 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
                 BITMASK_SET(&m_flags, OMX_COMPONENT_OUTPUT_ENABLE_PENDING);
                 // Skip the event notification
                 bFlag = 0;
+                /* enable/disable downscaling if required */
+                decide_downscalar();
             }
         }
     } else if (cmd == OMX_CommandPortDisable) {
