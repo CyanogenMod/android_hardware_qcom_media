@@ -268,9 +268,6 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     property_get("vidc.enc.log.extradata", property_value, "0");
     m_debug.extradata_log = atoi(property_value);
 
-    property_get("persist.camera.video.ubwc", property_value, "1");
-    is_camera_source_ubwc = atoi(property_value);
-
     snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
              "%s", BUFFER_LOG_LOC);
 }
@@ -2740,14 +2737,22 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
             } else if (!color_format) {
 
                 if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
+                    native_handle_t *hnd = (native_handle_t*)meta_buf->meta_handle;
+                    if (!hnd) {
+                        DEBUG_PRINT_ERROR("ERROR: venc_etb: handle is NULL");
+                        return false;
+                    }
+
                     if (!streaming[OUTPUT_PORT]) {
                         struct v4l2_format fmt;
                         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-                        m_sVenc_cfg.inputformat = is_camera_source_ubwc ?
-                                V4L2_PIX_FMT_NV12_UBWC : V4L2_PIX_FMT_NV12;
-                        fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
+                        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
                         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
                         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+                        if (hnd->data[3] & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED) {
+                            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12_UBWC;
+                        }
+                        fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
                             DEBUG_PRINT_ERROR("Failed setting color format %x", m_sVenc_cfg.inputformat);
                             return false;
@@ -2757,10 +2762,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                             return false;
                         }
                     }
-
-                    native_handle_t *hnd = (native_handle_t*)meta_buf->meta_handle;
-                    if (!hnd)
-                        return false;
 
                     // Setting batch mode is sticky. We do not expect camera to change
                     // between batch and normal modes at runtime.
@@ -2782,8 +2783,8 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         plane.length = hnd->data[2];
                         plane.bytesused = hnd->data[2];
                     }
-                    DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x",
-                            fd, plane.bytesused, plane.length, buf.flags);
+                    DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x format 0x%x",
+                            fd, plane.bytesused, plane.length, buf.flags,  m_sVenc_cfg.inputformat);
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
                     private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
                     if (!streaming[OUTPUT_PORT]) {
