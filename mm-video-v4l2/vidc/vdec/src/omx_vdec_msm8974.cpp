@@ -2816,11 +2816,13 @@ bool omx_vdec::post_event(unsigned long p1,
 
     if (id == m_fill_output_msg ||
             id == OMX_COMPONENT_GENERATE_FBD ||
-            id == OMX_COMPONENT_GENERATE_PORT_RECONFIG) {
+            id == OMX_COMPONENT_GENERATE_PORT_RECONFIG ||
+            id == OMX_COMPONENT_GENERATE_EVENT_OUTPUT_FLUSH) {
         m_ftb_q.insert_entry(p1,p2,id);
     } else if (id == OMX_COMPONENT_GENERATE_ETB ||
             id == OMX_COMPONENT_GENERATE_EBD ||
-            id == OMX_COMPONENT_GENERATE_ETB_ARBITRARY) {
+            id == OMX_COMPONENT_GENERATE_ETB_ARBITRARY ||
+            id == OMX_COMPONENT_GENERATE_EVENT_INPUT_FLUSH) {
         m_etb_q.insert_entry(p1,p2,id);
     } else {
         m_cmd_q.insert_entry(p1,p2,id);
