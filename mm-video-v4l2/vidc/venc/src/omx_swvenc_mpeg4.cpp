@@ -1122,10 +1122,17 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                Prop.info.slice_config.mode = SWVENC_SLICE_MODE_BYTE;
                Prop.info.slice_config.size = pParam->nResynchMarkerSpacing;
             }
-            else if ( (SWVENC_CODEC_H263 == m_codec) && (pParam->bEnableDataPartitioning) )
+            else if ( (SWVENC_CODEC_H263 == m_codec) && (pParam->bEnableResync) )
             {
                Prop.info.slice_config.mode = SWVENC_SLICE_MODE_GOB;
                Prop.info.slice_config.size = 0;
+               Ret = swvenc_setproperty(m_hSwVenc, &Prop);
+               if (Ret != SWVENC_S_SUCCESS)
+               {
+                  DEBUG_PRINT_ERROR("%s, swvenc_setproperty failed (%d)",
+                    __FUNCTION__, Ret);
+                  RETURN(OMX_ErrorUndefined);
+               }
             }
             else
             {
