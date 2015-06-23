@@ -1194,6 +1194,9 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
     unsigned int buf_size = 0, extra_data_size = 0, client_extra_data_size = 0;
     int ret;
 
+    DEBUG_PRINT_HIGH("venc_get_buf_req: port %d, min count %d, actual count %d, size %d",
+        port, *min_buff_count, *actual_buff_count, *buff_size);
+
     if (port == 0) {
         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
@@ -1283,6 +1286,9 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         extradata_info.count = m_sOutput_buff_property.actualcount;
         extradata_info.size = extradata_info.buffer_size * extradata_info.count;
     }
+
+    DEBUG_PRINT_HIGH("venc_get_buf_req: updated port %d, min count %d, actual count %d, size %d",
+        port, *min_buff_count, *actual_buff_count, *buff_size);
 
     return true;
 }
