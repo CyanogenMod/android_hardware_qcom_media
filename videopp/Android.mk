@@ -1,5 +1,3 @@
-ifneq ($(BUILD_TINY_ANDROID),true)
-
 ROOT_DIR := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -62,8 +60,6 @@ LOCAL_SRC_FILES         += src/omx_vdpp.cpp
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
-
-endif #BUILD_TINY_ANDROID
 
 # ---------------------------------------------------------------------------------
 #                END
