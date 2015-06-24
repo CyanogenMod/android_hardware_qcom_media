@@ -1065,6 +1065,7 @@ private:
         OMX_U32 current_perf_level;
         bool secure_scaling_to_non_secure_opb;
 	bool m_force_compressed_for_dpb;
+        bool m_is_display_session;
         class perf_lock {
             private:
                 pthread_mutex_t mlock;
