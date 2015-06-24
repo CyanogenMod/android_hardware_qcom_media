@@ -717,6 +717,9 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         DEBUG_PRINT_ERROR("ERROR: venc_set_param output failed");
                         return OMX_ErrorUnsupportedSetting;
                     }
+
+                    memcpy(&m_sOutPortDef, portDefn, sizeof(struct OMX_PARAM_PORTDEFINITIONTYPE));
+
 #ifdef _MSM8974_
                     /*Query ouput Buffer Requirements*/
                     dev_get_buf_req(&m_sOutPortDef.nBufferCountMin,
@@ -724,7 +727,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             &m_sOutPortDef.nBufferSize,
                             m_sOutPortDef.nPortIndex);
 #endif
-                    memcpy(&m_sOutPortDef,portDefn,sizeof(struct OMX_PARAM_PORTDEFINITIONTYPE));
+
                     update_profile_level(); //framerate , bitrate
 
                     DEBUG_PRINT_LOW("o/p previous actual cnt = %u", (unsigned int)m_sOutPortDef.nBufferCountActual);
