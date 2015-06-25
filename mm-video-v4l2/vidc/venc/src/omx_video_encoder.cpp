@@ -88,6 +88,7 @@ omx_venc::omx_venc()
     property_get("vidc.debug.hybrid.hierp", property_value, "0");
     hybrid_hp = atoi(property_value);
     property_value[0] = '\0';
+    handle = NULL;
 }
 
 omx_venc::~omx_venc()
@@ -187,9 +188,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
 
     if (handle->venc_open(codec_type) != true) {
         DEBUG_PRINT_ERROR("ERROR: venc_open failed");
-        delete handle;
-        handle = NULL;
-        return OMX_ErrorInsufficientResources;
+        eRet = OMX_ErrorInsufficientResources;
+        goto init_error;
     }
 
     //Intialise the OMX layer variables
@@ -306,7 +306,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
                 &m_sInPortDef.nBufferSize,
                 m_sInPortDef.nPortIndex) != true) {
         eRet = OMX_ErrorUndefined;
-
+        goto init_error;
     }
 
     // Initialize the video parameters for output port
@@ -523,6 +523,11 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         }
     }
     DEBUG_PRINT_INFO("Component_init : %s : return = 0x%x", m_nkind, eRet);
+    return eRet;
+init_error:
+    handle->venc_close();
+    delete handle;
+    handle = NULL;
     return eRet;
 }
 
