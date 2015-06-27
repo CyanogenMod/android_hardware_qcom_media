@@ -16,5 +16,10 @@ ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
 include $(QCOM_MEDIA_ROOT)/videopp/Android.mk
 endif
 
+ifneq ($(filter msm8916 msm8939,$(TARGET_BOARD_PLATFORM)),)
+include $(QCOM_MEDIA_ROOT)/QCMediaPlayer/Android.mk
+include $(QCOM_MEDIA_ROOT)/dashplayer/Android.mk
+endif
+
 endif
 endif
