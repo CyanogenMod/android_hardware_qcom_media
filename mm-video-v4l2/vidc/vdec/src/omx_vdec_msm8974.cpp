@@ -954,6 +954,12 @@ int omx_vdec::decide_downscalar()
         return rc;
     }
 
+    rc = get_buffer_req(&drv_ctx.op_buf);
+    if (rc) {
+        DEBUG_PRINT_ERROR("%s: Failed to get output buffer requirements", __func__);
+        return rc;
+    }
+
     return rc;
 }
 
