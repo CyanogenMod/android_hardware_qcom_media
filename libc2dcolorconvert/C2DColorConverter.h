@@ -32,6 +32,8 @@
 
 #include <c2d2.h>
 #include <sys/types.h>
+#include <string.h>
+#include <errno.h>
 
 typedef C2D_STATUS (*LINK_c2dCreateSurface)( uint32 *surface_id,
         uint32 surface_bits,
