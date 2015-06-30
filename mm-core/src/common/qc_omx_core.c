@@ -52,6 +52,9 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 extern omx_core_cb_type core[];
 extern const unsigned int SIZE_OF_CORE;
 static pthread_mutex_t lock_core = PTHREAD_MUTEX_INITIALIZER;
+static int number_of_adec_nt_session;
+
+#define MAX_AUDIO_NT_SESSION 2
 
 /* ======================================================================
 FUNCTION
@@ -402,7 +405,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
   int cmp_index = -1;
   int hnd_index = -1;
 
-  DEBUG_PRINT("OMXCORE API :  Get Handle %p %s %p\n", handle,
+  DEBUG_PRINT("OMXCORE API :  GetHandle %p %s %p\n", handle,
                                                      componentName,
                                                      appData);
   pthread_mutex_lock(&lock_core);
@@ -471,6 +474,20 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
             return OMX_ErrorInsufficientResources;
           }
           DEBUG_PRINT("Component %p Successfully created\n",*handle);
+          if(!strcmp(core[cmp_index].so_lib_name,"libOmxWmaDec.so")  ||
+             !strcmp(core[cmp_index].so_lib_name,"libOmxAacDec.so")  ||
+             !strcmp(core[cmp_index].so_lib_name,"libOmxAlacDec.so") ||
+             !strcmp(core[cmp_index].so_lib_name,"libOmxApeDec.so")) {
+            if(number_of_adec_nt_session+1 > MAX_AUDIO_NT_SESSION) {
+              DEBUG_PRINT_ERROR("Audio NT session max limit is 2\n");
+              core[cmp_index].inst[hnd_index]= *handle = NULL;
+              pthread_mutex_unlock(&lock_core);
+              return OMX_ErrorInsufficientResources;
+            }
+          number_of_adec_nt_session++;
+          DEBUG_PRINT_ERROR("OMX_GetHandle: number_of_adec_nt_session : %d\n",
+                             number_of_adec_nt_session);
+          }
         }
         else
         {
@@ -517,7 +534,7 @@ OMX_FreeHandle(OMX_IN OMX_HANDLETYPE hComp)
 {
   OMX_ERRORTYPE eRet = OMX_ErrorNone;
   int err = 0, i = 0;
-  DEBUG_PRINT("OMXCORE API :  Free Handle %p\n", hComp);
+  DEBUG_PRINT("OMXCORE API :  FreeHandle %p\n", hComp);
 
   // 0. Check that we have an active instance
   if((i=is_cmp_handle_exists(hComp)) >=0)
@@ -541,13 +558,22 @@ OMX_FreeHandle(OMX_IN OMX_HANDLETYPE hComp)
               }
               core[i].so_lib_handle = NULL;
            }
+           if(!strcmp(core[i].so_lib_name,"libOmxWmaDec.so")  ||
+              !strcmp(core[i].so_lib_name,"libOmxAacDec.so")  ||
+              !strcmp(core[i].so_lib_name,"libOmxAlacDec.so") ||
+              !strcmp(core[i].so_lib_name,"libOmxApeDec.so")) {
+               if(number_of_adec_nt_session>0)
+                   number_of_adec_nt_session--;
+               DEBUG_PRINT_ERROR("OMX_FreeHandle: reduced number_of_adec_nt_session %d\n",
+                                   number_of_adec_nt_session);
+           }
     }
     clear_cmp_handle(hComp);
     pthread_mutex_unlock(&lock_core);
     }
     else
     {
-    DEBUG_PRINT(" OMX_FreeHandle failed on %p\n", hComp);
+        DEBUG_PRINT(" OMX_FreeHandle failed on %p\n", hComp);
         return eRet;
     }
   }
