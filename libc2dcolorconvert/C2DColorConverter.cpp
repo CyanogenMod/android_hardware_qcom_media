@@ -29,11 +29,13 @@
 
 #include <C2DColorConverter.h>
 #include <stdlib.h>
+#include <string.h>
 #include <fcntl.h>
 #include <linux/msm_kgsl.h>
 #include <sys/ioctl.h>
 #include <utils/Log.h>
 #include <dlfcn.h>
+#include <errno.h>
 
 #undef LOG_TAG
 #define LOG_TAG "C2DColorConvert"

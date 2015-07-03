@@ -18,6 +18,7 @@ libmm-venc-def += -UINPUT_BUFFER_LOG
 libmm-venc-def += -UOUTPUT_BUFFER_LOG
 libmm-venc-def += -USINGLE_ENCODER_INSTANCE
 libmm-venc-def += -Werror
+libmm-venc-def += -Wno-error=literal-suffix
 libmm-venc-def += -D_ANDROID_ICS_
 libmm-venc-def += -D_MSM8974_
 
@@ -138,7 +139,7 @@ LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
 LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_swvenc_hevc.cpp
 
-include $(BUILD_SHARED_LIBRARY)
+#include $(BUILD_SHARED_LIBRARY)
 endif
 
 endif
