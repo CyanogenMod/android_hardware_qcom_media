@@ -313,7 +313,7 @@ omx_video::~omx_video()
 #endif
     pthread_mutex_destroy(&m_lock);
     sem_destroy(&m_cmd_lock);
-    DEBUG_PRINT_HIGH("m_etb_count = %"PRIu64", m_fbd_count = %"PRIu64, m_etb_count,
+    DEBUG_PRINT_HIGH("m_etb_count = %" PRIu64 ", m_fbd_count = %" PRIu64, m_etb_count,
             m_fbd_count);
     DEBUG_PRINT_HIGH("omx_video: Destructor exit");
     DEBUG_PRINT_HIGH("Exiting OMX Video Encoder ...");
@@ -481,7 +481,7 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
                 case OMX_COMPONENT_GENERATE_EVENT_INPUT_FLUSH:
 
                     pThis->input_flush_progress = false;
-                    DEBUG_PRINT_HIGH("m_etb_count at i/p flush = %"PRIu64, m_etb_count);
+                    DEBUG_PRINT_HIGH("m_etb_count at i/p flush = %" PRIu64, m_etb_count);
                     m_etb_count = 0;
                     if (pThis->m_pCallbacks.EventHandler) {
                         /*Check if we need generate event for Flush done*/
@@ -508,7 +508,7 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
                 case OMX_COMPONENT_GENERATE_EVENT_OUTPUT_FLUSH:
 
                     pThis->output_flush_progress = false;
-                    DEBUG_PRINT_HIGH("m_fbd_count at o/p flush = %"PRIu64, m_fbd_count);
+                    DEBUG_PRINT_HIGH("m_fbd_count at o/p flush = %" PRIu64, m_fbd_count);
                     m_fbd_count = 0;
                     if (pThis->m_pCallbacks.EventHandler) {
                         /*Check if we need generate event for Flush done*/
@@ -561,7 +561,7 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
                             }
                             BITMASK_CLEAR((&pThis->m_flags),OMX_COMPONENT_LOADED_START_PENDING);
                         } else {
-                            DEBUG_PRINT_LOW("ERROR: unknown flags=%"PRIx64, pThis->m_flags);
+                            DEBUG_PRINT_LOW("ERROR: unknown flags=%" PRIx64, pThis->m_flags);
                         }
                     } else {
                         DEBUG_PRINT_LOW("Event Handler callback is NULL");
@@ -621,7 +621,7 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
                             }
                             BITMASK_CLEAR((&pThis->m_flags),OMX_COMPONENT_LOADED_STOP_PENDING);
                         } else {
-                            DEBUG_PRINT_LOW("ERROR: unknown flags=%"PRIx64, pThis->m_flags);
+                            DEBUG_PRINT_LOW("ERROR: unknown flags=%" PRIx64, pThis->m_flags);
                         }
                     }
 
@@ -3330,7 +3330,7 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             post_event(OMX_CommandStateSet, OMX_StateLoaded,
                     OMX_COMPONENT_GENERATE_EVENT);
         } else {
-            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers input %"PRIx64" output %"PRIx64,
+            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers input %" PRIx64" output %" PRIx64,
                     m_out_bm_count, m_inp_bm_count);
         }
     }
