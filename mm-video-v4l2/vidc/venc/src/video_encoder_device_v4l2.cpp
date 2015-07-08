@@ -533,9 +533,22 @@ int venc_dev::append_mbi_extradata(void *dst, struct msm_vidc_extradata_header* 
     if (!dst || !src)
         return 0;
 
-    /* TODO: Once Venus 3XX target names are known, nFormat should 2 for those
-     * targets, since the payload format will be different */
-    mbi->nFormat = 1;
+    /* Setting format to 3x as default */
+    mbi->nFormat = 2;
+
+    char property_value[PROPERTY_VALUE_MAX];
+    property_get("ro.board.platform", property_value, "0");
+    if (!strncmp(property_value, "msm8952", 7)) {
+        property_get("media.msm8956hw", property_value, "0");
+        if (atoi(property_value)) {
+            /* Setting format to 3x for 8956 */
+            mbi->nFormat = 2;
+        } else {
+            /* Setting format to 2x for 8952 */
+            mbi->nFormat = 1;
+        }
+    }
+
     mbi->nDataSize = src->data_size;
     memcpy(&mbi->data, &src->data, src->data_size);
 
