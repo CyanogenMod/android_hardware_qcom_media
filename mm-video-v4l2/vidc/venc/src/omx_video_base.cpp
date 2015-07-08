@@ -3419,8 +3419,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
     }
 #endif
 #ifdef _ANDROID_ICS_
-    if (meta_mode_enable && !mUseProxyColorFormat) {
-        // Camera or Gralloc-source meta-buffers queued with pre-announced color-format
+    if (meta_mode_enable && !mUsesColorConversion) {
+        // Camera or Gralloc-source meta-buffers queued with encodeable color-format
         struct pmem Input_pmem_info;
         if (!media_buffer) {
             DEBUG_PRINT_ERROR("%s: invalid media_buffer",__FUNCTION__);
@@ -3452,19 +3452,6 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
         }
         if (dev_use_buf(&Input_pmem_info,PORT_INDEX_IN,0) != true) {
             DEBUG_PRINT_ERROR("ERROR: in dev_use_buf");
-            post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_EBD);
-            return OMX_ErrorBadParameter;
-        }
-    } else if (meta_mode_enable && !mUsesColorConversion) {
-        // Graphic-source meta-buffers queued with opaque color-format
-        if (media_buffer->buffer_type == kMetadataBufferTypeGrallocSource) {
-            private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
-            fd = handle->fd;
-            DEBUG_PRINT_LOW("ETB (opaque-gralloc) fd = %d, size = %d",
-                    fd, handle->size);
-        } else {
-            DEBUG_PRINT_ERROR("ERROR: Invalid bufferType for buffer with Opaque"
-                    " color format");
             post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_EBD);
             return OMX_ErrorBadParameter;
         }
@@ -4577,6 +4564,9 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
             media_buffer);
         m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
         return OMX_ErrorBadParameter;
+    }
+    if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
+        return empty_this_buffer_proxy(hComp, buffer);
     }
     private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
 
