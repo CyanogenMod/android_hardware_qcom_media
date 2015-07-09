@@ -1951,6 +1951,21 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 batch->nPortIndex = PORT_INDEX_IN;
                 break;
             }
+        case OMX_QcomIndexParamSequenceHeaderWithIDR:
+            {
+                PrependSPSPPSToIDRFramesParams * pParam =
+                    reinterpret_cast<PrependSPSPPSToIDRFramesParams *>(paramData);
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamSequenceHeaderWithIDR");
+                memcpy(pParam, &m_sPrependSPSPPS, sizeof(m_sPrependSPSPPS));
+                break;
+            }
+        case OMX_QcomIndexParamVencAspectRatio:
+            {
+               QOMX_EXTNINDEX_VIDEO_VENC_SAR * pParam =
+                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_VENC_SAR *>(paramData);
+                memcpy(pParam, &m_sSar, sizeof(m_sSar));
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -2066,6 +2081,38 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
+       case OMX_QcomIndexConfigMaxHierPLayers:
+           {
+               QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS* pParam =
+                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS*>(configData);
+               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigMaxHierPLayers");
+               memcpy(pParam, &m_sMaxHPlayers, sizeof(m_sMaxHPlayers));
+               break;
+           }
+       case OMX_QcomIndexConfigQp:
+           {
+               OMX_SKYPE_VIDEO_CONFIG_QP* pParam =
+                   reinterpret_cast<OMX_SKYPE_VIDEO_CONFIG_QP*>(configData);
+               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigQp");
+               memcpy(pParam, &m_sConfigQP, sizeof(m_sConfigQP));
+               break;
+           }
+       case OMX_QcomIndexConfigBaseLayerId:
+           {
+               OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID* pParam =
+                   reinterpret_cast<OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID*>(configData);
+               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigBaseLayerId");
+               memcpy(pParam, &m_sBaseLayerID, sizeof(m_sBaseLayerID));
+               break;
+           }
+        case OMX_QcomIndexConfigRectType:
+            {
+                OMX_CONFIG_RECTTYPE *pParam =
+                    reinterpret_cast<OMX_CONFIG_RECTTYPE*>(configData);
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexConfigRectType");
+                memcpy(pParam, &m_sRectangleData, sizeof(m_sRectangleData));
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -2114,6 +2161,66 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     if (!strncmp(paramName, "OMX.google.android.index.prependSPSPPSToIDRFrames",
             sizeof("OMX.google.android.index.prependSPSPPSToIDRFrames") - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.param.video.HierStructure",
+            sizeof("OMX.QCOM.index.param.video.HierStructure") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexHierarchicalStructure;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.param.video.LTRCount",
+            sizeof("OMX.QCOM.index.param.video.LTRCount") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoLTRCount;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.param.video.LTRPeriod",
+            sizeof("OMX.QCOM.index.param.video.LTRPeriod") - 1)) {
+        *indexType = (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRPeriod;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.config.video.LTRUse",
+            sizeof("OMX.QCOM.index.config.video.LTRUse") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoLTRUse;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.config.video.LTRMark",
+            sizeof("OMX.QCOM.index.config.video.LTRMark") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoLTRMark;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.config.video.hierplayers",
+            sizeof("OMX.QCOM.index.config.video.hierplayers") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.config.video.rectangle",
+            sizeof("OMX.QCOM.index.config.video.rectangle") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigRectType;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.param.video.baselayerid",
+            sizeof("OMX.QCOM.index.param.video.baselayerid") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigBaseLayerId;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.config.video.qp",
+            sizeof("OMX.QCOM.index.config.video.qp") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigQp;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.param.video.sar",
+            sizeof("OMX.QCOM.index.param.video.sar") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVencAspectRatio;
         return OMX_ErrorNone;
     }
     return OMX_ErrorNotImplemented;
@@ -4278,6 +4385,9 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
                 profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else if (profileLevelType->nProfileIndex == 3) {
                 profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
+                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
+            } else if (profileLevelType->nProfileIndex == 4) {
+                profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedHigh;
                 profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else {
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
