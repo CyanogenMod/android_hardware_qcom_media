@@ -669,6 +669,11 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     sprintf(m_debug.log_loc, "%s", BUFFER_LOG_LOC);
 
     property_value[0] = '\0';
+    property_get("vidc.dec.meta.log.out", property_value, "0");
+    m_debug.out_meta_buffer_log = atoi(property_value);
+    sprintf(m_debug.log_loc, "%s", BUFFER_LOG_LOC);
+
+    property_value[0] = '\0';
     property_get("vidc.log.loc", property_value, "");
     if (*property_value)
         strlcpy(m_debug.log_loc, property_value, PROPERTY_VALUE_MAX);
@@ -1445,6 +1450,15 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                             fclose(pThis->m_debug.outfile);
                                             pThis->m_debug.outfile = NULL;
                                         }
+                                        if (pThis->m_debug.out_ymeta_file) {
+                                            fclose(pThis->m_debug.out_ymeta_file);
+                                            pThis->m_debug.out_ymeta_file = NULL;
+                                        }
+                                        if (pThis->m_debug.out_uvmeta_file) {
+                                            fclose(pThis->m_debug.out_uvmeta_file);
+                                            pThis->m_debug.out_uvmeta_file = NULL;
+                                        }
+
                                         if (pThis->m_cb.EventHandler) {
                                             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                                     OMX_EventPortSettingsChanged, p1, p2, NULL );
@@ -1661,7 +1675,23 @@ int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer) {
         }
     }
 
-    if (!m_debug.outfile || !buffer || !buffer->nFilledLen)
+    if (m_debug.out_meta_buffer_log && !m_debug.out_ymeta_file && !m_debug.out_uvmeta_file
+        && buffer->nFilledLen) {
+        snprintf(m_debug.out_ymetafile_name, OMX_MAX_STRINGNAME_SIZE, "%s/output_%d_%d_%p.ymeta",
+                m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        snprintf(m_debug.out_uvmetafile_name, OMX_MAX_STRINGNAME_SIZE, "%s/output_%d_%d_%p.uvmeta",
+                m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        m_debug.out_ymeta_file = fopen (m_debug.out_ymetafile_name, "ab");
+        m_debug.out_uvmeta_file = fopen (m_debug.out_uvmetafile_name, "ab");
+        if (!m_debug.out_ymeta_file || !m_debug.out_uvmeta_file) {
+            DEBUG_PRINT_HIGH("Failed to open output y/uv meta file: %s for logging", m_debug.log_loc);
+            m_debug.out_ymetafile_name[0] = '\0';
+            m_debug.out_uvmetafile_name[0] = '\0';
+            return -1;
+        }
+    }
+
+    if ((!m_debug.outfile && !m_debug.out_ymeta_file) || !buffer || !buffer->nFilledLen)
         return 0;
 
     buf_index = buffer - m_out_mem_ptr;
@@ -1672,8 +1702,43 @@ int omx_vdec::log_output_buffers(OMX_BUFFERHEADERTYPE *buffer) {
             drv_ctx.video_resolution.frame_width,
             drv_ctx.video_resolution.frame_height);
 
-        fwrite(temp, buffer->nFilledLen, 1, m_debug.outfile);
-    } else if (drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
+        if (m_debug.outfile)
+            fwrite(temp, buffer->nFilledLen, 1, m_debug.outfile);
+
+        if (m_debug.out_ymeta_file && m_debug.out_uvmeta_file) {
+            unsigned int width = 0, height = 0;
+            unsigned int y_plane, y_meta_plane;
+            int y_stride = 0, y_sclines = 0;
+            int y_meta_stride = 0, y_meta_scanlines = 0, uv_meta_stride = 0, uv_meta_scanlines = 0;
+            int color_fmt = COLOR_FMT_NV12_UBWC;
+            int i;
+            int bytes_written = 0;
+
+            width = drv_ctx.video_resolution.frame_width;
+            height = drv_ctx.video_resolution.frame_height;
+            y_meta_stride = VENUS_Y_META_STRIDE(color_fmt, width);
+            y_meta_scanlines = VENUS_Y_META_SCANLINES(color_fmt, height);
+            y_stride = VENUS_Y_STRIDE(color_fmt, width);
+            y_sclines = VENUS_Y_SCANLINES(color_fmt, height);
+            uv_meta_stride = VENUS_UV_META_STRIDE(color_fmt, width);
+            uv_meta_scanlines = VENUS_UV_META_SCANLINES(color_fmt, height);
+
+            y_meta_plane = MSM_MEDIA_ALIGN(y_meta_stride * y_meta_scanlines, 4096);
+            y_plane = MSM_MEDIA_ALIGN(y_stride * y_sclines, 4096);
+
+            temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr;
+            for (i = 0; i < y_meta_scanlines; i++) {
+                 bytes_written = fwrite(temp, y_meta_stride, 1, m_debug.out_ymeta_file);
+                 temp += y_meta_stride;
+            }
+
+            temp = (char *)drv_ctx.ptr_outputbuffer[buf_index].bufferaddr + y_meta_plane + y_plane;
+            for(i = 0; i < uv_meta_scanlines; i++) {
+                bytes_written += fwrite(temp, uv_meta_stride, 1, m_debug.out_uvmeta_file);
+                temp += uv_meta_stride;
+            }
+        }
+    } else if (drv_ctx.output_format == VDEC_YUV_FORMAT_NV12 && m_debug.outfile) {
         int stride = drv_ctx.video_resolution.stride;
         int scanlines = drv_ctx.video_resolution.scan_lines;
         if (m_smoothstreaming_mode) {
@@ -7042,6 +7107,14 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
         fclose(m_debug.outfile);
         m_debug.outfile = NULL;
     }
+    if (m_debug.out_ymeta_file) {
+        fclose(m_debug.out_ymeta_file);
+        m_debug.out_ymeta_file = NULL;
+    }
+    if (m_debug.out_uvmeta_file) {
+        fclose(m_debug.out_uvmeta_file);
+        m_debug.out_uvmeta_file = NULL;
+    }
 #ifdef OUTPUT_EXTRADATA_LOG
     if (outputExtradataFile)
         fclose (outputExtradataFile);
@@ -7570,15 +7643,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         }
     }
 
-    /* Since we're passing around handles, adjust nFilledLen and nAllocLen
-     * to size of the handle.  Do it _after_ handle_extradata() which
-     * requires the respective sizes to be accurate. */
-    if (dynamic_buf_mode) {
-        buffer->nAllocLen = sizeof(struct VideoDecoderOutputMetaData);
-        buffer->nFilledLen = buffer->nFilledLen ?
-            sizeof(struct VideoDecoderOutputMetaData) : 0;
-    }
-
     if (m_cb.FillBufferDone) {
         if (buffer->nFilledLen > 0) {
             if (arbitrary_bytes)
@@ -7662,6 +7726,14 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             if (dynamic_buf_mode) {
                 unsigned int nPortIndex = 0;
                 nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
+
+                // Since we're passing around handles, adjust nFilledLen and nAllocLen
+                // to size of the handle. Do it _after_ log_output_buffers which
+                // requires the respective sizes to be accurate.
+
+                buffer->nAllocLen = sizeof(struct VideoDecoderOutputMetaData);
+                buffer->nFilledLen = buffer->nFilledLen ?
+                        sizeof(struct VideoDecoderOutputMetaData) : 0;
 
                 //Clear graphic buffer handles in dynamic mode
                 native_buffer[nPortIndex].privatehandle = NULL;
