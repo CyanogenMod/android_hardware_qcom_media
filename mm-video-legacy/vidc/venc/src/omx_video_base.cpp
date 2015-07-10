@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+Copyright (c) 2010-2012, 2015 Code Aurora Forum. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -249,6 +249,8 @@ omx_video::omx_video(): msg_thread_id(0),
                         m_use_output_pmem(OMX_FALSE),
                         m_etb_count(0),
                         m_fbd_count(0),
+                        m_pipe_in(-1),
+                        m_pipe_out(-1),
                         m_error_propogated(false),
                         m_input_msg_id(OMX_COMPONENT_GENERATE_ETB),
                         psource_frame(NULL),
@@ -281,8 +283,8 @@ RETURN VALUE
 omx_video::~omx_video()
 {
   DEBUG_PRINT_HIGH("\n ~omx_video(): Inside Destructor()");
-  if(m_pipe_in) close(m_pipe_in);
-  if(m_pipe_out) close(m_pipe_out);
+  if(m_pipe_in >= 0) close(m_pipe_in);
+  if(m_pipe_out >= 0) close(m_pipe_out);
   DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit\n");
   if (msg_thread_id != 0) {
     pthread_join(msg_thread_id,NULL);
