@@ -285,11 +285,16 @@ struct video_decoder_capability {
 struct debug_cap {
     bool in_buffer_log;
     bool out_buffer_log;
+    bool out_meta_buffer_log;
     char infile_name[PROPERTY_VALUE_MAX + 36];
     char outfile_name[PROPERTY_VALUE_MAX + 36];
+    char out_ymetafile_name[PROPERTY_VALUE_MAX + 36];
+    char out_uvmetafile_name[PROPERTY_VALUE_MAX + 36];
     char log_loc[PROPERTY_VALUE_MAX];
     FILE *infile;
     FILE *outfile;
+    FILE *out_ymeta_file;
+    FILE *out_uvmeta_file;
 };
 
 struct dynamic_buf_list {
