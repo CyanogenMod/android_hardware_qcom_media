@@ -1,4 +1,4 @@
-/* Copyright (c) 2012 - 2013, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012 - 2015, The Linux Foundation. All rights reserved.
  *
  * redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -34,6 +34,8 @@
 #include <sys/ioctl.h>
 #include <utils/Log.h>
 #include <dlfcn.h>
+#include <string.h>
+#include <errno.h>
 
 #undef LOG_TAG
 #define LOG_TAG "C2DColorConvert"

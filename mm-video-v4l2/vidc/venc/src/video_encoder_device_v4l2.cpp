@@ -33,7 +33,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fcntl.h>
 #include "video_encoder_device_v4l2.h"
 #include "omx_video_encoder.h"
-#include <linux/android_pmem.h>
 #include <media/msm_vidc.h>
 #ifdef USE_ION
 #include <linux/msm_ion.h>
@@ -844,7 +843,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     int r;
     unsigned int alignment = 0,buffer_size = 0, temp =0;
     struct v4l2_control control;
-    OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_enc";
+    OMX_STRING device_name = (OMX_STRING)"/dev/video33";
     char property_value[PROPERTY_VALUE_MAX] = {0};
     char platform_name[PROPERTY_VALUE_MAX] = {0};
 
@@ -1204,9 +1203,13 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         // Increase buffer-header count for metadata-mode on input port
         // to improve buffering and reduce bottlenecks in clients
         if (metadatamode && (bufreq.count < 9)) {
-            DEBUG_PRINT_ERROR("FW returned buffer count = %d , overwriting with 9",
+            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 9",
                 bufreq.count);
             bufreq.count = 9;
+        }
+        if (m_sVenc_cfg.input_height * m_sVenc_cfg.input_width >= 3840*2160) {
+            DEBUG_PRINT_LOW("Increasing buffer count = %d to 11", bufreq.count);
+            bufreq.count = 11;
         }
 
         int actualCount = bufreq.count;
@@ -2648,7 +2651,12 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 
                     if (mInputBatchMode) {
                         return venc_empty_batch ((OMX_BUFFERHEADERTYPE*)buffer, index);
-                    } else if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 2) {
+                    }
+
+                    if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 3 &&
+                        meta_buf->meta_handle->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
+                        buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
+                    if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 2) {
                         plane.data_offset = meta_buf->meta_handle->data[1];
                         plane.length = meta_buf->meta_handle->data[2];
                         plane.bytesused = meta_buf->meta_handle->data[2];

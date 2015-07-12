@@ -1590,7 +1590,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     int fds[2];
     int r,ret=0;
     bool codec_ambiguous = false;
-    OMX_STRING device_name = (OMX_STRING)"/dev/video/venus_dec";
+    OMX_STRING device_name = (OMX_STRING)"/dev/video32";
     char property_value[PROPERTY_VALUE_MAX] = {0};
 
 #ifdef _ANDROID_
@@ -8832,7 +8832,7 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
                 (unsigned int)sizeof(OMX_BUFFERHEADERTYPE),
                 nPMEMInfoSize,
                 nPlatformListSize);
-        DEBUG_PRINT_LOW("PE %d bmSize %"PRId64, nPlatformEntrySize,
+        DEBUG_PRINT_LOW("PE %d bmSize % " PRId64 , nPlatformEntrySize,
                 m_out_bm_count);
         m_out_mem_ptr = (OMX_BUFFERHEADERTYPE  *)calloc(nBufHdrSize,1);
         // Alloc mem for platform specific info
