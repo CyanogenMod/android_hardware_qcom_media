@@ -248,6 +248,19 @@ omx_core_cb_type core[] =
       "video_decoder.vp8"
     }
   },
+  {
+    "OMX.qcom.video.decoder.vp9",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVdec.so",
+    {
+      "video_decoder.vp9"
+    }
+  },
    {
     "OMX.qcom.video.encoder.mpeg4",
     NULL,   // Create instance function
@@ -309,6 +322,19 @@ omx_core_cb_type core[] =
     },
     NULL,   // Shared object library handle
     "libOmxSwVencHevc.so",
+    {
+      "video_encoder.hevc"
+    }
+  },
+  {
+    "OMX.qcom.video.encoder.hevc",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVenc.so",
     {
       "video_encoder.hevc"
     }
@@ -495,6 +521,22 @@ omx_core_cb_type core[] =
       "audio_decoder.aac"
     }
   },
+  {
+    "OMX.qcom.vdec.vpp",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVpp.so",
+    {
+      "video_decoder.vpp"
+    }
+  }
 };
 
 const unsigned int SIZE_OF_CORE = sizeof(core) / sizeof(omx_core_cb_type);

@@ -47,6 +47,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "qc_omx_core.h"
 #include "omx_core_cmp.h"
+#include <cutils/properties.h>
 
 extern omx_core_cb_type core[];
 extern const unsigned int SIZE_OF_CORE;
@@ -415,12 +416,30 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
 
     if(cmp_index >= 0)
     {
+       char value[PROPERTY_VALUE_MAX];
        DEBUG_PRINT("getting fn pointer\n");
 
-      // dynamically load the so
-      core[cmp_index].fn_ptr =
+      // Load VPP omx component for decoder if vpp
+      // property is enabled
+      if ((property_get("media.vpp.enable", value, NULL))
+          && (!strcmp("1", value) || !strcmp("true", value))) {
+        DEBUG_PRINT("VPP property is enabled");
+        if (!strcmp(core[cmp_index].so_lib_name, "libOmxVdec.so")) {
+          int vpp_cmp_index = get_cmp_index("OMX.qcom.vdec.vpp");
+          if (vpp_cmp_index < 0) {
+            DEBUG_PRINT_ERROR("Unable to find VPP OMX lib in registry ");
+          } else {
+            DEBUG_PRINT("Loading vpp for vdec");
+            cmp_index = vpp_cmp_index;
+          }
+        }
+      }
+
+       // dynamically load the so
+       core[cmp_index].fn_ptr =
         omx_core_load_cmp_library(core[cmp_index].so_lib_name,
                                   &core[cmp_index].so_lib_handle);
+
 
       if(core[cmp_index].fn_ptr)
       {
@@ -431,7 +450,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
         {
           void *hComp = NULL;
           hComp = qc_omx_create_component_wrapper((OMX_PTR)pThis);
-          if((eRet = qc_omx_component_init(hComp, core[cmp_index].name)) !=
+          if((eRet = qc_omx_component_init(hComp, componentName)) !=
                            OMX_ErrorNone)
           {
               DEBUG_PRINT("Component not created succesfully\n");
@@ -440,7 +459,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
 
           }
           qc_omx_component_set_callbacks(hComp,callBacks,appData);
-          hnd_index = get_comp_handle_index(componentName);
+          hnd_index = get_comp_handle_index(core[cmp_index].name);
           if(hnd_index >= 0)
           {
             core[cmp_index].inst[hnd_index]= *handle = (OMX_HANDLETYPE) hComp;

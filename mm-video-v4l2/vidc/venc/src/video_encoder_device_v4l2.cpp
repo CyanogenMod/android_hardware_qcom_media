@@ -533,9 +533,22 @@ int venc_dev::append_mbi_extradata(void *dst, struct msm_vidc_extradata_header* 
     if (!dst || !src)
         return 0;
 
-    /* TODO: Once Venus 3XX target names are known, nFormat should 2 for those
-     * targets, since the payload format will be different */
-    mbi->nFormat = 1;
+    /* Setting format to 3x as default */
+    mbi->nFormat = 2;
+
+    char property_value[PROPERTY_VALUE_MAX];
+    property_get("ro.board.platform", property_value, "0");
+    if (!strncmp(property_value, "msm8952", 7)) {
+        property_get("media.msm8956hw", property_value, "0");
+        if (atoi(property_value)) {
+            /* Setting format to 3x for 8956 */
+            mbi->nFormat = 2;
+        } else {
+            /* Setting format to 2x for 8952 */
+            mbi->nFormat = 1;
+        }
+    }
+
     mbi->nDataSize = src->data_size;
     memcpy(&mbi->data, &src->data, src->data_size);
 
@@ -1194,6 +1207,9 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
     unsigned int buf_size = 0, extra_data_size = 0, client_extra_data_size = 0;
     int ret;
 
+    DEBUG_PRINT_HIGH("venc_get_buf_req: port %d, min count %d, actual count %d, size %d",
+        port, *min_buff_count, *actual_buff_count, *buff_size);
+
     if (port == 0) {
         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
@@ -1283,6 +1299,9 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         extradata_info.count = m_sOutput_buff_property.actualcount;
         extradata_info.size = extradata_info.buffer_size * extradata_info.count;
     }
+
+    DEBUG_PRINT_HIGH("venc_get_buf_req: updated port %d, min count %d, actual count %d, size %d",
+        port, *min_buff_count, *actual_buff_count, *buff_size);
 
     return true;
 }

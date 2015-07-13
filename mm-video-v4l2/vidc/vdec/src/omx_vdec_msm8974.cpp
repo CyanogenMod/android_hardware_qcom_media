@@ -127,6 +127,8 @@ extern "C" {
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA | OMX_FRAMEPACK_EXTRADATA)
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
+#define DOWNSCALAR_WIDTH 2560
+#define DOWNSCALAR_HEIGHT 1600
 
 static OMX_U32 maxSmoothStreamingWidth = 1920;
 static OMX_U32 maxSmoothStreamingHeight = 1088;
@@ -203,8 +205,12 @@ void* async_message_thread (void *input)
             rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
             if (dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT ) {
                 struct vdec_msginfo vdec_msg;
+                unsigned int *ptr = (unsigned int *)(void *)dqevent.u.data;
+
                 vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
                 vdec_msg.status_code=VDEC_S_SUCCESS;
+                vdec_msg.msgdata.output_frame.picsize.frame_height = ptr[0];
+                vdec_msg.msgdata.output_frame.picsize.frame_width = ptr[1];
                 DEBUG_PRINT_HIGH("VIDC Port Reconfig recieved insufficient");
                 if (omx->async_message_process(input,&vdec_msg) < 0) {
                     DEBUG_PRINT_HIGH("async_message_thread Exited");
@@ -838,6 +844,129 @@ int release_buffers(omx_vdec* obj, enum vdec_buffer buffer_type)
     return rc;
 }
 
+int omx_vdec::enable_downscalar()
+{
+    int rc = 0;
+    struct v4l2_control control;
+    struct v4l2_format fmt;
+
+    if  (!is_downscalar_supported) {
+        DEBUG_PRINT_LOW("%s: downscalar not supported", __func__);
+        return 0;
+    }
+    if (is_down_scalar_enabled) {
+        DEBUG_PRINT_LOW("%s: already enabled", __func__);
+        return 0;
+    }
+
+    DEBUG_PRINT_LOW("omx_vdec::enable_downscalar");
+    memset(&control, 0x0, sizeof(struct v4l2_control));
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_MODE;
+    control.value = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_SECONDARY;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+    if (rc < 0) {
+        DEBUG_PRINT_ERROR("%s: Failed to set VIDEO_STREAM_OUTPUT_SECONDARY", __func__);
+        return rc;
+    }
+    is_down_scalar_enabled = 1;
+
+    memset(&control, 0x0, sizeof(struct v4l2_control));
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_KEEP_ASPECT_RATIO;
+    control.value = 1;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+    if (rc < 0) {
+        DEBUG_PRINT_ERROR("%s: Failed to set VIDEO_KEEP_ASPECT_RATIO", __func__);
+        return rc;
+    }
+
+    return 0;
+}
+
+int omx_vdec::disable_downscalar()
+{
+    int rc = 0;
+    struct v4l2_control control;
+
+    if  (!is_downscalar_supported) {
+        DEBUG_PRINT_LOW("%s: downscalar not supported", __func__);
+        return 0;
+    }
+    if (!is_down_scalar_enabled) {
+        DEBUG_PRINT_LOW("omx_vdec::disable_downscalar: already disabled");
+        return 0;
+    }
+
+    DEBUG_PRINT_LOW("omx_vdec::disable_downscalar");
+    memset(&control, 0x0, sizeof(struct v4l2_control));
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_MODE;
+    control.value = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_OUTPUT_PRIMARY;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
+    if (rc < 0) {
+        DEBUG_PRINT_ERROR("Failed to set down scalar on driver.");
+        return rc;
+    }
+    is_down_scalar_enabled = 0;
+
+    return 0;
+}
+
+int omx_vdec::decide_downscalar()
+{
+    int rc = 0;
+    struct v4l2_format fmt;
+
+    if  (!is_downscalar_supported) {
+        DEBUG_PRINT_LOW("%s: downscalar not supported", __func__);
+        return 0;
+    }
+    memset(&fmt, 0x0, sizeof(struct v4l2_format));
+    fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+    fmt.fmt.pix_mp.pixelformat = capture_capability;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+    if (rc < 0) {
+       DEBUG_PRINT_ERROR("%s: Failed to get format on capture mplane", __func__);
+       return rc;
+    }
+
+    DEBUG_PRINT_HIGH("%s: driver wxh = %dx%d, downscalar wxh = %dx%d", __func__,
+        fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, m_downscalar_width, m_downscalar_height);
+
+    if (fmt.fmt.pix_mp.width * fmt.fmt.pix_mp.height > m_downscalar_width * m_downscalar_height) {
+        rc = enable_downscalar();
+        if (rc < 0)
+            return rc;
+        rc = update_resolution(m_downscalar_width, m_downscalar_height, m_downscalar_width, m_downscalar_height);
+        if (rc < 0)
+            return rc;
+    } else {
+        rc = disable_downscalar();
+        if (rc < 0)
+            return rc;
+        rc = update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, fmt.fmt.pix_mp.plane_fmt[0].bytesperline, fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
+        if (rc < 0)
+            return rc;
+    }
+
+    memset(&fmt, 0x0, sizeof(struct v4l2_format));
+    fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+    fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
+    fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+    fmt.fmt.pix_mp.pixelformat = capture_capability;
+    rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_FMT, &fmt);
+    if (rc < 0) {
+        DEBUG_PRINT_ERROR("%s: Failed set format on capture mplane", __func__);
+        return rc;
+    }
+
+    rc = get_buffer_req(&drv_ctx.op_buf);
+    if (rc) {
+        DEBUG_PRINT_ERROR("%s: Failed to get output buffer requirements", __func__);
+        return rc;
+    }
+
+    return rc;
+}
+
 /* ======================================================================
    FUNCTION
    omx_vdec::OMXCntrlProcessMsgCb
@@ -1243,7 +1372,6 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         if (p2 == OMX_IndexParamPortDefinition) {
                                             DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexParamPortDefinition");
                                             pThis->in_reconfig = true;
-
                                         }  else if (p2 == OMX_IndexConfigCommonOutputCrop) {
                                             DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexConfigCommonOutputCrop");
 
@@ -1327,8 +1455,11 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                             pThis->m_debug.outfile = NULL;
                                         }
                                         if (pThis->m_cb.EventHandler) {
+                                            uint32_t frame_data[2];
+                                            frame_data[0] = pThis->drv_ctx.video_resolution.frame_height;
+                                            frame_data[1] = pThis->drv_ctx.video_resolution.frame_width;
                                             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
-                                                    OMX_EventPortSettingsChanged, p1, p2, NULL );
+                                                    OMX_EventPortSettingsChanged, p1, p2, (void*) frame_data );
                                         } else {
                                             DEBUG_PRINT_ERROR("ERROR: %s()::EventHandler is NULL", __func__);
                                         }
@@ -1464,6 +1595,10 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
                 snprintf(m_debug.infile_name, PROPERTY_FILENAME_MAX, "%s/input_dec_%d_%d_%p.ivf",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
         }
+        else if(!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9", OMX_MAX_STRINGNAME_SIZE)) {
+               snprintf(m_debug.infile_name, OMX_MAX_STRINGNAME_SIZE, "%s/input_dec_%d_%d_%p.ivf",
+                        m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
+        }
         else {
                snprintf(m_debug.infile_name, PROPERTY_FILENAME_MAX, "%s/input_dec_%d_%d_%p.divx",
                         m_debug.log_loc, drv_ctx.video_resolution.frame_width, drv_ctx.video_resolution.frame_height, this);
@@ -1474,7 +1609,8 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
             m_debug.infile_name[0] = '\0';
             return -1;
         }
-        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
+        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE) ||
+                !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9", OMX_MAX_STRINGNAME_SIZE)) {
             struct ivf_file_header {
                 OMX_U8 signature[4]; //='DKIF';
                 OMX_U8 version         ; //= 0;
@@ -1495,24 +1631,35 @@ int omx_vdec::log_input_buffers(const char *buffer_addr, int buffer_len)
             file_header.signature[3] = 'F';
             file_header.version = 0;
             file_header.headersize = 32;
-            file_header.FourCC = 0x30385056;
+            switch (drv_ctx.decoder_format) {
+                case VDEC_CODECTYPE_VP8:
+                    file_header.FourCC = 0x30385056;
+                    break;
+                case VDEC_CODECTYPE_VP9:
+                    file_header.FourCC = 0x30395056;
+                    break;
+                default:
+                    DEBUG_PRINT_ERROR("unsupported format for VP8/VP9");
+                    break;
+            }
             fwrite((const char *)&file_header,
                     sizeof(file_header),1,m_debug.infile);
          }
     }
     if (m_debug.infile && buffer_addr && buffer_len) {
-        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
-            struct vp8_ivf_frame_header {
+        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE) ||
+                !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9", OMX_MAX_STRINGNAME_SIZE)) {
+            struct vpx_ivf_frame_header {
                 OMX_U32 framesize;
                 OMX_U32 timestamp_lo;
                 OMX_U32 timestamp_hi;
-            } vp8_frame_header;
-            vp8_frame_header.framesize = buffer_len;
+            } vpx_frame_header;
+            vpx_frame_header.framesize = buffer_len;
             /* Currently FW doesn't use timestamp values */
-            vp8_frame_header.timestamp_lo = 0;
-            vp8_frame_header.timestamp_hi = 0;
-            fwrite((const char *)&vp8_frame_header,
-                    sizeof(vp8_frame_header),1,m_debug.infile);
+            vpx_frame_header.timestamp_lo = 0;
+            vpx_frame_header.timestamp_hi = 0;
+            fwrite((const char *)&vpx_frame_header,
+                    sizeof(vpx_frame_header),1,m_debug.infile);
         }
         fwrite(buffer_addr, buffer_len, 1, m_debug.infile);
     }
@@ -1602,6 +1749,13 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         is_q6_platform = true;
         maxSmoothStreamingWidth = 1280;
         maxSmoothStreamingHeight = 720;
+    }
+    if (property_get("media.msm8956hw", property_value, "0") &&
+            atoi(property_value)) {
+        DEBUG_PRINT_HIGH("Downscalar enabled");
+        is_downscalar_supported = true;
+    } else {
+        is_downscalar_supported = false;
     }
 #endif
 
@@ -1793,11 +1947,19 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",    \
                 OMX_MAX_STRINGNAME_SIZE)) {
         strlcpy((char *)m_cRole, "video_decoder.vp8",OMX_MAX_STRINGNAME_SIZE);
-        output_capability=V4L2_PIX_FMT_VP8;
+        drv_ctx.decoder_format = VDEC_CODECTYPE_VP8;
+        output_capability = V4L2_PIX_FMT_VP8;
         eCompressionFormat = OMX_VIDEO_CodingVP8;
         codec_type_parse = CODEC_TYPE_VP8;
         arbitrary_bytes = false;
-
+    } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9",    \
+                OMX_MAX_STRINGNAME_SIZE)) {
+        strlcpy((char *)m_cRole, "video_decoder.vp9",OMX_MAX_STRINGNAME_SIZE);
+        drv_ctx.decoder_format = VDEC_CODECTYPE_VP9;
+        output_capability = V4L2_PIX_FMT_VP9;
+        eCompressionFormat = OMX_VIDEO_CodingVP9;
+        codec_type_parse = CODEC_TYPE_VP9;
+        arbitrary_bytes = false;
     } else {
         DEBUG_PRINT_ERROR("ERROR:Unknown Component");
         eRet = OMX_ErrorInvalidComponentName;
@@ -1972,12 +2134,29 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
                 DEBUG_PRINT_ERROR("Failed to set turbo mode");
             }
         }
-
+        if (is_downscalar_supported) {
+           m_downscalar_width = DOWNSCALAR_WIDTH;
+           m_downscalar_height = DOWNSCALAR_HEIGHT;
+           property_get("vidc.dec.downscalar_width",property_value,"0");
+           if (atoi(property_value)) {
+              m_downscalar_width = atoi(property_value);
+           }
+           property_get("vidc.dec.downscalar_height",property_value,"0");
+           if (atoi(property_value)) {
+              m_downscalar_height = atoi(property_value);
+           }
+           DEBUG_PRINT_INFO("Downscalar wxh = %dx%d", m_downscalar_width, m_downscalar_height);
+        } else {
+           m_downscalar_width = 0;
+           m_downscalar_height = 0;
+        }
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
-        if (strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
-                OMX_MAX_STRINGNAME_SIZE)
-                && (eRet == OMX_ErrorNone))
+        if ((strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
+                    OMX_MAX_STRINGNAME_SIZE) &&
+                strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9",
+                        OMX_MAX_STRINGNAME_SIZE)) &&
+                (eRet == OMX_ErrorNone))
                 enable_extradata(DEFAULT_EXTRADATA, true, true);
 #endif
         eRet = get_buffer_req(&drv_ctx.ip_buf);
@@ -2522,6 +2701,8 @@ OMX_ERRORTYPE  omx_vdec::send_command_proxy(OMX_IN OMX_HANDLETYPE hComp,
                 BITMASK_SET(&m_flags, OMX_COMPONENT_OUTPUT_ENABLE_PENDING);
                 // Skip the event notification
                 bFlag = 0;
+                /* enable/disable downscaling if required */
+                decide_downscalar();
             }
         }
     } else if (cmd == OMX_CommandPortDisable) {
@@ -2899,7 +3080,8 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
                                 (unsigned int)profileLevelType->nProfileIndex);
                 eRet = OMX_ErrorNoMore;
             }
-        } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE)) {
+        } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",OMX_MAX_STRINGNAME_SIZE) ||
+                !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9",OMX_MAX_STRINGNAME_SIZE)) {
             eRet = OMX_ErrorNoMore;
         } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.mpeg2",OMX_MAX_STRINGNAME_SIZE)) {
             if (profileLevelType->nProfileIndex == 0) {
@@ -3267,6 +3449,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition H= %d, W = %d",
                                        (int)portDefn->format.video.nFrameHeight,
                                        (int)portDefn->format.video.nFrameWidth);
+
+                               if (portDefn->nBufferCountActual >= MAX_NUM_INPUT_OUTPUT_BUFFERS) {
+                                   DEBUG_PRINT_ERROR("ERROR: Buffers requested exceeds max limit %d",
+                                                          portDefn->nBufferCountActual);
+                                   eRet = OMX_ErrorBadParameter;
+                                   break;
+                               }
                                if (OMX_DirOutput == portDefn->eDir) {
                                    DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port");
                                    bool port_format_changed = false;
@@ -3664,8 +3853,16 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                       }
                                   } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8", OMX_MAX_STRINGNAME_SIZE)) {
                                       if (!strncmp((const char*)comp_role->cRole, "video_decoder.vp8", OMX_MAX_STRINGNAME_SIZE) ||
-                                              (!strncmp((const char*)comp_role->cRole, "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE))) {
+                                              !strncmp((const char*)comp_role->cRole, "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE)) {
                                           strlcpy((char*)m_cRole, "video_decoder.vp8", OMX_MAX_STRINGNAME_SIZE);
+                                      } else {
+                                          DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
+                                          eRet = OMX_ErrorUnsupportedSetting;
+                                      }
+                                  } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9", OMX_MAX_STRINGNAME_SIZE)) {
+                                      if (!strncmp((const char*)comp_role->cRole, "video_decoder.vp9", OMX_MAX_STRINGNAME_SIZE) ||
+                                              !strncmp((const char*)comp_role->cRole, "video_decoder.vpx", OMX_MAX_STRINGNAME_SIZE)) {
+                                          strlcpy((char*)m_cRole, "video_decoder.vp9", OMX_MAX_STRINGNAME_SIZE);
                                       } else {
                                           DEBUG_PRINT_ERROR("Setparameter: unknown Index %s", comp_role->cRole);
                                           eRet = OMX_ErrorUnsupportedSetting;
@@ -6805,6 +7002,14 @@ OMX_ERRORTYPE  omx_vdec::component_role_enum(OMX_IN OMX_HANDLETYPE hComp,
             DEBUG_PRINT_LOW("No more roles");
             eRet = OMX_ErrorNoMore;
         }
+    } else if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9",OMX_MAX_STRINGNAME_SIZE)) {
+        if ((0 == index) && role) {
+            strlcpy((char *)role, "video_decoder.vp9",OMX_MAX_STRINGNAME_SIZE);
+            DEBUG_PRINT_LOW("component_role_enum: role %s",role);
+        } else {
+            DEBUG_PRINT_LOW("No more roles");
+            eRet = OMX_ErrorNoMore;
+        }
     } else {
         DEBUG_PRINT_ERROR("ERROR:Querying Role on Unknown Component");
         eRet = OMX_ErrorInvalidComponentName;
@@ -7592,6 +7797,8 @@ int omx_vdec::async_message_process (void *context, void* message)
             break;
         case VDEC_MSG_EVT_CONFIG_CHANGED:
             DEBUG_PRINT_HIGH("Port settings changed");
+            omx->drv_ctx.video_resolution.frame_width = vdec_msg->msgdata.output_frame.picsize.frame_width;
+            omx->drv_ctx.video_resolution.frame_height = vdec_msg->msgdata.output_frame.picsize.frame_height;
             omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexParamPortDefinition,
                     OMX_COMPONENT_GENERATE_PORT_RECONFIG);
             break;

@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2011 The Linux Foundation. All rights reserved.
+Copyright (c) 2011,2015 The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -155,6 +155,7 @@ typedef enum QOMX_VIDEO_VPFORMATTYPE {
     QOMX_VIDEO_VPFormat6      = 0x02, /**< VP6 Video Format */
     QOMX_VIDEO_VPFormat7      = 0x04, /**< VP7 Video Format */
     QOMX_VIDEO_VPFormat8      = 0x08, /**< VP8 Video Format */
+    QOMX_VIDEO_VPFormat9      = 0x10, /**< VP9 Video Format */
     QOMX_VIDEO_VPFormatKhronosExtensions = 0x6F000000,
     QOMX_VIDEO_VPFormatVendorStartUnused = 0x7F000000,
     QOMX_VIDEO_VPFormatMax = 0x7FFFFFFF
