@@ -91,12 +91,12 @@ REFERENCES
 
 #else
      #ifdef TEST_LOG
-       #define D(fmt, ...) fprintf(stderr, "venc_test Debug %s::%d "fmt"\n",   \
+       #define D(fmt, ...) fprintf(stderr, "venc_test Debug %s::%d " fmt "\n",   \
                             __FUNCTION__, __LINE__,                     \
                             ## __VA_ARGS__)
 
      /// Error message macro
-      #define E(fmt, ...) fprintf(stderr, "venc_test Error %s::%d "fmt"\n", \
+      #define E(fmt, ...) fprintf(stderr, "venc_test Error %s::%d " fmt "\n", \
                             __FUNCTION__, __LINE__,                   \
                             ## __VA_ARGS__)
      #else

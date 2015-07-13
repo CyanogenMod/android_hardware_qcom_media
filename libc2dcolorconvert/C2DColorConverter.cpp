@@ -29,7 +29,7 @@
 /*--------------------------------------------------------------------------
 Copyright (c) 2012 The Linux Foundation. All rights reserved.
 --------------------------------------------------------------------------*/
-
+#include <string.h>
 #include <C2DColorConverter.h>
 #include <arm_neon.h>
 #include <stdlib.h>
