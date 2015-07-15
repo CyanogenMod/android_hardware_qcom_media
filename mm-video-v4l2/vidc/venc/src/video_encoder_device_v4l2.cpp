@@ -268,6 +268,18 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     property_get("vidc.enc.log.extradata", property_value, "0");
     m_debug.extradata_log = atoi(property_value);
 
+#ifdef _UBWC_
+    property_get("debug.gralloc.gfx_ubwc_disable", property_value, "0");
+    if(!(strncmp(property_value, "1", PROPERTY_VALUE_MAX)) ||
+        !(strncmp(property_value, "true", PROPERTY_VALUE_MAX))) {
+        is_gralloc_source_ubwc = 0;
+    } else {
+        is_gralloc_source_ubwc = 1;
+    }
+#else
+    is_gralloc_source_ubwc = 0;
+#endif
+
     snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
              "%s", BUFFER_LOG_LOC);
 }
@@ -804,7 +816,8 @@ int venc_dev::venc_extradata_log_buffers(char *buffer_addr)
     return 0;
 }
 
-int venc_dev::venc_input_log_buffers(OMX_BUFFERHEADERTYPE *pbuffer, int fd, int plane_offset) {
+int venc_dev::venc_input_log_buffers(OMX_BUFFERHEADERTYPE *pbuffer, int fd, int plane_offset,
+        unsigned long inputformat) {
     if (!m_debug.infile) {
         int size = snprintf(m_debug.infile_name, PROPERTY_VALUE_MAX, "%s/input_enc_%lu_%lu_%p.yuv",
                             m_debug.log_loc, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, this);
@@ -821,42 +834,71 @@ int venc_dev::venc_input_log_buffers(OMX_BUFFERHEADERTYPE *pbuffer, int fd, int 
     }
     if (m_debug.infile && pbuffer && pbuffer->nFilledLen) {
         unsigned long i, msize;
-        int stride = VENUS_Y_STRIDE(COLOR_FMT_NV12, m_sVenc_cfg.input_width);
-        int scanlines = VENUS_Y_SCANLINES(COLOR_FMT_NV12, m_sVenc_cfg.input_height);
+        int stride, scanlines;
         unsigned char *pvirt,*ptemp;
-
         char *temp = (char *)pbuffer->pBuffer;
+        int color_format;
 
-        msize = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
-        if (metadatamode == 1) {
-            pvirt= (unsigned char *)mmap(NULL, msize, PROT_READ|PROT_WRITE,MAP_SHARED, fd, plane_offset);
-            if (pvirt) {
-               ptemp = pvirt;
-               for (i = 0; i < m_sVenc_cfg.input_height; i++) {
-                    fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
-                    ptemp += stride;
-               }
-               ptemp = pvirt + (stride * scanlines);
-               for(i = 0; i < m_sVenc_cfg.input_height/2; i++) {
-                   fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
-                   ptemp += stride;
-               }
-               munmap(pvirt, msize);
-             } else if (pvirt == MAP_FAILED) {
-                 DEBUG_PRINT_ERROR("%s mmap failed", __func__);
-                 return -1;
-             }
-        } else {
-            for (i = 0; i < m_sVenc_cfg.input_height; i++) {
-                 fwrite(temp, m_sVenc_cfg.input_width, 1, m_debug.infile);
-                 temp += stride;
+        if (inputformat == V4L2_PIX_FMT_NV12) {
+            color_format = COLOR_FMT_NV12;
+            stride = VENUS_Y_STRIDE(color_format, m_sVenc_cfg.input_width);
+            scanlines = VENUS_Y_SCANLINES(color_format, m_sVenc_cfg.input_height);
+            msize = VENUS_BUFFER_SIZE(color_format, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
+            if (metadatamode == 1) {
+                pvirt= (unsigned char *)mmap(NULL, msize, PROT_READ|PROT_WRITE,MAP_SHARED, fd, plane_offset);
+                if (pvirt == MAP_FAILED) {
+                    DEBUG_PRINT_ERROR("%s mmap failed", __func__);
+                    return -1;
+                } else {
+                    ptemp = pvirt;
+                    for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+                        fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                        ptemp += stride;
+                    }
+                    ptemp = pvirt + (stride * scanlines);
+                    for (i = 0; i < m_sVenc_cfg.input_height/2; i++) {
+                       fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                       ptemp += stride;
+                    }
+                    munmap(pvirt, msize);
+                }
+            } else {
+                for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+                    fwrite(temp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                    temp += stride;
+                }
+
+                temp = (char *)pbuffer->pBuffer + (stride * scanlines);
+
+                for (i = 0; i < m_sVenc_cfg.input_height/2; i++) {
+                    fwrite(temp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                    temp += stride;
+                }
             }
+        } else if (inputformat == V4L2_PIX_FMT_RGB32) {
+            color_format = COLOR_FMT_RGBA8888;
+            stride = VENUS_RGB_STRIDE(color_format, m_sVenc_cfg.input_width);
+            scanlines = VENUS_RGB_SCANLINES(color_format, m_sVenc_cfg.input_height);
+            msize = VENUS_BUFFER_SIZE(color_format, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
 
-            temp = (char *)pbuffer->pBuffer + (stride * scanlines);
-
-            for(i = 0; i < m_sVenc_cfg.input_height/2; i++) {
-                fwrite(temp, m_sVenc_cfg.input_width, 1, m_debug.infile);
-                temp += stride;
+            if (metadatamode == 1) {
+                pvirt= (unsigned char *)mmap(NULL, msize, PROT_READ|PROT_WRITE,MAP_SHARED, fd, plane_offset);
+                if (pvirt == MAP_FAILED) {
+                    DEBUG_PRINT_ERROR("%s mmap failed", __func__);
+                    return -1;
+                } else {
+                    ptemp = pvirt;
+                    for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+                        fwrite(ptemp, m_sVenc_cfg.input_width * 4, 1, m_debug.infile);
+                        ptemp += stride;
+                    }
+                    munmap(pvirt, msize);
+                }
+            } else {
+                for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+                    fwrite(temp, m_sVenc_cfg.input_width * 4, 1, m_debug.infile);
+                    temp += stride;
+                }
             }
         }
     }
@@ -2801,7 +2843,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         }
                         fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
-                            DEBUG_PRINT_ERROR("Failed setting color format %x", m_sVenc_cfg.inputformat);
+                            DEBUG_PRINT_ERROR("Failed setting color format in Camerasource %x", m_sVenc_cfg.inputformat);
                             return false;
                         }
                         if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
@@ -2831,20 +2873,32 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         plane.bytesused = hnd->data[2];
                     }
                     DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x format 0x%x",
-                            fd, plane.bytesused, plane.length, buf.flags,  m_sVenc_cfg.inputformat);
+                            fd, plane.bytesused, plane.length, buf.flags, m_sVenc_cfg.inputformat);
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
                     private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
                     if (!streaming[OUTPUT_PORT]) {
                         struct v4l2_format fmt;
                         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
                         if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE) {
-                            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+                            if ((handle->flags & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED) &&
+                                 is_gralloc_source_ubwc) {
+                                 m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12_UBWC;
+                            } else {
+                                m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+                            }
+                        } else if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888) {
+                            if ((handle->flags & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED) &&
+                                 is_gralloc_source_ubwc) {
+                                 m_sVenc_cfg.inputformat = V4L2_PIX_FMT_RGBA8888_UBWC;
+                            } else {
+                                m_sVenc_cfg.inputformat = V4L2_PIX_FMT_RGB32;
+                            }
                         }
                         fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
                         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
                         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
-                            DEBUG_PRINT_ERROR("Failed setting color format in gralloc %x", m_sVenc_cfg.inputformat);
+                            DEBUG_PRINT_ERROR("Failed setting color format in Grallocsource %x", m_sVenc_cfg.inputformat);
                             return false;
                         }
                         if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
@@ -2857,8 +2911,8 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     plane.data_offset = 0;
                     plane.length = handle->size;
                     plane.bytesused = handle->size;
-                        DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
-                                ": filled %d of %d", fd, plane.bytesused, plane.length);
+                    DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
+                                ": filled %d of %d format 0x%x", fd, plane.bytesused, plane.length, m_sVenc_cfg.inputformat);
                 }
             } else {
                 plane.data_offset = bufhdr->nOffset;
@@ -2915,7 +2969,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
         }
     }
     if (m_debug.in_buffer_log) {
-        venc_input_log_buffers(bufhdr, fd, plane.data_offset);
+        venc_input_log_buffers(bufhdr, fd, plane.data_offset, m_sVenc_cfg.inputformat);
     }
 
     return true;
