@@ -38,6 +38,8 @@ extern const char *MEDIA_MIMETYPE_AUDIO_EVRC;
 extern const char *MEDIA_MIMETYPE_VIDEO_WMV;
 extern const char *MEDIA_MIMETYPE_VIDEO_WMV_VC1;
 extern const char *MEDIA_MIMETYPE_AUDIO_WMA;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMA_PRO;
+extern const char *MEDIA_MIMETYPE_AUDIO_WMA_LOSSLESS;
 extern const char *MEDIA_MIMETYPE_CONTAINER_ASF;
 extern const char *MEDIA_MIMETYPE_VIDEO_DIVX;
 extern const char *MEDIA_MIMETYPE_AUDIO_AC3;
