@@ -96,7 +96,7 @@ typedef struct OMXComponentCapabilityFlagsType {
 } OMXComponentCapabilityFlagsType;
 #define OMX_COMPONENT_CAPABILITY_TYPE_INDEX 0xFF7A347
 
-void* message_thread(void *input)
+void* enc_message_thread(void *input)
 {
     omx_video* omx = reinterpret_cast<omx_video*>(input);
     unsigned char id;
