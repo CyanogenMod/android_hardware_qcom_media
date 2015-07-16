@@ -460,10 +460,11 @@ class venc_dev
           public:
             // utility methods to parse entities in batch
             // payload format for batch of 3
-            //| fd0 | fd1 | fd2 | off0 | off1 | off2 | len0 | len1 | len2 | dTS0 | dTS1 | dTS2|
+            //| fd0 | fd1 | fd2 | off0 | off1 | off2 | len0 | len1 | len2 | csc0 | csc1 | csc2 | dTS0 | dTS1 | dTS2|
             static inline int getFdAt(native_handle_t *, int index);
             static inline int getOffsetAt(native_handle_t *, int index);
             static inline int getSizeAt(native_handle_t *, int index);
+            static inline int getColorFormatAt(native_handle_t *, int index);
             static inline int getTimeStampAt(native_handle_t *, int index);
         };
         BatchInfo mBatchInfo;

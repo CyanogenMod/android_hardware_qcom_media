@@ -2791,13 +2791,22 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     }
 
                     if (!streaming[OUTPUT_PORT]) {
+                        int usage = 0;
                         struct v4l2_format fmt;
                         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
                         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
                         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
                         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
-                        if (hnd->data[3] & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED) {
+                        if (!mBatchSize && hnd->numFds + hnd->numInts > 3) {
+                            usage = hnd->data[3];
+                        } else if (mBatchSize) {
+                            usage = BatchInfo::getColorFormatAt(hnd, 0);
+                        }
+                        if (usage & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED) {
                             m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12_UBWC;
+                        }
+                        if (usage & private_handle_t::PRIV_FLAGS_ITU_R_709) {
+                            buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
                         }
                         fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
@@ -2822,9 +2831,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         return venc_empty_batch ((OMX_BUFFERHEADERTYPE*)buffer, index);
                     }
 
-                    if (hnd->numFds + hnd->numInts > 3 &&
-                        hnd->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
-                        buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
                     if (hnd->numFds + hnd->numInts > 2) {
                         plane.data_offset = hnd->data[1];
                         plane.length = hnd->data[2];
@@ -5784,9 +5790,15 @@ int venc_dev::BatchInfo::getSizeAt(native_handle_t *hnd, int index) {
     return size;
 }
 
+int venc_dev::BatchInfo::getColorFormatAt(native_handle_t *hnd, int index) {
+    int usage = hnd && (index + 2*hnd->numFds) < hnd->numInts ?
+            hnd->data[3*hnd->numFds + index] : 0;
+    return usage;
+}
+
 int venc_dev::BatchInfo::getTimeStampAt(native_handle_t *hnd, int index) {
-    int size = hnd && (index + 2*hnd->numFds) < hnd->numInts ?
-            hnd->data[3*hnd->numFds + index] : -1;
+    int size = hnd && (index + 3*hnd->numFds) < hnd->numInts ?
+            hnd->data[4*hnd->numFds + index] : -1;
     return size;
 }
 
