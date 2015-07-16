@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -149,9 +149,6 @@ class omx_video: public qc_omx_component
         bool c2d_opened;
         encoder_media_buffer_type meta_buffers[MAX_NUM_INPUT_BUFFERS];
         OMX_BUFFERHEADERTYPE *opaque_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
-        bool mUseProxyColorFormat;
-        //RGB or non-native input, and we have pre-allocated conversion buffers
-        bool mUsesColorConversion;
         bool get_syntaxhdr_enable;
         OMX_BUFFERHEADERTYPE  *psource_frame;
         OMX_BUFFERHEADERTYPE  *pdest_frame;
@@ -184,6 +181,11 @@ class omx_video: public qc_omx_component
         omx_c2d_conv c2d_conv;
 #endif
     public:
+
+        bool mUseProxyColorFormat;
+        //RGB or non-native input, and we have pre-allocated conversion buffers
+        bool mUsesColorConversion;
+
         omx_video();  // constructor
         virtual ~omx_video();  // destructor
 

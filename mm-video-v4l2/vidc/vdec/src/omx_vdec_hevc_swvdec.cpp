@@ -3376,7 +3376,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             // for pure dsp mode, if the dimension exceeds 720p, reject it
             // so that the stagefright can try the hybrid component
             if (!m_pSwVdec &&
-                (portDefn->format.video.nFrameHeight > 720 ||
+                (portDefn->format.video.nFrameHeight > 768 ||
                 portDefn->format.video.nFrameWidth > 1280))
             {
                 DEBUG_PRINT_ERROR("Full DSP mode only support up to 720p");
