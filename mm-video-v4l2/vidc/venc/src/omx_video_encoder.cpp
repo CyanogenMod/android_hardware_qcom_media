@@ -164,6 +164,7 @@ omx_venc::omx_venc()
     hybrid_hp = atoi(property_value);
     property_value[0] = '\0';
     m_perf_control.send_hint_to_mpctl(true);
+    handle = NULL;
 }
 
 omx_venc::~omx_venc()
@@ -263,7 +264,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
 
     if (handle->venc_open(codec_type) != true) {
         DEBUG_PRINT_ERROR("ERROR: venc_open failed");
-        return OMX_ErrorInsufficientResources;
+        eRet = OMX_ErrorInsufficientResources;
+        goto init_error;
     }
 
     //Intialise the OMX layer variables
@@ -380,7 +382,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
                 &m_sInPortDef.nBufferSize,
                 m_sInPortDef.nPortIndex) != true) {
         eRet = OMX_ErrorUndefined;
-
+        goto init_error;
     }
 
     // Initialize the video parameters for output port
@@ -596,6 +598,11 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         }
     }
     DEBUG_PRINT_INFO("Component_init : %s : return = 0x%x", m_nkind, eRet);
+    return eRet;
+init_error:
+    handle->venc_close();
+    delete handle;
+    handle = NULL;
     return eRet;
 }
 
@@ -1912,9 +1919,12 @@ OMX_ERRORTYPE  omx_venc::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     m_heap_ptr.clear();
 #endif // _ANDROID_
     DEBUG_PRINT_HIGH("Calling venc_close()");
-    handle->venc_close();
-    DEBUG_PRINT_HIGH("Deleting HANDLE[%p]", handle);
-    delete (handle);
+    if (handle) {
+        handle->venc_close();
+        DEBUG_PRINT_HIGH("Deleting HANDLE[%p]", handle);
+        delete (handle);
+        handle = NULL;
+    }
     DEBUG_PRINT_INFO("Component Deinit");
     return OMX_ErrorNone;
 }
