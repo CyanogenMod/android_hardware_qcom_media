@@ -294,7 +294,8 @@ class venc_dev
         bool venc_get_batch_size(OMX_U32 *size);
         bool venc_get_output_log_flag();
         int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
-        int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, int fd, int plane_offset);
+        int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, int fd, int plane_offset,
+                        unsigned long inputformat);
         int venc_extradata_log_buffers(char *buffer_addr);
 
         struct venc_debug_cap m_debug;
@@ -329,6 +330,7 @@ class venc_dev
         int venc_set_format(int);
         bool deinterlace_enabled;
         bool hw_overload;
+        bool is_gralloc_source_ubwc;
     private:
         OMX_U32                             m_codec;
         struct msm_venc_basecfg             m_sVenc_cfg;
