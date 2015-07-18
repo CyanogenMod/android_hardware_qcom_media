@@ -3086,9 +3086,10 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,un
 
     if (mBatchSize) {
         // Should always mark first buffer as DEFER, since 0 % anything is 0, just offset by 1
-        // This results in the first batch being only of size mBatchSize - 1, but it doesn't really
-        // matter, since we're aiming for consistent batch sizes only in the steady state
-        if ((ftb + 1) % mBatchSize) {
+        // This results in the first batch being of size mBatchSize + 1, but thats good because
+        // we need an extra FTB for the codec specific data.
+
+        if (!ftb || ftb % mBatchSize) {
             buf.flags |= V4L2_MSM_BUF_FLAG_DEFER;
             DEBUG_PRINT_LOW("for ftb buffer %d marking as defer", ftb + 1);
         }
