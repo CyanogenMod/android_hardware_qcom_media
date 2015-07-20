@@ -2614,7 +2614,7 @@ OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
         OMX_U32              bytes)
 {
     unsigned index = 0;
-    if (!bufferHdr || bytes != sizeof(encoder_media_buffer_type)) {
+    if (!bufferHdr || bytes < sizeof(encoder_media_buffer_type)) {
         DEBUG_PRINT_ERROR("wrong params allocate_input_meta_buffer Hdr %p len %lu",
                 bufferHdr,bytes);
         return OMX_ErrorBadParameter;
