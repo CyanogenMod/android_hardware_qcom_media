@@ -490,7 +490,7 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexFlexibleYUVDescription = 0x7F000044,
 
     /* Set Vpp Hqv Control Type */
-    OMX_QcomIndexParamSetVppHqvControl = 0x7F000045,
+    OMX_QcomIndexParamVppHqvControl = 0x7F000045,
 
     /* Enable VPP */
     OMX_QcomIndexParamEnableVpp = 0x7F000046,
