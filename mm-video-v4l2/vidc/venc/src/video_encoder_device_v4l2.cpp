@@ -775,7 +775,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     property_get("ro.board.platform", platform_name, "0");
 
     if (!strncmp(platform_name, "msm8610", 7)) {
-        device_name = (OMX_STRING)"/dev/video/q6_enc";
+        device_name = (OMX_STRING)"/dev/video35";
     }
 
     m_nDriver_fd = open (device_name, O_RDWR);
@@ -789,8 +789,9 @@ bool venc_dev::venc_open(OMX_U32 codec)
         DEBUG_PRINT_ERROR("ERROR: Omx_venc::Comp Init Returning failure");
         return false;
     }
+    DEBUG_PRINT_HIGH(" Open device %s returned fd %d",
+            device_name, m_nDriver_fd);
 
-    DEBUG_PRINT_LOW("m_nDriver_fd = %lu", m_nDriver_fd);
     // set the basic configuration of the video encoder driver
     m_sVenc_cfg.input_width = OMX_CORE_QCIF_WIDTH;
     m_sVenc_cfg.input_height= OMX_CORE_QCIF_HEIGHT;

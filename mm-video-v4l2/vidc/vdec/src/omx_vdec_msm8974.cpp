@@ -1559,7 +1559,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     char platform_name[PROPERTY_VALUE_MAX];
     property_get("ro.board.platform", platform_name, "0");
     if (!strncmp(platform_name, "msm8610", 7)) {
-        device_name = (OMX_STRING)"/dev/video/q6_dec";
+        device_name = (OMX_STRING)"/dev/video34";
         is_q6_platform = true;
         maxSmoothStreamingWidth = 1280;
         maxSmoothStreamingHeight = 720;
@@ -1580,8 +1580,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
     drv_ctx.video_driver_fd = open(device_name, O_RDWR);
 
-    DEBUG_PRINT_HIGH("omx_vdec::component_init(): Open returned fd %d",
-			drv_ctx.video_driver_fd);
+    DEBUG_PRINT_HIGH("omx_vdec::component_init(): Open  device %s returned fd %d",
+			device_name, drv_ctx.video_driver_fd);
 
     if (drv_ctx.video_driver_fd == 0) {
         DEBUG_PRINT_ERROR("omx_vdec_msm8974 :: Got fd as 0 for msm_vidc_dec, Opening again");

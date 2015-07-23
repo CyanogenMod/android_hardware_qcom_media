@@ -1746,7 +1746,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     m_decoder_capability.max_width = 1920;
     m_decoder_capability.max_height = 1080;
 
-    OMX_STRING device_name = (OMX_STRING)"/dev/video/q6_dec";
+    OMX_STRING device_name = (OMX_STRING)"/dev/video34";
     drv_ctx.video_driver_fd = open(device_name, O_RDWR);
     if(drv_ctx.video_driver_fd == 0){
         drv_ctx.video_driver_fd = open(device_name, O_RDWR);

@@ -1243,7 +1243,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     int fds[2];
     int r,ret=0;
     bool codec_ambiguous = false;
-    OMX_STRING device_name = (OMX_STRING)"/dev/video/q6_dec";
+    OMX_STRING device_name = (OMX_STRING)"/dev/video34";
     drv_ctx.video_driver_fd = open(device_name, O_RDWR);
 
     DEBUG_PRINT_HIGH("omx_vdec::component_init(): Open device %s returned fd %d, errno %d",
