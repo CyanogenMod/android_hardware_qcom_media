@@ -490,11 +490,13 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexFlexibleYUVDescription = 0x7F000044,
 
     /* Set Vpp Hqv Control Type */
-    OMX_QcomIndexParamSetVppHqvControl = 0x7F000045,
+    OMX_QcomIndexParamVppHqvControl = 0x7F000045,
 
     /* Enable VPP */
     OMX_QcomIndexParamEnableVpp = 0x7F000046,
 
+    /* MBI statistics mode */
+    OMX_QcomIndexParamMBIStatisticsMode = 0x7F000047,
 };
 
 /**
@@ -1599,6 +1601,19 @@ typedef struct QOMX_VPP_HQVCONTROL {
 typedef struct QOMX_VPP_ENABLE {
     OMX_BOOL enable_vpp;
 } QOMX_VPP_ENABLE;
+
+typedef enum OMX_QOMX_VIDEO_MBISTATISTICSTYPE {
+    QOMX_MBI_STATISTICS_MODE_DEFAULT = 0,
+    QOMX_MBI_STATISTICS_MODE_1 = 0x01,
+    QOMX_MBI_STATISTICS_MODE_2 = 0x02,
+} OMX_QOMX_VIDEO_MBISTATISTICSTYPE;
+
+typedef struct OMX_QOMX_VIDEO_MBI_STATISTICS {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_QOMX_VIDEO_MBISTATISTICSTYPE eMBIStatisticsType;
+} OMX_QOMX_VIDEO_MBI_STATISTICS;
 
 #ifdef __cplusplus
 }

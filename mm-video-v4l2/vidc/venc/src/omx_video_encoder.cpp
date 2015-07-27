@@ -138,6 +138,7 @@ handle_err:
 
 omx_venc::omx_venc()
 {
+    DEBUG_PRINT_HIGH("omx_venc: constructor");
 #ifdef _ANDROID_ICS_
     meta_mode_enable = false;
     memset(meta_buffer_hdr,0,sizeof(meta_buffer_hdr));
@@ -164,13 +165,20 @@ omx_venc::omx_venc()
     hybrid_hp = atoi(property_value);
     property_value[0] = '\0';
     m_perf_control.send_hint_to_mpctl(true);
+    DEBUG_PRINT_HIGH("omx_venc: constructor completed");
 }
 
 omx_venc::~omx_venc()
 {
+    DEBUG_PRINT_HIGH("omx_venc: destructor");
     get_syntaxhdr_enable = false;
     m_perf_control.send_hint_to_mpctl(false);
-    //nothing to do
+    if (handle) {
+        DEBUG_PRINT_HIGH("venc_close() in destructor");
+        handle->venc_close();
+        delete (handle);
+    }
+    DEBUG_PRINT_HIGH("omx_venc: destructor completed");
 }
 
 /* ======================================================================
@@ -538,6 +546,10 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sHierLayers.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sHierLayers.nNumLayers = 0;
     m_sHierLayers.eHierarchicalCodingType = QOMX_HIERARCHICALCODING_P;
+
+    OMX_INIT_STRUCT(&m_sMBIStatistics, OMX_QOMX_VIDEO_MBI_STATISTICS);
+    m_sMBIStatistics.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sMBIStatistics.eMBIStatisticsType = QOMX_MBI_STATISTICS_MODE_DEFAULT;
 
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
@@ -1422,6 +1434,17 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 break;
             }
+        case OMX_QcomIndexParamMBIStatisticsMode:
+            {
+                if(!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE)OMX_QcomIndexParamMBIStatisticsMode)) {
+                    DEBUG_PRINT_ERROR("%s: %s",
+                            "OMX_QcomIndexParamMBIStatisticsMode:",
+                            "MBI Statistics mode setting failed.");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
        case OMX_QcomIndexHierarchicalStructure:
            {
                 QOMX_VIDEO_HIERARCHICALLAYERS* pParam =
@@ -1918,6 +1941,7 @@ OMX_ERRORTYPE  omx_venc::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     handle->venc_close();
     DEBUG_PRINT_HIGH("Deleting HANDLE[%p]", handle);
     delete (handle);
+    handle = NULL;
     DEBUG_PRINT_INFO("Component Deinit");
     return OMX_ErrorNone;
 }
