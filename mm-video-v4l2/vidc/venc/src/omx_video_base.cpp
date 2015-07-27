@@ -4571,11 +4571,14 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         return empty_this_buffer_proxy(hComp, buffer);
     }
 
-    /*Enable following code once private handle color format is
-      updated correctly*/
-    mUsesColorConversion = true;
-
     if (buffer->nFilledLen > 0 && handle) {
+        /*Enable following code once private handle color format is
+            updated correctly*/
+        if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888)
+            mUsesColorConversion = true;
+        else
+            mUsesColorConversion = false;
+
         if (c2d_opened && handle->format != c2d_conv.get_src_format()) {
             c2d_conv.close();
             c2d_opened = false;
@@ -4597,12 +4600,10 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
                 if (!dev_set_format(handle->format))
                     DEBUG_PRINT_ERROR("cannot set color format for RGBA8888");
 #endif
-            } else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE &&
-                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
-                mUsesColorConversion = false;
-            } else {
+            } else if (handle->format != HAL_PIXEL_FORMAT_NV12_ENCODEABLE &&
+                    handle->format != QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m &&
+                    handle->format != QOMX_COLOR_FormatYVU420SemiPlanar) {
                 DEBUG_PRINT_ERROR("Incorrect color format");
-                mUsesColorConversion = false;
                 m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
                 return OMX_ErrorBadParameter;
             }
