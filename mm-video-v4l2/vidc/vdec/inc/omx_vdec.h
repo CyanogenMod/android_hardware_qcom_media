@@ -226,6 +226,11 @@ enum port_indexes {
     OMX_CORE_INPUT_PORT_INDEX        =0,
     OMX_CORE_OUTPUT_PORT_INDEX       =1
 };
+enum vidc_perf_level {
+    VIDC_SVS = 0,
+    VIDC_NOMINAL = 1,
+    VIDC_TURBO = 2
+};
 #ifdef USE_ION
 struct vdec_ion {
     int ion_device_fd;
@@ -451,6 +456,7 @@ class omx_vdec: public qc_omx_component
         void buf_ref_remove();
         OMX_ERRORTYPE set_dpb(bool is_split_mode, int dpb_color_format);
         OMX_ERRORTYPE decide_dpb_buffer_mode();
+        void request_perf_level(enum vidc_perf_level perf_level);
         int dpb_bit_depth;
 
     private:
@@ -1044,6 +1050,7 @@ class omx_vdec: public qc_omx_component
 #endif
         OMX_TICKS m_last_rendered_TS;
         volatile int32_t m_queued_codec_config_count;
+        OMX_U32 current_perf_level;
         bool secure_scaling_to_non_secure_opb;
 	bool m_force_compressed_for_dpb;
         class perf_lock {
