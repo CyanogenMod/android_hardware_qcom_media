@@ -256,7 +256,6 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     is_searchrange_set = false;
     enable_mv_narrow_searchrange = false;
     supported_rc_modes = RC_ALL;
-    camera_mode_enabled = false;
     memset(&ltrinfo, 0, sizeof(ltrinfo));
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
@@ -1032,7 +1031,6 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
     resume_in_stopped = 0;
     metadatamode = 0;
-    camera_mode_enabled = false;
 
     control.id = V4L2_CID_MPEG_VIDEO_HEADER_MODE;
     control.value = V4L2_MPEG_VIDEO_HEADER_MODE_SEPARATE;
@@ -2626,7 +2624,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
     struct v4l2_plane plane;
     int rc=0;
     struct OMX_BUFFERHEADERTYPE *bufhdr;
-    struct v4l2_control control;
     encoder_media_buffer_type * meta_buf = NULL;
     temp_buffer = (struct pmem *)buffer;
 
@@ -2681,16 +2678,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         plane.length = meta_buf->meta_handle->data[2];
                         plane.bytesused = meta_buf->meta_handle->data[2];
                     }
-                    if (!camera_mode_enabled) {
-                        camera_mode_enabled = true;
-                        control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
-                        control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL;
-                        rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
-                        if (rc)
-                            DEBUG_PRINT_HIGH("Failed to set control for perf level");
-                        DEBUG_PRINT_LOW("Set control id = 0x%x, value = 0x%x, meta_buf type = %d",
-                                control.id, control.value, meta_buf->buffer_type);
-                    }
                     DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x",
                             fd, plane.bytesused, plane.length, buf.flags);
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
@@ -2699,16 +2686,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     plane.data_offset = 0;
                     plane.length = handle->size;
                     plane.bytesused = handle->size;
-                    if ((!camera_mode_enabled) && (handle->flags & private_handle_t:: PRIV_FLAGS_CAMERA_WRITE)) {
-                        camera_mode_enabled = true;
-                        control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
-                        control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL;
-                        rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
-                        if (rc)
-                            DEBUG_PRINT_HIGH("Failed to set perl level");
-                        DEBUG_PRINT_LOW("Set control id = 0x%x, value = 0x%x, flags = 0x%x",
-                                control.id, control.value, handle->flags);
-                    }
                         DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
                                 ": filled %d of %d", fd, plane.bytesused, plane.length);
                 }

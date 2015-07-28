@@ -426,7 +426,6 @@ class venc_dev
         bool is_searchrange_set;
         bool enable_mv_narrow_searchrange;
         int supported_rc_modes;
-        bool camera_mode_enabled;
 };
 
 enum instance_state {
