@@ -436,6 +436,7 @@ class venc_dev
         bool is_searchrange_set;
         bool enable_mv_narrow_searchrange;
         int supported_rc_modes;
+        bool format_set;
 };
 
 enum instance_state {

@@ -259,6 +259,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&ltrinfo, 0, sizeof(ltrinfo));
     sess_priority.priority = 1;
     operating_rate = 0;
+    format_set = false;
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vidc.enc.log.in", property_value, "0");
@@ -2221,6 +2222,7 @@ unsigned venc_dev::venc_stop( void)
             } else
                 streaming[OUTPUT_PORT] = false;
 
+            format_set = false;
             DEBUG_PRINT_LOW("Releasing registered buffers from driver on o/p port");
             bufreq.memory = V4L2_MEMORY_USERPTR;
             bufreq.count = 0;
@@ -2724,6 +2726,11 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                 }
             } else if (!color_format) {
                 if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
+                    if (!format_set &&
+                        (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 5)) {
+                        format_set = true;
+                        venc_set_color_format((OMX_COLOR_FORMATTYPE)meta_buf->meta_handle->data[5]);
+                    }
                     if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 3 &&
                         meta_buf->meta_handle->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
                         buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
