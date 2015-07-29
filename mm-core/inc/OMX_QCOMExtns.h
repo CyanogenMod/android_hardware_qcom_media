@@ -497,7 +497,28 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* MBI statistics mode */
     OMX_QcomIndexParamMBIStatisticsMode = 0x7F000047,
+
+    OMX_QcomIndexConfigMaxHierPLayers = 0x7F000048,
 };
+
+/**
+* This is custom extension to configure Hier-p layers.
+* This mode configures Hier-p layers dynamically.
+*
+* STRUCT MEMBERS
+*
+* nSize         : Size of Structure in bytes
+* nVersion      : OpenMAX IL specification version information
+* nMaxHierLayers: Set the max number of Hier-p layers for the session
+*                  - This should be less than the Hier-P layers set
+*                    for the session.
+*/
+
+typedef struct QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS {
+   OMX_U32 nSize;
+   OMX_VERSIONTYPE nVersion;
+   OMX_U32 nMaxHierLayers;
+} QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS;
 
 /**
 * This is custom extension to configure Hybrid Hier-p settings.

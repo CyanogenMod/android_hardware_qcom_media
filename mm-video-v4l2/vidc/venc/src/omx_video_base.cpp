@@ -2007,6 +2007,14 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
+        case OMX_QcomIndexConfigMaxHierPLayers:
+            {
+               QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS* pParam =
+                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS*>(configData);
+               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigMaxHierPLayers");
+               memcpy(pParam, &m_sMaxHPlayers, sizeof(m_sMaxHPlayers));
+               break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;

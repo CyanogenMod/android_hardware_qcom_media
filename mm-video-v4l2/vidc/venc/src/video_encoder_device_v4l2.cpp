@@ -2144,6 +2144,17 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexConfigMaxHierPLayers:
+            {
+                 QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS *pParam =
+                         (QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS *) configData;
+                 DEBUG_PRINT_LOW("venc_set_config: OMX_QcomIndexConfigMaxHierPLayers");
+                 if (venc_set_max_hierp(pParam->nMaxHierLayers) == false) {
+                     DEBUG_PRINT_ERROR("Failed to set OMX_QcomIndexConfigMaxHierPLayers");
+                     return false;
+                 }
+                 break;
+            }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -4593,6 +4604,26 @@ bool venc_dev::venc_set_perf_mode(OMX_U32 mode)
         return true;
     } else {
         DEBUG_PRINT_ERROR("Invalid mode set for V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE: %d", mode);
+        return false;
+    }
+}
+
+bool venc_dev::venc_set_max_hierp(OMX_U32 hierp_layers)
+{
+    struct v4l2_control control;
+    if (hierp_layers && (hier_layers.hier_mode == HIER_P) &&
+            (hierp_layers <= hier_layers.numlayers)) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_MAX_HIERP_LAYERS;
+        control.value = hierp_layers;
+        DEBUG_PRINT_LOW("Going to set V4L2_CID_MPEG_VIDC_VIDEO_MAX_HIERP_LAYERS");
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to set MAX_HIERP_LAYERS");
+            return false;
+        }
+        return true;
+    } else {
+        DEBUG_PRINT_ERROR("Invalid layers set for MAX_HIERP_LAYERS: %d",
+                hierp_layers);
         return false;
     }
 }

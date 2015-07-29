@@ -1868,6 +1868,17 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
+        case OMX_QcomIndexConfigMaxHierPLayers:
+            {
+                QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS* pParam =
+                    (QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS*)configData;
+                if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigMaxHierPLayers failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                memcpy(&m_sMaxHPlayers, pParam, sizeof(m_sMaxHPlayers));
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             break;

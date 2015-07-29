@@ -399,6 +399,7 @@ class venc_dev
         bool venc_set_hybrid_hierp(OMX_U32 layers);
         bool venc_calibrate_gop();
         bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
+        bool venc_set_max_hierp(OMX_U32 hierp_layers);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
