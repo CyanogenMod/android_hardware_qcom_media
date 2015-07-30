@@ -901,10 +901,8 @@ status_t DashCodec::setComponentRole(
         OMX_PARAM_COMPONENTROLETYPE roleParams;
         InitOMXParams(&roleParams);
 
-        strncpy((char *)roleParams.cRole,
-                role, OMX_MAX_STRINGNAME_SIZE - 1);
-
-        roleParams.cRole[OMX_MAX_STRINGNAME_SIZE - 1] = '\0';
+        strlcpy((char *)roleParams.cRole,
+                role, OMX_MAX_STRINGNAME_SIZE);
 
         status_t err = mOMX->setParameter(
                 mNode, OMX_IndexParamStandardComponentRole,
