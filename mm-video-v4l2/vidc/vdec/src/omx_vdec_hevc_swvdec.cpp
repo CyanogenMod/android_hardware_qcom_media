@@ -3038,22 +3038,25 @@ bool omx_vdec::post_event(unsigned long p1,
 
 OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType)
 {
-    OMX_ERRORTYPE eRet = OMX_ErrorNoMore;
+    OMX_ERRORTYPE eRet = OMX_ErrorNone;
     if(!profileLevelType)
         return OMX_ErrorBadParameter;
-
     if(profileLevelType->nPortIndex == 0) {
-        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevchybrid",OMX_MAX_STRINGNAME_SIZE) ||
-            !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevcswvdec",OMX_MAX_STRINGNAME_SIZE) ||
-            !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevc",OMX_MAX_STRINGNAME_SIZE) )
+        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevcswvdec",OMX_MAX_STRINGNAME_SIZE))
         {
+            if(profileLevelType->nProfileIndex == 0) {
+                profileLevelType->eProfile = OMX_VIDEO_HEVCProfileMain;
+                profileLevelType->eLevel = OMX_VIDEO_HEVCMainTierLevel31;
+            }
+            else {
             DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %d",
                 (int)profileLevelType->nProfileIndex);
             eRet = OMX_ErrorNoMore;
+            }
         }
         else
         {
-            DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu", profileLevelType->nProfileIndex);
+            DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported ret NoMore for codecs %s", drv_ctx.kind);
             eRet = OMX_ErrorNoMore;
         }
     }
