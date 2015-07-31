@@ -138,7 +138,7 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 #ifdef _ANDROID_ICS_
 #define MAX_NUM_INPUT_BUFFERS 64
 #endif
-void* message_thread(void *);
+void* enc_message_thread(void *);
 
 // OMX video class
 class omx_video: public qc_omx_component
