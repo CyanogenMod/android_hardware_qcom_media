@@ -256,7 +256,6 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     is_searchrange_set = false;
     enable_mv_narrow_searchrange = false;
     supported_rc_modes = RC_ALL;
-    camera_mode_enabled = false;
     memset(&ltrinfo, 0, sizeof(ltrinfo));
     sess_priority.priority = 1;
     operating_rate = 0;
@@ -1034,7 +1033,6 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
     resume_in_stopped = 0;
     metadatamode = 0;
-    camera_mode_enabled = false;
 
     control.id = V4L2_CID_MPEG_VIDEO_HEADER_MODE;
     control.value = V4L2_MPEG_VIDEO_HEADER_MODE_SEPARATE;
@@ -1234,9 +1232,13 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         // Increase buffer-header count for metadata-mode on input port
         // to improve buffering and reduce bottlenecks in clients
         if (metadatamode && (bufreq.count < 9)) {
-            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 16",
+            DEBUG_PRINT_LOW("FW returned buffer count = %d , overwriting with 9",
                 bufreq.count);
             bufreq.count = 9;
+        }
+        if (m_sVenc_cfg.input_height * m_sVenc_cfg.input_width >= 3840*2160) {
+            DEBUG_PRINT_LOW("Increasing buffer count = %d to 11", bufreq.count);
+            bufreq.count = 11;
         }
 
         bufreq.type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -2171,6 +2173,17 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexConfigMaxHierPLayers:
+            {
+                 QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS *pParam =
+                         (QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS *) configData;
+                 DEBUG_PRINT_LOW("venc_set_config: OMX_QcomIndexConfigMaxHierPLayers");
+                 if (venc_set_max_hierp(pParam->nMaxHierLayers) == false) {
+                     DEBUG_PRINT_ERROR("Failed to set OMX_QcomIndexConfigMaxHierPLayers");
+                     return false;
+                 }
+                 break;
+            }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -2655,7 +2668,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
     struct v4l2_plane plane;
     int rc=0;
     struct OMX_BUFFERHEADERTYPE *bufhdr;
-    struct v4l2_control control;
     encoder_media_buffer_type * meta_buf = NULL;
     temp_buffer = (struct pmem *)buffer;
 
@@ -2710,16 +2722,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         plane.length = meta_buf->meta_handle->data[2];
                         plane.bytesused = meta_buf->meta_handle->data[2];
                     }
-                    if (!camera_mode_enabled) {
-                        camera_mode_enabled = true;
-                        control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
-                        control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL;
-                        rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
-                        if (rc)
-                            DEBUG_PRINT_HIGH("Failed to set control for perf level");
-                        DEBUG_PRINT_LOW("Set control id = 0x%x, value = 0x%x, meta_buf type = %d",
-                                control.id, control.value, meta_buf->buffer_type);
-                    }
                     DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x",
                             fd, plane.bytesused, plane.length, buf.flags);
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
@@ -2728,16 +2730,6 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     plane.data_offset = 0;
                     plane.length = handle->size;
                     plane.bytesused = handle->size;
-                    if ((!camera_mode_enabled) && (handle->flags & private_handle_t:: PRIV_FLAGS_CAMERA_WRITE)) {
-                        camera_mode_enabled = true;
-                        control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
-                        control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL;
-                        rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
-                        if (rc)
-                            DEBUG_PRINT_HIGH("Failed to set perl level");
-                        DEBUG_PRINT_LOW("Set control id = 0x%x, value = 0x%x, flags = 0x%x",
-                                control.id, control.value, handle->flags);
-                    }
                         DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
                                 ": filled %d of %d", fd, plane.bytesused, plane.length);
                 }
@@ -4645,6 +4637,26 @@ bool venc_dev::venc_set_perf_mode(OMX_U32 mode)
         return true;
     } else {
         DEBUG_PRINT_ERROR("Invalid mode set for V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE: %d", mode);
+        return false;
+    }
+}
+
+bool venc_dev::venc_set_max_hierp(OMX_U32 hierp_layers)
+{
+    struct v4l2_control control;
+    if (hierp_layers && (hier_layers.hier_mode == HIER_P) &&
+            (hierp_layers <= hier_layers.numlayers)) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_MAX_HIERP_LAYERS;
+        control.value = hierp_layers;
+        DEBUG_PRINT_LOW("Going to set V4L2_CID_MPEG_VIDC_VIDEO_MAX_HIERP_LAYERS");
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to set MAX_HIERP_LAYERS");
+            return false;
+        }
+        return true;
+    } else {
+        DEBUG_PRINT_ERROR("Invalid layers set for MAX_HIERP_LAYERS: %d",
+                hierp_layers);
         return false;
     }
 }
