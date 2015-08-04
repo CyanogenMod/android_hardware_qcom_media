@@ -499,6 +499,10 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexParamMBIStatisticsMode = 0x7F000047,
 
     OMX_QcomIndexConfigMaxHierPLayers = 0x7F000048,
+
+    /* Encoder Low Latency mode */
+    OMX_QcomIndexConfigVideoVencLowLatencyMode = 0x7F000049,
+
 };
 
 /**

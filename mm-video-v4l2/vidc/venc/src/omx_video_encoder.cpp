@@ -55,6 +55,8 @@ static int bframes;
 static int entropy;
 static int perfmode;
 static int hybrid_hp;
+static int lowlatency;
+
 // factory function executed by the core to create instances
 void *get_omx_component_factory_fn(void)
 {
@@ -164,6 +166,10 @@ omx_venc::omx_venc()
     property_get("vidc.debug.hybrid.hierp", property_value, "0");
     hybrid_hp = atoi(property_value);
     property_value[0] = '\0';
+    property_get("vidc.debug.lowlatency", property_value, "0");
+    lowlatency = atoi(property_value);
+    property_value[0] = '\0';
+
     m_perf_control.send_hint_to_mpctl(true);
     DEBUG_PRINT_HIGH("omx_venc: constructor completed");
 }
@@ -607,6 +613,18 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
             DEBUG_PRINT_ERROR("Max hybrid_hp layers supported is %d", hybrid_hp);
         }
     }
+
+    if (lowlatency)
+    {
+        QOMX_ENABLETYPE low_latency;
+        low_latency.bEnable = OMX_TRUE;
+        DEBUG_PRINT_LOW("Enable lowlatency mode");
+        if (!handle->venc_set_param(&low_latency,
+               (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoVencLowLatencyMode)) {
+            DEBUG_PRINT_ERROR("Failed enabling low latency mode");
+        }
+    }
+
     DEBUG_PRINT_INFO("Component_init : %s : return = 0x%x", m_nkind, eRet);
     return eRet;
 }
@@ -1520,6 +1538,15 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                          (OMX_INDEXTYPE)OMX_QcomIndexParamVideoHybridHierpMode)) {
                    DEBUG_PRINT_ERROR("Request to Enable Hybrid Hier-P failed");
                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
+        case OMX_QcomIndexConfigVideoVencLowLatencyMode:
+            {
+                if(!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoVencLowLatencyMode)) {
+                    DEBUG_PRINT_ERROR("Request to Enable Low latency mode failed");
+                    return OMX_ErrorUnsupportedSetting;
                 }
                 break;
             }
