@@ -561,7 +561,7 @@ size_t C2DColorConverter::calcLumaAlign(ColorConvertFormat format) {
         case NV12_128m:
           return 1;
         default:
-          ALOGE("unknown format passed for luma alignment number");
+          ALOGD("unknown format passed for luma alignment number");
           return 1;
     }
 }
@@ -576,7 +576,7 @@ size_t C2DColorConverter::calcSizeAlign(ColorConvertFormat format) {
         case NV12_128m:
           return ALIGN4K;
         default:
-          ALOGE("unknown format passed for size alignment number");
+          ALOGD("unknown format passed for size alignment number");
           return 1;
     }
 }
