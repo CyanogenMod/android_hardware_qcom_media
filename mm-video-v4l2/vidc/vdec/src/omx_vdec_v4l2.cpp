@@ -8018,6 +8018,10 @@ int omx_vdec::async_message_process (void *context, void* message)
 
                     output_respbuf = (struct vdec_output_frameinfo *)\
                              omxhdr->pOutputPortPrivate;
+                    if (!output_respbuf) {
+                      DEBUG_PRINT_ERROR("async_message_process: invalid output buf received");
+                      return -1;
+                    }
                     output_respbuf->len = vdec_msg->msgdata.output_frame.len;
                     output_respbuf->offset = vdec_msg->msgdata.output_frame.offset;
 
