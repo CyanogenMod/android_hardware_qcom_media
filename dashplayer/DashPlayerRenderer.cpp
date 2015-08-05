@@ -16,14 +16,15 @@
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "DashPlayerRenderer"
-#include <utils/Log.h>
 
 #include "DashPlayerRenderer.h"
-
-#include <media/stagefright/foundation/ABuffer.h>
-#include <media/stagefright/foundation/ADebug.h>
-#include <media/stagefright/foundation/AMessage.h>
 #include <cutils/properties.h>
+#include <utils/Log.h>
+
+#define DPR_MSG_ERROR(...) ALOGE(__VA_ARGS__)
+#define DPR_MSG_HIGH(...) if(mLogLevel >= 1){ALOGE(__VA_ARGS__);}
+#define DPR_MSG_MEDIUM(...) if(mLogLevel >= 2){ALOGE(__VA_ARGS__);}
+#define DPR_MSG_LOW(...) if(mLogLevel >= 3){ALOGE(__VA_ARGS__);}
 
 namespace android {
 
@@ -52,7 +53,8 @@ DashPlayer::Renderer::Renderer(
       mWasPaused(false),
       mLastPositionUpdateUs(-1ll),
       mVideoLateByUs(0ll),
-      mStats(NULL){
+      mStats(NULL),
+      mLogLevel(0) {
 
       mAVSyncDelayWindowUs = 40000;
 
@@ -67,7 +69,14 @@ DashPlayer::Renderer::Renderer(
           }
       }
 
-      ALOGV("AVsync window in Us %lld", mAVSyncDelayWindowUs);
+      DPR_MSG_LOW("AVsync window in Us %lld", mAVSyncDelayWindowUs);
+
+      char property_value[PROPERTY_VALUE_MAX] = {0};
+      property_get("persist.dash.debug.level", property_value, NULL);
+
+      if(*property_value) {
+          mLogLevel = atoi(property_value);
+      }
 }
 
 DashPlayer::Renderer::~Renderer() {
@@ -130,7 +139,7 @@ void DashPlayer::Renderer::signalTimeDiscontinuity() {
     mPendingPostAudioDrains = false;
     mHasAudio = false;
     mHasVideo = false;
-    ALOGI("signalTimeDiscontinuity mHasAudio %d mHasVideo %d mSyncQueues %d",mHasAudio,mHasVideo,mSyncQueues);
+    DPR_MSG_HIGH("signalTimeDiscontinuity mHasAudio %d mHasVideo %d mSyncQueues %d",mHasAudio,mHasVideo,mSyncQueues);
 }
 
 void DashPlayer::Renderer::pause() {
@@ -164,8 +173,8 @@ void DashPlayer::Renderer::onMessageReceived(const sp<AMessage> &msg) {
                 // This is how long the audio sink will have data to
                 // play back.
                 int64_t delayUs =
-                    mAudioSink->msecsPerFrame()
-                        * numFramesPendingPlayout * 1000ll;
+                    (int64_t)(mAudioSink->msecsPerFrame()
+                        * (float)(numFramesPendingPlayout * 1000ll));
 
                 // Let's give it more data after about half that time
                 // has elapsed.
@@ -275,15 +284,6 @@ bool DashPlayer::Renderer::onDrainAudioQueue() {
     ssize_t numFramesAvailableToWrite =
         mAudioSink->frameCount() - (mNumFramesWritten - numFramesPlayed);
 
-#if 0
-    if (numFramesAvailableToWrite == mAudioSink->frameCount()) {
-        ALOGI("audio sink underrun");
-    } else {
-        ALOGV("audio queue has %d frames left to play",
-             mAudioSink->frameCount() - numFramesAvailableToWrite);
-    }
-#endif
-
     size_t numBytesAvailableToWrite =
         numFramesAvailableToWrite * mAudioSink->frameSize();
 
@@ -304,7 +304,7 @@ bool DashPlayer::Renderer::onDrainAudioQueue() {
             int64_t mediaTimeUs;
             CHECK(entry->mBuffer->meta()->findInt64("timeUs", &mediaTimeUs));
 
-            ALOGV("rendering audio at media time %.2f secs", mediaTimeUs / 1E6);
+            DPR_MSG_HIGH("rendering audio at media time %.2f secs", (double)mediaTimeUs / 1E6);
 
             mAnchorTimeMediaUs = mediaTimeUs;
 
@@ -315,11 +315,9 @@ bool DashPlayer::Renderer::onDrainAudioQueue() {
                 mNumFramesWritten - numFramesPlayed;
 
             int64_t realTimeOffsetUs =
-                (mAudioSink->latency() / 2  /* XXX */
-                    + numFramesPendingPlayout
-                        * mAudioSink->msecsPerFrame()) * 1000ll;
-
-            // ALOGI("realTimeOffsetUs = %lld us", realTimeOffsetUs);
+                (int64_t)(((float)mAudioSink->latency() / 2
+                    + (float)numFramesPendingPlayout
+                        * mAudioSink->msecsPerFrame()) * 1000ll);
 
             mAnchorTimeRealUs =
                 ALooper::GetNowUs() + realTimeOffsetUs;
@@ -344,7 +342,7 @@ bool DashPlayer::Renderer::onDrainAudioQueue() {
 
         numBytesAvailableToWrite -= copy;
         size_t copiedFrames = copy / mAudioSink->frameSize();
-        mNumFramesWritten += copiedFrames;
+        mNumFramesWritten += (uint32_t)copiedFrames;
     }
 
     notifyPosition();
@@ -434,13 +432,13 @@ void DashPlayer::Renderer::onDrainVideoQueue() {
     bool tooLate = (mVideoLateByUs > mAVSyncDelayWindowUs);
 
     if (tooLate) {
-        ALOGV("video late by %lld us (%.2f secs)",
-             mVideoLateByUs, mVideoLateByUs / 1E6);
+        DPR_MSG_HIGH("video late by %lld us (%.2f secs)",
+             mVideoLateByUs, (double)mVideoLateByUs / 1E6);
         if(mStats != NULL) {
             mStats->recordLate(realTimeUs,nowUs,mVideoLateByUs,mAnchorTimeRealUs);
         }
     } else {
-        ALOGV("rendering video at media time %.2f secs", mediaTimeUs / 1E6);
+        DPR_MSG_HIGH("rendering video at media time %.2f secs", (double)mediaTimeUs / 1E6);
         if(mStats != NULL) {
             mStats->recordOnTime(realTimeUs,nowUs,mVideoLateByUs);
             mStats->incrementTotalRenderingFrames();
@@ -502,7 +500,7 @@ void DashPlayer::Renderer::onQueueBuffer(const sp<AMessage> &msg) {
         else
         {
           mPendingPostAudioDrains = true;
-          ALOGE("Not rendering Audio Sample with TS: %lld  as Video frame is not decoded", audioTimeUs);
+          DPR_MSG_HIGH("Not rendering Audio Sample with TS: %lld  as Video frame is not decoded", audioTimeUs);
         }
     } else {
         mVideoQueue.push_back(entry);
@@ -510,7 +508,7 @@ void DashPlayer::Renderer::onQueueBuffer(const sp<AMessage> &msg) {
         (buffer->meta())->findInt64("timeUs", &videoTimeUs);
         if (!mIsFirstVideoframeReceived) {
             mIsFirstVideoframeReceived = true;
-            ALOGE("Received first video Sample with TS: %lld", videoTimeUs);
+            DPR_MSG_HIGH("Received first video Sample with TS: %lld", videoTimeUs);
             if (mPendingPostAudioDrains) {
                 mPendingPostAudioDrains = false;
                 postDrainAudioQueue();
@@ -541,7 +539,7 @@ void DashPlayer::Renderer::onQueueBuffer(const sp<AMessage> &msg) {
 
     int64_t diff = firstVideoTimeUs - firstAudioTimeUs;
 
-    ALOGV("queueDiff = %.2f secs", diff / 1E6);
+    DPR_MSG_LOW("queueDiff = %.2f secs", (double)diff / 1E6);
 
     if (diff > 100000ll) {
         // Audio data starts More than 0.1 secs before video.
@@ -735,7 +733,7 @@ void DashPlayer::Renderer::onPause() {
         mAudioSink->pause();
     }
 
-    ALOGV("now paused audio queue has %d entries, video has %d entries",
+    DPR_MSG_LOW("now paused audio queue has %d entries, video has %d entries",
           mAudioQueue.size(), mVideoQueue.size());
 
     mPaused = true;
@@ -785,12 +783,12 @@ status_t DashPlayer::Renderer::setMediaPresence(bool audio, bool bValue)
 {
    if (audio)
    {
-      ALOGV("mHasAudio set to %d from %d",bValue,mHasAudio);
+      DPR_MSG_LOW("mHasAudio set to %d from %d",bValue,mHasAudio);
       mHasAudio = bValue;
    }
    else
    {
-     ALOGV("mHasVideo set to %d from %d",bValue,mHasVideo);
+     DPR_MSG_LOW("mHasVideo set to %d from %d",bValue,mHasVideo);
      mHasVideo = bValue;
    }
    return OK;

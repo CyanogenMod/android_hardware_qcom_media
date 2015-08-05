@@ -25,7 +25,6 @@
 #include <media/stagefright/MediaSource.h>
 #include <utils/threads.h>
 #include <utils/List.h>
-
 #include "ATSParser.h"
 
 namespace android {
@@ -63,10 +62,6 @@ struct DashPacketSource : public MediaSource {
     void updateFormat(const sp<MetaData> &meta);
     int getQueueSize();
 
-    status_t getStreamInfo(unsigned& streamPID, unsigned& programPID, uint64_t& firstPTS);
-
-    void setStreamInfo(unsigned streamPID, unsigned programPID, uint64_t firstPTS);
-
     status_t nextBufferIsSync(bool* isSyncFrame);
 
 protected:
@@ -80,9 +75,7 @@ private:
     sp<MetaData> mFormat;
     List<sp<ABuffer> > mBuffers;
     status_t mEOSResult;
-    unsigned mStreamPID;
-    unsigned mProgramPID;
-    uint64_t mFirstPTS;
+    int mLogLevel;
 
     bool wasFormatChange(int32_t discontinuityType) const;
 

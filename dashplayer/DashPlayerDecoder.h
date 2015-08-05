@@ -20,7 +20,6 @@
 
 #include "DashPlayerRenderer.h"
 #include "DashPlayer.h"
-#include <media/stagefright/foundation/AHandler.h>
 
 namespace android {
 
@@ -57,6 +56,7 @@ private:
 
     Vector<sp<ABuffer> > mCSD;
     size_t mCSDIndex;
+    int mLogLevel;
 
     sp<AMessage> makeFormat(const sp<MetaData> &meta);
 
