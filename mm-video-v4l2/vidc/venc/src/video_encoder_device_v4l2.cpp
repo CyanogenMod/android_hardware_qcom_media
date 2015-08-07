@@ -1957,6 +1957,17 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QTIIndexParamVQZIPSEIType:
+            {
+                OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE*pParam =
+                        (OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE *)paramData;
+                DEBUG_PRINT_LOW("Enable VQZIP SEI: %d", pParam->bEnable);
+                if(venc_set_vqzip_sei_type(pParam->bEnable) == false) {
+                    DEBUG_PRINT_ERROR("ERROR: Failed to set VQZIP SEI type %d", pParam->bEnable);
+                    return false;
+                }
+                break;
+            }
         case OMX_QcomIndexParamPeakBitrate:
             {
                 OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE *pParam =
@@ -2401,6 +2412,32 @@ unsigned venc_dev::venc_set_message_thread_id(pthread_t tid)
     return 0;
 }
 
+void venc_dev::venc_set_vqzip_defaults()
+{
+    struct v4l2_control control;
+    int rc = 0;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL;
+    control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_OFF;
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc)
+        DEBUG_PRINT_ERROR("Failed to set Rate Control OFF for VQZIP");
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
+    control.value = INT_MAX;
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc)
+        DEBUG_PRINT_ERROR("Failed to set P frame period for VQZIP");
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_B_FRAMES;
+    control.value = 0;
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc)
+        DEBUG_PRINT_ERROR("Failed to set B frame period for VQZIP");
+
+}
+
 
 unsigned venc_dev::venc_start(void)
 {
@@ -2421,6 +2458,9 @@ unsigned venc_dev::venc_start(void)
         DEBUG_PRINT_HIGH("%s(): Driver Profile[%lu]/Level[%lu] successfully SET",
                 __func__, codec_profile.profile, profile_level.level);
     }
+
+    if (vqzip_sei_info.enabled)
+        venc_set_vqzip_defaults();
 
     venc_config_print();
 
@@ -2746,6 +2786,17 @@ bool venc_dev::venc_get_vui_timing_info(OMX_U32 *enabled)
         return false;
     } else {
         *enabled = vui_timing_info.enabled;
+        return true;
+    }
+}
+
+bool venc_dev::venc_get_vqzip_sei_info(OMX_U32 *enabled)
+{
+    if (!enabled) {
+        DEBUG_PRINT_ERROR("Null pointer error");
+        return false;
+    } else {
+        *enabled = vqzip_sei_info.enabled;
         return true;
     }
 }
@@ -3239,6 +3290,27 @@ bool venc_dev::venc_set_mbi_statistics_mode(OMX_U32 mode)
     return true;
 }
 
+bool venc_dev::venc_set_vqzip_sei_type(OMX_BOOL enable)
+{
+    struct v4l2_control sei_control;
+
+    DEBUG_PRINT_HIGH("Set VQZIP SEI: %d", enable);
+    sei_control.id = V4L2_CID_MPEG_VIDC_VIDEO_VQZIP_SEI;
+
+    if (enable)
+        sei_control.value = V4L2_CID_MPEG_VIDC_VIDEO_VQZIP_SEI_ENABLE;
+    else
+        sei_control.value = V4L2_CID_MPEG_VIDC_VIDEO_VQZIP_SEI_DISABLE;
+
+    if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &sei_control) < 0) {
+        DEBUG_PRINT_HIGH("Non-Fatal: Request to set VQZIP failed");
+    }
+
+    vqzip_sei_info.enabled = true;
+
+    return true;
+}
+
 bool venc_dev::venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode)
 {
     // Check for layers in Hier-p/hier-B with Hier-P-Hybrid
@@ -3530,6 +3602,11 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
 
     if ((eProfile == 0) && (eLevel == 0) && m_profile_set && m_level_set) {
         DEBUG_PRINT_LOW("Profile/Level setting complete before venc_start");
+        return true;
+    }
+
+    if (vqzip_sei_info.enabled) {
+        DEBUG_PRINT_HIGH("VQZIP is enabled. Profile and Level set by client. Skipping validation");
         return true;
     }
 

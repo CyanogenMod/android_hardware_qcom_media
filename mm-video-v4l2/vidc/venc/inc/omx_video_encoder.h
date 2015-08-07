@@ -86,6 +86,7 @@ class omx_venc: public omx_video
         bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *);
         bool dev_get_performance_level(OMX_U32 *);
         bool dev_get_vui_timing_info(OMX_U32 *);
+        bool dev_get_vqzip_sei_info(OMX_U32 *);
         bool dev_get_peak_bitrate(OMX_U32 *);
         bool dev_get_batch_size(OMX_U32 *);
         bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height);
