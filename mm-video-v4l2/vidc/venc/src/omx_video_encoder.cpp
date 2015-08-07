@@ -1261,7 +1261,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
                 if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderSliceInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
-                        mask = VEN_EXTRADATA_SLICEINFO;
+                        mask = VENC_EXTRADATA_SLICEINFO;
 
                         DEBUG_PRINT_HIGH("SliceInfo extradata %s",
                                 ((pParam->bEnabled == OMX_TRUE) ? "enabled" : "disabled"));
@@ -1273,7 +1273,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     }
                 } else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderMBInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
-                        mask = VEN_EXTRADATA_MBINFO;
+                        mask = VENC_EXTRADATA_MBINFO;
 
                         DEBUG_PRINT_HIGH("MBInfo extradata %s",
                                 ((pParam->bEnabled == OMX_TRUE) ? "enabled" : "disabled"));
@@ -1284,6 +1284,31 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         break;
                     }
                 }
+                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataFrameDimension) {
+                    if (pParam->nPortIndex == PORT_INDEX_IN) {
+                            mask = VENC_EXTRADATA_FRAMEDIMENSION;
+                        DEBUG_PRINT_HIGH("Frame dimension extradata %s",
+                                ((pParam->bEnabled == OMX_TRUE) ? "enabled" : "disabled"));
+                    } else {
+                        DEBUG_PRINT_ERROR("set_parameter: Frame Dimension is "
+                                "valid for input port only");
+                        eRet = OMX_ErrorUnsupportedIndex;
+                        break;
+                    }
+                }
+                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_QTIIndexParamVQZipSEIExtraData) {
+                    if (pParam->nPortIndex == PORT_INDEX_IN) {
+                        mask = VENC_EXTRADATA_VQZIP;
+                        DEBUG_PRINT_HIGH("VQZIP extradata %s",
+                                ((pParam->bEnabled == OMX_TRUE) ? "enabled" : "disabled"));
+                    } else {
+                        DEBUG_PRINT_ERROR("set_parameter: VQZIP is "
+                                "valid for input port only");
+                        eRet = OMX_ErrorUnsupportedIndex;
+                        break;
+                    }
+                }
+
 #ifndef _MSM8974_
                 else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoLTRInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
@@ -1318,6 +1343,20 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             (OMX_INDEXTYPE)pParam->nIndex) != true) {
                     DEBUG_PRINT_ERROR("ERROR: Setting Extradata (%x) failed", pParam->nIndex);
                     return OMX_ErrorUnsupportedSetting;
+                }
+
+                if (pParam->nPortIndex == PORT_INDEX_IN) {
+                    m_sInPortDef.nPortIndex = PORT_INDEX_IN;
+                    dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
+                            &m_sInPortDef.nBufferCountActual,
+                            &m_sInPortDef.nBufferSize,
+                            m_sInPortDef.nPortIndex);
+                    DEBUG_PRINT_HIGH("updated in_buf_req: buffer cnt=%u, "
+                            "count min=%u, buffer size=%u",
+                            (unsigned int)m_sOutPortDef.nBufferCountActual,
+                            (unsigned int)m_sOutPortDef.nBufferCountMin,
+                            (unsigned int)m_sOutPortDef.nBufferSize);
+
                 } else {
                     m_sOutPortDef.nPortIndex = PORT_INDEX_OUT;
                     dev_get_buf_req(&m_sOutPortDef.nBufferCountMin,
@@ -1527,6 +1566,16 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                    DEBUG_PRINT_ERROR("Attempting to set batch size failed");
                    return OMX_ErrorUnsupportedSetting;
                 }
+                break;
+            }
+        case OMX_QcomIndexConfigH264EntropyCodingCabac:
+            {
+                if(!handle->venc_set_param(paramData,
+                         (OMX_INDEXTYPE)OMX_QcomIndexConfigH264EntropyCodingCabac)) {
+                   DEBUG_PRINT_ERROR("Attempting to set Entropy failed");
+                   return OMX_ErrorUnsupportedSetting;
+                }
+               break;
             }
         case OMX_QTIIndexParamVQZIPSEIType:
             {
@@ -1535,6 +1584,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     DEBUG_PRINT_ERROR("ERROR: Setting VQZIP SEI type");
                     return OMX_ErrorUnsupportedSetting;
                 }
+                m_sExtraData |= VENC_EXTRADATA_VQZIP;
                 break;
             }
         case OMX_QcomIndexParamVencAspectRatio:
@@ -2191,17 +2241,20 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
 #endif
 }
 
-#ifdef _MSM8974_
-int omx_venc::dev_handle_extradata(void *buffer, int index)
+int omx_venc::dev_handle_output_extradata(void *buffer, int index)
 {
-    return handle->handle_extradata(buffer, index);
+    return handle->handle_output_extradata(buffer, index);
+}
+
+int omx_venc::dev_handle_input_extradata(void *buffer, int index, int fd)
+{
+    return handle->handle_input_extradata(buffer, index, fd);
 }
 
 int omx_venc::dev_set_format(int color)
 {
     return handle->venc_set_format(color);
 }
-#endif
 
 int omx_venc::async_message_process (void *context, void* message)
 {

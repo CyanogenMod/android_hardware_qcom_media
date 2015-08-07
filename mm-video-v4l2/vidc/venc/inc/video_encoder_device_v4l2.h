@@ -34,10 +34,12 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "OMX_VideoExt.h"
 #include "OMX_QCOMExtns.h"
 #include "qc_omx_component.h"
+#include "VQZip.h"
 #include "omx_video_common.h"
 #include "omx_video_base.h"
 #include "omx_video_encoder.h"
 #include <linux/videodev2.h>
+#include <media/msm_vidc.h>
 #include <poll.h>
 
 #define TIMEOUT 5*60*1000
@@ -231,7 +233,8 @@ struct extradata_buffer_info {
     char* uaddr;
     int count;
     int size;
-    int allocated;
+    OMX_BOOL allocated;
+    enum v4l2_ports port_index;
 #ifdef USE_ION
     struct venc_ion ion;
 #endif
@@ -303,11 +306,34 @@ class venc_dev
                         unsigned long inputformat);
         int venc_extradata_log_buffers(char *buffer_addr);
 
+
+        class venc_dev_vqzip
+        {
+            public:
+                venc_dev_vqzip();
+                ~venc_dev_vqzip();
+                bool init();
+                void deinit();
+                struct VQZipConfig pConfig;
+                int tempSEI[300];
+                int fill_stats_data(void* pBuf, void *pStats);
+                typedef void (*vqzip_deinit_t)(void*);
+                typedef void* (*vqzip_init_t)(void);
+                typedef VQZipStatus (*vqzip_compute_stats_t)(void* const , const void * const , const VQZipConfig* ,VQZipStats*);
+            private:
+                pthread_mutex_t lock;
+                void *mLibHandle;
+                void *mVQZIPHandle;
+                vqzip_init_t mVQZIPInit;
+                vqzip_deinit_t mVQZIPDeInit;
+                vqzip_compute_stats_t mVQZIPComputeStats;
+        };
+        venc_dev_vqzip vqzip;
         struct venc_debug_cap m_debug;
         OMX_U32 m_nDriver_fd;
         bool m_profile_set;
         bool m_level_set;
-        int num_planes;
+        int num_input_planes, num_output_planes;
         int etb, ebd, ftb, fbd;
         struct recon_buffer {
             unsigned char* virtual_address;
@@ -328,14 +354,18 @@ class venc_dev
         pthread_t m_tid;
         bool async_thread_created;
         class omx_venc *venc_handle;
-        OMX_ERRORTYPE allocate_extradata();
+        OMX_ERRORTYPE allocate_extradata(struct extradata_buffer_info *extradata_info);
         void free_extradata();
         int append_mbi_extradata(void *, struct msm_vidc_extradata_header*);
-        bool handle_extradata(void *, int);
+        bool handle_output_extradata(void *, int);
+        bool handle_input_extradata(void *, int, int);
         int venc_set_format(int);
         bool deinterlace_enabled;
         bool hw_overload;
         bool is_gralloc_source_ubwc;
+        bool is_camera_source_ubwc;
+        OMX_U32 fd_list[64];
+
     private:
         OMX_U32                             m_codec;
         struct msm_venc_basecfg             m_sVenc_cfg;
@@ -411,6 +441,7 @@ class venc_dev
         bool venc_set_batch_size(OMX_U32 size);
         bool venc_calibrate_gop();
         void venc_set_vqzip_defaults();
+        int venc_get_index_from_fd(OMX_U32 fd);
         bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
         bool venc_set_max_hierp(OMX_U32 hierp_layers);
         bool venc_set_baselayerid(OMX_U32 baseid);
@@ -435,7 +466,8 @@ class venc_dev
         int metadatamode;
         bool streaming[MAX_PORT];
         bool extradata;
-        struct extradata_buffer_info extradata_info;
+        struct extradata_buffer_info input_extradata_info;
+        struct extradata_buffer_info output_extradata_info;
 
         pthread_mutex_t pause_resume_mlock;
         pthread_cond_t pause_resume_cond;

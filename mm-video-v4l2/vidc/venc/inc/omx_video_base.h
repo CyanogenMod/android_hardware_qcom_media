@@ -110,7 +110,6 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 
 #define OMX_SPEC_VERSION  0x00000101
 
-
 //////////////////////////////////////////////////////////////////////////////
 //               Macros
 //////////////////////////////////////////////////////////////////////////////
@@ -141,6 +140,14 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 #define MAX_NUM_INPUT_BUFFERS 64
 #endif
 void* message_thread(void *);
+
+enum omx_venc_extradata_types {
+    VENC_EXTRADATA_SLICEINFO = 0x100,
+    VENC_EXTRADATA_MBINFO = 0x400,
+    VENC_EXTRADATA_FRAMEDIMENSION = 0x1000000,
+    VENC_EXTRADATA_YUV_STATS = 0x800,
+    VENC_EXTRADATA_VQZIP = 0x02000000,
+};
 
 // OMX video class
 class omx_video: public qc_omx_component
@@ -226,10 +233,9 @@ class omx_video: public qc_omx_component
         virtual bool dev_loaded_start_done(void) = 0;
         virtual bool dev_loaded_stop_done(void) = 0;
         virtual bool is_secure_session(void) = 0;
-#ifdef _MSM8974_
-        virtual int dev_handle_extradata(void*, int) = 0;
+        virtual int dev_handle_output_extradata(void*, int) = 0;
+        virtual int dev_handle_input_extradata(void*, int, int) = 0;
         virtual int dev_set_format(int) = 0;
-#endif
         virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
         virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
         virtual bool dev_get_performance_level(OMX_U32 *) = 0;
