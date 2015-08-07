@@ -4217,6 +4217,10 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 eRet = enable_extradata(OMX_EXTNUSER_EXTRADATA, false,
                                     ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                 break;
+        case OMX_QTIIndexParamVQZipSEIExtraData:
+                                eRet = enable_extradata(OMX_VQZIPSEI_EXTRADATA, false,
+                                    ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                                break;
         case OMX_QcomIndexParamVideoDivx: {
                               QOMX_VIDEO_PARAM_DIVXTYPE* divXType = (QOMX_VIDEO_PARAM_DIVXTYPE *) paramData;
                           }
@@ -4463,6 +4467,30 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             } else {
                 DEBUG_PRINT_ERROR("ERROR: Custom buffer size in not supported on output port");
                 eRet = OMX_ErrorBadParameter;
+            }
+            break;
+        }
+        case OMX_QTIIndexParamVQZIPSEIType:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QTIIndexParamVQZIPSEIType");
+            OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE *pParam =
+                (OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE *)paramData;
+                DEBUG_PRINT_LOW("Enable VQZIP SEI: %d", pParam->bEnable);
+            eRet = enable_extradata(OMX_VQZIPSEI_EXTRADATA, false,
+                ((QOMX_ENABLETYPE *)paramData)->bEnable);
+            if (eRet != OMX_ErrorNone) {
+                DEBUG_PRINT_ERROR("ERROR: Failed to set SEI Extradata");
+                eRet = OMX_ErrorBadParameter;
+                client_extradata = client_extradata & ~OMX_VQZIPSEI_EXTRADATA;
+            } else {
+                eRet = enable_extradata(OMX_QP_EXTRADATA, false,
+                    ((QOMX_ENABLETYPE *)paramData)->bEnable);
+                if (eRet != OMX_ErrorNone) {
+                    DEBUG_PRINT_ERROR("ERROR: Failed to set QP Extradata");
+                    eRet = OMX_ErrorBadParameter;
+                    client_extradata = client_extradata & ~OMX_VQZIPSEI_EXTRADATA;
+                    client_extradata = client_extradata & ~OMX_QP_EXTRADATA;
+                }
             }
             break;
         }
@@ -9718,6 +9746,14 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
                     }
                     break;
+                case MSM_VIDC_EXTRADATA_VQZIP_SEI:
+                    struct msm_vidc_vqzip_sei_payload *vqzip_payload;
+                    vqzip_payload = (struct msm_vidc_vqzip_sei_payload*)(void *)data->data;
+                    if (client_extradata & OMX_VQZIPSEI_EXTRADATA) {
+                        append_vqzip_extradata(p_extra, vqzip_payload);
+                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                    }
+                    break;
                 default:
                     DEBUG_PRINT_LOW("Unrecognized extradata");
                     goto unrecognized_extradata;
@@ -9854,6 +9890,21 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
                 DEBUG_PRINT_HIGH("Failed to set stream userdata extradata");
             }
+        }
+        if (requested_extradata & OMX_VQZIPSEI_EXTRADATA) {
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+            control.value = V4L2_MPEG_VIDC_EXTRADATA_VQZIP_SEI;
+            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                DEBUG_PRINT_HIGH("Failed to set VQZip SEI extradata");
+            }
+            client_extradata |= OMX_VQZIPSEI_EXTRADATA;
+
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+            control.value = V4L2_MPEG_VIDC_EXTRADATA_FRAME_QP;
+            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                DEBUG_PRINT_HIGH("Failed to set QP extradata");
+            }
+            client_extradata |= OMX_QP_EXTRADATA;
         }
     }
     ret = get_buffer_req(&drv_ctx.op_buf);
@@ -10015,6 +10066,13 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
                 }
         DEBUG_PRINT_HIGH(
                 "=========== End of Userdata ===========");
+    } else if (extra->eType == (OMX_EXTRADATATYPE)OMX_ExtraDataVQZipSEI) {
+        OMX_QCOM_EXTRADATA_VQZIPSEI *vq = (OMX_QCOM_EXTRADATA_VQZIPSEI *)(void *)extra->data;
+        DEBUG_PRINT_HIGH(
+                "--------------  VQZip  -------------\n"
+                "    Size: %u\n",
+                (unsigned int)vq->nSize);
+        DEBUG_PRINT_HIGH( "=========== End of VQZip ===========");
     } else if (extra->eType == OMX_ExtraDataNone) {
         DEBUG_PRINT_HIGH("========== End of Terminator ===========");
     } else {
@@ -10264,6 +10322,24 @@ void omx_vdec::append_terminator_extradata(OMX_OTHER_EXTRADATATYPE *extra)
     extra->eType = OMX_ExtraDataNone;
     extra->nDataSize = 0;
     extra->data[0] = 0;
+
+    print_debug_extradata(extra);
+}
+
+void omx_vdec::append_vqzip_extradata(OMX_OTHER_EXTRADATATYPE *extra,
+        struct msm_vidc_vqzip_sei_payload *vqzip_payload)
+{
+    OMX_QCOM_EXTRADATA_VQZIPSEI *vq = NULL;
+
+    extra->nSize = OMX_VQZIPSEI_EXTRADATA_SIZE + vqzip_payload->size;
+    extra->nVersion.nVersion = OMX_SPEC_VERSION;
+    extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
+    extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataVQZipSEI;
+    extra->nDataSize = sizeof(OMX_QCOM_EXTRADATA_VQZIPSEI) + vqzip_payload->size;
+
+    vq = (OMX_QCOM_EXTRADATA_VQZIPSEI *)(void *)extra->data;
+    vq->nSize = vqzip_payload->size;
+    memcpy(vq->data, vqzip_payload->data, vqzip_payload->size);
 
     print_debug_extradata(extra);
 }
