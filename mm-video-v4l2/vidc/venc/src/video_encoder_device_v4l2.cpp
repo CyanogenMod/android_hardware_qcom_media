@@ -832,76 +832,84 @@ int venc_dev::venc_input_log_buffers(OMX_BUFFERHEADERTYPE *pbuffer, int fd, int 
             return -1;
         }
     }
-    if (m_debug.infile && pbuffer && pbuffer->nFilledLen) {
-        unsigned long i, msize;
-        int stride, scanlines;
-        unsigned char *pvirt,*ptemp;
-        char *temp = (char *)pbuffer->pBuffer;
-        int color_format;
 
-        if (inputformat == V4L2_PIX_FMT_NV12) {
-            color_format = COLOR_FMT_NV12;
+    if (m_debug.infile && pbuffer && pbuffer->nFilledLen) {
+        int stride, scanlines;
+        int color_format;
+        unsigned long i, msize;
+        unsigned char *pvirt = NULL, *ptemp = NULL;
+        unsigned char *temp = (unsigned char *)pbuffer->pBuffer;
+
+        switch (inputformat) {
+            case V4L2_PIX_FMT_NV12:
+                color_format = COLOR_FMT_NV12;
+                break;
+            case V4L2_PIX_FMT_NV12_UBWC:
+                color_format = COLOR_FMT_NV12_UBWC;
+                break;
+            case V4L2_PIX_FMT_RGB32:
+                color_format = COLOR_FMT_RGBA8888;
+                break;
+            case V4L2_PIX_FMT_RGBA8888_UBWC:
+                color_format = COLOR_FMT_RGBA8888_UBWC;
+                break;
+            default:
+                color_format = COLOR_FMT_NV12;
+                DEBUG_PRINT_LOW("Default format NV12 is set for logging [%d]", inputformat);
+                break;
+        }
+
+        msize = VENUS_BUFFER_SIZE(color_format, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
+        const unsigned int extra_size = VENUS_EXTRADATA_SIZE(m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
+
+        if (metadatamode == 1) {
+            pvirt= (unsigned char *)mmap(NULL, msize, PROT_READ|PROT_WRITE,MAP_SHARED, fd, plane_offset);
+            if (pvirt == MAP_FAILED) {
+                DEBUG_PRINT_ERROR("%s mmap failed", __func__);
+                return -1;
+            }
+            ptemp = pvirt;
+        } else {
+            ptemp = temp;
+        }
+
+        if (color_format == COLOR_FMT_NV12) {
             stride = VENUS_Y_STRIDE(color_format, m_sVenc_cfg.input_width);
             scanlines = VENUS_Y_SCANLINES(color_format, m_sVenc_cfg.input_height);
-            msize = VENUS_BUFFER_SIZE(color_format, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
-            if (metadatamode == 1) {
-                pvirt= (unsigned char *)mmap(NULL, msize, PROT_READ|PROT_WRITE,MAP_SHARED, fd, plane_offset);
-                if (pvirt == MAP_FAILED) {
-                    DEBUG_PRINT_ERROR("%s mmap failed", __func__);
-                    return -1;
-                } else {
-                    ptemp = pvirt;
-                    for (i = 0; i < m_sVenc_cfg.input_height; i++) {
-                        fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
-                        ptemp += stride;
-                    }
-                    ptemp = pvirt + (stride * scanlines);
-                    for (i = 0; i < m_sVenc_cfg.input_height/2; i++) {
-                       fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
-                       ptemp += stride;
-                    }
-                    munmap(pvirt, msize);
-                }
-            } else {
-                for (i = 0; i < m_sVenc_cfg.input_height; i++) {
-                    fwrite(temp, m_sVenc_cfg.input_width, 1, m_debug.infile);
-                    temp += stride;
-                }
 
-                temp = (char *)pbuffer->pBuffer + (stride * scanlines);
-
-                for (i = 0; i < m_sVenc_cfg.input_height/2; i++) {
-                    fwrite(temp, m_sVenc_cfg.input_width, 1, m_debug.infile);
-                    temp += stride;
-                }
+            for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+                fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                ptemp += stride;
             }
-        } else if (inputformat == V4L2_PIX_FMT_RGB32) {
-            color_format = COLOR_FMT_RGBA8888;
+            if (metadatamode == 1) {
+                ptemp = pvirt + (stride * scanlines);
+            } else {
+                ptemp = (unsigned char *)pbuffer->pBuffer + (stride * scanlines);
+            }
+            for (i = 0; i < m_sVenc_cfg.input_height/2; i++) {
+                fwrite(ptemp, m_sVenc_cfg.input_width, 1, m_debug.infile);
+                ptemp += stride;
+            }
+        } else if (color_format == COLOR_FMT_RGBA8888) {
             stride = VENUS_RGB_STRIDE(color_format, m_sVenc_cfg.input_width);
             scanlines = VENUS_RGB_SCANLINES(color_format, m_sVenc_cfg.input_height);
-            msize = VENUS_BUFFER_SIZE(color_format, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
 
-            if (metadatamode == 1) {
-                pvirt= (unsigned char *)mmap(NULL, msize, PROT_READ|PROT_WRITE,MAP_SHARED, fd, plane_offset);
-                if (pvirt == MAP_FAILED) {
-                    DEBUG_PRINT_ERROR("%s mmap failed", __func__);
-                    return -1;
-                } else {
-                    ptemp = pvirt;
-                    for (i = 0; i < m_sVenc_cfg.input_height; i++) {
-                        fwrite(ptemp, m_sVenc_cfg.input_width * 4, 1, m_debug.infile);
-                        ptemp += stride;
-                    }
-                    munmap(pvirt, msize);
-                }
-            } else {
-                for (i = 0; i < m_sVenc_cfg.input_height; i++) {
-                    fwrite(temp, m_sVenc_cfg.input_width * 4, 1, m_debug.infile);
-                    temp += stride;
-                }
+            for (i = 0; i < m_sVenc_cfg.input_height; i++) {
+                fwrite(ptemp, m_sVenc_cfg.input_width * 4, 1, m_debug.infile);
+                ptemp += stride;
             }
+        } else if (color_format == COLOR_FMT_NV12_UBWC || color_format == COLOR_FMT_RGBA8888_UBWC) {
+            if (color_format == COLOR_FMT_NV12_UBWC) {
+                msize -= 2 * extra_size;
+            }
+            fwrite(ptemp, msize, 1, m_debug.infile);
+        }
+
+        if (metadatamode == 1 && pvirt) {
+            munmap(pvirt, msize);
         }
     }
+
     return 0;
 }
 
