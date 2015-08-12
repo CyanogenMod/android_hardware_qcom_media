@@ -75,6 +75,7 @@ enum {
     kKeyMd5Sum               = 'md5s', //cstring
 
     kKeyBatchSize            = 'btch', //int32_t
+    kKeyIsByteMode           = 'bytm', //int32_t
 };
 
 enum {
