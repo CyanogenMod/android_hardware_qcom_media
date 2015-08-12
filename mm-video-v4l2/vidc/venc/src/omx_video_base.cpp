@@ -4479,7 +4479,11 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         return OMX_ErrorBadParameter;
     }
     media_buffer = (encoder_media_buffer_type *)buffer->pBuffer;
-    if ((!media_buffer || !media_buffer->meta_handle) &&
+    if (!media_buffer && !(buffer->nFlags & OMX_BUFFERFLAG_EOS)) {
+        DEBUG_PRINT_ERROR("NULL pointer is passed as media buffer");
+        m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
+        return OMX_ErrorBadParameter;
+    } else if ((!media_buffer->meta_handle)  &&
             !(buffer->nFlags & OMX_BUFFERFLAG_EOS)) {
         DEBUG_PRINT_ERROR("Incorrect Buffer queued media buffer = %p",
             media_buffer);
@@ -4496,7 +4500,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
     /*Enable following code once private handle color format is
       updated correctly*/
 
-    if (buffer->nFilledLen > 0) {
+    if (buffer->nFilledLen > 0 && handle) {
         if (c2d_opened && handle->format != c2d_conv.get_src_format()) {
             c2d_conv.close();
             c2d_opened = false;
