@@ -665,12 +665,12 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     property_value[0] = '\0';
     property_get("vidc.dec.log.out", property_value, "0");
     m_debug.out_buffer_log = atoi(property_value);
-    sprintf(m_debug.log_loc, "%s", BUFFER_LOG_LOC);
+    snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX, "%s", BUFFER_LOG_LOC);
 
     property_value[0] = '\0';
     property_get("vidc.dec.meta.log.out", property_value, "0");
     m_debug.out_meta_buffer_log = atoi(property_value);
-    sprintf(m_debug.log_loc, "%s", BUFFER_LOG_LOC);
+    snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX, "%s", BUFFER_LOG_LOC);
 
     property_value[0] = '\0';
     property_get("vidc.log.loc", property_value, "");
