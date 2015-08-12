@@ -1974,16 +1974,6 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             memcpy(&m_sConfigQP, pParam, sizeof(m_sConfigQP));
             break;
         }
-        case OMX_QcomIndexConfigRectType:
-        {
-            if (!handle->venc_set_config(configData,
-                    (OMX_INDEXTYPE)OMX_QcomIndexConfigRectType)) {
-                DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigRectType failed");
-                return OMX_ErrorUnsupportedSetting;
-            }
-            memcpy(&m_sRectangleData, configData, sizeof(m_sRectangleData));
-            break;
-        }
         case OMX_IndexConfigPriority:
             {
                 if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)OMX_IndexConfigPriority)) {
