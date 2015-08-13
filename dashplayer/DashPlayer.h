@@ -282,6 +282,7 @@ private:
     void performDecoderShutdown(bool audio, bool video);
     void performScanSources();
     void performSetSurface(const sp<NativeWindowWrapper> &wrapper);
+    status_t PushBlankBuffersToNativeWindow(sp<ANativeWindow> nativeWindow);
 
     int mLogLevel;
     bool mTimedTextCEAPresent;

@@ -346,7 +346,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
             if(mVideoDecoder == NULL && obj.get() == NULL)
             {
               sp<ANativeWindow> nativeWindow = mNativeWindow->getNativeWindow();
-              //DashCodec::PushBlankBuffersToNativeWindow(nativeWindow);
+              PushBlankBuffersToNativeWindow(nativeWindow);
             }
 
             mDeferredActions.push_back(new ShutdownDecoderAction(
@@ -2271,6 +2271,156 @@ void DashPlayer::performDecoderShutdown(bool audio, bool video) {
 
     if (video && mVideoDecoder != NULL) {
         flushDecoder(false /* audio */, true /* needShutdown */);
+    }
+}
+
+/** @brief: Pushes blank frame to native window
+ *
+ *  @return: NO_ERROR if frame pushed successfully to native window
+ *
+ */
+status_t DashPlayer::PushBlankBuffersToNativeWindow(sp<ANativeWindow> nativeWindow) {
+    status_t err = NO_ERROR;
+    ANativeWindowBuffer* anb = NULL;
+    int numBufs = 0;
+    int minUndequeuedBufs = 0;
+
+    // We need to reconnect to the ANativeWindow as a CPU client to ensure that
+    // no frames get dropped by SurfaceFlinger assuming that these are video
+    // frames.
+    err = native_window_api_disconnect(nativeWindow.get(),
+            NATIVE_WINDOW_API_MEDIA);
+    if (err != NO_ERROR) {
+        ALOGE("error pushing blank frames: api_disconnect failed: %s (%d)",
+                strerror(-err), -err);
+        return err;
+    }
+
+    err = native_window_api_connect(nativeWindow.get(),
+            NATIVE_WINDOW_API_CPU);
+    if (err != NO_ERROR) {
+        ALOGE("error pushing blank frames: api_connect failed: %s (%d)",
+                strerror(-err), -err);
+        return err;
+    }
+
+    err = native_window_set_buffers_geometry(nativeWindow.get(), 1, 1,
+            HAL_PIXEL_FORMAT_RGBX_8888);
+    if (err != NO_ERROR) {
+        ALOGE("error pushing blank frames: set_buffers_geometry failed: %s (%d)",
+                strerror(-err), -err);
+        goto error;
+    }
+
+    err = native_window_set_scaling_mode(nativeWindow.get(),
+                NATIVE_WINDOW_SCALING_MODE_SCALE_TO_WINDOW);
+    if (err != NO_ERROR) {
+        ALOGE("error pushing blank_frames: set_scaling_mode failed: %s (%d)",
+              strerror(-err), -err);
+        goto error;
+    }
+
+    err = native_window_set_usage(nativeWindow.get(),
+            GRALLOC_USAGE_SW_WRITE_OFTEN);
+    if (err != NO_ERROR) {
+        ALOGE("error pushing blank frames: set_usage failed: %s (%d)",
+                strerror(-err), -err);
+        goto error;
+    }
+
+    err = nativeWindow->query(nativeWindow.get(),
+            NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS, &minUndequeuedBufs);
+    if (err != NO_ERROR) {
+        ALOGE("error pushing blank frames: MIN_UNDEQUEUED_BUFFERS query "
+                "failed: %s (%d)", strerror(-err), -err);
+        goto error;
+    }
+
+    numBufs = minUndequeuedBufs + 1;
+    err = native_window_set_buffer_count(nativeWindow.get(), numBufs);
+    if (err != NO_ERROR) {
+        ALOGE("error pushing blank frames: set_buffer_count failed: %s (%d)",
+                strerror(-err), -err);
+        goto error;
+    }
+
+    // We  push numBufs + 1 buffers to ensure that we've drawn into the same
+    // buffer twice.  This should guarantee that the buffer has been displayed
+    // on the screen and then been replaced, so an previous video frames are
+    // guaranteed NOT to be currently displayed.
+    for (int i = 0; i < numBufs + 1; i++) {
+        int fenceFd = -1;
+        err = native_window_dequeue_buffer_and_wait(nativeWindow.get(), &anb);
+        if (err != NO_ERROR) {
+            ALOGE("error pushing blank frames: dequeueBuffer failed: %s (%d)",
+                    strerror(-err), -err);
+            goto error;
+        }
+
+        sp<GraphicBuffer> buf(new GraphicBuffer(anb, false));
+
+        // Fill the buffer with the a 1x1 checkerboard pattern ;)
+        uint32_t* img = NULL;
+        err = buf->lock(GRALLOC_USAGE_SW_WRITE_OFTEN, (void**)(&img));
+        if (err != NO_ERROR) {
+            ALOGE("error pushing blank frames: lock failed: %s (%d)",
+                    strerror(-err), -err);
+            goto error;
+        }
+
+        *img = 0;
+
+        err = buf->unlock();
+        if (err != NO_ERROR) {
+            ALOGE("error pushing blank frames: unlock failed: %s (%d)",
+                    strerror(-err), -err);
+            goto error;
+        }
+
+        err = nativeWindow->queueBuffer(nativeWindow.get(),
+                buf->getNativeBuffer(), -1);
+        if (err != NO_ERROR) {
+            ALOGE("error pushing blank frames: queueBuffer failed: %s (%d)",
+                    strerror(-err), -err);
+            goto error;
+        }
+
+        anb = NULL;
+    }
+
+error:
+
+    if (err != NO_ERROR) {
+        // Clean up after an error.
+        if (anb != NULL) {
+            nativeWindow->cancelBuffer(nativeWindow.get(), anb, -1);
+        }
+
+        native_window_api_disconnect(nativeWindow.get(),
+                NATIVE_WINDOW_API_CPU);
+        native_window_api_connect(nativeWindow.get(),
+                NATIVE_WINDOW_API_MEDIA);
+
+        return err;
+    } else {
+        // Clean up after success.
+        err = native_window_api_disconnect(nativeWindow.get(),
+                NATIVE_WINDOW_API_CPU);
+        if (err != NO_ERROR) {
+            ALOGE("error pushing blank frames: api_disconnect failed: %s (%d)",
+                    strerror(-err), -err);
+            return err;
+        }
+
+        err = native_window_api_connect(nativeWindow.get(),
+                NATIVE_WINDOW_API_MEDIA);
+        if (err != NO_ERROR) {
+            ALOGE("error pushing blank frames: api_connect failed: %s (%d)",
+                    strerror(-err), -err);
+            return err;
+        }
+
+        return NO_ERROR;
     }
 }
 
