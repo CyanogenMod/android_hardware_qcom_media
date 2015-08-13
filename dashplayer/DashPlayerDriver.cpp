@@ -16,14 +16,17 @@
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "DashPlayerDriver"
-#include <utils/Log.h>
 
 #include "DashPlayerDriver.h"
-
 #include "DashPlayer.h"
-
-#include <media/stagefright/foundation/ADebug.h>
 #include <media/stagefright/foundation/ALooper.h>
+#include <cutils/properties.h>
+#include <utils/Log.h>
+
+#define DPD_MSG_ERROR(...) ALOGE(__VA_ARGS__)
+#define DPD_MSG_HIGH(...) if(mLogLevel >= 1){ALOGE(__VA_ARGS__);}
+#define DPD_MSG_MEDIUM(...) if(mLogLevel >= 2){ALOGE(__VA_ARGS__);}
+#define DPD_MSG_LOW(...) if(mLogLevel >= 3){ALOGE(__VA_ARGS__);}
 
 namespace android {
 
@@ -32,12 +35,11 @@ DashPlayerDriver::DashPlayerDriver()
       mSetSurfaceInProgress(false),
       mDurationUs(-1),
       mPositionUs(-1),
-      mNumFramesTotal(0),
-      mNumFramesDropped(0),
       mLooper(new ALooper),
       mState(UNINITIALIZED),
       mAtEOS(false),
-      mStartupSeekTimeUs(-1) {
+      mStartupSeekTimeUs(-1),
+      mLogLevel(0){
     mLooper->setName("DashPlayerDriver Looper");
 
     mLooper->start(
@@ -49,6 +51,14 @@ DashPlayerDriver::DashPlayerDriver()
     mLooper->registerHandler(mPlayer);
 
     mPlayer->setDriver(this);
+
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("persist.dash.debug.level", property_value, NULL);
+
+    if(*property_value) {
+        mLogLevel = atoi(property_value);
+    }
+
 }
 
 DashPlayerDriver::~DashPlayerDriver() {
@@ -106,7 +116,7 @@ status_t DashPlayerDriver::setVideoSurfaceTexture(
       return INVALID_OPERATION;
     }
 
-    ALOGE("DashPlayerDriver::setVideoSurfaceTexture call and block");
+    DPD_MSG_ERROR("DashPlayerDriver::setVideoSurfaceTexture call and block");
 
     mSetSurfaceInProgress = true;
 
@@ -125,7 +135,7 @@ status_t DashPlayerDriver::prepare() {
 }
 
 status_t DashPlayerDriver::prepareAsync() {
-    status_t err = UNKNOWN_ERROR;
+    status_t err = (status_t)UNKNOWN_ERROR;
     if (mPlayer != NULL) {
         err = mPlayer->prepareAsync();
     }
@@ -238,7 +248,7 @@ status_t DashPlayerDriver::getCurrentPosition(int *msec) {
     if (mPositionUs < 0) {
         *msec = 0;
     } else {
-        *msec = (mPositionUs + 500ll) / 1000;
+        *msec = (int)((mPositionUs + 500ll) / 1000);
     }
 
     return OK;
@@ -250,7 +260,7 @@ status_t DashPlayerDriver::getDuration(int *msec) {
     if (mDurationUs < 0) {
         *msec = 0;
     } else {
-        *msec = (mDurationUs + 500ll) / 1000;
+        *msec = (int)((mDurationUs + 500ll) / 1000);
     }
 
     return OK;
@@ -279,7 +289,7 @@ status_t DashPlayerDriver::setLooping(int /*loop*/) {
 }
 
 player_type DashPlayerDriver::playerType() {
-    return NU_PLAYER;
+    return DASH_PLAYER;
 }
 
 void DashPlayerDriver::setQCTimedTextListener(const bool val) {
@@ -290,27 +300,27 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
    status_t ret = INVALID_OPERATION;
 
    if (reply == NULL) {
-       ALOGE("reply is a NULL pointer");
+       DPD_MSG_ERROR("reply is a NULL pointer");
        return BAD_VALUE;
     }
 
     int32_t methodId;
     ret = request.readInt32(&methodId);
     if (ret != OK) {
-        ALOGE("Failed to retrieve the requested method to invoke");
+        DPD_MSG_ERROR("Failed to retrieve the requested method to invoke");
         return ret;
     }
 
     switch (methodId) {
        case KEY_DASH_GET_ADAPTION_PROPERTIES:
         {
-          ALOGV("calling KEY_DASH_GET_ADAPTION_PROPERTIES");
+          DPD_MSG_HIGH("calling KEY_DASH_GET_ADAPTION_PROPERTIES");
           ret = getParameter(methodId,reply);
           break;
         }
         case KEY_DASH_SET_ADAPTION_PROPERTIES:
         {
-          ALOGV("calling KEY_DASH_SET_ADAPTION_PROPERTIES");
+          DPD_MSG_HIGH("calling KEY_DASH_SET_ADAPTION_PROPERTIES");
           int32_t val = 0;
           ret = setParameter(methodId,request);
           val = (ret == OK)? 1:0;
@@ -320,33 +330,33 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
        }
        case KEY_DASH_MPD_QUERY:
        {
-         ALOGV("calling KEY_DASH_MPD_QUERY");
+         DPD_MSG_HIGH("calling KEY_DASH_MPD_QUERY");
          ret = getParameter(methodId,reply);
          break;
        }
        case KEY_DASH_QOE_EVENT:
-           ALOGV("calling KEY_DASH_QOE_EVENT");
+           DPD_MSG_HIGH("calling KEY_DASH_QOE_EVENT");
            ret = setParameter(methodId,request);
            break;
 
        case KEY_DASH_QOE_PERIODIC_EVENT:
-           ALOGV("calling KEY_DASH_QOE_PERIODIC_EVENT");
+           DPD_MSG_HIGH("calling KEY_DASH_QOE_PERIODIC_EVENT");
            ret = getParameter(methodId,reply);
            break;
 
        case KEY_DASH_REPOSITION_RANGE:
-           ALOGV("calling KEY_DASH_REPOSITION_RANGE");
+           DPD_MSG_HIGH("calling KEY_DASH_REPOSITION_RANGE");
            ret = getParameter(methodId,reply);
            break;
 
        case KEY_DASH_SEEK_EVENT:
        {
-          ALOGV("calling KEY_DASH_SEEK_EVENT seekTo()");
+          DPD_MSG_HIGH("calling KEY_DASH_SEEK_EVENT seekTo()");
           int32_t msec;
           ret = request.readInt32(&msec);
           if (ret != OK)
           {
-            ALOGE("Invoke: invalid seek value");
+            DPD_MSG_ERROR("Invoke: invalid seek value");
           }
           else
           {
@@ -360,7 +370,7 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
 
        case KEY_DASH_PAUSE_EVENT:
        {
-          ALOGV("calling KEY_DASH_PAUSE_EVENT pause()");
+          DPD_MSG_HIGH("calling KEY_DASH_PAUSE_EVENT pause()");
           ret = pause();
           int32_t val = (ret == OK)? 1:0;
           reply->setDataPosition(0);
@@ -370,7 +380,7 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
 
        case KEY_DASH_RESUME_EVENT:
        {
-          ALOGV("calling KEY_DASH_RESUME_EVENT pause()");
+          DPD_MSG_HIGH("calling KEY_DASH_RESUME_EVENT pause()");
           ret = start();
           int32_t val = (ret == OK)? 1:0;
           reply->setDataPosition(0);
@@ -380,13 +390,13 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
 
        case KEY_QCTIMEDTEXT_LISTENER:
        {
-         ALOGV("calling KEY_QCTIMEDTEXT_LISTENER");
+         DPD_MSG_HIGH("calling KEY_QCTIMEDTEXT_LISTENER");
 
          int32_t val = 0;
          ret = request.readInt32(&val);
          if (ret != OK)
          {
-           ALOGE("Invoke KEY_QCTIMEDTEXT_LISTENER: invalid val");
+           DPD_MSG_ERROR("Invoke KEY_QCTIMEDTEXT_LISTENER: invalid val");
          }
          else
          {
@@ -402,14 +412,14 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
        {
          // Ignore the invoke call for INVOKE_ID_GET_TRACK_INFO with success return code
          // to avoid mediaplayer java exception
-         ALOGV("Calling INVOKE_ID_GET_TRACK_INFO to invoke");
+         DPD_MSG_HIGH("Calling INVOKE_ID_GET_TRACK_INFO to invoke");
          ret = getParameter(methodId,reply);
          break;
        }
 
        default:
        {
-         ALOGE("Invoke:unHandled requested method%d",methodId);
+         DPD_MSG_ERROR("Invoke:unHandled requested method%d",methodId);
          ret = INVALID_OPERATION;
          break;
        }
@@ -423,8 +433,7 @@ void DashPlayerDriver::setAudioSink(const sp<AudioSink> &audioSink) {
 }
 
 status_t DashPlayerDriver::setParameter(int key, const Parcel &request) {
-
-    status_t err = UNKNOWN_ERROR;
+    status_t err = (status_t)UNKNOWN_ERROR;
     if (mPlayer != NULL)
     {
         err = mPlayer->setParameter(key, request);
@@ -434,7 +443,7 @@ status_t DashPlayerDriver::setParameter(int key, const Parcel &request) {
 
 status_t DashPlayerDriver::getParameter(int key, Parcel *reply) {
 
-    status_t err = UNKNOWN_ERROR;
+    status_t err = (status_t)UNKNOWN_ERROR;
     if (mPlayer != NULL)
     {
         err = mPlayer->getParameter(key, reply);
@@ -458,7 +467,7 @@ void DashPlayerDriver::notifySetSurfaceComplete() {
     Mutex::Autolock autoLock(mLock);
     CHECK(mSetSurfaceInProgress);
     mSetSurfaceInProgress = false;
-    ALOGE("DashPlayerDriver::notifySetSurfaceComplete done");
+    DPD_MSG_ERROR("DashPlayerDriver::notifySetSurfaceComplete done");
     mCondition.broadcast();
 }
 
@@ -474,13 +483,6 @@ void DashPlayerDriver::notifyPosition(int64_t positionUs) {
 
 void DashPlayerDriver::notifySeekComplete() {
     notifyListener(MEDIA_SEEK_COMPLETE);
-}
-
-void DashPlayerDriver::notifyFrameStats(
-        int64_t numFramesTotal, int64_t numFramesDropped) {
-    Mutex::Autolock autoLock(mLock);
-    mNumFramesTotal = numFramesTotal;
-    mNumFramesDropped = numFramesDropped;
 }
 
 status_t DashPlayerDriver::dump(int fd, const Vector<String16> &args) const {

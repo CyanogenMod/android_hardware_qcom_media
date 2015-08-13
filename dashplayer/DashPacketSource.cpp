@@ -18,16 +18,17 @@
  */
 
 #include "DashPacketSource.h"
-
-#include <media/stagefright/foundation/ABuffer.h>
-#include <media/stagefright/foundation/ADebug.h>
-#include <media/stagefright/foundation/AMessage.h>
-#include <media/stagefright/foundation/AString.h>
-#include <media/stagefright/foundation/hexdump.h>
+#include "DashPlayer.h"
 #include <media/stagefright/MediaBuffer.h>
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/MetaData.h>
 #include <utils/Vector.h>
+#include <cutils/properties.h>
+
+#define DPS_MSG_ERROR(...) ALOGE(__VA_ARGS__)
+#define DPS_MSG_HIGH(...) if(mLogLevel >= 1){ALOGE(__VA_ARGS__);}
+#define DPS_MSG_MEDIUM(...) if(mLogLevel >= 2){ALOGE(__VA_ARGS__);}
+#define DPS_MSG_LOW(...) if(mLogLevel >= 3){ALOGE(__VA_ARGS__);}
 
 namespace android {
 
@@ -35,9 +36,14 @@ DashPacketSource::DashPacketSource(const sp<MetaData> &meta)
     : mIsAudio(false),
       mFormat(meta),
       mEOSResult(OK),
-      mStreamPID(0),
-      mProgramPID(0),
-      mFirstPTS(0) {
+      mLogLevel(0) {
+
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+    property_get("persist.dash.debug.level", property_value, NULL);
+    if(*property_value) {
+      mLogLevel = atoi(property_value);
+    }
+
     const char *mime;
     CHECK(meta->findCString(kKeyMIMEType, &mime));
 
@@ -65,19 +71,6 @@ status_t DashPacketSource::start(MetaData * /*params*/) {
 }
 
 status_t DashPacketSource::stop() {
-    return OK;
-}
-
-void DashPacketSource::setStreamInfo(unsigned streamPID, unsigned programPID, uint64_t firstPTS){
-    mStreamPID = streamPID;
-    mProgramPID = programPID;
-    mFirstPTS = firstPTS;
-}
-
-status_t DashPacketSource::getStreamInfo(unsigned& streamPID, unsigned& programPID, uint64_t& firstPTS){
-    streamPID = mStreamPID;
-    programPID = mProgramPID;
-    firstPTS = mFirstPTS;
     return OK;
 }
 
@@ -167,16 +160,16 @@ void DashPacketSource::queueAccessUnit(const sp<ABuffer> &buffer) {
 
     int64_t timeUs;
     CHECK(buffer->meta()->findInt64("timeUs", &timeUs));
-    ALOGV("queueAccessUnit timeUs=%lld us (%.2f secs)", timeUs, timeUs / 1E6);
+    DPS_MSG_LOW("queueAccessUnit timeUs=%lld us (%.2f secs)", timeUs, (double)timeUs / 1E6);
 
     Mutex::Autolock autoLock(mLock);
     mBuffers.push_back(buffer);
-    ALOGV("@@@@:: DashPacketSource --> size is %d ",mBuffers.size() );
+    DPS_MSG_LOW("@@@@:: DashPacketSource --> size is %d ",mBuffers.size() );
     mCondition.signal();
 }
 
 int DashPacketSource::getQueueSize() {
-    return mBuffers.size();
+    return (int)mBuffers.size();
 }
 
 void DashPacketSource::queueDiscontinuity(
@@ -185,7 +178,7 @@ void DashPacketSource::queueDiscontinuity(
     Mutex::Autolock autoLock(mLock);
 
     if (type == ATSParser::DISCONTINUITY_TIME) {
-        ALOGI("Flushing all Access units for seek");
+        DPS_MSG_HIGH("Flushing all Access units for seek");
         mBuffers.clear();
         mEOSResult = OK;
         mCondition.signal();
@@ -280,7 +273,7 @@ status_t DashPacketSource::nextBufferIsSync(bool* isSyncFrame) {
 
     *isSyncFrame = false;
     int32_t value = 0;
-    if (buffer->meta()->findInt32("isSync", &value) && (value == 1)) {
+    if (buffer->meta()->findInt32("sync", &value) && (value == 1)) {
        *isSyncFrame = true;
     }
     return OK;

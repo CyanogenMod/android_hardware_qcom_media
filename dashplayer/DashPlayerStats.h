@@ -33,6 +33,8 @@
 
 #include <utils/RefBase.h>
 #include <utils/threads.h>
+#include <utils/Log.h>
+
 
 namespace android {
 

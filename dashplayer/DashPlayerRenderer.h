@@ -32,18 +32,6 @@ struct DashPlayer::Renderer : public AHandler {
             bool audio,
             const sp<ABuffer> &buffer,
             const sp<AMessage> &notifyConsumed);
-#ifdef QCOM_WFD_SINK
-    virtual void queueEOS(bool audio, status_t finalResult);
-
-    virtual void flush(bool audio);
-
-    virtual void signalTimeDiscontinuity();
-
-    virtual void signalAudioSinkChanged();
-
-    virtual void pause();
-    virtual void resume();
-#else
 
     void queueEOS(bool audio, status_t finalResult);
 
@@ -56,7 +44,7 @@ struct DashPlayer::Renderer : public AHandler {
     void pause();
     void resume();
     void notifySeekPosition(int64_t seekTime);
-#endif /* QCOM_WFD_SINK */
+
     enum {
         kWhatEOS                = 'eos ',
         kWhatFlushComplete      = 'fluC',
@@ -127,11 +115,9 @@ private:
 
     void onDrainVideoQueue();
     void postDrainVideoQueue();
-#ifdef QCOM_WFD_SINK
-    virtual void onQueueBuffer(const sp<AMessage> &msg);
-#else
+
     void onQueueBuffer(const sp<AMessage> &msg);
-#endif /* QCOM_WFD_SINK */
+
     void onQueueEOS(const sp<AMessage> &msg);
     void onFlush(const sp<AMessage> &msg);
     void onAudioSinkChanged();
@@ -149,15 +135,13 @@ private:
 
     // for qualcomm statistics profiling
   public:
-#ifdef QCOM_WFD_SINK
-    virtual void registerStats(sp<DashPlayerStats> stats);
-    virtual status_t setMediaPresence(bool audio, bool bValue);
-#else
+
     void registerStats(sp<DashPlayerStats> stats);
     status_t setMediaPresence(bool audio, bool bValue);
-#endif /* QCOM_WFD_SINK */
+
   private:
     sp<DashPlayerStats> mStats;
+    int mLogLevel;
 
     DISALLOW_EVIL_CONSTRUCTORS(Renderer);
 };

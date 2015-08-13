@@ -18,14 +18,16 @@
 
 #define DASH_PLAYER_H_
 
-#include <media/MediaPlayerInterface.h>
-#include <media/stagefright/foundation/AHandler.h>
-#include <media/stagefright/NativeWindowWrapper.h>
 #include "DashPlayerStats.h"
+#include <media/MediaPlayerInterface.h>
+#include <media/stagefright/NativeWindowWrapper.h>
+#include <media/stagefright/foundation/AHandler.h>
 #include <media/stagefright/foundation/ABuffer.h>
-#include <cutils/properties.h>
+#include <media/stagefright/foundation/ADebug.h>
+#include <media/stagefright/foundation/AMessage.h>
 
 #define KEY_QCTIMEDTEXT_LISTENER 6000
+
 //Keys for playback modes
 #define KEY_DASH_SEEK_EVENT 7001
 #define KEY_DASH_PAUSE_EVENT 7002
@@ -93,7 +95,6 @@ struct DashPlayer : public AHandler {
 
 public:
     struct DASHHTTPLiveSource;
-    struct WFDSource;
 
 protected:
     virtual ~DashPlayer();
@@ -149,7 +150,6 @@ private:
         kWhatSetDataSource              = '=DaS',
         kWhatSetVideoNativeWindow       = '=NaW',
         kWhatSetAudioSink               = '=AuS',
-        kWhatMoreDataQueued             = 'more',
         kWhatStart                      = 'strt',
         kWhatScanSources                = 'scan',
         kWhatVideoNotify                = 'vidN',
@@ -163,8 +163,6 @@ private:
         kWhatPrepareAsync               = 'pras',
         kWhatIsPrepareDone              = 'prdn',
         kWhatSourceNotify               = 'snfy',
-        kKeySmoothStreaming             = 'ESmS',  //bool (int32_t)
-        kKeyEnableDecodeOrder           = 'EDeO',  //bool (int32_t)
     };
 
     enum {
@@ -240,7 +238,6 @@ private:
     int64_t mSkipRenderingVideoUntilMediaTimeUs;
 
     int64_t mVideoLateByUs;
-    int64_t mNumFramesTotal, mNumFramesDropped;
 
     bool mPauseIndication;
 
@@ -250,19 +247,6 @@ private:
     sp<AMessage> mTextNotify;
     sp<AMessage> mSourceNotify;
     sp<AMessage> mQOENotify;
-
-    enum NuSourceType {
-        kHttpLiveSource = 0,
-        kHttpDashSource,
-        kRtspSource,
-        kStreamingSource,
-        kWfdSource,
-        kGenericSource,
-        kDefaultSource
-    };
-    NuSourceType mSourceType;
-
-    bool mIsSecureInputBuffers;
 
     int32_t mSRid;
 
@@ -283,7 +267,7 @@ private:
     void postScanSources();
 
     sp<Source> LoadCreateSource(const char * uri, const KeyedVector<String8,
-                                 String8> *headers, bool uidValid, uid_t uid, NuSourceType srcTyp);
+                                 String8> *headers, bool uidValid, uid_t uid);
 
     void postIsPrepareDone();
 
@@ -296,19 +280,11 @@ private:
 
     void processDeferredActions();
 
-    //void performSeek(int64_t seekTimeUs);
-    //void performDecoderFlush();
     void performDecoderShutdown(bool audio, bool video);
-    //void performReset();
     void performScanSources();
     void performSetSurface(const sp<NativeWindowWrapper> &wrapper);
 
-    struct QueueEntry {
-        sp<AMessage>  mMessageToBeConsumed;
-    };
-
-    List<QueueEntry> mDecoderMessageQueue;
-
+    int mLogLevel;
     bool mTimedTextCEAPresent;
 
     //Set and reset in cases of seek/resume-out-of-tsb to signal discontinuity in CEA timedtextsamples

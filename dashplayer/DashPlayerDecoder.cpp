@@ -16,19 +16,22 @@
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "DashPlayerDecoder"
-#include <utils/Log.h>
 
 #include "DashPlayerDecoder.h"
 #include "DashCodec.h"
 #include "ESDS.h"
 #include "QCMediaDefs.h"
 #include "QCMetaData.h"
-#include <media/stagefright/foundation/ABuffer.h>
-#include <media/stagefright/foundation/ADebug.h>
-#include <media/stagefright/foundation/AMessage.h>
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/MetaData.h>
 #include <media/stagefright/Utils.h>
+#include <cutils/properties.h>
+#include <utils/Log.h>
+
+#define DPD_MSG_ERROR(...) ALOGE(__VA_ARGS__)
+#define DPD_MSG_HIGH(...) if(mLogLevel >= 1){ALOGE(__VA_ARGS__);}
+#define DPD_MSG_MEDIUM(...) if(mLogLevel >= 2){ALOGE(__VA_ARGS__);}
+#define DPD_MSG_LOW(...) if(mLogLevel >= 3){ALOGE(__VA_ARGS__);}
 
 namespace android {
 
@@ -36,8 +39,16 @@ DashPlayer::Decoder::Decoder(
         const sp<AMessage> &notify,
         const sp<NativeWindowWrapper> &nativeWindow)
     : mNotify(notify),
-      mNativeWindow(nativeWindow) {
+      mNativeWindow(nativeWindow),
+      mLogLevel(0){
       mAudioSink = NULL;
+
+      char property_value[PROPERTY_VALUE_MAX] = {0};
+      property_get("persist.dash.debug.level", property_value, NULL);
+
+      if(*property_value) {
+          mLogLevel = atoi(property_value);
+      }
 }
 
 DashPlayer::Decoder::~Decoder() {
@@ -60,7 +71,7 @@ void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
     const char *mime;
     CHECK(meta->findCString(kKeyMIMEType, &mime));
 
-    ALOGV("@@@@:: Decoder::configure :: mime is --- %s ---",mime);
+    DPD_MSG_LOW("@@@@:: Decoder::configure :: mime is --- %s ---",mime);
 
     sp<AMessage> notifyMsg =
         new AMessage(kWhatCodecNotify, id());
@@ -82,7 +93,7 @@ void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
         CHECK(meta->findCString(kKeyMIMEType, &mime));
     }
 
-    ALOGV("@@@@:: DashCodec created ");
+    DPD_MSG_LOW("@@@@:: DashCodec created ");
     mCodec = new DashCodec;
 
     bool needDedicatedLooper = false;
@@ -90,7 +101,7 @@ void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
     if (isVideo){
         needDedicatedLooper = true;
         if(mCodecLooper == NULL) {
-            ALOGV("@@@@:: Creating Looper for %s",(isVideo?"Video":"Audio"));
+            DPD_MSG_LOW("@@@@:: Creating Looper for %s",(isVideo?"Video":"Audio"));
             mCodecLooper = new ALooper;
             mCodecLooper->setName("DashPlayerDecoder");
             mCodecLooper->start(false, false, ANDROID_PRIORITY_AUDIO);
@@ -143,21 +154,10 @@ sp<AMessage> DashPlayer::Decoder::makeFormat(const sp<MetaData> &meta) {
     CHECK_EQ(convertMetaDataToMessage(meta, &msg), (status_t)OK);
 
     int32_t value;
-    if (meta->findInt32(kKeySmoothStreaming, &value)) {
-        msg->setInt32("smooth-streaming", value);
-    }
-
     if (meta->findInt32(kKeyIsDRM, &value)) {
         msg->setInt32("secure-op", 1);
     }
 
-    if (meta->findInt32(kKeyRequiresSecureBuffers, &value)) {
-        msg->setInt32("requires-secure-buffers", 1);
-    }
-
-    if (meta->findInt32(kKeyEnableDecodeOrder, &value)) {
-        msg->setInt32("decodeOrderEnable", value);
-    }
     if (meta->findData(kKeyAacCodecSpecificData, &type, &data, &size)) {
           if (size > 0 && data != NULL) {
               sp<ABuffer> buffer = new ABuffer(size);
@@ -168,11 +168,11 @@ sp<AMessage> DashPlayer::Decoder::makeFormat(const sp<MetaData> &meta) {
                 msg->setBuffer("csd-0", buffer);
               }
               else {
-                ALOGE("kKeyAacCodecSpecificData ABuffer Allocation failed");
+                DPD_MSG_ERROR("kKeyAacCodecSpecificData ABuffer Allocation failed");
               }
           }
           else {
-              ALOGE("Not a valid data pointer or size == 0");
+              DPD_MSG_ERROR("Not a valid data pointer or size == 0");
           }
     }
 
@@ -194,12 +194,7 @@ void DashPlayer::Decoder::onFillThisBuffer(const sp<AMessage> &msg) {
     sp<AMessage> reply;
     CHECK(msg->findMessage("reply", &reply));
 
-#if 0
     sp<ABuffer> outBuffer;
-    CHECK(msg->findBuffer("buffer", &outBuffer));
-#else
-    sp<ABuffer> outBuffer;
-#endif
 
     if (mCSDIndex < mCSD.size()) {
         outBuffer = mCSD.editItemAt(mCSDIndex++);
