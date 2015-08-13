@@ -29,7 +29,6 @@
 #include "DashPlayerDriver.h"
 #include "DashPlayerRenderer.h"
 #include "DashPlayerSource.h"
-#include "DashCodec.h"
 #include "ATSParser.h"
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/MediaErrors.h>
@@ -347,7 +346,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
             if(mVideoDecoder == NULL && obj.get() == NULL)
             {
               sp<ANativeWindow> nativeWindow = mNativeWindow->getNativeWindow();
-              DashCodec::PushBlankBuffersToNativeWindow(nativeWindow);
+              //DashCodec::PushBlankBuffersToNativeWindow(nativeWindow);
             }
 
             mDeferredActions.push_back(new ShutdownDecoderAction(
@@ -478,20 +477,28 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
 
             getTrackName(track,mTrackName);
 
-            sp<AMessage> codecRequest;
-            CHECK(msg->findMessage("codec-request", &codecRequest));
-
             int32_t what;
-            CHECK(codecRequest->findInt32("what", &what));
 
-            if (what == DashCodec::kWhatFillThisBuffer) {
-                DP_MSG_LOW("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++ (%s) kWhatFillThisBuffer",mTrackName);
+            if(track == kText)
+            {
+              sp<AMessage> codecRequest;
+              CHECK(msg->findMessage("codec-request", &codecRequest));
+
+              CHECK(codecRequest->findInt32("what", &what));
+            }
+            else
+            {
+              CHECK(msg->findInt32("what", &what));
+            }
+
+            if (what == Decoder::kWhatFillThisBuffer) {
+                DP_MSG_LOW("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++ (%s) kWhatFillThisBuffer",mTrackName);
                 if ( (track == kText) && (mTextDecoder == NULL)) {
                     break; // no need to proceed further
                 }
 
                 status_t err = feedDecoderInputData(
-                        track, codecRequest);
+                        track, msg);
 
                 if (err == -EWOULDBLOCK) {
                     status_t nRet = mSource->feedMoreTSData();
@@ -500,23 +507,23 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     }
                     else if(nRet == (status_t)UNKNOWN_ERROR ||
                             nRet == (status_t)ERROR_DRM_CANNOT_HANDLE) {
-                      // reply back to dashcodec if there is an error
+                      // reply back to codec if there is an error
                       DP_MSG_ERROR("FeedMoreTSData error on track %d ",track);
                       if (track == kText) {
                         sendTextPacket(NULL, (status_t)UNKNOWN_ERROR);
                       } else {
                         sp<AMessage> reply;
-                        CHECK(codecRequest->findMessage("reply", &reply));
+                        CHECK(msg->findMessage("reply", &reply));
                         reply->setInt32("err", (status_t)UNKNOWN_ERROR);
                         reply->post();
                       }
                     }
                 }
 
-            } else if (what == DashCodec::kWhatEOS) {
-                DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatEOS");
+            } else if (what == Decoder::kWhatEOS) {
+                DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ kWhatEOS");
                 int32_t err;
-                CHECK(codecRequest->findInt32("err", &err));
+                CHECK(msg->findInt32("err", &err));
 
                 if (err == ERROR_END_OF_STREAM) {
                     DP_MSG_HIGH("got %s decoder EOS", mTrackName);
@@ -540,8 +547,8 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     DP_MSG_ERROR("FlushingState for %s. Decoder EOS not queued to renderer", mTrackName);
                   }
                 }
-            } else if (what == DashCodec::kWhatFlushCompleted) {
-                DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatFlushCompleted");
+            } else if (what == Decoder::kWhatFlushCompleted) {
+                DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ kWhatFlushCompleted");
 
                 Mutex::Autolock autoLock(mLock);
                 bool needShutdown = false;
@@ -572,14 +579,17 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 }
 
                 finishFlushIfPossible();
-            } else if (what == DashCodec::kWhatOutputFormatChanged) {
+            } else if (what == Decoder::kWhatOutputFormatChanged) {
+                sp<AMessage> format;
+                CHECK(msg->findMessage("format", &format));
+
                 if (track == kAudio) {
-                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: audio");
+                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: audio");
                     int32_t numChannels;
-                    CHECK(codecRequest->findInt32("channel-count", &numChannels));
+                    CHECK(format->findInt32("channel-count", &numChannels));
 
                     int32_t sampleRate;
-                    CHECK(codecRequest->findInt32("sample-rate", &sampleRate));
+                    CHECK(format->findInt32("sample-rate", &sampleRate));
 
                     DP_MSG_HIGH("Audio output format changed to %d Hz, %d channels",
                          sampleRate, numChannels);
@@ -601,7 +611,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     }
 
                     int32_t channelMask;
-                    if (!codecRequest->findInt32("channel-mask", &channelMask)) {
+                    if (!format->findInt32("channel-mask", &channelMask)) {
                         channelMask = CHANNEL_MASK_USE_CHANNEL_ORDER;
                     }
 
@@ -622,9 +632,9 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     }
                 } else if (track == kVideo) {
                     // video
-                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: video");
+                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: video");
                 }
-            } else if (what == DashCodec::kWhatShutdownCompleted) {
+            } else if (what == Decoder::kWhatShutdownCompleted) {
                 DP_MSG_ERROR("%s shutdown completed", mTrackName);
 
                 if((track == kAudio && mFlushingAudio == SHUT_DOWN)
@@ -634,7 +644,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 }
 
                 if (track == kAudio) {
-                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: audio");
+                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: audio");
                     if (mAudioDecoder != NULL) {
                         looper()->unregisterHandler(mAudioDecoder->id());
                     }
@@ -642,7 +652,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
 
                     mFlushingAudio = SHUT_DOWN;
                 } else if (track == kVideo) {
-                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: Video");
+                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ kWhatShutdownCompleted:: Video");
                     if (mVideoDecoder != NULL) {
                         looper()->unregisterHandler(mVideoDecoder->id());
                     }
@@ -652,7 +662,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 }
 
                 finishFlushIfPossible();
-            } else if (what == DashCodec::kWhatError) {
+            } else if (what == Decoder::kWhatError) {
                 DP_MSG_ERROR("Received error from %s decoder, aborting playback.",
                        mTrackName);
 
@@ -666,17 +676,17 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                   if((track == kAudio && !IsFlushingState(mFlushingAudio)) ||
                      (track == kVideo && !IsFlushingState(mFlushingVideo)))
                   {
-                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ DashCodec::kWhatError:: %s",track == kAudio ? "audio" : "video");
+                    DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ Codec::kWhatError:: %s",track == kAudio ? "audio" : "video");
                     mRenderer->queueEOS(track, (status_t)UNKNOWN_ERROR);
                 }
                   else{
                     DP_MSG_ERROR("EOS not queued for %d track", track);
                   }
                 }
-            } else if (what == DashCodec::kWhatDrainThisBuffer) {
+            } else if (what == Decoder::kWhatDrainThisBuffer) {
                 if(track == kAudio || track == kVideo) {
-                   DP_MSG_LOW("@@@@:: Dashplayer :: MESSAGE FROM DASHCODEC +++++++++++++++++++++++++++++++ DashCodec::kWhatRenderBuffer:: %s",track == kAudio ? "audio" : "video");
-                        renderBuffer(track, codecRequest);
+                   DP_MSG_LOW("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ Codec::kWhatRenderBuffer:: %s",track == kAudio ? "audio" : "video");
+                        renderBuffer(track, msg);
                     }
             } else {
                 DP_MSG_LOW("Unhandled codec notification %d.", what);
@@ -1338,7 +1348,6 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
         DP_MSG_HIGH("Creating Audio Decoder ");
         *decoder = new Decoder(notify);
         DP_MSG_LOW("@@@@:: setting Sink/Renderer pointer to decoder");
-        (*decoder)->setSink(mAudioSink, mRenderer);
          if (mRenderer != NULL) {
             mRenderer->setMediaPresence(true,true);
         }
@@ -1353,7 +1362,7 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
         mTextNotify = new AMessage(kWhatTextNotify ,id());
         *decoder = new Decoder(mTextNotify);
         sp<AMessage> codecRequest = new AMessage;
-        codecRequest->setInt32("what", DashCodec::kWhatFillThisBuffer);
+        codecRequest->setInt32("what", Decoder::kWhatFillThisBuffer);
         mTextNotify->setMessage("codec-request", codecRequest);
         DP_MSG_HIGH("Creating Dummy Text Decoder ");
         if (mSource != NULL) {
@@ -1361,7 +1370,10 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
         }
     }
 
-    looper()->registerHandler(*decoder);
+    if(track != kAudio && track != kVideo)
+    {
+      looper()->registerHandler(*decoder);
+    }
 
     char value[PROPERTY_VALUE_MAX] = {0};
     //Set flushing state to none
@@ -1373,6 +1385,7 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
     }
 
     if( track == kAudio || track == kVideo) {
+        (*decoder)->init();
         (*decoder)->configure(meta);
     }
 
@@ -1574,7 +1587,7 @@ void DashPlayer::renderBuffer(bool audio, const sp<AMessage> &msg) {
     }
 
     if(mRenderer != NULL) {
-
+#if 0
       if(!audio)
       {
         int32_t nFlags;
@@ -1718,7 +1731,7 @@ void DashPlayer::renderBuffer(bool audio, const sp<AMessage> &msg) {
                       mTimedTextCEASamplesDisc = false;
                     }
 
-                    //Indicate timedtext CEA present in stream. Used to signal EOS in DashCodec::kWhatEOS
+                    //Indicate timedtext CEA present in stream. Used to signal EOS in Codec::kWhatEOS
                     if(!mTimedTextCEAPresent)
                     {
                       mTimedTextCEAPresent = true;
@@ -1739,7 +1752,7 @@ void DashPlayer::renderBuffer(bool audio, const sp<AMessage> &msg) {
           }
         }
       }
-
+#endif
         mRenderer->queueBuffer(audio, buffer, reply);
     }
 }
