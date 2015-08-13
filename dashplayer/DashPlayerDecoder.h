@@ -29,7 +29,7 @@ struct MediaCodec;
 
 struct DashPlayer::Decoder : public AHandler {
     Decoder(const sp<AMessage> &notify,
-            const sp<NativeWindowWrapper> &nativeWindow = NULL);
+            const sp<Surface> &nativeWindow = NULL);
 
     void configure(const sp<MetaData> &meta);
     void init();
@@ -66,7 +66,7 @@ private:
     };
 
     sp<AMessage> mNotify;
-    sp<NativeWindowWrapper> mNativeWindow;
+    sp<Surface> mNativeWindow;
 
     sp<AMessage> mInputFormat;
     sp<AMessage> mOutputFormat;
