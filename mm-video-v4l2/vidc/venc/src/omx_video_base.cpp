@@ -214,6 +214,8 @@ omx_video::omx_video():
     psource_frame(NULL),
     pdest_frame(NULL),
     mEmptyEosBuffer(NULL),
+    m_pipe_in(-1),
+    m_pipe_out(-1),
     m_pInput_pmem(NULL),
     m_pOutput_pmem(NULL),
 #ifdef USE_ION
@@ -270,8 +272,8 @@ omx_video::omx_video():
 omx_video::~omx_video()
 {
     DEBUG_PRINT_HIGH("~omx_video(): Inside Destructor()");
-    if (m_pipe_in) close(m_pipe_in);
-    if (m_pipe_out) close(m_pipe_out);
+    if (m_pipe_in >= 0) close(m_pipe_in);
+    if (m_pipe_out >= 0) close(m_pipe_out);
     DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit");
     if (msg_thread_created)
         pthread_join(msg_thread_id,NULL);
@@ -2614,7 +2616,7 @@ OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
         OMX_U32              bytes)
 {
     unsigned index = 0;
-    if (!bufferHdr || bytes != sizeof(encoder_media_buffer_type)) {
+    if (!bufferHdr || bytes < sizeof(encoder_media_buffer_type)) {
         DEBUG_PRINT_ERROR("wrong params allocate_input_meta_buffer Hdr %p len %lu",
                 bufferHdr,bytes);
         return OMX_ErrorBadParameter;
@@ -3361,8 +3363,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
     }
 #endif
 #ifdef _ANDROID_ICS_
-    if (meta_mode_enable && !mUseProxyColorFormat) {
-        // Camera or Gralloc-source meta-buffers queued with pre-announced color-format
+    if (meta_mode_enable && !mUsesColorConversion) {
+        // Camera or Gralloc-source meta-buffers queued with encodeable color-format
         struct pmem Input_pmem_info;
         if (!media_buffer) {
             DEBUG_PRINT_ERROR("%s: invalid media_buffer",__FUNCTION__);
@@ -3394,19 +3396,6 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
         }
         if (dev_use_buf(&Input_pmem_info,PORT_INDEX_IN,0) != true) {
             DEBUG_PRINT_ERROR("ERROR: in dev_use_buf");
-            post_event ((unsigned int)buffer,0,OMX_COMPONENT_GENERATE_EBD);
-            return OMX_ErrorBadParameter;
-        }
-    } else if (meta_mode_enable && !mUsesColorConversion) {
-        // Graphic-source meta-buffers queued with opaque color-format
-        if (media_buffer->buffer_type == kMetadataBufferTypeGrallocSource) {
-            private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
-            fd = handle->fd;
-            DEBUG_PRINT_LOW("ETB (opaque-gralloc) fd = %d, size = %d",
-                    fd, handle->size);
-        } else {
-            DEBUG_PRINT_ERROR("ERROR: Invalid bufferType for buffer with Opaque"
-                    " color format");
             post_event ((unsigned int)buffer,0,OMX_COMPONENT_GENERATE_EBD);
             return OMX_ErrorBadParameter;
         }
@@ -4476,6 +4465,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
     unsigned nBufIndex = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
     encoder_media_buffer_type *media_buffer;
+    private_handle_t *handle = NULL;
     DEBUG_PRINT_LOW("ETBProxyOpaque: buffer[%p]", buffer);
 
     if (buffer == NULL) {
@@ -4489,13 +4479,19 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         return OMX_ErrorBadParameter;
     }
     media_buffer = (encoder_media_buffer_type *)buffer->pBuffer;
-    if (!media_buffer || !media_buffer->meta_handle) {
+    if ((!media_buffer || !media_buffer->meta_handle) &&
+            !(buffer->nFlags & OMX_BUFFERFLAG_EOS)) {
         DEBUG_PRINT_ERROR("Incorrect Buffer queued media buffer = %p",
             media_buffer);
         m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
         return OMX_ErrorBadParameter;
+    } else if (media_buffer) {
+        handle = (private_handle_t *)media_buffer->meta_handle;
     }
-    private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
+
+    if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
+        return empty_this_buffer_proxy(hComp, buffer);
+    }
 
     /*Enable following code once private handle color format is
       updated correctly*/
