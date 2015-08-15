@@ -59,10 +59,9 @@ class omx_venc: public omx_video
         //OMX strucutres
         OMX_U32 m_nVenc_format;
         class venc_dev *handle;
-#ifdef _MSM8974_
-        int dev_handle_extradata(void *, int);
+        int dev_handle_output_extradata(void *, int);
+        int dev_handle_input_extradata(void *, int, int);
         int dev_set_format(int);
-#endif
     private:
         OMX_U32 dev_stop(void);
         OMX_U32 dev_pause(void);

@@ -253,6 +253,7 @@ omx_video::omx_video():
     m_app_data(NULL),
     m_use_input_pmem(OMX_FALSE),
     m_use_output_pmem(OMX_FALSE),
+    m_sExtraData(0),
     m_input_msg_id(OMX_COMPONENT_GENERATE_ETB),
     m_inp_mem_ptr(NULL),
     m_out_mem_ptr(NULL),
@@ -1760,7 +1761,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderSliceInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
                         pParam->bEnabled =
-                            (OMX_BOOL)(m_sExtraData & VEN_EXTRADATA_SLICEINFO);
+                            (OMX_BOOL)(m_sExtraData & VENC_EXTRADATA_SLICEINFO);
                         DEBUG_PRINT_HIGH("Slice Info extradata %d", pParam->bEnabled);
                     } else {
                         DEBUG_PRINT_ERROR("get_parameter: slice information is "
@@ -1770,11 +1771,22 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 } else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataVideoEncoderMBInfo) {
                     if (pParam->nPortIndex == PORT_INDEX_OUT) {
                         pParam->bEnabled =
-                            (OMX_BOOL)(m_sExtraData & VEN_EXTRADATA_MBINFO);
+                            (OMX_BOOL)(m_sExtraData & VENC_EXTRADATA_MBINFO);
                         DEBUG_PRINT_HIGH("MB Info extradata %d", pParam->bEnabled);
                     } else {
                         DEBUG_PRINT_ERROR("get_parameter: MB information is "
                                 "valid for output port only");
+                        eRet = OMX_ErrorUnsupportedIndex;
+                    }
+                }
+                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataFrameDimension) {
+                    if (pParam->nPortIndex == PORT_INDEX_IN) {
+                        pParam->bEnabled =
+                            (OMX_BOOL)((m_sExtraData & VENC_EXTRADATA_FRAMEDIMENSION) ? 1 : 0);
+                        DEBUG_PRINT_HIGH("Frame dimension extradata %d", pParam->bEnabled);
+                    } else {
+                        DEBUG_PRINT_ERROR("get_parameter: frame dimension is "
+                                "valid for input port only");
                         eRet = OMX_ErrorUnsupportedIndex;
                     }
                 }
@@ -3641,7 +3653,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
                     Input_pmem_info.fd, Input_pmem_info.offset,
                     Input_pmem_info.size);
         }
-        if (dev_use_buf(&Input_pmem_info,PORT_INDEX_IN,0) != true) {
+        if (dev_use_buf(&Input_pmem_info,PORT_INDEX_IN,nBufIndex) != true) {
             DEBUG_PRINT_ERROR("ERROR: in dev_use_buf");
             post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_EBD);
             return OMX_ErrorBadParameter;
@@ -3673,6 +3685,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
                     return OMX_ErrorUndefined;
             }
     }
+    if (m_sExtraData && !dev_handle_input_extradata((void *)buffer, nBufIndex,fd))
+            DEBUG_PRINT_ERROR("Failed to parse input extradata\n");
 #ifdef _MSM8974_
     if (dev_empty_buf(buffer, pmem_data_buf,nBufIndex,fd) != true)
 #else
@@ -4190,15 +4204,13 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
                 dev_output_log_buffers((const char*)buffer->pBuffer, buffer->nFilledLen);
             }
         }
-#ifdef _MSM8974_
         if (buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
-            if (!dev_handle_extradata((void *)buffer, index))
-                DEBUG_PRINT_ERROR("Failed to parse extradata");
+            if (!dev_handle_output_extradata((void *)buffer, index))
+                DEBUG_PRINT_ERROR("Failed to parse output extradata");
 
             dev_extradata_log_buffers((char *)(((unsigned long)buffer->pBuffer + buffer->nOffset +
                         buffer->nFilledLen + 3) & (~3)));
         }
-#endif
         m_pCallbacks.FillBufferDone (hComp,m_app_data,buffer);
     } else {
         return OMX_ErrorBadParameter;
@@ -4775,13 +4787,27 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
 
     /*Enable following code once private handle color format is
       updated correctly*/
-    mUsesColorConversion = true;
 
     if (buffer->nFilledLen > 0 && handle) {
         if (c2d_opened && handle->format != c2d_conv.get_src_format()) {
             c2d_conv.close();
             c2d_opened = false;
         }
+        mUsesColorConversion = true;
+        switch(handle->format) {
+            case HAL_PIXEL_FORMAT_NV12_ENCODEABLE:
+            case QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m:
+            case QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed:
+            case HAL_PIXEL_FORMAT_RGBA_8888:
+            case QOMX_COLOR_Format32bitRGBA8888Compressed:
+                mUsesColorConversion = false;
+                break;
+            default:
+                mUsesColorConversion = false;
+                m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
+                return OMX_ErrorBadParameter;
+            }
+
         if (!c2d_opened) {
             if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888 &&
                 is_rgba_conv_needed()) {
@@ -4800,17 +4826,6 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
                 if (!dev_set_format(handle->format))
                     DEBUG_PRINT_ERROR("cannot set color format for RGBA8888");
 #endif
-            } else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE ||
-                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m ||
-                    handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed ||
-                    handle->format == HAL_PIXEL_FORMAT_RGBA_8888 ||
-                    handle->format == QOMX_COLOR_Format32bitRGBA8888Compressed) {
-                mUsesColorConversion = false;
-            } else {
-                DEBUG_PRINT_ERROR("Incorrect color format %x", handle->format);
-                mUsesColorConversion = false;
-                m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
-                return OMX_ErrorBadParameter;
             }
         }
     }
