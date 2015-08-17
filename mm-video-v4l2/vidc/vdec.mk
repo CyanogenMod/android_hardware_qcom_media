@@ -42,6 +42,7 @@ libOmxVdec-def += -DMAX_RES_1080P_EBI
 libOmxVdec-def += -DPROCESS_EXTRADATA_IN_OUTPUT_PORT
 libOmxVdec-def += -D_MSM8974_
 libOmxVdec-def += -D_HEVC_USE_ADSP_HEAP_
+libOmxVdec-def += -DDISABLE_INPUT_BUFFER_CACHE
 endif
 ifeq ($(TARGET_BOARD_PLATFORM),msm7627a)
 libOmxVdec-def += -DMAX_RES_720P
