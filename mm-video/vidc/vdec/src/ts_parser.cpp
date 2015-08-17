@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -26,8 +26,10 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #include "ts_parser.h"
+#include "vidc_debug.h"
 
-#define DEBUG ALOGE
+#define DEBUG DEBUG_PRINT_ERROR
+
 void omx_time_stamp_reorder::set_timestamp_reorder_mode(bool mode)
 {
 	reorder_ts = mode;
@@ -36,7 +38,7 @@ void omx_time_stamp_reorder::set_timestamp_reorder_mode(bool mode)
 
 void omx_time_stamp_reorder::enable_debug_print(bool flag)
 {
-        print_debug = flag;
+	print_debug = flag;
 }
 
 omx_time_stamp_reorder::~omx_time_stamp_reorder()
@@ -147,7 +149,7 @@ bool omx_time_stamp_reorder::insert_timestamp(OMX_BUFFERHEADERTYPE *header)
 	}
 	if ((header->nFlags & OMX_BUFFERFLAG_EOS) && !header->nFilledLen)
 	{
-		DEBUG("\n EOS with zero length recieved");
+		DEBUG("\n EOS with zero length received");
 		if (!add_new_list()) {
 			handle_error();
 			return false;
