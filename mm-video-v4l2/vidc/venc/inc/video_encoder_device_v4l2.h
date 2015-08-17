@@ -408,6 +408,7 @@ class venc_dev
         bool venc_set_session_priority(OMX_U32 priority);
         bool venc_set_operatingrate(OMX_U32 rate);
         bool venc_set_max_hierp(OMX_U32 hierp_layers);
+        bool venc_set_lowlatency_mode(OMX_BOOL enable);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();

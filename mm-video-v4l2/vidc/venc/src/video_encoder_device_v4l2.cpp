@@ -1941,6 +1941,16 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexConfigVideoVencLowLatencyMode:
+            {
+                QOMX_ENABLETYPE *pParam = (QOMX_ENABLETYPE*)paramData;
+
+                if (!venc_set_lowlatency_mode(pParam->bEnable)) {
+                     DEBUG_PRINT_ERROR("Setting low latency mode failed");
+                     return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -3665,7 +3675,8 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
 
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%lu", control.id, intra_period.num_bframes);
 
-    if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
+    if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264 ||
+        m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
         control.id = V4L2_CID_MPEG_VIDC_VIDEO_IDR_PERIOD;
         control.value = 1;
 
@@ -4659,6 +4670,28 @@ bool venc_dev::venc_set_max_hierp(OMX_U32 hierp_layers)
                 hierp_layers);
         return false;
     }
+}
+
+bool venc_dev::venc_set_lowlatency_mode(OMX_BOOL enable)
+{
+    int rc = 0;
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_MODE;
+    if (enable)
+        control.value = V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_ENABLE;
+    else
+        control.value = V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_DISABLE;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set lowlatency control");
+        return false;
+    }
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
+
+    return true;
 }
 
 bool venc_dev::venc_set_vui_timing_info(OMX_BOOL enable)
