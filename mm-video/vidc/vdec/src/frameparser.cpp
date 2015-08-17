@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2011, 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -43,20 +43,13 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdint.h>
 
 #include "frameparser.h"
+#include "vidc_debug.h"
 
 #ifdef _ANDROID_
     extern "C"{
         #include<utils/Log.h>
     }
 #endif//_ANDROID_
-
-#undef DEBUG_PRINT_LOW
-#undef DEBUG_PRINT_HIGH
-#undef DEBUG_PRINT_ERROR
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_HIGH ALOGV
-#define DEBUG_PRINT_ERROR ALOGE
 
 static unsigned char H264_mask_code[4] = {0xFF,0xFF,0xFF,0xFF};
 static unsigned char H264_start_code[4] = {0x00,0x00,0x00,0x01};
@@ -73,26 +66,27 @@ static unsigned char VC1_AP_mask_code[4] = {0xFF,0xFF,0xFF,0xFC};
 static unsigned char MPEG2_start_code[4] = {0x00, 0x00, 0x01, 0x00};
 static unsigned char MPEG2_mask_code[4] = {0xFF, 0xFF, 0xFF, 0xFF};
 
-frame_parse::frame_parse():parse_state(A0),
-                           last_byte_h263(0),
-                           state_nal(NAL_LENGTH_ACC),
-                           nal_length(0),
-                           accum_length(0),
-                           bytes_tobeparsed(0),
-                           mutils(NULL),
-                           start_code(NULL),
-                           mask_code(NULL),
-                           header_found(false),
-                           skip_frame_boundary(false)
+frame_parse::frame_parse():mutils(NULL),
+    parse_state(A0),
+    start_code(NULL),
+    mask_code(NULL),
+    last_byte_h263(0),
+    last_byte(0),
+    header_found(false),
+    skip_frame_boundary(false),
+    state_nal(NAL_LENGTH_ACC),
+    nal_length(0),
+    accum_length(0),
+    bytes_tobeparsed(0)
 {
 }
 
 frame_parse::~frame_parse ()
 {
-    if (mutils)
-        delete mutils;
+	if (mutils)
+		delete mutils;
 
-    mutils = NULL;
+	mutils = NULL;
 }
 
 int frame_parse::init_start_codes (codec_type codec_type_parse)
@@ -121,11 +115,11 @@ int frame_parse::init_start_codes (codec_type codec_type_parse)
 		start_code = VC1_AP_start_code;
 		mask_code = VC1_AP_mask_code;
 		break;
-        case CODEC_TYPE_MPEG2:
-                start_code = MPEG2_start_code;
-                mask_code = MPEG2_mask_code;
-                break;
-        }
+	case CODEC_TYPE_MPEG2:
+		start_code = MPEG2_start_code;
+		mask_code = MPEG2_mask_code;
+		break;
+	}
 	return 1;
 }
 
@@ -329,6 +323,7 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
              break;
          case A4:
          case A0:
+         case A5:
              break;
         }
         dest_len = dest->nAllocLen - (dest->nFilledLen + dest->nOffset);
@@ -446,6 +441,9 @@ int frame_parse::parse_sc_frame ( OMX_BUFFERHEADERTYPE *source,
           {
               parse_state = A0;
           }
+          break;
+      case A4:
+      case A5:
           break;
       }
 
