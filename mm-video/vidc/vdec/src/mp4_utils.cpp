@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2012, 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -26,21 +26,13 @@ OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
 #include "mp4_utils.h"
-#include "omx_vdec.h"
+#include "vidc_debug.h"
 # include <stdio.h>
 #ifdef _ANDROID_
     extern "C"{
         #include<utils/Log.h>
     }
 #endif//_ANDROID_
-
-#undef DEBUG_PRINT_LOW
-#undef DEBUG_PRINT_HIGH
-#undef DEBUG_PRINT_ERROR
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_HIGH ALOGV
-#define DEBUG_PRINT_ERROR ALOGE
 
 MP4_Utils::MP4_Utils()
 {

@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2013, 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -49,6 +49,14 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 static ptrdiff_t x;
 
 #ifdef _ANDROID_
+#ifdef MAX_RES_720P
+#define LOG_TAG "OMX-VDEC-720P"
+#elif MAX_RES_1080P
+#define LOG_TAG "OMX-VDEC-1080P"
+#else
+#define LOG_TAG "OMX-VDEC"
+#endif
+
 #ifdef USE_ION
 #include <linux/msm_ion.h>
 #endif
@@ -60,18 +68,6 @@ extern "C"{
 #include <linux/videodev2.h>
 #include <poll.h>
 #define TIMEOUT 5000
-#ifdef MAX_RES_720P
-#define LOG_TAG "OMX-VDEC-720P"
-#elif MAX_RES_1080P
-#define LOG_TAG "OMX-VDEC-1080P"
-#else
-#define LOG_TAG "OMX-VDEC"
-#endif
-
-#else //_ANDROID_
-#define DEBUG_PRINT_LOW printf
-#define DEBUG_PRINT_HIGH printf
-#define DEBUG_PRINT_ERROR printf
 #endif // _ANDROID_
 
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
@@ -102,6 +98,7 @@ extern "C"{
 #include "extra_data_handler.h"
 #include "ts_parser.h"
 #include "vidc_color_converter.h"
+#include "vidc_debug.h"
 extern "C" {
   OMX_API void * get_omx_component_factory_fn(void);
 }
@@ -585,7 +582,7 @@ private:
     OMX_ERRORTYPE set_buffer_req(vdec_allocatorproperty *buffer_prop);
     OMX_ERRORTYPE start_port_reconfig();
     OMX_ERRORTYPE update_picture_resolution();
-	void stream_off();
+    void stream_off();
     void adjust_timestamp(OMX_S64 &act_timestamp);
     void set_frame_rate(OMX_S64 act_timestamp);
     void handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr);
@@ -696,7 +693,7 @@ private:
     OMX_PTR m_app_data;
     // Application callbacks
     OMX_CALLBACKTYPE m_cb;
-    OMX_PRIORITYMGMTTYPE m_priority_mgm ;
+    OMX_PRIORITYMGMTTYPE m_priority_mgm;
     OMX_PARAM_BUFFERSUPPLIERTYPE m_buffer_supplier;
     // fill this buffer queue
     omx_cmd_queue         m_ftb_q;
@@ -835,7 +832,7 @@ private:
         int offset;
     };
     meta_buffer meta_buff;
-	extra_data_handler extra_data_handle;
+    extra_data_handler extra_data_handle;
 #ifdef _ANDROID_
     DivXDrmDecrypt* iDivXDrmDecrypt;
 #endif //_ANDROID_
