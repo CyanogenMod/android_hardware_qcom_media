@@ -1195,6 +1195,75 @@ bool venc_dev::venc_get_seq_hdr(void *buffer,
     return true;
 }
 
+bool venc_dev::venc_enable_low_latency()
+{
+    int rc = 0;
+    const int slice_size = 4096;
+    struct v4l2_control control;
+    OMX_BOOL lowlatency = OMX_FALSE;
+
+    /*
+     * 2D-2S mode does not support more than 4096 MBs per slice on msm8956
+     * in case of CAVLC and hence enable multi slicing if MBs per frame
+     * is grearter than 4096
+     */
+    if (!low_latency.enable && entropy.longentropysel == V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC) {
+
+        if (multislice.mslice_mode == V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE &&
+            ((m_sVenc_cfg.input_width / 16 * m_sVenc_cfg.input_height / 16) > slice_size)) {
+
+            DEBUG_PRINT_HIGH("%s: enable multislice mode with slice_size = %d", __func__, slice_size);
+            control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
+            control.value =  V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_MB;
+            rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+            if (rc) {
+                DEBUG_PRINT_ERROR("%s: Failed to enable multislice mode, rc %d", __func__, rc);
+                return false;
+            }
+            control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_MB;
+            control.value = slice_size;
+            rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+            if (rc) {
+                DEBUG_PRINT_ERROR("%s: Failed to set slice_slice, rc %d", __func__, rc);
+                return false;
+            }
+            multislice.mslice_mode = V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_MB;
+            multislice.mslice_size = slice_size;
+        }
+    }
+
+    /*
+     * By default venus will be in 2D-2S mode and 2D-2S mode has
+     * venus hardware limitations on msm8956 for below use cases
+     * i. CBR rate control
+     * ii. Byte based slice mode
+     * iii. Multi slice mode with slice size greater than 4096
+     * Hence enable 1D-1S to venus using LOW_LATENCY mode in above cases
+     */
+    if ((rate_ctrl.rcmode == V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_CBR_VFR) ||
+        (rate_ctrl.rcmode == V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_CBR_CFR)) {
+        DEBUG_PRINT_HIGH("%s: enable low latency mode in CBR rate conrol", __func__);
+        lowlatency = OMX_TRUE;
+    } else if (multislice.mslice_mode == V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_BYTES) {
+        DEBUG_PRINT_HIGH("%s: enable low latency mode in byte based slice mode", __func__);
+        lowlatency = OMX_TRUE;
+    } else if ((multislice.mslice_mode == V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_MB) &&
+        (multislice.mslice_size > slice_size)) {
+        DEBUG_PRINT_HIGH("%s: enable low latency mode because slice size > %d in MB based slice mode",
+            __func__, slice_size);
+        lowlatency = OMX_TRUE;
+    } else {
+        lowlatency = OMX_FALSE;
+    }
+
+    if (!venc_set_lowlatency_mode(lowlatency)) {
+        DEBUG_PRINT_ERROR("%s: setting low latency mode failed", __func__);
+        return false;
+    }
+
+    return true;
+}
+
 bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         OMX_U32 *actual_buff_count,
         OMX_U32 *buff_size,
@@ -1204,6 +1273,12 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
     struct v4l2_requestbuffers bufreq;
     unsigned int buf_size = 0, extra_data_size = 0, client_extra_data_size = 0;
     int ret;
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+
+    if (property_get("media.msm8956hw", property_value, "0") &&
+            atoi(property_value)) {
+        venc_enable_low_latency();
+    }
 
     DEBUG_PRINT_HIGH("venc_get_buf_req: port %d, min count %d, actual count %d, size %d",
         port, *min_buff_count, *actual_buff_count, *buff_size);
@@ -2408,6 +2483,8 @@ void venc_dev::venc_config_print()
     DEBUG_PRINT_HIGH("ENC_CONFIG: VUI timing info enabled: %d", vui_timing_info.enabled);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: Peak bitrate: %d", peak_bitrate.peakbitrate);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: low latency enabled: %d", low_latency.enable);
 }
 
 bool venc_dev::venc_reconfig_reqbufs()
@@ -3873,7 +3950,6 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
 {
     bool status = true;
     struct venc_headerextension hec_cfg;
-    struct venc_multiclicecfg multislice_cfg;
     int rc;
     OMX_U32 resynchMarkerSpacingBytes = 0;
     struct v4l2_control control;
@@ -3907,25 +3983,19 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
     }
     if (( m_sVenc_cfg.codectype != V4L2_PIX_FMT_H263) &&
             (error_resilience->nResynchMarkerSpacing)) {
-        multislice_cfg.mslice_mode = VEN_MSLICE_CNT_BYTE;
-        multislice_cfg.mslice_size = resynchMarkerSpacingBytes;
         control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
         control.value = V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_BYTES;
     } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H263 &&
             error_resilience->bEnableDataPartitioning) {
-        multislice_cfg.mslice_mode = VEN_MSLICE_GOB;
-        multislice_cfg.mslice_size = resynchMarkerSpacingBytes;
         control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
         control.value = V4L2_MPEG_VIDEO_MULTI_SLICE_GOB;
     } else {
-        multislice_cfg.mslice_mode = VEN_MSLICE_OFF;
-        multislice_cfg.mslice_size = 0;
         control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE;
         control.value =  V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE;
     }
 
     DEBUG_PRINT_LOW("%s(): mode = %lu, size = %lu", __func__,
-            multislice_cfg.mslice_mode, multislice_cfg.mslice_size);
+            control.id, control.value);
     DEBUG_PRINT_ERROR("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
 
@@ -3937,20 +4007,21 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
     DEBUG_PRINT_ERROR("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
     multislice.mslice_mode=control.value;
 
-    control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_BYTES;
-    control.value = resynchMarkerSpacingBytes;
-    DEBUG_PRINT_ERROR("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
-
-    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
-
-    if (rc) {
-       DEBUG_PRINT_ERROR("Failed to set MAX MB control");
-        return false;
+    if (control.value == V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_BYTES) {
+        control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_BYTES;
+        control.value = resynchMarkerSpacingBytes;
+        DEBUG_PRINT_ERROR("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
+        rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+        if (rc) {
+            DEBUG_PRINT_ERROR("Failed to set MAX MB control");
+            return false;
+        }
+        DEBUG_PRINT_ERROR("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
+        multislice.mslice_size = control.value;
+    } else {
+        multislice.mslice_size = 0;
     }
 
-    DEBUG_PRINT_ERROR("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
-    multislice.mslice_mode = multislice_cfg.mslice_mode;
-    multislice.mslice_size = multislice_cfg.mslice_size;
     return status;
 }
 
@@ -4652,6 +4723,18 @@ bool venc_dev::venc_set_lowlatency_mode(OMX_BOOL enable)
     int rc = 0;
     struct v4l2_control control;
 
+    /*
+     * avoid enabling again if low latency mode enabled already
+     * avoid disabling again if low latency mode desabled already
+     */
+    if (enable) {
+        if (low_latency.enable)
+            return true;
+    } else {
+        if (!low_latency.enable)
+            return true;
+    }
+
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_MODE;
     if (enable)
         control.value = V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_ENABLE;
@@ -4665,6 +4748,11 @@ bool venc_dev::venc_set_lowlatency_mode(OMX_BOOL enable)
         return false;
     }
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
+
+    if (control.value == V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_ENABLE)
+        low_latency.enable = 1;
+    else
+        low_latency.enable = 0;
 
     return true;
 }
