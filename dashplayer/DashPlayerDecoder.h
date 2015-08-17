@@ -38,7 +38,6 @@ struct DashPlayer::Decoder : public AHandler {
     void signalResume();
     void initiateShutdown();
 
-    bool supportsSeamlessFormatChange(const sp<AMessage> &to) const;
 
     enum {
         kWhatFillThisBuffer      = 'flTB',
@@ -97,7 +96,6 @@ private:
     int32_t mBufferGeneration;
     AString mComponentName;
 
-    bool supportsSeamlessAudioFormatChange(const sp<AMessage> &targetFormat) const;
 
     DISALLOW_EVIL_CONSTRUCTORS(Decoder);
 };

@@ -261,22 +261,5 @@ status_t DashPacketSource::nextBufferTime(int64_t *timeUs) {
     return OK;
 }
 
-status_t DashPacketSource::nextBufferIsSync(bool* isSyncFrame) {
-    Mutex::Autolock autoLock(mLock);
-    CHECK(isSyncFrame != NULL);
-
-    if (mBuffers.empty()) {
-        return mEOSResult != OK ? mEOSResult : -EWOULDBLOCK;
-    }
-
-    sp<ABuffer> buffer = *mBuffers.begin();
-
-    *isSyncFrame = false;
-    int32_t value = 0;
-    if (buffer->meta()->findInt32("sync", &value) && (value == 1)) {
-       *isSyncFrame = true;
-    }
-    return OK;
-}
 
 }  // namespace android

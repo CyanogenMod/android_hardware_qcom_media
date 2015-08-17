@@ -26,10 +26,6 @@ LOCAL_SHARED_LIBRARIES :=       \
     libutils                    \
     libui                       \
 
-LOCAL_STATIC_LIBRARIES :=       \
-    libstagefright_nuplayer     \
-    libstagefright_rtsp         \
-
 LOCAL_C_INCLUDES := \
         $(TOP)/frameworks/av/media/libstagefright/timedtext           \
 	$(TOP)/frameworks/native/include/media/hardware               \
@@ -50,9 +46,6 @@ ifeq ($(PLATFORM_SDK_VERSION), 18)
   LOCAL_CFLAGS += -DANDROID_JB_MR2
 endif
 
-ifneq (,$(filter msm8974 msm8226 apq8084 mpq8092 msm8610 msm_bronze msm8916_32,$(TARGET_BOARD_PLATFORM)))
-  LOCAL_CFLAGS += -DBFAMILY_TARGET
-endif
 
 LOCAL_MODULE:= libdashplayer
 

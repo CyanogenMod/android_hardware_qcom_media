@@ -76,8 +76,7 @@ status_t DashPlayerDriver::setUID(uid_t uid) {
     return OK;
 }
 
-status_t DashPlayerDriver::setDataSource(
-         const sp<IMediaHTTPService> & /*httpService*/,
+status_t DashPlayerDriver::setDataSource(const sp<IMediaHTTPService> &/*httpService*/,
         const char *url, const KeyedVector<String8, String8> *headers) {
     CHECK_EQ((int)mState, (int)UNINITIALIZED);
 
@@ -334,6 +333,7 @@ status_t DashPlayerDriver::invoke(const Parcel &request, Parcel *reply) {
          ret = getParameter(methodId,reply);
          break;
        }
+
        case KEY_DASH_QOE_EVENT:
            DPD_MSG_HIGH("calling KEY_DASH_QOE_EVENT");
            ret = setParameter(methodId,request);
