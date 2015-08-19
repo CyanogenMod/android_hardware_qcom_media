@@ -92,6 +92,7 @@ extern "C" {
 #endif
 #include "OMX_Core.h"
 #include "OMX_QCOMExtns.h"
+#include "OMX_IndexExt.h"
 #include "qc_omx_component.h"
 #include <linux/msm_vidc_dec.h>
 #include <media/msm_vidc.h>
@@ -503,6 +504,7 @@ class omx_vdec: public qc_omx_component
             OMX_COMPONENT_GENERATE_INFO_PORT_RECONFIG = 0x15,
             OMX_COMPONENT_GENERATE_INFO_FIELD_DROPPED = 0x16,
             OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING = 0x17,
+            OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD = 0x18,
         };
 
         enum vc1_profile_type {
@@ -722,7 +724,7 @@ class omx_vdec: public qc_omx_component
 
         inline void omx_report_error () {
             if (m_cb.EventHandler && !m_error_propogated) {
-                ALOGE("\nERROR: Sending OMX_EventError to Client");
+                DEBUG_PRINT_ERROR("ERROR: Sending OMX_ErrorHardware to Client");
                 m_error_propogated = true;
                 m_cb.EventHandler(&m_cmp,m_app_data,
                         OMX_EventError,OMX_ErrorHardware,0,NULL);
@@ -734,10 +736,21 @@ class omx_vdec: public qc_omx_component
                 DEBUG_PRINT_ERROR(
                         "\nERROR: Sending OMX_ErrorUnsupportedSetting to Client");
                 m_error_propogated = true;
-                m_cb.EventHandler(&m_cmp,m_app_data,
-                        OMX_EventError,OMX_ErrorUnsupportedSetting,0,NULL);
+                m_cb.EventHandler(&m_cmp, m_app_data,
+                        OMX_EventError, OMX_ErrorUnsupportedSetting, 0, NULL);
             }
         }
+
+        inline void omx_report_hw_overload () {
+            if (m_cb.EventHandler && !m_error_propogated) {
+                DEBUG_PRINT_ERROR(
+                        "ERROR: Sending OMX_ErrorInsufficientResources to Client");
+                m_error_propogated = true;
+                m_cb.EventHandler(&m_cmp, m_app_data,
+                        OMX_EventError, OMX_ErrorInsufficientResources, 0, NULL);
+            }
+        }
+
 #ifdef _ANDROID_
         OMX_ERRORTYPE createDivxDrmContext();
 #endif //_ANDROID_

@@ -543,7 +543,8 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     }
                     if (handle->venc_set_param(paramData,OMX_IndexParamPortDefinition) != true) {
                         DEBUG_PRINT_ERROR("ERROR: venc_set_param input failed");
-                        return OMX_ErrorUnsupportedSetting;
+                        return handle->hw_overload ? OMX_ErrorInsufficientResources :
+                                OMX_ErrorUnsupportedSetting;
                     }
 
                     DEBUG_PRINT_LOW("i/p previous actual cnt = %lu", m_sInPortDef.nBufferCountActual);
@@ -1654,6 +1655,23 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 memcpy(&m_sConfigDeinterlace, pParam, sizeof(m_sConfigDeinterlace));
                 break;
             }
+        case OMX_IndexConfigPriority:
+            {
+                if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)OMX_IndexConfigPriority)) {
+                    DEBUG_PRINT_ERROR("Failed to set OMX_IndexConfigPriority");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
+        case OMX_IndexConfigOperatingRate:
+            {
+                if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)OMX_IndexConfigOperatingRate)) {
+                    DEBUG_PRINT_ERROR("Failed to set OMX_IndexConfigOperatingRate");
+                    return handle->hw_overload ? OMX_ErrorInsufficientResources :
+                            OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             break;
@@ -1723,9 +1741,12 @@ OMX_ERRORTYPE  omx_venc::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     m_heap_ptr.clear();
 #endif // _ANDROID_
     DEBUG_PRINT_HIGH("Calling venc_close()");
-    handle->venc_close();
-    DEBUG_PRINT_HIGH("Deleting HANDLE[%p]", handle);
-    delete (handle);
+    if (handle) {
+        handle->venc_close();
+        DEBUG_PRINT_HIGH("Deleting HANDLE[%p]", handle);
+        delete (handle);
+        handle = NULL;
+    }
     DEBUG_PRINT_HIGH("OMX_Venc:Component Deinit");
     return OMX_ErrorNone;
 }
@@ -1778,7 +1799,10 @@ bool omx_venc::dev_free_buf(void *buf_addr,unsigned port)
 
 bool omx_venc::dev_empty_buf(void *buffer, void *pmem_data_buf,unsigned index,unsigned fd)
 {
-    return  handle->venc_empty_buf(buffer, pmem_data_buf,index,fd);
+    bool bret = false;
+    bret = handle->venc_empty_buf(buffer, pmem_data_buf,index,fd);
+    hw_overload = handle->hw_overload;
+    return bret;
 }
 
 bool omx_venc::dev_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,unsigned fd)
@@ -1915,7 +1939,11 @@ int omx_venc::async_message_process (void *context, void* message)
     if (m_sVenc_msg->statuscode != VEN_S_SUCCESS) {
         DEBUG_PRINT_ERROR("ERROR: async_msg_process() - Error statuscode = %lu",
                 m_sVenc_msg->statuscode);
-        omx->omx_report_error();
+        if(m_sVenc_msg->msgcode == VEN_MSG_HW_OVERLOAD) {
+            omx->omx_report_hw_overload();
+        } else {
+            omx->omx_report_error();
+        }
     }
 
     DEBUG_PRINT_LOW("omx_venc::async_message_process- msgcode = %lu",
