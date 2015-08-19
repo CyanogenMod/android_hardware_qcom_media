@@ -704,6 +704,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     dynamic_buf_mode = false;
     out_dynamic_list = NULL;
     is_down_scalar_enabled = false;
+    m_reconfig_height = 0;
+    m_reconfig_width = 0;
     m_smoothstreaming_mode = false;
     m_smoothstreaming_width = 0;
     m_smoothstreaming_height = 0;
@@ -1456,8 +1458,8 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         }
                                         if (pThis->m_cb.EventHandler) {
                                             uint32_t frame_data[2];
-                                            frame_data[0] = pThis->drv_ctx.video_resolution.frame_height;
-                                            frame_data[1] = pThis->drv_ctx.video_resolution.frame_width;
+                                            frame_data[0] = pThis->m_reconfig_height;
+                                            frame_data[1] = pThis->m_reconfig_width;
                                             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                                     OMX_EventPortSettingsChanged, p1, p2, (void*) frame_data );
                                         } else {
@@ -7799,8 +7801,8 @@ int omx_vdec::async_message_process (void *context, void* message)
             break;
         case VDEC_MSG_EVT_CONFIG_CHANGED:
             DEBUG_PRINT_HIGH("Port settings changed");
-            omx->drv_ctx.video_resolution.frame_width = vdec_msg->msgdata.output_frame.picsize.frame_width;
-            omx->drv_ctx.video_resolution.frame_height = vdec_msg->msgdata.output_frame.picsize.frame_height;
+            omx->m_reconfig_width = vdec_msg->msgdata.output_frame.picsize.frame_width;
+            omx->m_reconfig_height = vdec_msg->msgdata.output_frame.picsize.frame_height;
             omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexParamPortDefinition,
                     OMX_COMPONENT_GENERATE_PORT_RECONFIG);
             break;
