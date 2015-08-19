@@ -283,6 +283,7 @@ private:
     void performDecoderShutdown(bool audio, bool video);
     void performScanSources();
     void performSetSurface(const sp<Surface> &wrapper);
+    void writeTrackInfo(Parcel* reply, const sp<AMessage> format) const;
     status_t PushBlankBuffersToNativeWindow(sp<ANativeWindow> nativeWindow);
 
     int mLogLevel;
