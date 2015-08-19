@@ -34,11 +34,11 @@
 #define KEY_DASH_PAUSE_EVENT 7002
 #define KEY_DASH_RESUME_EVENT 7003
 
-// used for Get Adaptionset property (NonJB)and for both Get and set for JB
 #define KEY_DASH_ADAPTION_PROPERTIES 8002
 #define KEY_DASH_MPD_QUERY           8003
 #define KEY_DASH_QOE_EVENT           8004
 #define KEY_DASH_QOE_PERIODIC_EVENT  8008
+//Keys to get and set mpd properties xml string
 #define KEY_DASH_GET_ADAPTION_PROPERTIES 8010
 #define KEY_DASH_SET_ADAPTION_PROPERTIES 8011
 
@@ -293,6 +293,10 @@ private:
 
     //Tells if app registered for a QCTimedText Listener. If not registered do not send text samples above.
     bool mQCTimedTextListenerPresent;
+
+    int32_t mCurrentWidth;
+    int32_t mCurrentHeight;
+    int32_t mColorFormat;
 
     DISALLOW_EVIL_CONSTRUCTORS(DashPlayer);
 };

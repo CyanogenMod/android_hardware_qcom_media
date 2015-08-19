@@ -62,7 +62,6 @@ struct DashPacketSource : public MediaSource {
     void updateFormat(const sp<MetaData> &meta);
     int getQueueSize();
 
-    status_t nextBufferIsSync(bool* isSyncFrame);
 
 protected:
     virtual ~DashPacketSource();

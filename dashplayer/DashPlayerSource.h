@@ -86,13 +86,11 @@ struct DashPlayer::Source : public RefBase {
     virtual status_t pause() {
         ALOGE("Pause called on Wrong DataSource.. Please check !!!");
         return INVALID_OPERATION;
-        //CHECK(false);
     }
 
     virtual status_t resume() {
         ALOGE("Resume called on Wrong DataSource.. Please check !!!");
         return INVALID_OPERATION;
-        //CHECK(false);
     }
 
     virtual status_t getRepositionRange(uint64_t* /*pMin*/, uint64_t* /*pMax*/, uint64_t* /*pMaxDepth*/) {

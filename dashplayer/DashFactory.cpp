@@ -48,7 +48,6 @@ class DashPlayerFactory : public MediaPlayerFactory::IFactory {
     }
 
     virtual sp<MediaPlayerBase> createPlayer(pid_t /*pid*/) {
-        ALOGV("DashPlayerFactory::createPlayer");
         return new DashPlayerDriver;
     }
 };

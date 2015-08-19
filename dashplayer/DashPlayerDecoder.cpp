@@ -104,14 +104,17 @@ void DashPlayer::Decoder::onConfigure(const sp<AMessage> &format) {
 
     mCodec->getName(&mComponentName);
 
+    status_t err;
     if (mNativeWindow != NULL) {
         // disconnect from surface as MediaCodec will reconnect
-        CHECK_EQ((int)NO_ERROR,
-                native_window_api_disconnect(
-                        mNativeWindow.get(),
-                        NATIVE_WINDOW_API_MEDIA));
+        err = native_window_api_disconnect(
+                mNativeWindow.get(), NATIVE_WINDOW_API_MEDIA);
+        // We treat this as a warning, as this is a preparatory step.
+        // Codec will try to connect to the surface, which is where
+        // any error signaling will occur.
+        ALOGW_IF(err != OK, "failed to disconnect from surface: %d", err);
     }
-    status_t err = mCodec->configure(
+    err = mCodec->configure(
             format, mNativeWindow, NULL /* crypto */, 0 /* flags */);
     if (err != OK) {
         DPD_MSG_ERROR("Failed to configure %s decoder (err=%d)", mComponentName.c_str(), err);
@@ -182,6 +185,7 @@ void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
  */
 void DashPlayer::Decoder::handleError(int32_t err)
 {
+    DPD_MSG_HIGH("[%s] handleError : %d", mComponentName.c_str() , err);
     sp<AMessage> notify = mNotify->dup();
     notify->setInt32("what", kWhatError);
     notify->setInt32("err", err);
@@ -266,6 +270,8 @@ void android::DashPlayer::Decoder::onInputBufferFilled(const sp<AMessage> &msg) 
         if (buffer->meta()->findInt32("eos", &eos) && eos) {
             flags |= MediaCodec::BUFFER_FLAG_EOS;
         }
+
+        DPD_MSG_MEDIUM("Input buffer:[%s]: %p", mComponentName.c_str(),  buffer->data());
 
         // copy into codec buffer
         if (buffer != codecBuffer) {
@@ -367,6 +373,13 @@ bool DashPlayer::Decoder::handleAnOutputBuffer() {
     CHECK_LT(bufferIx, mOutputBuffers.size());
     sp<ABuffer> buffer = mOutputBuffers[bufferIx];
     buffer->setRange(offset, size);
+
+    sp<RefBase> obj;
+    sp<GraphicBuffer> graphicBuffer;
+    if (buffer->meta()->findObject("graphic-buffer", &obj)) {
+        graphicBuffer = static_cast<GraphicBuffer*>(obj.get());
+    }
+
     buffer->meta()->clear();
     buffer->meta()->setInt64("timeUs", timeUs);
     if (flags & MediaCodec::BUFFER_FLAG_EOS) {
@@ -380,6 +393,12 @@ bool DashPlayer::Decoder::handleAnOutputBuffer() {
 
     sp<AMessage> notify = mNotify->dup();
     notify->setInt32("what", kWhatDrainThisBuffer);
+    /*
+    if(flags & MediaCodec::BUFFER_FLAG_EXTRADATA) {
+       buffer->meta()->setInt32("extradata", 1);
+    }
+    */
+    buffer->meta()->setObject("graphic-buffer", graphicBuffer);
     notify->setBuffer("buffer", buffer);
     notify->setMessage("reply", reply);
     notify->post();
@@ -424,7 +443,7 @@ void DashPlayer::Decoder::onFlush() {
     if (err != OK) {
         DPD_MSG_ERROR("failed to flush %s (err=%d)", mComponentName.c_str(), err);
         handleError(err);
-        return;
+        // finish with posting kWhatFlushCompleted.
     }
 
     sp<AMessage> notify = mNotify->dup();
@@ -446,10 +465,13 @@ void DashPlayer::Decoder::onShutdown() {
 
         if (mNativeWindow != NULL) {
             // reconnect to surface as MediaCodec disconnected from it
-            CHECK_EQ((int)NO_ERROR,
+            status_t error =
                     native_window_api_connect(
                             mNativeWindow.get(),
-                            NATIVE_WINDOW_API_MEDIA));
+                            NATIVE_WINDOW_API_MEDIA);
+            ALOGW_IF(error != NO_ERROR,
+                    "[%s] failed to connect to native window, error=%d",
+                    mComponentName.c_str(), error);
         }
         mComponentName = "decoder";
     }
@@ -457,7 +479,7 @@ void DashPlayer::Decoder::onShutdown() {
     if (err != OK) {
         DPD_MSG_ERROR("failed to release %s (err=%d)", mComponentName.c_str(), err);
         handleError(err);
-        return;
+        // finish with posting kWhatShutdownCompleted.
     }
 
     sp<AMessage> notify = mNotify->dup();
@@ -542,75 +564,6 @@ void DashPlayer::Decoder::initiateShutdown() {
     (new AMessage(kWhatShutdown, this))->post();
 }
 
-bool DashPlayer::Decoder::supportsSeamlessAudioFormatChange(const sp<AMessage> &targetFormat) const {
-    if (targetFormat == NULL) {
-        return true;
-    }
-
-    AString mime;
-    if (!targetFormat->findString("mime", &mime)) {
-        return false;
-    }
-
-    if (!strcasecmp(mime.c_str(), MEDIA_MIMETYPE_AUDIO_AAC)) {
-        // field-by-field comparison
-        const char * keys[] = { "channel-count", "sample-rate", "is-adts" };
-        for (unsigned int i = 0; i < sizeof(keys) / sizeof(keys[0]); i++) {
-            int32_t oldVal, newVal;
-            if (!mOutputFormat->findInt32(keys[i], &oldVal) ||
-                    !targetFormat->findInt32(keys[i], &newVal) ||
-                    oldVal != newVal) {
-                return false;
-            }
-        }
-
-        sp<ABuffer> oldBuf, newBuf;
-        if (mOutputFormat->findBuffer("csd-0", &oldBuf) &&
-                targetFormat->findBuffer("csd-0", &newBuf)) {
-            if (oldBuf->size() != newBuf->size()) {
-                return false;
-            }
-            return !memcmp(oldBuf->data(), newBuf->data(), oldBuf->size());
-        }
-    }
-    return false;
-}
-
-/** @brief: compare old and new input format
- *         to check if seemless switch is supported.
- *  @return: true if seemless switch is supported
- *
- */
-bool DashPlayer::Decoder::supportsSeamlessFormatChange(const sp<AMessage> &targetFormat) const {
-    if (mOutputFormat == NULL) {
-        return false;
-}
-
-    if (targetFormat == NULL) {
-        return true;
-    }
-
-    AString oldMime, newMime;
-    if (!mOutputFormat->findString("mime", &oldMime)
-            || !targetFormat->findString("mime", &newMime)
-            || !(oldMime == newMime)) {
-        return false;
-    }
-
-    bool audio = !strncasecmp(oldMime.c_str(), "audio/", strlen("audio/"));
-    bool seamless;
-    if (audio) {
-        seamless = supportsSeamlessAudioFormatChange(targetFormat);
-    } else {
-        int32_t isAdaptive;
-        seamless = (mCodec != NULL &&
-                mInputFormat->findInt32("adaptive-playback", &isAdaptive) &&
-                isAdaptive);
-    }
-
-    DPD_MSG_HIGH("%s seamless support for %s", seamless ? "yes" : "no", oldMime.c_str());
-    return seamless;
-}
 
 /** @brief: convert input metadat into AMessage format
  *
@@ -626,6 +579,7 @@ sp<AMessage> DashPlayer::Decoder::makeFormat(const sp<MetaData> &meta) {
     if(!strncasecmp(mime, "video/", strlen("video/"))){
        msg->setInt32("max-height", MAX_HEIGHT);
        msg->setInt32("max-width", MAX_WIDTH);
+       msg->setInt32("enable-extradata-user", 1);
 
        // Below property requie to set to prefer adaptive playback
        // msg->setInt32("prefer-adaptive-playback", 1);
