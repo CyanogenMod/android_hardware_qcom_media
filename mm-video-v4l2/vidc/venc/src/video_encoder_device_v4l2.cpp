@@ -3073,7 +3073,8 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         return false;
                     }
 
-                    if (!streaming[OUTPUT_PORT]) {
+                    if (!streaming[OUTPUT_PORT] && !(m_sVenc_cfg.inputformat == V4L2_PIX_FMT_RGB32 ||
+                        m_sVenc_cfg.inputformat == V4L2_PIX_FMT_RGBA8888_UBWC)) {
                         int usage = 0;
                         struct v4l2_format fmt;
                         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
