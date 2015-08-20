@@ -257,6 +257,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     is_searchrange_set = false;
     enable_mv_narrow_searchrange = false;
     supported_rc_modes = RC_ALL;
+    memset(&vqzip_sei_info, 0, sizeof(vqzip_sei_info));
     memset(&ltrinfo, 0, sizeof(ltrinfo));
     memset(&fd_list, 0, sizeof(fd_list));
     sess_priority.priority = 1;
@@ -587,8 +588,15 @@ bool venc_dev::handle_input_extradata(void *buffer, int index, int fd)
         return false;
     }
 
-    height = ALIGN(m_sVenc_cfg.input_height, 16);
-    width = ALIGN(m_sVenc_cfg.input_width, 16);
+    /*
+     * At this point encoder component doesn't know where the extradata is
+     * located in YUV buffer. For all practical usecases, decoder appends
+     * extradata after nFilledLen which is calcualted as 32 aligned height
+     * and width * 3 / 2. Hence start looking for extradata from this point.
+     */
+
+    height = ALIGN(m_sVenc_cfg.input_height, 32);
+    width = ALIGN(m_sVenc_cfg.input_width, 32);
 
     index = venc_get_index_from_fd(fd);
 
@@ -623,6 +631,7 @@ bool venc_dev::handle_input_extradata(void *buffer, int index, int fd)
                 DEBUG_PRINT_LOW("Height = %d Width = %d Actual Height = %d Actual Width = %d",
                     framedimension_format->nDecWidth, framedimension_format->nDecHeight,
                     framedimension_format->nActualWidth, framedimension_format->nActualHeight);
+                data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
                 break;
             }
             case OMX_ExtraDataQP:
@@ -637,6 +646,8 @@ bool venc_dev::handle_input_extradata(void *buffer, int index, int fd)
                 qp_payload = (OMX_QCOM_EXTRADATA_QP *)p_extra->data;
                 payload = (struct  msm_vidc_frame_qp_payload *)(data->data);
                 payload->frame_qp = qp_payload->nQP;
+                DEBUG_PRINT_LOW("FRame QP = %d", payload->frame_qp);
+                data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
                 break;
             }
             default:
@@ -644,8 +655,6 @@ bool venc_dev::handle_input_extradata(void *buffer, int index, int fd)
             }
             consumed_len += p_extra->nSize;
             p_extra = (OMX_OTHER_EXTRADATATYPE *)((char *)p_extra + p_extra->nSize);
-            data->nSize = (sizeof(OMX_OTHER_EXTRADATATYPE) + sizeof(struct msm_vidc_frame_qp_payload) + 3)&(~3);
-            data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
         }
 
         data->nSize = (sizeof(OMX_OTHER_EXTRADATATYPE) +  sizeof(struct VQZipStats) + 3)&(~3);
