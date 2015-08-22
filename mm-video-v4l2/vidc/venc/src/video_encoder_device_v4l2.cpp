@@ -1558,6 +1558,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
 
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
                             DEBUG_PRINT_ERROR("VIDIOC_S_FMT OUTPUT_MPLANE Failed");
+                            hw_overload = errno == EBUSY;
                             return false;
                         }
 
@@ -1593,6 +1594,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
 
                     if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
                         DEBUG_PRINT_ERROR("VIDIOC_S_FMT CAPTURE_MPLANE Failed");
+                        hw_overload = errno == EBUSY;
                         return false;
                     }
 
