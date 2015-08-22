@@ -1955,7 +1955,14 @@ status_t DashPlayer::getParameter(int key, Parcel *reply)
     }
     else if(key == INVOKE_ID_GET_TRACK_INFO)
     {
-      err = mSource->getTrackInfo(reply);
+      size_t numInbandTracks = (mSource != NULL) ? mSource->getTrackCount() : 0;
+      DP_MSG_HIGH("DashPlayer::getParameter #InbandTracks %d ", numInbandTracks);
+      // total track count
+      reply->writeInt32(numInbandTracks);
+      // write inband tracks
+      for (size_t i = 0; i < numInbandTracks; ++i) {
+          writeTrackInfo(reply, mSource->getTrackInfo(i));
+      }
     }
     else
     {
@@ -2021,6 +2028,23 @@ status_t DashPlayer::getParameter(int key, Parcel *reply)
     }
     return err;
 }
+
+void DashPlayer::writeTrackInfo(
+  Parcel* reply, const sp<AMessage> format) const
+{
+  int32_t trackType;
+  AString lang;
+  AString mime;
+  CHECK(format->findInt32("type", &trackType));
+  CHECK(format->findString("language", &lang));
+  CHECK(format->findString("mime", &mime));
+  reply->writeInt32(2);
+  reply->writeInt32(trackType);
+  reply->writeString16(String16(mime.c_str()));
+  reply->writeString16(String16(lang.c_str()));
+}
+
+
 
 status_t DashPlayer::setParameter(int key, const Parcel &request)
 {
