@@ -966,6 +966,9 @@ class omx_vdec: public qc_omx_component
         bool dynamic_buf_mode;
         struct dynamic_buf_list *out_dynamic_list;
         bool m_smoothstreaming_mode;
+
+        bool m_input_pass_buffer_fd;
+
         OMX_U32 m_smoothstreaming_width;
         OMX_U32 m_smoothstreaming_height;
         OMX_ERRORTYPE enable_smoothstreaming();

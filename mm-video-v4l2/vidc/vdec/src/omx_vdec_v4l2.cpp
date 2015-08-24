@@ -746,6 +746,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_smoothstreaming_height = 0;
     is_q6_platform = false;
     m_perf_control.send_hint_to_mpctl(true);
+    m_input_pass_buffer_fd = false;
 }
 
 static const int event_type[] = {
@@ -3959,9 +3960,9 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             /* Input port */
                             if (portFmt->nPortIndex == 0) {
                                 if (portFmt->nFramePackingFormat == OMX_QCOM_FramePacking_Arbitrary) {
-                                    if (secure_mode) {
+                                    if (secure_mode || m_input_pass_buffer_fd) {
                                         arbitrary_bytes = false;
-                                        DEBUG_PRINT_ERROR("setparameter: cannot set to arbitary bytes mode in secure session");
+                                        DEBUG_PRINT_ERROR("setparameter: cannot set to arbitary bytes mode");
                                         eRet = OMX_ErrorUnsupportedSetting;
                                     } else {
                                         arbitrary_bytes = true;
@@ -4494,6 +4495,21 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
             break;
         }
+
+        case OMX_QTIIndexParamPassInputBufferFd:
+        {
+            if (arbitrary_bytes) {
+                DEBUG_PRINT_ERROR("OMX_QTIIndexParamPassInputBufferFd not supported in arbitrary buffer mode");
+                eRet = OMX_ErrorUnsupportedSetting;
+                break;
+            }
+
+            m_input_pass_buffer_fd = ((QOMX_ENABLETYPE *)paramData)->bEnable;
+            if (m_input_pass_buffer_fd)
+                DEBUG_PRINT_LOW("Enable passing input buffer FD");
+            break;
+        }
+
         default: {
                  DEBUG_PRINT_ERROR("Setparameter: unknown param %d", paramIndex);
                  eRet = OMX_ErrorUnsupportedIndex;
@@ -4974,6 +4990,9 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexFlexibleYUVDescription;
     }
 #endif
+    else if (extn_equals(paramName, "OMX.QCOM.index.param.video.PassInputBufferFd")) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamPassInputBufferFd;
+    }
     else {
         DEBUG_PRINT_ERROR("Extension: %s not implemented", paramName);
         return OMX_ErrorNotImplemented;
@@ -5876,10 +5895,11 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
         input = *bufferHdr;
         BITMASK_SET(&m_inp_bm_count,i);
         DEBUG_PRINT_LOW("Buffer address %p of pmem",*bufferHdr);
-        if (secure_mode)
-            input->pBuffer = (OMX_U8 *)(intptr_t)drv_ctx.ptr_inputbuffer [i].pmem_fd;
+        if (secure_mode || m_input_pass_buffer_fd)
+            input->pBuffer = (OMX_U8 *)(intptr_t)drv_ctx.ptr_inputbuffer[i].pmem_fd;
         else
-            input->pBuffer           = (OMX_U8 *)buf_addr;
+            input->pBuffer = (OMX_U8 *)buf_addr;
+
         input->nSize             = sizeof(OMX_BUFFERHEADERTYPE);
         input->nVersion.nVersion = OMX_SPEC_VERSION;
         input->nAllocLen         = drv_ctx.ip_buf.buffer_size;
@@ -6533,6 +6553,11 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     if (buffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
         codec_config_flag = true;
         DEBUG_PRINT_LOW("%s: codec_config buffer", __FUNCTION__);
+    }
+
+    /* The client should not set this when codec is in arbitrary bytes mode */
+    if (m_input_pass_buffer_fd) {
+        buffer->pBuffer = (OMX_U8*)drv_ctx.ptr_inputbuffer[nBufferIndex].bufferaddr;
     }
 
     DEBUG_PRINT_LOW("[ETB] BHdr(%p) pBuf(%p) nTS(%lld) nFL(%u)",
@@ -7774,7 +7799,9 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
         OMX_BUFFERHEADERTYPE* buffer)
 {
 
-    if (buffer == NULL || ((buffer - m_inp_mem_ptr) > (int)drv_ctx.ip_buf.actualcount)) {
+    int nBufferIndex = buffer - m_inp_mem_ptr;
+
+    if (buffer == NULL || (nBufferIndex > (int)drv_ctx.ip_buf.actualcount)) {
         DEBUG_PRINT_ERROR("empty_buffer_done: ERROR bufhdr = %p", buffer);
         return OMX_ErrorBadParameter;
     }
@@ -7803,6 +7830,12 @@ OMX_ERRORTYPE omx_vdec::empty_buffer_done(OMX_HANDLETYPE         hComp,
         if (input_use_buffer == true) {
             buffer = &m_inp_heap_ptr[buffer-m_inp_mem_ptr];
         }
+
+        /* Restore the FD that we over-wrote in ETB */
+        if (m_input_pass_buffer_fd) {
+            buffer->pBuffer = (OMX_U8*)(uintptr_t)drv_ctx.ptr_inputbuffer[nBufferIndex].pmem_fd;
+        }
+
         m_cb.EmptyBufferDone(hComp ,m_app_data, buffer);
     }
     return OMX_ErrorNone;
