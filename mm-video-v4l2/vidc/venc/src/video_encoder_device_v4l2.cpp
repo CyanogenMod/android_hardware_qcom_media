@@ -2464,6 +2464,16 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_IndexConfigPriority:
+            {
+                OMX_PARAM_U32TYPE *priority = (OMX_PARAM_U32TYPE *)configData;
+                DEBUG_PRINT_LOW("Set_config: priority %d",priority->nU32);
+                if (!venc_set_priority(priority->nU32)) {
+                    DEBUG_PRINT_ERROR("Failed to set priority");
+                    return false;
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -5487,6 +5497,23 @@ bool venc_dev::venc_set_vpx_error_resilience(OMX_BOOL enable)
     }
     vpx_err_resilience.enable = 1;
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
+    return true;
+}
+
+bool venc_dev::venc_set_priority(OMX_U32 priority) {
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY;
+    if (priority == 0)
+        control.value = V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_ENABLE;
+    else
+        control.value = V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_DISABLE;
+
+    if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_ERROR("Failed to set V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_%s",
+                priority == 0 ? "ENABLE" : "DISABLE");
+        return false;
+    }
     return true;
 }
 

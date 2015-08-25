@@ -448,6 +448,7 @@ class venc_dev
         bool venc_set_recttype(OMX_CONFIG_RECTTYPE* rectData);
         bool venc_set_qp(OMX_U32 nQp);
         bool venc_set_aspectratio(void *nSar);
+        bool venc_set_priority(OMX_U32 priority);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
