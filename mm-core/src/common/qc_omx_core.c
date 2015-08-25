@@ -434,7 +434,6 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
             !strcmp(core[cmp_index].so_lib_name,"libOmxApeDec.so")) &&
             (number_of_adec_nt_session+1 > MAX_AUDIO_NT_SESSION)) {
             DEBUG_PRINT_ERROR("Rejecting new session..Reached max limit for DSP audio decoder session");
-            core[cmp_index].inst[hnd_index]= *handle = NULL;
             pthread_mutex_unlock(&lock_core);
             return OMX_ErrorInsufficientResources;
         }
