@@ -1165,8 +1165,11 @@ void dump_buffer(unsigned char* buffer, int stride, int scanlines, int width, in
     if (pFile == NULL)
     {
         pFile = fopen("/data/input.yuv", "wb");
+        if(!pFile) {
+            DEBUG_PRINT_ERROR("%s : Error opening file!",__func__);
+        }
     }
-    if (buffer)
+    if (buffer && pFile)
     {
         char *temp = (char *)buffer;
         int i;
