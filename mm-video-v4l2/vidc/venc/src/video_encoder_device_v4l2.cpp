@@ -2180,8 +2180,8 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
             }
         case OMX_QcomIndexParamBatchSize:
             {
-                QOMX_VIDEO_BATCHSIZETYPE* pParam =
-                    (QOMX_VIDEO_BATCHSIZETYPE*)paramData;
+                OMX_PARAM_U32TYPE* pParam =
+                    (OMX_PARAM_U32TYPE*)paramData;
 
                 if (pParam->nPortIndex == PORT_INDEX_OUT) {
                     DEBUG_PRINT_ERROR("For the moment, client-driven batching not supported"
@@ -2189,8 +2189,8 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                     return OMX_ErrorUnsupportedSetting;
                 }
 
-                if (!venc_set_batch_size(pParam->nBatchSize)) {
-                     DEBUG_PRINT_ERROR("Failed setting batch size as %d", pParam->nBatchSize);
+                if (!venc_set_batch_size(pParam->nU32)) {
+                     DEBUG_PRINT_ERROR("Failed setting batch size as %d", pParam->nU32);
                      return OMX_ErrorUnsupportedSetting;
                 }
                 break;
