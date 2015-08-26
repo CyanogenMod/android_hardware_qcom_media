@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009, 2011, The Linux Foundation. All rights reserved.
+Copyright (c) 2009, 2011, 2015 The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -75,6 +75,12 @@ extern "C"
 #define OMX_QCOM_INDEX_PARAM_DAK_SEQ           "OMX.Qualcomm.index.audio.dak_seq"
 #define OMX_QCOM_INDEX_CONFIG_DUALMONO         "OMX.Qualcomm.index.audio.dualmono"
 #define OMX_QCOM_INDEX_CONFIG_AAC_SEL_MIX_COEF "OMX.Qualcomm.index.audio.aac_sel_mix_coef"
+#define OMX_QCOM_INDEX_PARAM_ALAC            "OMX.Qualcomm.index.audio.alac"
+#define OMX_QCOM_INDEX_PARAM_APE             "OMX.Qualcomm.index.audio.ape"
+#define OMX_QCOM_INDEX_PARAM_FLAC_DEC        "OMX.Qualcomm.index.audio.flacdec"
+
+#define ALAC_CSD_SIZE 24
+#define APE_CSD_SIZE 32
 
 typedef enum QOMX_AUDIO_AMRBANDMODETYPE {
     QOMX_AUDIO_AMRBandModeWB9              = 0x7F000001,/**< AMRWB Mode 9 = SID*/
@@ -504,6 +510,89 @@ typedef struct QOMX_AUDIO_CONFIG_DUALMONOTYPE {
    OMX_U32 nPortIndex;
    OMX_AUDIO_DUAL_MONO_CHANNEL_CONFIG eChannelConfig;
 } QOMX_AUDIO_CONFIG_DUALMONOTYPE;
+
+typedef struct QOMX_AUDIO_PARAM_ALACTYPE {
+    OMX_U32 nSize; /* Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion; /**< OMX specification version information */
+    OMX_U32 nPortIndex; /* Port that this structure applies to */
+    OMX_U32 nFrameLength; /* Frames per packet when no explicit frames per packet setting is present in the packet header */
+    OMX_U8 nCompatibleVersion; /* Indicates the compatible version */
+    OMX_U8 nBitDepth; /* Bit depth of the source PCM data */
+    OMX_U8 nPb; /* Tuning Parameter; currently not used */
+    OMX_U8 nMb; /* Tuning Parameter; currently not used */
+    OMX_U8 nKb; /* Tuning Parameter; currently not used */
+    OMX_U8 nChannels; /* Number of channels for multichannel decoding */
+    OMX_U16 nMaxRun; /* Currently not used */
+    OMX_U32 nMaxFrameBytes; /* Max size of an Apple Lossless packet within the encoded stream */
+    OMX_U32 nAvgBitRate; /* Average bit rate in bits per second of the Apple Lossless stream */
+    OMX_U32 nSampleRate; /* Number of samples per second in Hertz */
+    OMX_U32 nChannelLayoutTag; /*Indicates whether channel layout information is present in the bitstream */
+} QOMX_AUDIO_PARAM_ALACTYPE;
+
+typedef struct QOMX_AUDIO_PARAM_APETYPE {
+    OMX_U32 nSize; /* Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion; /**< OMX specification version information */
+    OMX_U32 nPortIndex; /* Port that this structure applies to */
+    OMX_U16 nCompatibleVersion; /* Indicates the compatible version */
+    OMX_U16 nCompressionLevel; /* The compression level present in the encoded packet */
+    OMX_U32 nFormatFlags; /* Reserved parameter for future use */
+    OMX_U32 nBlocksPerFrame; /* Indicates the number of audio blocks in one frame present in the encoded packet header */
+    OMX_U32 nFinalFrameBlocks; /* Indicates the number of audio blocks in the final frame present in the encoded packet header */
+    OMX_U32 nTotalFrames; /* Indicates the total number of frames */
+    OMX_U16 nBitsPerSample; /* Bit depth of the source PCM data */
+    OMX_U16 nChannels; /* Number of channels for decoding */
+    OMX_U32 nSampleRate; /* Samples per second in Hertz */
+    OMX_U32 nSeekTablePresent; /* Flag to indicate if seek table is present or not */
+} QOMX_AUDIO_PARAM_APETYPE;
+
+typedef struct QOMX_AUDIO_PARAM_FLAC_DEC_TYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nChannels;
+    OMX_U32 nSampleRate;
+    OMX_U32 nBitsPerSample;
+    OMX_U32 nMinBlkSize;
+    OMX_U32 nMaxBlkSize;
+    OMX_U32 nMinFrmSize;
+    OMX_U32 nMaxFrmSize;
+} QOMX_AUDIO_PARAM_FLAC_DEC_TYPE;
+
+enum {
+    kKeyIndexAlacFrameLength = 0,
+    kKeyIndexAlacCompatibleVersion = 4,
+    kKeyIndexAlacBitDepth = 5,
+    kKeyIndexAlacPb = 6,
+    kKeyIndexAlacMb = 7,
+    kKeyIndexAlacKb = 8,
+    kKeyIndexAlacNumChannels = 9,
+    kKeyIndexAlacMaxRun = 10,
+    kKeyIndexAlacMaxFrameBytes = 12,
+    kKeyIndexAlacAvgBitRate = 16,
+    kKeyIndexAlacSamplingRate = 20,
+    kKeyIndexAlacChannelLayoutTag = 24,
+};
+
+enum {
+    kKeyIndexApeCompatibleVersion = 0,
+    kKeyIndexApeCompressionLevel = 2,
+    kKeyIndexApeFormatFlags = 4,
+    kKeyIndexApeBlocksPerFrame = 8,
+    kKeyIndexApeFinalFrameBlocks = 12,
+    kKeyIndexApeTotalFrames = 16,
+    kKeyIndexApeBitsPerSample = 20,
+    kKeyIndexApeNumChannels = 22,
+    kKeyIndexApeSampleRate = 24,
+    kKeyIndexApeSeekTablePresent = 28,
+};
+
+enum {
+    APE_COMPRESSION_LEVEL_FAST = 1000,
+    APE_COMPRESSION_LEVEL_NORMAL = 2000,
+    APE_COMPRESSION_LEVEL_HIGH = 3000,
+    APE_COMPRESSION_LEVEL_EXTRA_HIGH = 4000,
+    APE_COMPRESSION_LEVEL_INSANE = 5000,
+};
 
 #if defined( __cplusplus )
 }

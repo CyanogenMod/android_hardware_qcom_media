@@ -48,6 +48,7 @@ enum {
     kKeyWMABitspersample     = 'bsps',  // int64_t
     kKeyWMAVirPktSize        = 'vpks',  // int64_t
     kKeyWMAChannelMask       = 'chmk',  // int32_t
+    kKeyVorbisData           = 'vdat',  // raw data
 
     kKeyFileFormat           = 'ffmt',  // cstring
 
@@ -63,6 +64,7 @@ enum {
     kKeyUseArbitraryMode     = 'ArbM',  //bool (int32_t)
     kKeySmoothStreaming      = 'ESmS',  //bool (int32_t)
     kKeyHFR                  = 'hfr ',  // int32_t
+    kKeyHSR                  = 'hsr ',  // int32_t
 
     kKeySampleBits           = 'sbit', // int32_t (audio sample bit-width)
     kKeyPcmFormat            = 'pfmt', //int32_t (pcm format)
@@ -71,7 +73,8 @@ enum {
     kKeyMinFrmSize           = 'mifs', //int32_t
     kKeyMaxFrmSize           = 'mafs', //int32_t
     kKeyMd5Sum               = 'md5s', //cstring
-    kKeyHSR                  = 'hsr ',  // int32_t
+
+    kKeyBatchSize            = 'btch', //int32_t
 };
 
 enum {
