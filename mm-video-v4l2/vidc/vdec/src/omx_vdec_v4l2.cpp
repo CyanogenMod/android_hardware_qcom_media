@@ -11001,7 +11001,9 @@ void omx_vdec::buf_ref_add(int nPortIndex)
             (out_dynamic_list[i].offset == offset)) {
                DEBUG_PRINT_LOW("buf_ref_add: [ALREADY PRESENT] fd = %u ref_count = %u",
                      (unsigned int)out_dynamic_list[i].fd, (unsigned int)out_dynamic_list[i].ref_count);
-               drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr = out_dynamic_list[i].buffaddr;
+               if (!secure_mode) {
+                   drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr = out_dynamic_list[i].buffaddr;
+               }
                buf_present = true;
                break;
         }
