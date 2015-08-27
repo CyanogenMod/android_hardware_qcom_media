@@ -877,7 +877,7 @@ private:
         OMX_ERRORTYPE free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr);
         void enable_native_buffers(bool enable) {m_native_buffers_enabled = enable;}
     private:
-        #define MAX_COUNT 32
+#define MAX_COUNT MAX_NUM_INPUT_OUTPUT_BUFFERS
         omx_vdec *omx;
         bool enabled;
         bool m_native_buffers_enabled;
@@ -893,7 +893,9 @@ private:
         OMX_QCOM_PLATFORM_PRIVATE_ENTRY     m_platform_entry_client[MAX_COUNT];
         OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO m_pmem_info_client[MAX_COUNT];
         OMX_BUFFERHEADERTYPE  m_out_mem_ptr_client[MAX_COUNT];
+#ifdef USE_ION
         struct vdec_ion op_buf_ion_info[MAX_COUNT];
+#endif
         unsigned char *pmem_baseaddress[MAX_COUNT];
         int pmem_fd[MAX_COUNT];
         struct vidc_heap
