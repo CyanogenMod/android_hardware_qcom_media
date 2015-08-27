@@ -435,6 +435,7 @@ class omx_vdec: public qc_omx_component
                 void *               eglImage);
         void complete_pending_buffer_done_cbs();
         struct video_driver_context drv_ctx;
+        int m_poll_efd;
 #ifdef _MSM8974_
         OMX_ERRORTYPE allocate_extradata();
         void free_extradata();
