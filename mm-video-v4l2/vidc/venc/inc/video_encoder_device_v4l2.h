@@ -404,6 +404,7 @@ class venc_dev
         struct msm_venc_vpx_error_resilience vpx_err_resilience;
         struct msm_venc_priority            sess_priority;
         OMX_U32                             operating_rate;
+        int rc_off_level;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
