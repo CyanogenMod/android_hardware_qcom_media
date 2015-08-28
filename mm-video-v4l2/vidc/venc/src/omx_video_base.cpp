@@ -1780,8 +1780,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 "valid for output port only");
                         eRet = OMX_ErrorUnsupportedIndex;
                     }
-                }
-                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataFrameDimension) {
+                } else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataFrameDimension) {
                     if (pParam->nPortIndex == PORT_INDEX_IN) {
                         pParam->bEnabled =
                             (OMX_BOOL)((m_sExtraData & VENC_EXTRADATA_FRAMEDIMENSION) ? 1 : 0);

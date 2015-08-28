@@ -1284,8 +1284,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         eRet = OMX_ErrorUnsupportedIndex;
                         break;
                     }
-                }
-                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataFrameDimension) {
+                } else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_ExtraDataFrameDimension) {
                     if (pParam->nPortIndex == PORT_INDEX_IN) {
                             mask = VENC_EXTRADATA_FRAMEDIMENSION;
                         DEBUG_PRINT_HIGH("Frame dimension extradata %s",
@@ -1296,8 +1295,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         eRet = OMX_ErrorUnsupportedIndex;
                         break;
                     }
-                }
-                if (pParam->nIndex == (OMX_INDEXTYPE)OMX_QTIIndexParamVQZipSEIExtraData) {
+                } else if (pParam->nIndex == (OMX_INDEXTYPE)OMX_QTIIndexParamVQZipSEIExtraData) {
                     if (pParam->nPortIndex == PORT_INDEX_IN) {
                         mask = VENC_EXTRADATA_VQZIP;
                         DEBUG_PRINT_HIGH("VQZIP extradata %s",
