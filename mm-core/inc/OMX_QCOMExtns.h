@@ -530,6 +530,10 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QTIIndexParamVQZIPSEIType = 0x7F000053,
 
     OMX_QTIIndexParamPassInputBufferFd = 0x7F000054,
+
+    /* Set Prefer-adaptive playback*/
+    /* "OMX.QTI.index.param.video.PreferAdaptivePlayback" */
+    OMX_QTIIndexParamVideoPreferAdaptivePlayback = 0x7F000055,
 };
 
 /**
@@ -1539,6 +1543,7 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SAR "OMX.QCOM.index.param.video.sar"
 
 #define OMX_QCOM_INDEX_PARAM_VIDEO_PASSINPUTBUFFERFD "OMX.QCOM.index.param.video.PassInputBufferFd"
+#define OMX_QTI_INDEX_PARAM_VIDEO_PREFER_ADAPTIVE_PLAYBACK "OMX.QTI.index.param.video.PreferAdaptivePlayback"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,
