@@ -534,6 +534,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /* Enable VQZIP SEI NAL type */
     OMX_QTIIndexParamVQZIPSEIType = 0x7F000053,
 
+    /* Encoder Low Latency mode */
+    OMX_QcomIndexConfigVideoVencLowLatencyMode = 0x7F000054,
+
 };
 
 /**
