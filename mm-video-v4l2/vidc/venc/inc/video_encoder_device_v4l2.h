@@ -215,6 +215,10 @@ struct msm_venc_vpx_error_resilience {
     unsigned int enable;
 };
 
+struct msm_venc_low_latency {
+    unsigned int enable;
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -294,6 +298,7 @@ class venc_dev
         int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
         int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, int fd, int plane_offset);
         int venc_extradata_log_buffers(char *buffer_addr);
+        bool venc_enable_low_latency();
 
         struct venc_debug_cap m_debug;
         OMX_U32 m_nDriver_fd;
@@ -358,6 +363,7 @@ class venc_dev
         struct msm_venc_peak_bitrate        peak_bitrate;
         struct msm_venc_ltrinfo             ltrinfo;
         struct msm_venc_vpx_error_resilience vpx_err_resilience;
+        struct msm_venc_low_latency         low_latency;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
