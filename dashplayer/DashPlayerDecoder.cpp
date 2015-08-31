@@ -393,11 +393,11 @@ bool DashPlayer::Decoder::handleAnOutputBuffer() {
 
     sp<AMessage> notify = mNotify->dup();
     notify->setInt32("what", kWhatDrainThisBuffer);
-    /*
+
     if(flags & MediaCodec::BUFFER_FLAG_EXTRADATA) {
        buffer->meta()->setInt32("extradata", 1);
     }
-    */
+
     buffer->meta()->setObject("graphic-buffer", graphicBuffer);
     notify->setBuffer("buffer", buffer);
     notify->setMessage("reply", reply);
