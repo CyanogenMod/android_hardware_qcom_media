@@ -4650,6 +4650,12 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
             QOMX_VIDEO_H264ENTROPYCODINGTYPE *coding = (QOMX_VIDEO_H264ENTROPYCODINGTYPE *)configData;
             struct v4l2_control control;
 
+            if (drv_ctx.decoder_format != VDEC_CODECTYPE_H264) {
+                DEBUG_PRINT_ERROR("get_config of OMX_QcomIndexConfigH264EntropyCodingCabac only available for H264");
+                eRet = OMX_ErrorNotImplemented;
+                break;
+            }
+
             control.id = V4L2_CID_MPEG_VIDEO_H264_ENTROPY_MODE;
             if (!ioctl(drv_ctx.video_driver_fd, VIDIOC_G_CTRL, &control)) {
                 coding->bCabac = (OMX_BOOL)
@@ -9888,6 +9894,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     struct msm_vidc_vqzip_sei_payload *vqzip_payload;
                     vqzip_payload = (struct msm_vidc_vqzip_sei_payload*)(void *)data->data;
                     if (client_extradata & OMX_VQZIPSEI_EXTRADATA) {
+                        p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
                         append_vqzip_extradata(p_extra, vqzip_payload);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
                     }
