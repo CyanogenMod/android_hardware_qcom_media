@@ -605,6 +605,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_disp_hor_size(0),
     m_disp_vert_size(0),
     prev_ts(LLONG_MAX),
+    prev_ts_actual(LLONG_MAX),
     rst_prev_ts(true),
     frm_int(0),
     in_reconfig(false),
@@ -9588,8 +9589,8 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
     OMX_U32 new_frame_interval = 0;
     if (VALID_TS(act_timestamp) && VALID_TS(prev_ts) && act_timestamp != prev_ts
             && llabs(act_timestamp - prev_ts) > 2000) {
-        new_frame_interval = client_set_fps ? frm_int :
-            llabs(act_timestamp - prev_ts);
+        new_frame_interval = client_set_fps ? frm_int : (act_timestamp - prev_ts) > 0 ?
+            llabs(act_timestamp - prev_ts) : llabs(act_timestamp - prev_ts_actual);
         if (new_frame_interval != frm_int || frm_int == 0) {
             frm_int = new_frame_interval;
             if (frm_int) {
@@ -9625,11 +9626,13 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
 {
     if (rst_prev_ts && VALID_TS(act_timestamp)) {
         prev_ts = act_timestamp;
+        prev_ts_actual = act_timestamp;
         rst_prev_ts = false;
     } else if (VALID_TS(prev_ts)) {
         bool codec_cond = (drv_ctx.timestamp_adjust)?
-            (!VALID_TS(act_timestamp) || act_timestamp < prev_ts || llabs(act_timestamp - prev_ts) <= 2000) :
-            (!VALID_TS(act_timestamp) || act_timestamp <= prev_ts);
+            (!VALID_TS(act_timestamp) || act_timestamp < prev_ts_actual || llabs(act_timestamp - prev_ts_actual) <= 2000) :
+            (!VALID_TS(act_timestamp) || act_timestamp <= prev_ts_actual);
+             prev_ts_actual = act_timestamp; //unadjusted previous timestamp
         if (frm_int > 0 && codec_cond) {
             DEBUG_PRINT_LOW("adjust_timestamp: original ts[%lld]", act_timestamp);
             act_timestamp = prev_ts + frm_int;
