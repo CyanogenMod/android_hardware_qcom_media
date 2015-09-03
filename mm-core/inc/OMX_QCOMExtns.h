@@ -534,6 +534,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /* Set Prefer-adaptive playback*/
     /* "OMX.QTI.index.param.video.PreferAdaptivePlayback" */
     OMX_QTIIndexParamVideoPreferAdaptivePlayback = 0x7F000055,
+
+    /* Set time params */
+    OMX_QcomIndexConfigSetTimeData = 0x7F000056,
 };
 
 /**
@@ -1506,6 +1509,12 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
         OMX_U32 nPortIndex;
         OMX_U32 nBufferSize;
 } QOMX_VIDEO_CUSTOM_BUFFERSIZE;
+
+typedef struct QOMX_VIDEO_CUSTOM_TIMESTAMPINFO {
+        OMX_U32 nSize;
+        OMX_VERSIONTYPE nVersion;
+        OMX_U64 nTimeStamp;
+} QOMX_VIDEO_CUSTOM_TIMESTAMPINFO;
 
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SYNCFRAMEDECODINGMODE "OMX.QCOM.index.param.video.SyncFrameDecodingMode"
 #define OMX_QCOM_INDEX_PARAM_INDEXEXTRADATA "OMX.QCOM.index.param.IndexExtraData"
