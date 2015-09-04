@@ -6,7 +6,7 @@ LOCAL_SRC_FILES := \
         C2DColorConverter.cpp
 
 LOCAL_C_INCLUDES := \
-    $(TARGET_OUT_HEADERS)/qcom/display
+    $(TARGET_OUT_HEADERS)/adreno
 
 LOCAL_C_INCLUDES += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
