@@ -38,6 +38,7 @@ LOCAL_C_INCLUDES := \
 	$(TOP)/frameworks/av/media/libstagefright/rtsp                \
 	$(TOP)/hardware/qcom/media/mm-core/inc                        \
 	$(TOP)/hardware/qcom/display/libgralloc                       \
+        $(LOCAL_PATH)/../QCMediaPlayer/native                         \
 	$(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 LOCAL_ADDITIONAL_DEPENDENCIES := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr

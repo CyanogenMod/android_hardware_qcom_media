@@ -33,6 +33,11 @@
 
 namespace android {
 
+enum media_event_type_qcmediaplayer {
+    media_event_type,
+    MEDIA_QOE = 300
+};
+
 class QCMediaPlayer : public MediaPlayer
 {
 public:

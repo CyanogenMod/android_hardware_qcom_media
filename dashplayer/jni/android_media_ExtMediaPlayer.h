@@ -30,7 +30,7 @@
 #define _ANDROID_MEDIA_EXTMEDIAPLAYER_H_
 
 //#define LOG_NDEBUG 0
-#include <media/mediaplayer.h>
+#include <qcmediaplayer.h>
 #include "JNIHelp.h"
 #include "android_runtime/AndroidRuntime.h"
 #include "android_runtime/Log.h"

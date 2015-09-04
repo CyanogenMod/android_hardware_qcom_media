@@ -40,6 +40,7 @@
 #include <cutils/properties.h>
 #include <utils/Log.h>
 #include <media/msm_media_info.h>
+#include <qcmediaplayer.h>
 
 #define DP_MSG_ERROR(...) ALOGE(__VA_ARGS__)
 #define DP_MSG_HIGH(...) if(mLogLevel >= 1){ALOGE(__VA_ARGS__);}
