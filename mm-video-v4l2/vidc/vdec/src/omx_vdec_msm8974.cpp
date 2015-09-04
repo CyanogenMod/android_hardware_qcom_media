@@ -1458,8 +1458,10 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         }
                                         if (pThis->m_cb.EventHandler) {
                                             uint32_t frame_data[2];
-                                            frame_data[0] = pThis->m_reconfig_height;
-                                            frame_data[1] = pThis->m_reconfig_width;
+                                            frame_data[0] = (p2 == OMX_IndexParamPortDefinition) ?
+                                                pThis->m_reconfig_height : pThis->rectangle.nHeight;
+                                            frame_data[1] = (p2 == OMX_IndexParamPortDefinition) ?
+                                                pThis->m_reconfig_width : pThis->rectangle.nWidth;
                                             pThis->m_cb.EventHandler(&pThis->m_cmp, pThis->m_app_data,
                                                     OMX_EventPortSettingsChanged, p1, p2, (void*) frame_data );
                                         } else {
