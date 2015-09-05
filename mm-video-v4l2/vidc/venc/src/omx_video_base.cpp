@@ -2132,14 +2132,6 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                memcpy(pParam, &m_sBaseLayerID, sizeof(m_sBaseLayerID));
                break;
            }
-        case OMX_QcomIndexConfigRectType:
-            {
-                OMX_CONFIG_RECTTYPE *pParam =
-                    reinterpret_cast<OMX_CONFIG_RECTTYPE*>(configData);
-                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexConfigRectType");
-                memcpy(pParam, &m_sRectangleData, sizeof(m_sRectangleData));
-                break;
-            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -2224,12 +2216,6 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     if (!strncmp(paramName, "OMX.QCOM.index.config.video.hierplayers",
             sizeof("OMX.QCOM.index.config.video.hierplayers") - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers;
-        return OMX_ErrorNone;
-    }
-
-    if (!strncmp(paramName, "OMX.QCOM.index.config.video.rectangle",
-            sizeof("OMX.QCOM.index.config.video.rectangle") - 1)) {
-        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigRectType;
         return OMX_ErrorNone;
     }
 

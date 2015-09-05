@@ -514,8 +514,6 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     OMX_QcomIndexConfigRectType = 0x7F00004C,
 
-    OMX_QcomIndexSkypeExtensionBase = 0x7F00004D,
-
     OMX_QcomIndexConfigBaseLayerId = 0x7F00004E,
 
     OMX_QcomIndexParamDriverVersion = 0x7F00004F,

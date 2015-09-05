@@ -2469,14 +2469,6 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
-        case OMX_QcomIndexConfigRectType:
-            {
-                if (!venc_set_recttype((OMX_CONFIG_RECTTYPE*) configData)) {
-                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigRectType failed");
-                    return OMX_ErrorUnsupportedSetting;
-                }
-                break;
-            }
         case OMX_IndexConfigPriority:
             {
                 OMX_PARAM_U32TYPE *priority = (OMX_PARAM_U32TYPE *)configData;
@@ -5401,22 +5393,6 @@ bool venc_dev::venc_set_aspectratio(void *nSar)
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%x val=%d, id=%x val=%d",
                     controls.controls[0].id, controls.controls[0].value,
                     controls.controls[1].id, controls.controls[1].value);
-    return true;
-}
-
-bool venc_dev::venc_set_recttype(OMX_CONFIG_RECTTYPE* rectdata)
-{
-    struct v4l2_crop crop;
-    crop.c.left = rectdata->nLeft;
-    crop.c.top = rectdata->nTop;
-    crop.c.width = rectdata->nWidth;
-    crop.c.height = rectdata->nHeight;
-    crop.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-    DEBUG_PRINT_LOW("Going to set VIDIOC_S_CROP");
-    if (ioctl(m_nDriver_fd, VIDIOC_S_CROP, &crop)) {
-        DEBUG_PRINT_ERROR("Failed to set VIDIOC_S_CROP");
-        return false;
-    }
     return true;
 }
 
