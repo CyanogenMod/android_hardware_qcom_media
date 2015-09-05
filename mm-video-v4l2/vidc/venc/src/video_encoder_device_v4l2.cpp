@@ -1204,10 +1204,11 @@ bool venc_dev::venc_enable_low_latency()
 
     /*
      * 2D-2S mode does not support more than 4096 MBs per slice on msm8956
-     * in case of CAVLC and hence enable multi slicing if MBs per frame
+     * in case of H264 CAVLC and hence enable multi slicing if MBs per frame
      * is grearter than 4096
      */
-    if (!low_latency.enable && entropy.longentropysel == V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC) {
+    if (!low_latency.enable && m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264 &&
+            entropy.longentropysel == V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC) {
 
         if (multislice.mslice_mode == V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE &&
             ((m_sVenc_cfg.input_width / 16 * m_sVenc_cfg.input_height / 16) > slice_size)) {
