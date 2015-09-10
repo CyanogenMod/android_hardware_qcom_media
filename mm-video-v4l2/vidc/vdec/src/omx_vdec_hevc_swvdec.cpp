@@ -115,7 +115,7 @@ extern "C"{
 
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
-#define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
+#define EXTRADATA_IDX(__num_planes) ((__num_planes) ? (__num_planes) - 1 : 0)
 
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 
