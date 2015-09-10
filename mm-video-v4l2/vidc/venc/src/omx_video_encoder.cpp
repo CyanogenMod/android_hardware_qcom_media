@@ -826,23 +826,13 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(&mp4_param, pParam, sizeof(struct OMX_VIDEO_PARAM_MPEG4TYPE));
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoMpeg4");
                 if (pParam->eProfile == OMX_VIDEO_MPEG4ProfileAdvancedSimple) {
-#ifdef MAX_RES_1080P
-                    if (pParam->nBFrames) {
-                        DEBUG_PRINT_HIGH("INFO: Only 1 Bframe is supported");
-                        mp4_param.nBFrames = 1;
-                    }
-#else
-                    if (pParam->nBFrames) {
-                        DEBUG_PRINT_ERROR("Warning: B frames not supported");
-                        mp4_param.nBFrames = 0;
-                    }
-#endif
 #ifdef _MSM8974_
                     if (pParam->nBFrames || bframes)
-                        mp4_param.nBFrames = (pParam->nBFrames > (unsigned int) bframes)? pParam->nBFrames : bframes;
+                        mp4_param.nBFrames = 1;
+                    else
+                        mp4_param.nBFrames = 0;
                     DEBUG_PRINT_HIGH("MPEG4: %u BFrames are being set", (unsigned int)mp4_param.nBFrames);
 #endif
-
                 } else {
                     if (pParam->nBFrames) {
                         DEBUG_PRINT_ERROR("Warning: B frames not supported");
@@ -881,29 +871,13 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
                 if ((pParam->eProfile == OMX_VIDEO_AVCProfileHigh)||
                         (pParam->eProfile == OMX_VIDEO_AVCProfileMain)) {
-#ifdef MAX_RES_1080P
-                    if (pParam->nBFrames) {
-                        DEBUG_PRINT_HIGH("INFO: Only 1 Bframe is supported");
-                        avc_param.nBFrames = 1;
-                    }
-                    if (pParam->nRefFrames != 2) {
-                        DEBUG_PRINT_ERROR("Warning: 2 RefFrames are needed, changing RefFrames from %u to 2", (unsigned int)pParam->nRefFrames);
-                        avc_param.nRefFrames = 2;
-                    }
-#else
-                    if (pParam->nBFrames) {
-                        DEBUG_PRINT_ERROR("Warning: B frames not supported");
-                        avc_param.nBFrames = 0;
-                    }
-                    if (pParam->nRefFrames != 1) {
-                        DEBUG_PRINT_ERROR("Warning: Only 1 RefFrame is supported, changing RefFrame from %u to 1)", (unsigned int)pParam->nRefFrames);
-                        avc_param.nRefFrames = 1;
-                    }
-#endif
 #ifdef _MSM8974_
-                    if (pParam->nBFrames || bframes) {
+                    if ((pParam->nBFrames && (pParam->nBFrames <= 4))|| (bframes && (bframes <=4))) {
                         avc_param.nBFrames = (pParam->nBFrames > (unsigned int) bframes)? pParam->nBFrames : bframes;
                         avc_param.nRefFrames = (avc_param.nBFrames < 4)? avc_param.nBFrames + 1 : 4;
+                    } else {
+                        avc_param.nBFrames = 0;
+                        avc_param.nRefFrames = 1;
                     }
                     DEBUG_PRINT_HIGH("AVC: RefFrames: %u, BFrames: %u", (unsigned int)avc_param.nRefFrames, (unsigned int)avc_param.nBFrames);
 

@@ -1703,7 +1703,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
 
                     m_profile_set = false;
                     m_level_set = false;
-
+                    rc_off_level = (int)pParam->eLevel;
                     if (!venc_set_profile_level (pParam->eProfile, pParam->eLevel)) {
                         DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level");
                         return false;
@@ -1744,7 +1744,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 if (pParam->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     m_profile_set = false;
                     m_level_set = false;
-
+                    rc_off_level = (int)pParam->eLevel;
                     if (!venc_set_profile_level (pParam->eProfile, pParam->eLevel)) {
                         DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level");
                         return false;
@@ -1775,7 +1775,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
 
                     m_profile_set = false;
                     m_level_set = false;
-
+                    rc_off_level = (int)pParam->eLevel;
                     if (!venc_set_profile_level (pParam->eProfile,pParam->eLevel)) {
                         DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level %d, %d",
                                 pParam->eProfile, pParam->eLevel);
@@ -1824,6 +1824,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
             {
                 DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoVp8");
                 OMX_VIDEO_PARAM_VP8TYPE* pParam = (OMX_VIDEO_PARAM_VP8TYPE*)paramData;
+                rc_off_level = (int)pParam->eLevel;
                 if (!venc_set_profile_level (pParam->eProfile, pParam->eLevel)) {
                     DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level %d, %d",
                                         pParam->eProfile, pParam->eLevel);
@@ -1853,6 +1854,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
             {
                 DEBUG_PRINT_LOW("venc_set_param:OMX_IndexParamVideoHevc");
                 OMX_VIDEO_PARAM_HEVCTYPE* pParam = (OMX_VIDEO_PARAM_HEVCTYPE*)paramData;
+                rc_off_level = (int)pParam->eLevel;
                 if (!venc_set_profile_level (pParam->eProfile, pParam->eLevel)) {
                     DEBUG_PRINT_ERROR("ERROR: Unsuccessful in updating Profile and level %d, %d",
                                         pParam->eProfile, pParam->eLevel);
@@ -1910,7 +1912,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 if (profile_level->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
                     m_profile_set = false;
                     m_level_set = false;
-
+                    rc_off_level = (int)profile_level->eLevel;
                     if (!venc_set_profile_level (profile_level->eProfile,
                                 profile_level->eLevel)) {
                         DEBUG_PRINT_ERROR("WARNING: Unsuccessful in updating Profile and level");
@@ -6063,6 +6065,12 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
             new_profile = codec_profile.profile;
             return true;
         }
+    }
+
+    if (rate_ctrl.rcmode == V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_OFF) {
+        *eLevel = rc_off_level; //No level calculation for RC_OFF
+        profile_level_found = true;
+        return true;
     }
 
     mb_per_sec = mb_per_frame * m_sVenc_cfg.fps_num / m_sVenc_cfg.fps_den;
