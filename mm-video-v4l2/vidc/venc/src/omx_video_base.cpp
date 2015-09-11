@@ -1964,11 +1964,11 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
          case OMX_QcomIndexParamBatchSize:
             {
-                QOMX_VIDEO_BATCHSIZETYPE* batch =
-                    reinterpret_cast<QOMX_VIDEO_BATCHSIZETYPE *>(paramData);
+                OMX_PARAM_U32TYPE* batch =
+                    reinterpret_cast<OMX_PARAM_U32TYPE *>(paramData);
 
                 DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamBatchSize");
-                if (!dev_get_batch_size(&batch->nSize)) {
+                if (!dev_get_batch_size(&batch->nU32)) {
                     DEBUG_PRINT_ERROR("Invalid entry returned from dev_get_batch_size %u",
                         (unsigned int)batch->nSize);
                     eRet = OMX_ErrorUnsupportedIndex;
@@ -2234,6 +2234,12 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     if (!strncmp(paramName, "OMX.QCOM.index.param.video.sar",
             sizeof("OMX.QCOM.index.param.video.sar") - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVencAspectRatio;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, "OMX.QCOM.index.param.video.InputBatch",
+            sizeof("OMX.QCOM.index.param.video.InputBatch") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize;
         return OMX_ErrorNone;
     }
     return OMX_ErrorNotImplemented;
