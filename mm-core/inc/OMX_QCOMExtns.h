@@ -536,6 +536,10 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Set time params */
     OMX_QTIIndexConfigSetTimeData = 0x7F000056,
+    /* Force Compressed format for DPB when resolution <=1080p
+     * and OPB is cpu_access */
+    /* OMX.QTI.index.param.video.ForceCompressedForDPB */
+    OMX_QTIIndexParamForceCompressedForDPB = 0x7F000057,
 };
 
 /**
@@ -1053,6 +1057,22 @@ typedef struct OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE {
     OMX_U32 nPeakBitrate;       /** Peak bitrate value */
 } OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE;
 
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QTIIndexParamForceCompressedForDPB extension. Enabling
+ * this extension will force the split mode DPB(compressed)/OPB(Linear)
+ * for all resolutions.On some chipsets preferred mode would be combined
+ * Linear for both DPB/OPB to save memory. For example on 8996 preferred mode
+ * would be combined linear for resolutions <= 1080p .
+ * Enabling this might save power but with the cost
+ * of increased memory i.e almost double the number on output YUV buffers.
+ */
+typedef struct OMX_QTI_VIDEO_PARAM_FORCE_COMPRESSED_FOR_DPB_TYPE {
+    OMX_U32 nSize;              /** Size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion;   /** OMX specification version information */
+    OMX_BOOL bEnable;           /** Enable/disable the setting */
+} OMX_QTI_VIDEO_PARAM_FORCE_COMPRESSED_FOR_DPB_TYPE;
+
 typedef struct OMX_VENDOR_EXTRADATATYPE  {
     OMX_U32 nPortIndex;
     OMX_U32 nDataSize;
@@ -1547,6 +1567,7 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QCOM_INDEX_PARAM_VIDEO_PASSINPUTBUFFERFD "OMX.QCOM.index.param.video.PassInputBufferFd"
 #define OMX_QTI_INDEX_PARAM_VIDEO_PREFER_ADAPTIVE_PLAYBACK "OMX.QTI.index.param.video.PreferAdaptivePlayback"
 #define OMX_QTI_INDEX_CONFIG_VIDEO_SETTIMEDATA "OMX.QTI.index.config.video.settimedata"
+#define OMX_QTI_INDEX_PARAM_VIDEO_FORCE_COMPRESSED_FOR_DPB "OMX.QTI.index.param.video.ForceCompressedForDPB"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,
