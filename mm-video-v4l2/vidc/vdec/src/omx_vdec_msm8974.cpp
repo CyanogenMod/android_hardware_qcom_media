@@ -937,14 +937,20 @@ int omx_vdec::decide_downscalar()
         rc = enable_downscalar();
         if (rc < 0)
             return rc;
-        rc = update_resolution(m_downscalar_width, m_downscalar_height, m_downscalar_width, m_downscalar_height);
+        OMX_U32 width = m_downscalar_width > fmt.fmt.pix_mp.width ?
+                            fmt.fmt.pix_mp.width : m_downscalar_width;
+        OMX_U32 height = m_downscalar_height > fmt.fmt.pix_mp.height ?
+                            fmt.fmt.pix_mp.height : m_downscalar_height;
+        rc = update_resolution(width, height,
+                VENUS_Y_STRIDE(COLOR_FMT_NV12, width), VENUS_Y_SCANLINES(COLOR_FMT_NV12, height));
         if (rc < 0)
             return rc;
     } else {
         rc = disable_downscalar();
         if (rc < 0)
             return rc;
-        rc = update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, fmt.fmt.pix_mp.plane_fmt[0].bytesperline, fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
+        rc = update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height,
+                fmt.fmt.pix_mp.plane_fmt[0].bytesperline, fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
         if (rc < 0)
             return rc;
     }
