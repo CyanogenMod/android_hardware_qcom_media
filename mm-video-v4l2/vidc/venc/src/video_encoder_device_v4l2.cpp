@@ -229,6 +229,8 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     async_thread_created = false;
     color_format = 0;
     hw_overload = false;
+    extradata = false;
+
     pthread_mutex_init(&pause_resume_mlock, NULL);
     pthread_cond_init(&pause_resume_cond, NULL);
     memset(&extradata_info, 0, sizeof(extradata_info));
@@ -240,11 +242,15 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&bitrate, 0, sizeof(bitrate));
     memset(&intra_period, 0, sizeof(intra_period));
     memset(&codec_profile, 0, sizeof(codec_profile));
+    memset(&profile_level, 0, sizeof(profile_level));
     memset(&set_param, 0, sizeof(set_param));
     memset(&time_inc, 0, sizeof(time_inc));
     memset(&m_sInput_buff_property, 0, sizeof(m_sInput_buff_property));
     memset(&m_sOutput_buff_property, 0, sizeof(m_sOutput_buff_property));
     memset(&session_qp, 0, sizeof(session_qp));
+    memset(&init_qp, 0, sizeof(init_qp));
+    memset(&session_qp_range, 0, sizeof(session_qp_range));
+    memset(&session_qp_values, 0, sizeof(session_qp_values));
     memset(&entropy, 0, sizeof(entropy));
     memset(&dbkfilter, 0, sizeof(dbkfilter));
     memset(&intra_refresh, 0, sizeof(intra_refresh));
@@ -257,6 +263,11 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     enable_mv_narrow_searchrange = false;
     supported_rc_modes = RC_ALL;
     memset(&ltrinfo, 0, sizeof(ltrinfo));
+    memset(&performance_level, 0, sizeof(performance_level));
+    memset(&vui_timing_info, 0, sizeof(vui_timing_info));
+    memset(&peak_bitrate, 0, sizeof(peak_bitrate));
+    memset(&vpx_err_resilience, 0, sizeof(vpx_err_resilience));
+    memset(&low_latency, 0, sizeof(low_latency));
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vidc.enc.log.in", property_value, "0");
