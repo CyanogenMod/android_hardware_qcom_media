@@ -281,6 +281,11 @@ venc_dev::venc_dev(class omx_venc *venc_class)
 
     snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
              "%s", BUFFER_LOG_LOC);
+
+    memset(m_platform, 0, sizeof(m_platform));
+    if (property_get("media.msm8956hw", property_value, "0") && atoi(property_value)) {
+        strncpy(m_platform, "msm8956", sizeof(m_platform));
+    }
 }
 
 venc_dev::~venc_dev()
@@ -2814,6 +2819,8 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     fd, plane.bytesused, plane.length);
         }
     }
+
+    venc_clip_luma_chroma(fd, plane.data_offset, plane.bytesused);
 
     buf.index = index;
     buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
@@ -5437,4 +5444,45 @@ bool venc_dev::venc_is_video_session_supported(unsigned long width,
 
     DEBUG_PRINT_LOW("video session supported");
     return true;
+}
+
+void venc_dev::venc_clip_luma_chroma(int fd, OMX_U32 offset, OMX_U32 size)
+{
+    unsigned char *luma = NULL, *chroma = NULL;
+    unsigned int alignedWidth = 0, alignedHeight = 0;
+
+    if (strncmp(m_platform, "msm8956", 7)) {
+        /* return as platform is not msm8956 */
+        return;
+    }
+
+    /*
+     * limit the pixels in YUV buffer between 0 and 252 for luma and
+     * 0 and 253 for chroma to avoid output video corruption due to
+     * video hardware limitation on msm8956 for mpeg4 encoding usecase.
+     */
+    if (m_sVenc_cfg.codectype != V4L2_PIX_FMT_MPEG4)
+        return;
+
+    if (size < VENUS_BUFFER_SIZE(COLOR_FMT_NV12, m_sVenc_cfg.input_width, m_sVenc_cfg.input_height)) {
+        DEBUG_PRINT_HIGH("%s: Insufficient buffer size (%u)",__func__, size);
+        return;
+    }
+
+    alignedWidth = VENUS_Y_STRIDE(COLOR_FMT_NV12, m_sVenc_cfg.input_width);
+    alignedHeight = VENUS_Y_SCANLINES(COLOR_FMT_NV12, m_sVenc_cfg.input_height);
+
+    luma = (unsigned char *)mmap(NULL, size, PROT_READ|PROT_WRITE,
+            MAP_SHARED, fd, offset);
+    if(luma == MAP_FAILED) {
+        DEBUG_PRINT_ERROR("MMAP FAILED: returning from %s",__func__);
+        return;
+    }
+    chroma = luma + alignedWidth * alignedHeight;
+    DEBUG_PRINT_LOW("Clip pixels wxh = %ux%u, size = %u", alignedWidth, alignedHeight, size);
+    neon_clip_luma_chroma(luma, chroma, 252, 253, alignedWidth, alignedHeight);
+    DEBUG_PRINT_LOW("Clip pixels done");
+    munmap(luma, size);
+
+    return;
 }
