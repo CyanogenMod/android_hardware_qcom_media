@@ -9053,6 +9053,10 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
         if (dynamic_buf_mode) {
             out_dynamic_list = (struct dynamic_buf_list *) \
                 calloc (sizeof(struct dynamic_buf_list), drv_ctx.op_buf.actualcount);
+            if (out_dynamic_list) {
+               for (unsigned int i = 0; i < drv_ctx.op_buf.actualcount; i++)
+                  out_dynamic_list[i].dup_fd = -1;
+            }
         }
 
         if (m_out_mem_ptr && pPtr && drv_ctx.ptr_outputbuffer
@@ -10578,7 +10582,7 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::cache_ops(
     return OMX_ErrorNone;
 }
 
-void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
+void omx_vdec::buf_ref_add(long fd, OMX_U32 offset)
 {
     unsigned long i = 0;
     bool buf_present = false;
@@ -10608,7 +10612,7 @@ void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
     if (!buf_present) {
         for (i = 0; i < drv_ctx.op_buf.actualcount; i++) {
             //search for a entry to insert details of the new buffer
-            if (out_dynamic_list[i].dup_fd == 0) {
+            if (out_dynamic_list[i].dup_fd < 0) {
                 out_dynamic_list[i].fd = fd;
                 out_dynamic_list[i].offset = offset;
                 out_dynamic_list[i].dup_fd = dup(fd);
@@ -10622,7 +10626,7 @@ void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
    pthread_mutex_unlock(&m_lock);
 }
 
-void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
+void omx_vdec::buf_ref_remove(long fd, OMX_U32 offset)
 {
     unsigned long i = 0;
 
@@ -10646,7 +10650,7 @@ void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
                 close(out_dynamic_list[i].dup_fd);
                 DEBUG_PRINT_LOW("buf_ref_remove: [REMOVED] fd = %u ref_count = %u",
                      (unsigned int)out_dynamic_list[i].fd, (unsigned int)out_dynamic_list[i].ref_count);
-                out_dynamic_list[i].dup_fd = 0;
+                out_dynamic_list[i].dup_fd = -1;
                 out_dynamic_list[i].fd = 0;
                 out_dynamic_list[i].offset = 0;
             }
