@@ -340,7 +340,7 @@ OMX_ERRORTYPE omx_swvenc::component_init(OMX_STRING role)
             }
         }
         msg_thread_created = true;
-        r = pthread_create(&msg_thread_id,0, message_thread, this);
+        r = pthread_create(&msg_thread_id,0, enc_message_thread, this);
         if (r < 0) {
             eRet = OMX_ErrorInsufficientResources;
             msg_thread_created = false;
