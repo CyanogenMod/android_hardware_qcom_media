@@ -1076,6 +1076,7 @@ class omx_vdec: public qc_omx_component
         OMX_TICKS m_last_rendered_TS;
         volatile int32_t m_queued_codec_config_count;
         bool secure_scaling_to_non_secure_opb;
+        bool m_is_display_session;
         class perf_lock {
             private:
                 pthread_mutex_t mlock;
