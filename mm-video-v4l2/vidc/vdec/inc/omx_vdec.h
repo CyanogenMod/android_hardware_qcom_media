@@ -1022,7 +1022,7 @@ class omx_vdec: public qc_omx_component
                 struct vdec_ion op_buf_ion_info[MAX_COUNT];
 #endif
                 unsigned char *pmem_baseaddress[MAX_COUNT];
-                unsigned long pmem_fd[MAX_COUNT];
+                int pmem_fd[MAX_COUNT];
                 struct vidc_heap {
                     sp<MemoryHeapBase>    video_heap_ptr;
                 };

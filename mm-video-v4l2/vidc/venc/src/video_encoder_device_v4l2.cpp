@@ -833,6 +833,7 @@ void venc_dev::free_extradata()
     }
 
     memset(&output_extradata_info, 0, sizeof(output_extradata_info));
+    output_extradata_info.ion.fd_ion_data.fd = -1;
 
     if (input_extradata_info.uaddr) {
         munmap((void *)input_extradata_info.uaddr, input_extradata_info.size);
@@ -841,6 +842,7 @@ void venc_dev::free_extradata()
     }
 
     memset(&input_extradata_info, 0, sizeof(input_extradata_info));
+    input_extradata_info.ion.fd_ion_data.fd = -1;
 
 #endif
 }
@@ -1051,10 +1053,6 @@ bool venc_dev::venc_open(OMX_U32 codec)
         supported_rc_modes = (RC_ALL & ~RC_CBR_CFR);
     }
     m_nDriver_fd = open (device_name, O_RDWR);
-    if (m_nDriver_fd == 0) {
-        DEBUG_PRINT_ERROR("ERROR: Got fd as 0 for msm_vidc_enc, Opening again");
-        m_nDriver_fd = open (device_name, O_RDWR);
-    }
     if ((int)m_nDriver_fd < 0) {
         DEBUG_PRINT_ERROR("ERROR: Omx_venc::Comp Init Returning failure");
         return false;

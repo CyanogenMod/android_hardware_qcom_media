@@ -620,6 +620,10 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_queued_codec_config_count(0),
     secure_scaling_to_non_secure_opb(false)
 {
+    m_pipe_in = -1;
+    m_pipe_out = -1;
+    drv_ctx.video_driver_fd = -1;
+    drv_ctx.extradata_info.ion.fd_ion_data.fd = -1;
     /* Assumption is that , to begin with , we have all the frames with decoder */
     DEBUG_PRINT_HIGH("In %u bit OMX vdec Constructor", (unsigned int)sizeof(long) * 8);
     memset(&m_debug,0,sizeof(m_debug));
@@ -722,7 +726,6 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_frame_pack_arrangement.cancel_flag = 1;
 
     drv_ctx.timestamp_adjust = false;
-    drv_ctx.video_driver_fd = -1;
     m_vendor_config.pData = NULL;
     pthread_mutex_init(&m_lock, NULL);
     pthread_mutex_init(&c_lock, NULL);
@@ -839,10 +842,8 @@ omx_vdec::~omx_vdec()
     m_pmem_info = NULL;
     struct v4l2_decoder_cmd dec;
     DEBUG_PRINT_HIGH("In OMX vdec Destructor");
-    if (m_pipe_in) close(m_pipe_in);
-    if (m_pipe_out) close(m_pipe_out);
-    m_pipe_in = -1;
-    m_pipe_out = -1;
+    close(m_pipe_in);
+    close(m_pipe_out);
     DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
     if (msg_thread_created)
         pthread_join(msg_thread_id,NULL);
@@ -1888,12 +1889,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
     DEBUG_PRINT_INFO("component_init: %s : fd=%d", role, drv_ctx.video_driver_fd);
 
-    if (drv_ctx.video_driver_fd == 0) {
-        DEBUG_PRINT_ERROR("omx_vdec_msm8974 :: Got fd as 0 for msm_vidc_dec, Opening again");
-        drv_ctx.video_driver_fd = open(device_name, O_RDWR);
-        close(0);
-    }
-
     if (drv_ctx.video_driver_fd < 0) {
         DEBUG_PRINT_ERROR("Omx_vdec::Comp Init Returning failure, errno %d", errno);
         return OMX_ErrorInsufficientResources;
@@ -2289,17 +2284,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             DEBUG_PRINT_ERROR("pipe creation failed");
             eRet = OMX_ErrorInsufficientResources;
         } else {
-            int temp1[2];
-            if (fds[0] == 0 || fds[1] == 0) {
-                if (pipe (temp1)) {
-                    DEBUG_PRINT_ERROR("pipe creation failed");
-                    return OMX_ErrorInsufficientResources;
-                }
-                //close (fds[0]);
-                //close (fds[1]);
-                fds[0] = temp1 [0];
-                fds[1] = temp1 [1];
-            }
             m_pipe_in = fds[0];
             m_pipe_out = fds[1];
             msg_thread_created = true;
@@ -5599,7 +5583,7 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
 
     if (index < drv_ctx.ip_buf.actualcount && drv_ctx.ptr_inputbuffer) {
         DEBUG_PRINT_LOW("Free Input Buffer index = %d",index);
-        if (drv_ctx.ptr_inputbuffer[index].pmem_fd > 0) {
+        if (drv_ctx.ptr_inputbuffer[index].pmem_fd >= 0) {
             struct vdec_setbuffer_cmd setbuffers;
             setbuffers.buffer_type = VDEC_BUFFER_TYPE_INPUT;
             memcpy (&setbuffers.buffer,&drv_ctx.ptr_inputbuffer[index],
@@ -6056,16 +6040,6 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
             return OMX_ErrorInsufficientResources;
         }
 
-        if (pmem_fd == 0) {
-            pmem_fd = open (MEM_DEVICE,O_RDWR);
-
-            if (pmem_fd < 0) {
-                DEBUG_PRINT_ERROR("ERROR:pmem fd for output buffer %d",
-                        drv_ctx.op_buf.buffer_size);
-                return OMX_ErrorInsufficientResources;
-            }
-        }
-
         if (!align_pmem_buffers(pmem_fd, drv_ctx.op_buf.buffer_size *
                     drv_ctx.op_buf.actualcount,
                     drv_ctx.op_buf.alignment)) {
@@ -6156,7 +6130,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
                 bufHdr->nOffset            = 0;
 
                 pPMEMInfo->offset          =  drv_ctx.op_buf.buffer_size*i;
-                pPMEMInfo->pmem_fd = 0;
+                pPMEMInfo->pmem_fd = -1;
                 bufHdr->pPlatformPrivate = pPlatformList;
 
                 drv_ctx.ptr_outputbuffer[i].pmem_fd = pmem_fd;
@@ -9454,7 +9428,7 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
                 // Keep pBuffer NULL till vdec is opened
                 bufHdr->pBuffer            = NULL;
                 pPMEMInfo->offset          =  0;
-                pPMEMInfo->pmem_fd = 0;
+                pPMEMInfo->pmem_fd = -1;
                 bufHdr->pPlatformPrivate = pPlatformList;
                 drv_ctx.ptr_outputbuffer[i].pmem_fd = -1;
 #ifdef USE_ION
@@ -10826,7 +10800,7 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::free_output_buffer(
         DEBUG_PRINT_ERROR("Incorrect index color convert free_output_buffer");
         return OMX_ErrorBadParameter;
     }
-    if (pmem_fd[index] > 0) {
+    if (pmem_fd[index] >= 0) {
         munmap(pmem_baseaddress[index], buffer_size_req);
         close(pmem_fd[index]);
     }
