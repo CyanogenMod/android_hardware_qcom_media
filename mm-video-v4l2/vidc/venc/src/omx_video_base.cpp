@@ -2321,9 +2321,9 @@ OMX_ERRORTYPE  omx_video::use_input_buffer(
     unsigned char *buf_addr = NULL;
 
     DEBUG_PRINT_HIGH("use_input_buffer: port = %u appData = %p bytes = %u buffer = %p",(unsigned int)port,appData,(unsigned int)bytes,buffer);
-    if (bytes != m_sInPortDef.nBufferSize) {
+    if (bytes < m_sInPortDef.nBufferSize) {
         DEBUG_PRINT_ERROR("ERROR: use_input_buffer: Size Mismatch!! "
-                "bytes[%u] != Port.nBufferSize[%u]", (unsigned int)bytes, (unsigned int)m_sInPortDef.nBufferSize);
+                "bytes[%u] < Port.nBufferSize[%u]", (unsigned int)bytes, (unsigned int)m_sInPortDef.nBufferSize);
         return OMX_ErrorBadParameter;
     }
 
@@ -2493,9 +2493,9 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
 #endif
 
     DEBUG_PRINT_HIGH("Inside use_output_buffer()");
-    if (bytes != m_sOutPortDef.nBufferSize) {
+    if (bytes < m_sOutPortDef.nBufferSize) {
         DEBUG_PRINT_ERROR("ERROR: use_output_buffer: Size Mismatch!! "
-                "bytes[%u] != Port.nBufferSize[%u]", (unsigned int)bytes, (unsigned int)m_sOutPortDef.nBufferSize);
+                "bytes[%u] < Port.nBufferSize[%u]", (unsigned int)bytes, (unsigned int)m_sOutPortDef.nBufferSize);
         return OMX_ErrorBadParameter;
     }
 
@@ -2922,8 +2922,8 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
     unsigned   i = 0;
 
     DEBUG_PRINT_HIGH("allocate_input_buffer()::");
-    if (bytes != m_sInPortDef.nBufferSize) {
-        DEBUG_PRINT_ERROR("ERROR: Buffer size mismatch error: bytes[%u] != nBufferSize[%u]",
+    if (bytes < m_sInPortDef.nBufferSize) {
+        DEBUG_PRINT_ERROR("ERROR: Buffer size mismatch error: bytes[%u] < nBufferSize[%u]",
                 (unsigned int)bytes, (unsigned int)m_sInPortDef.nBufferSize);
         return OMX_ErrorBadParameter;
     }
