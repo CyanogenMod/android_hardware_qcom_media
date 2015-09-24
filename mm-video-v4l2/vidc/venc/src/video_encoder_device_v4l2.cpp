@@ -229,6 +229,8 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     async_thread_created = false;
     color_format = 0;
     hw_overload = false;
+    extradata = false;
+
     pthread_mutex_init(&pause_resume_mlock, NULL);
     pthread_cond_init(&pause_resume_cond, NULL);
     memset(&extradata_info, 0, sizeof(extradata_info));
@@ -240,11 +242,15 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&bitrate, 0, sizeof(bitrate));
     memset(&intra_period, 0, sizeof(intra_period));
     memset(&codec_profile, 0, sizeof(codec_profile));
+    memset(&profile_level, 0, sizeof(profile_level));
     memset(&set_param, 0, sizeof(set_param));
     memset(&time_inc, 0, sizeof(time_inc));
     memset(&m_sInput_buff_property, 0, sizeof(m_sInput_buff_property));
     memset(&m_sOutput_buff_property, 0, sizeof(m_sOutput_buff_property));
     memset(&session_qp, 0, sizeof(session_qp));
+    memset(&init_qp, 0, sizeof(init_qp));
+    memset(&session_qp_range, 0, sizeof(session_qp_range));
+    memset(&session_qp_values, 0, sizeof(session_qp_values));
     memset(&entropy, 0, sizeof(entropy));
     memset(&dbkfilter, 0, sizeof(dbkfilter));
     memset(&intra_refresh, 0, sizeof(intra_refresh));
@@ -260,6 +266,11 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     sess_priority.priority = 1;
     operating_rate = 0;
     format_set = false;
+    memset(&performance_level, 0, sizeof(performance_level));
+    memset(&vui_timing_info, 0, sizeof(vui_timing_info));
+    memset(&peak_bitrate, 0, sizeof(peak_bitrate));
+    memset(&vpx_err_resilience, 0, sizeof(vpx_err_resilience));
+    memset(&low_latency, 0, sizeof(low_latency));
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vidc.enc.log.in", property_value, "0");
@@ -1212,10 +1223,11 @@ bool venc_dev::venc_enable_low_latency()
 
     /*
      * 2D-2S mode does not support more than 4096 MBs per slice on msm8956
-     * in case of CAVLC and hence enable multi slicing if MBs per frame
+     * in case of H264 CAVLC and hence enable multi slicing if MBs per frame
      * is grearter than 4096
      */
-    if (!low_latency.enable && entropy.longentropysel == V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC) {
+    if (!low_latency.enable && m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264 &&
+            entropy.longentropysel == V4L2_MPEG_VIDEO_H264_ENTROPY_MODE_CAVLC) {
 
         if (multislice.mslice_mode == V4L2_MPEG_VIDEO_MULTI_SLICE_MODE_SINGLE &&
             ((m_sVenc_cfg.input_width / 16 * m_sVenc_cfg.input_height / 16) > slice_size)) {
