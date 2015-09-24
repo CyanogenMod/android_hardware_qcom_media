@@ -535,7 +535,7 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QTIIndexParamVideoPreferAdaptivePlayback = 0x7F000055,
 
     /* Set time params */
-    OMX_QcomIndexConfigSetTimeData = 0x7F000056,
+    OMX_QTIIndexConfigSetTimeData = 0x7F000056,
 };
 
 /**
@@ -1509,12 +1509,6 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
         OMX_U32 nBufferSize;
 } QOMX_VIDEO_CUSTOM_BUFFERSIZE;
 
-typedef struct QOMX_VIDEO_CUSTOM_TIMESTAMPINFO {
-        OMX_U32 nSize;
-        OMX_VERSIONTYPE nVersion;
-        OMX_U64 nTimeStamp;
-} QOMX_VIDEO_CUSTOM_TIMESTAMPINFO;
-
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SYNCFRAMEDECODINGMODE "OMX.QCOM.index.param.video.SyncFrameDecodingMode"
 #define OMX_QCOM_INDEX_PARAM_INDEXEXTRADATA "OMX.QCOM.index.param.IndexExtraData"
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SLICEDELIVERYMODE "OMX.QCOM.index.param.SliceDeliveryMode"
@@ -1552,6 +1546,7 @@ typedef struct QOMX_VIDEO_CUSTOM_TIMESTAMPINFO {
 
 #define OMX_QCOM_INDEX_PARAM_VIDEO_PASSINPUTBUFFERFD "OMX.QCOM.index.param.video.PassInputBufferFd"
 #define OMX_QTI_INDEX_PARAM_VIDEO_PREFER_ADAPTIVE_PLAYBACK "OMX.QTI.index.param.video.PreferAdaptivePlayback"
+#define OMX_QTI_INDEX_CONFIG_VIDEO_SETTIMEDATA "OMX.QTI.index.config.video.settimedata"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,
