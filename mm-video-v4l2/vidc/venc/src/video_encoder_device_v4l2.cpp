@@ -476,9 +476,9 @@ void* venc_dev::async_venc_message_thread (void *input)
         gettimeofday(&tv,NULL);
         OMX_U64 time_diff = (OMX_U32)((tv.tv_sec * 1000000 + tv.tv_usec) -
                 (stats.prev_tv.tv_sec * 1000000 + stats.prev_tv.tv_usec));
-        if (time_diff >= 5000000) {
+        OMX_U32 num_fbd = omx->handle->fbd - stats.prev_fbd;
+        if (num_fbd && time_diff >= 5000000) {
             if (stats.prev_tv.tv_sec) {
-                OMX_U32 num_fbd = omx->handle->fbd - stats.prev_fbd;
                 float framerate = num_fbd * 1000000/(float)time_diff;
                 OMX_U32 bitrate = (stats.bytes_generated * 8/num_fbd) * framerate;
                 DEBUG_PRINT_HIGH("stats: avg. fps %0.2f, bitrate %d",
