@@ -7019,7 +7019,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     buf.memory = V4L2_MEMORY_USERPTR;
     plane[0].bytesused = buffer->nFilledLen;
-    plane[0].length = drv_ctx.op_buf.buffer_size;
+    plane[0].length = buffer->nAllocLen;
     plane[0].m.userptr =
         (unsigned long)drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr -
         (unsigned long)drv_ctx.ptr_outputbuffer[nPortIndex].offset;
