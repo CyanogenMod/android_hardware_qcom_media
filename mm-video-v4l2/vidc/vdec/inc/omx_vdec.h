@@ -334,8 +334,8 @@ struct debug_cap {
 };
 
 struct dynamic_buf_list {
-    OMX_U32 fd;
-    OMX_U32 dup_fd;
+    long fd;
+    long dup_fd;
     OMX_U32 offset;
     OMX_U32 ref_count;
 };
@@ -477,8 +477,8 @@ class omx_vdec: public qc_omx_component
         pthread_t msg_thread_id;
         pthread_t async_thread_id;
         bool is_component_secure();
-        void buf_ref_add(OMX_U32 fd, OMX_U32 offset);
-        void buf_ref_remove(OMX_U32 fd, OMX_U32 offset);
+        void buf_ref_add(long fd, OMX_U32 offset);
+        void buf_ref_remove(long fd, OMX_U32 offset);
 
     private:
         // Bit Positions
@@ -1077,6 +1077,7 @@ class omx_vdec: public qc_omx_component
         OMX_TICKS m_last_rendered_TS;
         volatile int32_t m_queued_codec_config_count;
         bool secure_scaling_to_non_secure_opb;
+        bool m_is_display_session;
         class perf_lock {
             private:
                 pthread_mutex_t mlock;

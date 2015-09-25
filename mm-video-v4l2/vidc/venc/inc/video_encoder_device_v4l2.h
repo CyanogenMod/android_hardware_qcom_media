@@ -44,6 +44,11 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define BIT(num) (1 << (num))
 #define MAX_HYB_HIERP_LAYERS 6
 
+extern "C" {
+    void neon_clip_luma_chroma(unsigned char *, unsigned char *,
+            unsigned int, unsigned int, unsigned int, unsigned int);
+}
+
 enum hier_type {
     HIER_NONE = 0x0,
     HIER_P = 0x1,
@@ -415,6 +420,7 @@ class venc_dev
         bool venc_set_operatingrate(OMX_U32 rate);
         bool venc_set_max_hierp(OMX_U32 hierp_layers);
         bool venc_set_lowlatency_mode(OMX_BOOL enable);
+        void venc_clip_luma_chroma(int fd, OMX_U32 offset, OMX_U32 size);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
@@ -443,6 +449,7 @@ class venc_dev
         bool enable_mv_narrow_searchrange;
         int supported_rc_modes;
         bool format_set;
+        char m_platform[OMX_MAX_STRINGNAME_SIZE];
 };
 
 enum instance_state {
