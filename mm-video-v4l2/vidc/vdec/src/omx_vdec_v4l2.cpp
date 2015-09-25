@@ -11131,11 +11131,11 @@ void omx_vdec::perf_control::send_hint_to_mpctl(bool state)
        return;
     }
     m_perf_lock.lock();
-    /* 0x4601 maps to video decode playback hint
-     * in perflock, enum number is 46 and state
+    /* 0x4401 maps to video decode playback hint
+     * in perflock, enum number is 44 and state
      * being sent on perflock acquire is 01 (true)
      */
-    int arg = 0x4601;
+    int arg = 0x4401;
 
     if (state == true) {
         mpctl_obj.vid_inst_count++;

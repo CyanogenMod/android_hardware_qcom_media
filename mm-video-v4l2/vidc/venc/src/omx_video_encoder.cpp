@@ -84,12 +84,12 @@ void omx_venc::perf_control::send_hint_to_mpctl(bool state)
     if (load_lib() == false) {
         return;
     }
-    /* 0x4801 maps to video encode callback in
-     * perflock, 48 is the enum number, 01 is
+    /* 0x4601 maps to video encode callback in
+     * perflock, 46 is the enum number, 01 is
      * the state being sent when perflock
      * acquire succeeds
      */
-    int arg = 0x4801;
+    int arg = 0x4601;
 
     if (m_perf_lock_acquire && state == true) {
         m_perf_handle = m_perf_lock_acquire(0, 0, &arg, sizeof(arg) / sizeof(int));
