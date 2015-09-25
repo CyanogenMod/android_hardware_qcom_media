@@ -139,7 +139,7 @@ LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
 LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_swvenc_hevc.cpp
 
-#include $(BUILD_SHARED_LIBRARY)
+include $(BUILD_SHARED_LIBRARY)
 endif
 
 endif
