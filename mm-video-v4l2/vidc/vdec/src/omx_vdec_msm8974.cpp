@@ -66,6 +66,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #include <qdMetaData.h>
+#include <gralloc_priv.h>
 
 #ifdef ANDROID_JELLYBEAN_MR2
 #include "QComOMXMetadata.h"
@@ -594,7 +595,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     stereo_output_mode(HAL_NO_3D),
     m_last_rendered_TS(-1),
     m_queued_codec_config_count(0),
-    secure_scaling_to_non_secure_opb(false)
+    secure_scaling_to_non_secure_opb(false),
+    m_is_display_session(false)
 {
     /* Assumption is that , to begin with , we have all the frames with decoder */
     DEBUG_PRINT_HIGH("In %u bit OMX vdec Constructor", (unsigned int)sizeof(long) * 8);
@@ -930,21 +932,28 @@ int omx_vdec::decide_downscalar()
        return rc;
     }
 
-    DEBUG_PRINT_HIGH("%s: driver wxh = %dx%d, downscalar wxh = %dx%d", __func__,
-        fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, m_downscalar_width, m_downscalar_height);
+    DEBUG_PRINT_HIGH("%s: driver wxh = %dx%d, downscalar wxh = %dx%d m_is_display_session = %d", __func__,
+        fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, m_downscalar_width, m_downscalar_height, m_is_display_session);
 
-    if (fmt.fmt.pix_mp.width * fmt.fmt.pix_mp.height > m_downscalar_width * m_downscalar_height) {
+    if ((fmt.fmt.pix_mp.width * fmt.fmt.pix_mp.height > m_downscalar_width * m_downscalar_height) &&
+         m_is_display_session) {
         rc = enable_downscalar();
         if (rc < 0)
             return rc;
-        rc = update_resolution(m_downscalar_width, m_downscalar_height, m_downscalar_width, m_downscalar_height);
+        OMX_U32 width = m_downscalar_width > fmt.fmt.pix_mp.width ?
+                            fmt.fmt.pix_mp.width : m_downscalar_width;
+        OMX_U32 height = m_downscalar_height > fmt.fmt.pix_mp.height ?
+                            fmt.fmt.pix_mp.height : m_downscalar_height;
+        rc = update_resolution(width, height,
+                VENUS_Y_STRIDE(COLOR_FMT_NV12, width), VENUS_Y_SCANLINES(COLOR_FMT_NV12, height));
         if (rc < 0)
             return rc;
     } else {
         rc = disable_downscalar();
         if (rc < 0)
             return rc;
-        rc = update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, fmt.fmt.pix_mp.plane_fmt[0].bytesperline, fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
+        rc = update_resolution(fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height,
+                fmt.fmt.pix_mp.plane_fmt[0].bytesperline, fmt.fmt.pix_mp.plane_fmt[0].reserved[0]);
         if (rc < 0)
             return rc;
     }
@@ -6586,6 +6595,14 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         //We'll restore this size later on, so that it's transparent to client
         buffer->nFilledLen = 0;
         buffer->nAllocLen = handle->size;
+
+        if (handle->flags & private_handle_t::PRIV_FLAGS_DISP_CONSUMER) {
+            m_is_display_session = true;
+        } else {
+            m_is_display_session = false;
+        }
+        DEBUG_PRINT_LOW("%s: m_is_display_session = %d", __func__, m_is_display_session);
+
     }
 
 
@@ -9095,6 +9112,10 @@ OMX_ERRORTYPE omx_vdec::allocate_output_headers()
         if (dynamic_buf_mode) {
             out_dynamic_list = (struct dynamic_buf_list *) \
                 calloc (sizeof(struct dynamic_buf_list), drv_ctx.op_buf.actualcount);
+            if (out_dynamic_list) {
+               for (unsigned int i = 0; i < drv_ctx.op_buf.actualcount; i++)
+                  out_dynamic_list[i].dup_fd = -1;
+            }
         }
 
         if (m_out_mem_ptr && pPtr && drv_ctx.ptr_outputbuffer
@@ -10620,7 +10641,7 @@ OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::cache_ops(
     return OMX_ErrorNone;
 }
 
-void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
+void omx_vdec::buf_ref_add(long fd, OMX_U32 offset)
 {
     unsigned long i = 0;
     bool buf_present = false;
@@ -10650,7 +10671,7 @@ void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
     if (!buf_present) {
         for (i = 0; i < drv_ctx.op_buf.actualcount; i++) {
             //search for a entry to insert details of the new buffer
-            if (out_dynamic_list[i].dup_fd == 0) {
+            if (out_dynamic_list[i].dup_fd < 0) {
                 out_dynamic_list[i].fd = fd;
                 out_dynamic_list[i].offset = offset;
                 out_dynamic_list[i].dup_fd = dup(fd);
@@ -10664,7 +10685,7 @@ void omx_vdec::buf_ref_add(OMX_U32 fd, OMX_U32 offset)
    pthread_mutex_unlock(&m_lock);
 }
 
-void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
+void omx_vdec::buf_ref_remove(long fd, OMX_U32 offset)
 {
     unsigned long i = 0;
 
@@ -10688,7 +10709,7 @@ void omx_vdec::buf_ref_remove(OMX_U32 fd, OMX_U32 offset)
                 close(out_dynamic_list[i].dup_fd);
                 DEBUG_PRINT_LOW("buf_ref_remove: [REMOVED] fd = %u ref_count = %u",
                      (unsigned int)out_dynamic_list[i].fd, (unsigned int)out_dynamic_list[i].ref_count);
-                out_dynamic_list[i].dup_fd = 0;
+                out_dynamic_list[i].dup_fd = -1;
                 out_dynamic_list[i].fd = 0;
                 out_dynamic_list[i].offset = 0;
             }
