@@ -6958,9 +6958,9 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
 
     if (dynamic_buf_mode) {
         drv_ctx.ptr_outputbuffer[nPortIndex].offset = 0;
-        drv_ctx.ptr_outputbuffer[nPortIndex].buffer_len = drv_ctx.op_buf.buffer_size;
+        drv_ctx.ptr_outputbuffer[nPortIndex].buffer_len = buffer->nAllocLen;
         buf_ref_add(nPortIndex);
-        drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size = drv_ctx.op_buf.buffer_size;
+        drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size = buffer->nAllocLen;
     }
 
     pending_output_buffers++;
@@ -8117,7 +8117,8 @@ int omx_vdec::async_message_process (void *context, void* message)
                         output_respbuf->pic_type = PICTURE_TYPE_B;
                     }
 
-                    if (omx->output_use_buffer)
+                    if (omx->output_use_buffer && omxhdr->pBuffer &&
+                        vdec_msg->msgdata.output_frame.bufferaddr)
                         memcpy ( omxhdr->pBuffer, (void *)
                                 ((unsigned long)vdec_msg->msgdata.output_frame.bufferaddr +
                                  (unsigned long)vdec_msg->msgdata.output_frame.offset),
@@ -9617,6 +9618,12 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         return;
     }
     struct msm_vidc_panscan_window_payload *panscan_payload = NULL;
+
+    if (drv_ctx.ptr_outputbuffer[buf_index].bufferaddr == NULL) {
+        DEBUG_PRINT_ERROR("handle_extradata: Error: Mapped output buffer address is NULL");
+        return;
+    }
+
     OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr) +
         p_buf_hdr->nOffset;
 
@@ -11014,11 +11021,17 @@ void omx_vdec::buf_ref_add(int nPortIndex)
 
                 if (!secure_mode) {
                     drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr =
-                            (OMX_U8*)mmap(0, drv_ctx.op_buf.buffer_size,
+                            (OMX_U8*)mmap(0, drv_ctx.ptr_outputbuffer[nPortIndex].buffer_len,
                                           PROT_READ|PROT_WRITE, MAP_SHARED,
                                           drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd, 0);
+                    //mmap returns (void *)-1 on failure and sets error code in errno.
+                    if (drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr == MAP_FAILED) {
+                        DEBUG_PRINT_ERROR("buf_ref_add: mmap failed - errno: %d", errno);
+                        drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr = NULL;
+                        break;
+                    }
                     out_dynamic_list[i].buffaddr = drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr;
-                    out_dynamic_list[i].mapped_size = drv_ctx.op_buf.buffer_size;
+                    out_dynamic_list[i].mapped_size = drv_ctx.ptr_outputbuffer[nPortIndex].buffer_len;
                     DEBUG_PRINT_LOW("mmap: %p %ld", out_dynamic_list[i].buffaddr, out_dynamic_list[i].mapped_size);
                 }
                 break;
