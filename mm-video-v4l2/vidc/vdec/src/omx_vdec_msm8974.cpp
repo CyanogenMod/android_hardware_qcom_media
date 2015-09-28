@@ -1252,29 +1252,15 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         }  else if (p2 == OMX_IndexConfigCommonOutputCrop) {
                                             DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_IndexConfigCommonOutputCrop");
 
-                                            /* Check if resolution is changed in smooth streaming mode */
-                                            if (pThis->m_smoothstreaming_mode &&
-                                                (pThis->framesize.nWidth !=
-                                                    pThis->drv_ctx.video_resolution.frame_width) ||
-                                                (pThis->framesize.nHeight !=
-                                                    pThis->drv_ctx.video_resolution.frame_height)) {
+                                            DEBUG_PRINT_HIGH("Resolution changed from: wxh = %dx%d to: wxh = %dx%d",
+                                                pThis->framesize.nWidth,
+                                                pThis->framesize.nHeight,
+                                                pThis->drv_ctx.video_resolution.frame_width,
+                                                pThis->drv_ctx.video_resolution.frame_height);
 
-                                                DEBUG_PRINT_HIGH("Resolution changed from: wxh = %dx%d to: wxh = %dx%d",
-                                                        pThis->framesize.nWidth,
-                                                        pThis->framesize.nHeight,
-                                                        pThis->drv_ctx.video_resolution.frame_width,
-                                                        pThis->drv_ctx.video_resolution.frame_height);
-
-                                                /* Update new resolution */
-                                                pThis->framesize.nWidth =
-                                                       pThis->drv_ctx.video_resolution.frame_width;
-                                                pThis->framesize.nHeight =
-                                                       pThis->drv_ctx.video_resolution.frame_height;
-
-                                                /* Update C2D with new resolution */
-                                                if (!pThis->client_buffers.update_buffer_req()) {
-                                                    DEBUG_PRINT_ERROR("Setting C2D buffer requirements failed");
-                                                }
+                                            /* Update C2D with new resolution */
+                                            if (!pThis->client_buffers.update_buffer_req()) {
+                                                DEBUG_PRINT_ERROR("Setting C2D buffer requirements failed");
                                             }
 
                                             /* Update new crop information */
