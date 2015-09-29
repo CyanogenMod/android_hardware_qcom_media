@@ -5354,6 +5354,14 @@ OMX_ERRORTYPE omx_vdec::free_output_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
                 sizeof (vdec_bufferpayload));
 
         if (!dynamic_buf_mode) {
+            if (streaming[CAPTURE_PORT] &&
+                !(in_reconfig || BITMASK_PRESENT(&m_flags,OMX_COMPONENT_OUTPUT_FLUSH_PENDING))) {
+                if (stream_off(OMX_CORE_OUTPUT_PORT_INDEX)) {
+                    DEBUG_PRINT_ERROR("STREAMOFF Failed");
+                } else {
+                    DEBUG_PRINT_LOW("STREAMOFF Successful");
+                }
+            }
 #ifdef _ANDROID_
             if (m_enable_android_native_buffers) {
                 if (!secure_mode) {
