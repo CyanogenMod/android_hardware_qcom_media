@@ -4624,12 +4624,9 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
     } else {
         if (!m_opq_meta_q.insert_entry((unsigned long)buffer,0,0)) {
             DEBUG_PRINT_ERROR("ERROR: ETBProxy: Queue is full");
+            m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
             ret = OMX_ErrorBadParameter;
         }
-    }
-    if (ret != OMX_ErrorNone) {
-        m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
-        DEBUG_PRINT_LOW("ERROR: ETBOpaque failed:");
     }
     return ret;
 }
@@ -4664,6 +4661,9 @@ OMX_ERRORTYPE omx_video::queue_meta_buffer(OMX_HANDLETYPE hComp,
             m_opq_meta_q.pop_entry(&address,&p2,&id);
             psource_frame = (OMX_BUFFERHEADERTYPE* ) address;
         }
+    } else {
+        // there has been an error and source frame has been scheduled for an EBD
+        psource_frame = NULL;
     }
     return ret;
 }
@@ -4748,6 +4748,9 @@ OMX_ERRORTYPE omx_video::convert_queue_buffer(OMX_HANDLETYPE hComp,
             pdest_frame = (OMX_BUFFERHEADERTYPE* ) address;
             DEBUG_PRINT_LOW("pdest_frame pop address is %p",pdest_frame);
         }
+    } else {
+        // there has been an error and source frame has been scheduled for an EBD
+        psource_frame = NULL;
     }
     return ret;
 }
