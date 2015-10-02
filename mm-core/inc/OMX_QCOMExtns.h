@@ -541,6 +541,12 @@ enum OMX_QCOM_EXTN_INDEXTYPE
      * and OPB is cpu_access */
     /* OMX.QTI.index.param.video.ForceCompressedForDPB */
     OMX_QTIIndexParamForceCompressedForDPB = 0x7F000057,
+
+    /* Enable ROI info */
+    OMX_QTIIndexParamVideoEnableRoiInfo = 0x7F000058,
+
+    /* Configure ROI info */
+    OMX_QTIIndexConfigVideoRoiInfo = 0x7F000059,
 };
 
 /**
@@ -1262,6 +1268,24 @@ typedef struct OMX_QCOM_EXTRADATA_VQZIPSEI {
     OMX_U8 data[0];
 } OMX_QCOM_EXTRADATA_VQZIPSEI;
 
+typedef struct OMX_QTI_VIDEO_PARAM_ENABLE_ROIINFO {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_BOOL        bEnableRoiInfo;
+} OMX_QTI_VIDEO_PARAM_ENABLE_ROIINFO;
+
+typedef struct OMX_QTI_VIDEO_CONFIG_ROIINFO {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_S32         nUpperQpOffset;
+    OMX_S32         nLowerQpOffset;
+    OMX_BOOL        bUseRoiInfo;
+    OMX_S32         nRoiMBInfoSize;
+    OMX_PTR         pRoiMBInfo;
+} OMX_QTI_VIDEO_CONFIG_ROIINFO;
+
 typedef enum OMX_QCOM_EXTRADATATYPE
 {
     OMX_ExtraDataFrameInfo =               0x7F000001,
@@ -1578,6 +1602,8 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QTI_INDEX_PARAM_VIDEO_PREFER_ADAPTIVE_PLAYBACK "OMX.QTI.index.param.video.PreferAdaptivePlayback"
 #define OMX_QTI_INDEX_CONFIG_VIDEO_SETTIMEDATA "OMX.QTI.index.config.video.settimedata"
 #define OMX_QTI_INDEX_PARAM_VIDEO_FORCE_COMPRESSED_FOR_DPB "OMX.QTI.index.param.video.ForceCompressedForDPB"
+#define OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO "OMX.QTI.index.param.enableRoiInfo"
+#define OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO "OMX.QTI.index.config.RoiInfo"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,

@@ -1553,6 +1553,15 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(&m_sSar, paramData, sizeof(m_sSar));
                 break;
             }
+        case OMX_QTIIndexParamVideoEnableRoiInfo:
+            {
+                if (!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE)OMX_QTIIndexParamVideoEnableRoiInfo)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QTIIndexParamVideoEnableRoiInfo failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -1948,6 +1957,14 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
+        case OMX_QTIIndexConfigVideoRoiInfo:
+            {
+                if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoRoiInfo)) {
+                    DEBUG_PRINT_ERROR("Failed to set OMX_QTIIndexConfigVideoRoiInfo");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             break;
@@ -2204,14 +2221,19 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
 #endif
 }
 
-int omx_venc::dev_handle_output_extradata(void *buffer, int index)
+int omx_venc::dev_handle_output_extradata(void *buffer)
 {
-    return handle->handle_output_extradata(buffer, index);
+    return handle->handle_output_extradata(buffer);
 }
 
-int omx_venc::dev_handle_input_extradata(void *buffer, int index, int fd)
+int omx_venc::dev_handle_input_extradata(void *buffer)
 {
-    return handle->handle_input_extradata(buffer, index, fd);
+    return handle->handle_input_extradata(buffer);
+}
+
+void omx_venc::dev_set_extradata_cookie(void *cookie)
+{
+    handle->mInputExtradata.setCookieForConfig(cookie);
 }
 
 int omx_venc::dev_set_format(int color)

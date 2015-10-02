@@ -59,8 +59,9 @@ class omx_venc: public omx_video
         //OMX strucutres
         OMX_U32 m_nVenc_format;
         class venc_dev *handle;
-        int dev_handle_output_extradata(void *, int);
-        int dev_handle_input_extradata(void *, int, int);
+        int dev_handle_output_extradata(void *);
+        int dev_handle_input_extradata(void *);
+        void dev_set_extradata_cookie(void *);
         int dev_set_format(int);
     private:
         OMX_U32 dev_stop(void);

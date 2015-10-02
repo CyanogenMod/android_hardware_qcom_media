@@ -233,8 +233,9 @@ class omx_video: public qc_omx_component
         virtual bool dev_loaded_start_done(void) = 0;
         virtual bool dev_loaded_stop_done(void) = 0;
         virtual bool is_secure_session(void) = 0;
-        virtual int dev_handle_output_extradata(void*, int) = 0;
-        virtual int dev_handle_input_extradata(void*, int, int) = 0;
+        virtual int dev_handle_output_extradata(void*) = 0;
+        virtual int dev_handle_input_extradata(void*) = 0;
+        virtual void dev_set_extradata_cookie(void*) = 0;
         virtual int dev_set_format(int) = 0;
         virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
         virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
