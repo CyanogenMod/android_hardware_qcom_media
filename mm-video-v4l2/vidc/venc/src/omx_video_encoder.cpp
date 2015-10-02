@@ -2255,9 +2255,12 @@ int omx_venc::async_message_process (void *context, void* message)
         DEBUG_PRINT_ERROR("ERROR: async_msg_process() - Error statuscode = %lu",
                 m_sVenc_msg->statuscode);
         if(m_sVenc_msg->msgcode == VEN_MSG_HW_OVERLOAD) {
-            omx->omx_report_hw_overload();
-        } else
-            omx->omx_report_error();
+            omx->post_event (0, m_sVenc_msg->statuscode,\
+                    OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD);
+        } else {
+            omx->post_event (0, m_sVenc_msg->statuscode,\
+                    OMX_COMPONENT_GENERATE_HARDWARE_ERROR);
+        }
     }
 
     DEBUG_PRINT_LOW("omx_venc::async_message_process- msgcode = %lu",

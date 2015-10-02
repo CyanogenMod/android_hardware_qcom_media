@@ -427,7 +427,9 @@ class omx_video: public qc_omx_component
             OMX_COMPONENT_GENERATE_STOP_DONE = 0x10,
             OMX_COMPONENT_GENERATE_HARDWARE_ERROR = 0x11,
             OMX_COMPONENT_GENERATE_LTRUSE_FAILED = 0x12,
-            OMX_COMPONENT_GENERATE_ETB_OPQ = 0x13
+            OMX_COMPONENT_GENERATE_ETB_OPQ = 0x13,
+            OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING = 0x14,
+            OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD = 0x15
         };
 
         struct omx_event {
@@ -527,7 +529,7 @@ class omx_video: public qc_omx_component
                    );
         OMX_ERRORTYPE get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
         inline void omx_report_error () {
-            if (m_pCallbacks.EventHandler && !m_error_propogated) {
+            if (m_pCallbacks.EventHandler && !m_error_propogated && m_state != OMX_StateLoaded) {
                 m_error_propogated = true;
                 DEBUG_PRINT_ERROR("ERROR: send OMX_ErrorHardware to Client");
                 m_pCallbacks.EventHandler(&m_cmp,m_app_data,
@@ -537,7 +539,7 @@ class omx_video: public qc_omx_component
 
         inline void omx_report_hw_overload ()
         {
-            if (m_pCallbacks.EventHandler && !m_error_propogated) {
+            if (m_pCallbacks.EventHandler && !m_error_propogated && m_state != OMX_StateLoaded) {
                 m_error_propogated = true;
                 DEBUG_PRINT_ERROR("ERROR: send OMX_ErrorInsufficientResources to Client");
                 m_pCallbacks.EventHandler(&m_cmp, m_app_data,
@@ -546,7 +548,7 @@ class omx_video: public qc_omx_component
         }
 
         inline void omx_report_unsupported_setting () {
-            if (m_pCallbacks.EventHandler && !m_error_propogated) {
+            if (m_pCallbacks.EventHandler && !m_error_propogated && m_state != OMX_StateLoaded) {
                 m_error_propogated = true;
                 m_pCallbacks.EventHandler(&m_cmp,m_app_data,
                         OMX_EventError,OMX_ErrorUnsupportedSetting,0,NULL);

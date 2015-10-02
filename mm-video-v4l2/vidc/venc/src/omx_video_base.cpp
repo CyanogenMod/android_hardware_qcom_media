@@ -645,6 +645,16 @@ void omx_video::process_event_cb(void *ctxt, unsigned char id)
                     }
                     break;
 #endif
+                case OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING:
+                    DEBUG_PRINT_ERROR("OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING");
+                    pThis->omx_report_unsupported_setting();
+                    break;
+
+                case OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD:
+                    DEBUG_PRINT_ERROR("OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD");
+                    pThis->omx_report_hw_overload();
+                    break;
+
                 default:
                     DEBUG_PRINT_LOW("process_event_cb unknown msg id 0x%02x", id);
                     break;
