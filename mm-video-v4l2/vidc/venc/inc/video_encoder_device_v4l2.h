@@ -335,6 +335,7 @@ class venc_dev
         venc_dev_vqzip vqzip;
         struct venc_debug_cap m_debug;
         OMX_U32 m_nDriver_fd;
+        int m_poll_efd;
         bool m_profile_set;
         bool m_level_set;
         int num_input_planes, num_output_planes;

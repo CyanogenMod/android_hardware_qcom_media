@@ -53,6 +53,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdlib.h>
 #include <media/hardware/HardwareAPI.h>
 #include <media/msm_media_info.h>
+#include <sys/eventfd.h>
 
 #ifndef _ANDROID_
 #include <sys/ioctl.h>
@@ -154,18 +155,20 @@ void* async_message_thread (void *input)
 {
     OMX_BUFFERHEADERTYPE *buffer;
     struct v4l2_plane plane[VIDEO_MAX_PLANES];
-    struct pollfd pfd;
+    struct pollfd pfds[2];
     struct v4l2_buffer v4l2_buf;
     memset((void *)&v4l2_buf,0,sizeof(v4l2_buf));
     struct v4l2_event dqevent;
     omx_vdec *omx = reinterpret_cast<omx_vdec*>(input);
-    pfd.events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
-    pfd.fd = omx->drv_ctx.video_driver_fd;
+    pfds[0].events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
+    pfds[1].events = POLLIN | POLLERR;
+    pfds[0].fd = omx->drv_ctx.video_driver_fd;
+    pfds[1].fd = omx->m_poll_efd;
     int error_code = 0,rc=0,bytes_read = 0,bytes_written = 0;
     DEBUG_PRINT_HIGH("omx_vdec: Async thread start");
     prctl(PR_SET_NAME, (unsigned long)"VideoDecCallBackThread", 0, 0, 0);
     while (1) {
-        rc = poll(&pfd, 1, POLL_TIMEOUT);
+        rc = poll(pfds, 2, POLL_TIMEOUT);
         if (!rc) {
             DEBUG_PRINT_ERROR("Poll timedout");
             break;
@@ -173,14 +176,18 @@ void* async_message_thread (void *input)
             DEBUG_PRINT_ERROR("Error while polling: %d", rc);
             break;
         }
-        if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
+        if ((pfds[1].revents & POLLIN) || (pfds[1].revents & POLLERR)) {
+            DEBUG_PRINT_HIGH("async_message_thread interrupted to be exited");
+            break;
+        }
+        if ((pfds[0].revents & POLLIN) || (pfds[0].revents & POLLRDNORM)) {
             struct vdec_msginfo vdec_msg;
             memset(&vdec_msg, 0, sizeof(vdec_msg));
             v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
             v4l2_buf.memory = V4L2_MEMORY_USERPTR;
             v4l2_buf.length = omx->drv_ctx.num_planes;
             v4l2_buf.m.planes = plane;
-            while (!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
+            while (!ioctl(pfds[0].fd, VIDIOC_DQBUF, &v4l2_buf)) {
                 vdec_msg.msgcode=VDEC_MSG_RESP_OUTPUT_BUFFER_DONE;
                 vdec_msg.status_code=VDEC_S_SUCCESS;
                 vdec_msg.msgdata.output_frame.client_data=(void*)&v4l2_buf;
@@ -202,13 +209,13 @@ void* async_message_thread (void *input)
                 }
             }
         }
-        if ((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
+        if ((pfds[0].revents & POLLOUT) || (pfds[0].revents & POLLWRNORM)) {
             struct vdec_msginfo vdec_msg;
             v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
             v4l2_buf.memory = V4L2_MEMORY_USERPTR;
             v4l2_buf.length = 1;
             v4l2_buf.m.planes = plane;
-            while (!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
+            while (!ioctl(pfds[0].fd, VIDIOC_DQBUF, &v4l2_buf)) {
                 vdec_msg.msgcode=VDEC_MSG_RESP_INPUT_BUFFER_DONE;
                 vdec_msg.status_code=VDEC_S_SUCCESS;
                 vdec_msg.msgdata.input_frame_clientdata=(void*)&v4l2_buf;
@@ -218,8 +225,8 @@ void* async_message_thread (void *input)
                 }
             }
         }
-        if (pfd.revents & POLLPRI) {
-            rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
+        if (pfds[0].revents & POLLPRI) {
+            rc = ioctl(pfds[0].fd, VIDIOC_DQEVENT, &dqevent);
             if (dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_CHANGED_INSUFFICIENT ) {
                 struct vdec_msginfo vdec_msg;
                 unsigned int *ptr = (unsigned int *)(void *)dqevent.u.data;
@@ -259,9 +266,6 @@ void* async_message_thread (void *input)
                     DEBUG_PRINT_HIGH("async_message_thread Exited");
                     break;
                 }
-            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE) {
-                DEBUG_PRINT_HIGH("VIDC Close Done Recieved and async_message_thread Exited");
-                break;
             } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_HW_OVERLOAD) {
                 struct vdec_msginfo vdec_msg;
                 vdec_msg.msgcode=VDEC_MSG_EVT_HW_OVERLOAD;
@@ -622,6 +626,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 {
     m_pipe_in = -1;
     m_pipe_out = -1;
+    m_poll_efd = -1;
     drv_ctx.video_driver_fd = -1;
     drv_ctx.extradata_info.ion.fd_ion_data.fd = -1;
     /* Assumption is that , to begin with , we have all the frames with decoder */
@@ -761,7 +766,6 @@ static const int event_type[] = {
     V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_BITDEPTH_CHANGED_INSUFFICIENT,
     V4L2_EVENT_MSM_VIDC_RELEASE_BUFFER_REFERENCE,
     V4L2_EVENT_MSM_VIDC_RELEASE_UNQUEUED_BUFFER,
-    V4L2_EVENT_MSM_VIDC_CLOSE_DONE,
     V4L2_EVENT_MSM_VIDC_SYS_ERROR,
     V4L2_EVENT_MSM_VIDC_HW_OVERLOAD,
     V4L2_EVENT_MSM_VIDC_HW_UNSUPPORTED
@@ -840,7 +844,6 @@ static OMX_ERRORTYPE unsubscribe_to_events(int fd)
 omx_vdec::~omx_vdec()
 {
     m_pmem_info = NULL;
-    struct v4l2_decoder_cmd dec;
     DEBUG_PRINT_HIGH("In OMX vdec Destructor");
     close(m_pipe_in);
     close(m_pipe_out);
@@ -848,14 +851,12 @@ omx_vdec::~omx_vdec()
     if (msg_thread_created)
         pthread_join(msg_thread_id,NULL);
     DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
-    dec.cmd = V4L2_DEC_CMD_STOP;
-    if (drv_ctx.video_driver_fd >=0 ) {
-        if (ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec))
-            DEBUG_PRINT_ERROR("STOP Command failed");
+    if(!eventfd_write(m_poll_efd, 1)) {
+       if (async_thread_created)
+          pthread_join(async_thread_id,NULL);
     }
-    if (async_thread_created)
-        pthread_join(async_thread_id,NULL);
     unsubscribe_to_events(drv_ctx.video_driver_fd);
+    close(m_poll_efd);
     close(drv_ctx.video_driver_fd);
     pthread_mutex_destroy(&m_lock);
     pthread_mutex_destroy(&c_lock);
@@ -1895,7 +1896,11 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
     drv_ctx.frame_rate.fps_numerator = DEFAULT_FPS;
     drv_ctx.frame_rate.fps_denominator = 1;
-
+    m_poll_efd = eventfd(0, 0);
+    if (m_poll_efd < 0) {
+        DEBUG_PRINT_ERROR("Failed to create event fd(%s)", strerror(errno));
+        return OMX_ErrorInsufficientResources;
+    }
     ret = subscribe_to_events(drv_ctx.video_driver_fd);
     if (!ret) {
         async_thread_created = true;

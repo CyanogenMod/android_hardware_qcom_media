@@ -29,6 +29,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/prctl.h>
+#include <sys/eventfd.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include "video_encoder_device_v4l2.h"
@@ -220,6 +221,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     int i = 0;
     venc_handle = venc_class;
     etb = ebd = ftb = fbd = 0;
+    m_poll_efd = -1;
 
     for (i = 0; i < MAX_PORT; i++)
         streaming[i] = false;
@@ -305,12 +307,14 @@ void* venc_dev::async_venc_message_thread (void *input)
 
     prctl(PR_SET_NAME, (unsigned long)"VideoEncCallBackThread", 0, 0, 0);
     struct v4l2_plane plane[VIDEO_MAX_PLANES];
-    struct pollfd pfd;
+    struct pollfd pfds[2];
     struct v4l2_buffer v4l2_buf;
     struct v4l2_event dqevent;
     struct statistics stats;
-    pfd.events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
-    pfd.fd = omx->handle->m_nDriver_fd;
+    pfds[0].events = POLLIN | POLLRDNORM | POLLOUT | POLLWRNORM | POLLRDBAND | POLLPRI;
+    pfds[1].events = POLLIN | POLLERR;
+    pfds[0].fd = omx->handle->m_nDriver_fd;
+    pfds[1].fd = omx->handle->m_poll_efd;
     int error_code = 0,rc=0;
 
     memset(&stats, 0, sizeof(statistics));
@@ -346,7 +350,7 @@ void* venc_dev::async_venc_message_thread (void *input)
 
         pthread_mutex_unlock(&omx->handle->pause_resume_mlock);
 
-        rc = poll(&pfd, 1, POLL_TIMEOUT);
+        rc = poll(pfds, 2, POLL_TIMEOUT);
 
         if (!rc) {
             DEBUG_PRINT_HIGH("Poll timedout, pipeline stalled due to client/firmware ETB: %d, EBD: %d, FTB: %d, FBD: %d",
@@ -357,13 +361,18 @@ void* venc_dev::async_venc_message_thread (void *input)
             break;
         }
 
-        if ((pfd.revents & POLLIN) || (pfd.revents & POLLRDNORM)) {
+        if ((pfds[1].revents & POLLIN) || (pfds[1].revents & POLLERR)) {
+            DEBUG_PRINT_ERROR("async_venc_message_thread interrupted to be exited");
+            break;
+        }
+
+        if ((pfds[0].revents & POLLIN) || (pfds[0].revents & POLLRDNORM)) {
             v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
             v4l2_buf.memory = V4L2_MEMORY_USERPTR;
             v4l2_buf.length = omx->handle->num_output_planes;
             v4l2_buf.m.planes = plane;
 
-            while (!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
+            while (!ioctl(pfds[0].fd, VIDIOC_DQBUF, &v4l2_buf)) {
                 venc_msg.msgcode=VEN_MSG_OUTPUT_BUFFER_DONE;
                 venc_msg.statuscode=VEN_S_SUCCESS;
                 omxhdr=omx_venc_base->m_out_mem_ptr+v4l2_buf.index;
@@ -406,13 +415,13 @@ void* venc_dev::async_venc_message_thread (void *input)
             }
         }
 
-        if ((pfd.revents & POLLOUT) || (pfd.revents & POLLWRNORM)) {
+        if ((pfds[0].revents & POLLOUT) || (pfds[0].revents & POLLWRNORM)) {
             v4l2_buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
             v4l2_buf.memory = V4L2_MEMORY_USERPTR;
             v4l2_buf.m.planes = plane;
             v4l2_buf.length = omx->handle->num_input_planes;
 
-            while (!ioctl(pfd.fd, VIDIOC_DQBUF, &v4l2_buf)) {
+            while (!ioctl(pfds[0].fd, VIDIOC_DQBUF, &v4l2_buf)) {
                 venc_msg.msgcode=VEN_MSG_INPUT_BUFFER_DONE;
                 venc_msg.statuscode=VEN_S_SUCCESS;
 
@@ -446,13 +455,10 @@ void* venc_dev::async_venc_message_thread (void *input)
             }
         }
 
-        if (pfd.revents & POLLPRI) {
-            rc = ioctl(pfd.fd, VIDIOC_DQEVENT, &dqevent);
+        if (pfds[0].revents & POLLPRI) {
+            rc = ioctl(pfds[0].fd, VIDIOC_DQEVENT, &dqevent);
 
-            if (dqevent.type == V4L2_EVENT_MSM_VIDC_CLOSE_DONE) {
-                DEBUG_PRINT_HIGH("CLOSE DONE");
-                break;
-            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_FLUSH_DONE) {
+            if (dqevent.type == V4L2_EVENT_MSM_VIDC_FLUSH_DONE) {
                 venc_msg.msgcode = VEN_MSG_FLUSH_INPUT_DONE;
                 venc_msg.statuscode = VEN_S_SUCCESS;
 
@@ -515,7 +521,6 @@ void* venc_dev::async_venc_message_thread (void *input)
 
 static const int event_type[] = {
     V4L2_EVENT_MSM_VIDC_FLUSH_DONE,
-    V4L2_EVENT_MSM_VIDC_CLOSE_DONE,
     V4L2_EVENT_MSM_VIDC_SYS_ERROR
 };
 
@@ -1057,6 +1062,11 @@ bool venc_dev::venc_open(OMX_U32 codec)
         DEBUG_PRINT_ERROR("ERROR: Omx_venc::Comp Init Returning failure");
         return false;
     }
+    m_poll_efd = eventfd(0, 0);
+    if (m_poll_efd < 0) {
+        DEBUG_PRINT_ERROR("Failed to open event fd(%s)", strerror(errno));
+        return false;
+    }
     DEBUG_PRINT_LOW("m_nDriver_fd = %u", (unsigned int)m_nDriver_fd);
 
     // set the basic configuration of the video encoder driver
@@ -1302,19 +1312,19 @@ static OMX_ERRORTYPE unsubscribe_to_events(int fd)
 
 void venc_dev::venc_close()
 {
-    struct v4l2_encoder_cmd enc;
     DEBUG_PRINT_LOW("venc_close: fd = %u", (unsigned int)m_nDriver_fd);
 
     if ((int)m_nDriver_fd >= 0) {
-        enc.cmd = V4L2_ENC_CMD_STOP;
-        ioctl(m_nDriver_fd, VIDIOC_ENCODER_CMD, &enc);
         DEBUG_PRINT_HIGH("venc_close E");
 
-        if (async_thread_created)
-            pthread_join(m_tid,NULL);
+        if(!eventfd_write(m_poll_efd, 1)) {
+            if (async_thread_created)
+                pthread_join(m_tid,NULL);
+        }
 
         DEBUG_PRINT_HIGH("venc_close X");
         unsubscribe_to_events(m_nDriver_fd);
+        close(m_poll_efd);
         close(m_nDriver_fd);
         m_nDriver_fd = -1;
     }
