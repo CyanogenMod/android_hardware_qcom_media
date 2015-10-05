@@ -4286,8 +4286,8 @@ bool venc_dev::venc_calibrate_gop()
     nBframes = intra_period.num_bframes;
     nLayers = hier_layers.numlayers;
 
-    if (!nPframes) {
-        DEBUG_PRINT_ERROR("nPframes should be non-zero\n");
+    if (!nPframes && nLayers) {
+        DEBUG_PRINT_ERROR("nPframes should be non-zero with nLayers enabled\n");
         return false;
     }
 
