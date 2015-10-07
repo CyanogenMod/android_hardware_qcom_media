@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2011-2015 The Linux Foundation. All rights reserved.
  * Copyright (c) 2011 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#ifndef QCOM_OMX_METADATA_H_
+#define QCOM_OMX_METADATA_H_
+
 #include <system/window.h>
 #include <media/hardware/MetadataBufferType.h>
 
@@ -33,3 +37,5 @@ namespace android {
     };
 #endif
 }
+
+#endif
