@@ -622,7 +622,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     client_set_fps(false),
     m_last_rendered_TS(-1),
     m_queued_codec_config_count(0),
-    secure_scaling_to_non_secure_opb(false)
+    secure_scaling_to_non_secure_opb(false),
+    m_force_compressed_for_dpb(false)
 {
     m_pipe_in = -1;
     m_pipe_out = -1;
@@ -939,7 +940,7 @@ OMX_ERRORTYPE omx_vdec::decide_dpb_buffer_mode()
 
     if (cpu_access) {
         if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_8) {
-            if (is_res_above_1080p) {
+            if (m_force_compressed_for_dpb || is_res_above_1080p) {
                 //split DPB-OPB
                 //DPB -> UBWC , OPB -> Linear
                 eRet = set_dpb(true, V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_UBWC);
@@ -4511,6 +4512,26 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 DEBUG_PRINT_LOW("Enable passing input buffer FD");
             break;
         }
+        case OMX_QTIIndexParamForceCompressedForDPB:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QTIIndexParamForceCompressedForDPB");
+            OMX_QTI_VIDEO_PARAM_FORCE_COMPRESSED_FOR_DPB_TYPE *pParam =
+                (OMX_QTI_VIDEO_PARAM_FORCE_COMPRESSED_FOR_DPB_TYPE *)paramData;
+            if (m_disable_ubwc_mode) {
+                DEBUG_PRINT_ERROR("OMX_QTIIndexParamForceCompressedForDPB not supported when ubwc disabled");
+                eRet = OMX_ErrorUnsupportedSetting;
+                break;
+            }
+            if (!paramData) {
+               DEBUG_PRINT_ERROR("set_parameter: OMX_QTIIndexParamForceCompressedForDPB paramData NULL");
+               eRet = OMX_ErrorBadParameter;
+               break;
+            }
+
+            m_force_compressed_for_dpb = pParam->bEnable;
+            break;
+        }
+
 
         default: {
                  DEBUG_PRINT_ERROR("Setparameter: unknown param %d", paramIndex);
@@ -5028,8 +5049,9 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
 #endif
     else if (extn_equals(paramName, "OMX.QCOM.index.param.video.PassInputBufferFd")) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamPassInputBufferFd;
-    }
-    else {
+    } else if (extn_equals(paramName, "OMX.QTI.index.param.video.ForceCompressedForDPB")) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamForceCompressedForDPB;
+    } else {
         DEBUG_PRINT_ERROR("Extension: %s not implemented", paramName);
         return OMX_ErrorNotImplemented;
     }
