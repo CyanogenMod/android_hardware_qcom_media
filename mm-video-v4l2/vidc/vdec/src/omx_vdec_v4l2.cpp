@@ -8020,6 +8020,14 @@ int omx_vdec::async_message_process (void *context, void* message)
             v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.output_frame.client_data;
             omxhdr = omx->m_out_mem_ptr+v4l2_buf_ptr->index;
 
+            if (v4l2_buf_ptr == NULL ||
+                omxhdr == NULL ||
+                    ((omxhdr - omx->m_out_mem_ptr) > (int)omx->drv_ctx.op_buf.actualcount) ) {
+                omxhdr = NULL;
+                vdec_msg->status_code = VDEC_S_EFATAL;
+                break;
+            }
+
             DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x) FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
                     omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
                     vdec_msg->msgdata.output_frame.pic_type, v4l2_buf_ptr->flags,
