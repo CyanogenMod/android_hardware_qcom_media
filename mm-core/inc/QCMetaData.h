@@ -98,7 +98,8 @@ enum {
 };
 
 enum {
-    USE_SET_BUFFERS = 1,
+    USE_SET_BUFFERS = 0x1,
+    USE_AUDIO_BIG_BUFFERS = 0x2,
 };
 }  // namespace android
 
