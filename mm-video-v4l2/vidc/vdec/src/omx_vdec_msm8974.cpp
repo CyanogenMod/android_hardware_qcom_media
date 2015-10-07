@@ -128,7 +128,7 @@ extern "C" {
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 #define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
 
-#define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
+#define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA | OMX_VUI_DISPLAY_INFO_EXTRADATA)
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
 
@@ -9116,9 +9116,6 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     OMX_U32 recovery_sei_flags = 1;
     int enable = 0;
 
-    //TODO: disable extradata
-    return;
-
     int buf_index = p_buf_hdr - m_out_mem_ptr;
     if (buf_index >= drv_ctx.extradata_info.count) {
         DEBUG_PRINT_ERROR("handle_extradata: invalid index(%d) max(%d)",
@@ -9290,6 +9287,33 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
                     }
                     break;
+                case MSM_VIDC_EXTRADATA_VUI_DISPLAY_INFO:
+                    struct msm_vidc_vui_display_info_payload *display_info_payload;
+                    display_info_payload = (struct msm_vidc_vui_display_info_payload*)(void *)data->data;
+
+                    if (client_extradata & OMX_VUI_DISPLAY_INFO_EXTRADATA) {
+                        /* This extradata usually isn't needed by clients. Leave it unimplemented for now */
+                        DEBUG_PRINT_ERROR("VUI display info not propagated to client");
+                    }
+
+                    if (m_enable_android_native_buffers) {
+                        ColorSpace_t color_space = ITU_R_601_FR;
+
+                        switch (display_info_payload->color_primaries) {
+                            case 1:
+                                color_space = ITU_R_709;
+                                break;
+                            case 5:
+                                color_space = display_info_payload->video_full_range_flag ?
+                                    ITU_R_601_FR : ITU_R_601;
+                                break;
+                        }
+
+                        DEBUG_PRINT_LOW("colorspace from VUI = %d", color_space);
+                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                               UPDATE_COLOR_SPACE, (void*)&color_space);
+                    }
+                    break;
                 default:
                     DEBUG_PRINT_LOW("Unrecognized extradata");
                     goto unrecognized_extradata;
@@ -9334,8 +9358,6 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
         DEBUG_PRINT_ERROR("ERROR: enable extradata allowed in Loaded state only");
         return OMX_ErrorIncorrectStateOperation;
     }
-    //TODO: disable extradata
-    return ret;
 
     DEBUG_PRINT_HIGH("NOTE: enable_extradata: actual[%u] requested[%u] enable[%d], is_internal: %d",
             (unsigned int)client_extradata, (unsigned int)requested_extradata, enable, is_internal);
@@ -9433,6 +9455,13 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
                 }
             } else {
                 DEBUG_PRINT_HIGH("Seq display extradata is supported for MPEG2 only");
+            }
+        }
+        if (requested_extradata & OMX_VUI_DISPLAY_INFO_EXTRADATA) {
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+            control.value = V4L2_MPEG_VIDC_EXTRADATA_VUI_DISPLAY;
+            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                DEBUG_PRINT_HIGH("Failed to set display VUI extradata");
             }
         }
     }
