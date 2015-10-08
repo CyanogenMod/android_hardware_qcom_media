@@ -2730,7 +2730,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 			struct v4l2_format fmt;
 			fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
 			fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
-			fmt.fmt.pix_mp.colorspace = color_space;
+			fmt.fmt.pix_mp.colorspace = static_cast<decltype(fmt.fmt.pix_mp.colorspace)>(color_space);
 			fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
 			fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
 			if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
@@ -4099,7 +4099,7 @@ bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
 
     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
     fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
-    fmt.fmt.pix_mp.colorspace = color_space;
+    fmt.fmt.pix_mp.colorspace = static_cast<decltype(fmt.fmt.pix_mp.colorspace)>(color_space);
     fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
     fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
 
