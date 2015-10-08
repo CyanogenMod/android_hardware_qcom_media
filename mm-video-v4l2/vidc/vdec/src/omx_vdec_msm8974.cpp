@@ -128,7 +128,10 @@ extern "C" {
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 #define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
 
+#ifndef DISABLE_EXTRADATA
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA | OMX_VUI_DISPLAY_INFO_EXTRADATA)
+#endif
+
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
 
