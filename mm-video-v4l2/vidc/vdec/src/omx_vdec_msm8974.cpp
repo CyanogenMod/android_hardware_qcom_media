@@ -9300,8 +9300,10 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         DEBUG_PRINT_ERROR("VUI display info not propagated to client");
                     }
 
-                    if (m_enable_android_native_buffers) {
-                        ColorSpace_t color_space = ITU_R_601_FR;
+                    if (m_enable_android_native_buffers
+                            && display_info_payload->video_signal_present_flag
+                            && display_info_payload->color_description_present_flag) {
+                        ColorSpace_t color_space = ITU_R_601;
 
                         switch (display_info_payload->color_primaries) {
                             case 1:
