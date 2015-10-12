@@ -65,6 +65,9 @@ typedef C2D_STATUS (*LINK_c2dMapAddr)( int mem_fd, void * hostptr, uint32 len, u
 
 typedef C2D_STATUS (*LINK_c2dUnMapAddr)(void * gpuaddr);
 
+typedef void (*LINK_AdrenoComputeAlignedWidthAndHeight) (int width, int height, int bpp, int tile_mode, int raster_mode,
+                                                          int padding_threshold, int *aligned_width, int * aligned_height);
+
 namespace android {
 
 /*TODO: THIS NEEDS TO ENABLED FOR JB PLUS*/

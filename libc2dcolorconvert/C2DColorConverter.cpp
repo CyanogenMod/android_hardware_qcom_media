@@ -88,6 +88,9 @@ private:
     LINK_c2dMapAddr mC2DMapAddr;
     LINK_c2dUnMapAddr mC2DUnMapAddr;
 
+    void *mAdrenoUtilsHandle;
+    LINK_AdrenoComputeAlignedWidthAndHeight mAdrenoComputeAlignedWidthAndHeight;
+
     uint32_t mSrcSurface, mDstSurface;
     void * mSrcSurfaceDef;
     void * mDstSurfaceDef;
@@ -137,6 +140,20 @@ C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t d
      if (!mC2DCreateSurface || !mC2DUpdateSurface || !mC2DReadSurface
         || !mC2DDraw || !mC2DFlush || !mC2DFinish || !mC2DWaitTimestamp
         || !mC2DDestroySurface || !mC2DMapAddr || !mC2DUnMapAddr) {
+         ALOGE("%s: dlsym ERROR", __FUNCTION__);
+         mError = -1;
+         return;
+     }
+
+     mAdrenoUtilsHandle =  dlopen("libadreno_utils.so", RTLD_NOW);
+     if (!mAdrenoUtilsHandle) {
+         ALOGE("FATAL ERROR: could not dlopen libadreno_utils.so: %s", dlerror());
+         mError = -1;
+         return;
+     }
+
+     mAdrenoComputeAlignedWidthAndHeight = (LINK_AdrenoComputeAlignedWidthAndHeight)dlsym(mAdrenoUtilsHandle, "compute_aligned_width_and_height");
+     if (!mAdrenoComputeAlignedWidthAndHeight) {
          ALOGE("%s: dlsym ERROR", __FUNCTION__);
          mError = -1;
          return;
@@ -465,17 +482,27 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
     int32_t alignedw = 0;
     int32_t alignedh = 0;
     int32_t size = 0;
+    int32_t tile_mode = 0;
+    int32_t raster_mode = 0;
+    int32_t padding_threshold = 512; /* hardcode for RGB formats */
+    int32_t bpp = 0;
 
     switch (format) {
         case RGB565:
-            size = ALIGN(width, ALIGN32) * ALIGN(height, ALIGN32) * 2;
+            bpp = 2;
+            mAdrenoComputeAlignedWidthAndHeight(width, height, bpp, tile_mode, raster_mode, padding_threshold,
+                                                &alignedw, &alignedh);
+            size = alignedw * alignedh * bpp;
             size = ALIGN(size, ALIGN4K);
             break;
         case RGBA8888:
+            bpp = 4;
+            mAdrenoComputeAlignedWidthAndHeight(width, height, bpp, tile_mode, raster_mode, padding_threshold,
+                                                &alignedw, &alignedh);
             if (mSrcStride)
-              size = mSrcStride *  ALIGN(height, ALIGN32) * 4;
+              size = mSrcStride *  alignedh * bpp;
             else
-              size = ALIGN(width, ALIGN32) * ALIGN(height, ALIGN32) * 4;
+              size = alignedw * alignedh * bpp;
             size = ALIGN(size, ALIGN4K);
             break;
         case YCbCr420SP:
