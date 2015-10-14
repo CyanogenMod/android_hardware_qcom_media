@@ -226,6 +226,15 @@ struct msm_venc_priority {
     OMX_U32 priority;
 };
 
+struct msm_venc_hybrid_hp {
+   unsigned int nSize;
+   unsigned int nKeyFrameInterval;
+   unsigned int nTemporalLayerBitrateRatio[OMX_VIDEO_MAX_HP_LAYERS];
+   unsigned int nMinQuantizer;
+   unsigned int nMaxQuantizer;
+   unsigned int nHpLayers;
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -305,11 +314,12 @@ class venc_dev
         bool venc_get_peak_bitrate(OMX_U32 *peakbitrate);
         bool venc_get_batch_size(OMX_U32 *size);
         bool venc_get_output_log_flag();
+        bool venc_check_valid_config();
         int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
         int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, int fd, int plane_offset,
                         unsigned long inputformat);
         int venc_extradata_log_buffers(char *buffer_addr);
-
+        bool venc_set_bitrate_type(OMX_U32 type);
 
         class venc_dev_vqzip
         {
@@ -406,6 +416,7 @@ class venc_dev
         struct msm_venc_priority            sess_priority;
         OMX_U32                             operating_rate;
         int rc_off_level;
+        struct msm_venc_hybrid_hp           hybrid_hp;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -445,7 +456,7 @@ class venc_dev
         bool venc_set_perf_mode(OMX_U32 mode);
         bool venc_set_mbi_statistics_mode(OMX_U32 mode);
         bool venc_set_vqzip_sei_type(OMX_BOOL enable);
-        bool venc_set_hybrid_hierp(OMX_U32 layers);
+        bool venc_set_hybrid_hierp(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hhp);
         bool venc_set_batch_size(OMX_U32 size);
         bool venc_calibrate_gop();
         void venc_set_vqzip_defaults();
@@ -458,6 +469,7 @@ class venc_dev
         bool venc_set_priority(OMX_U32 priority);
         bool venc_set_session_priority(OMX_U32 priority);
         bool venc_set_operatingrate(OMX_U32 rate);
+        bool venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmode);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();

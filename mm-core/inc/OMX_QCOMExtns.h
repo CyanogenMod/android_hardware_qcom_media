@@ -46,6 +46,7 @@ extern "C" {
 #include "OMX_Core.h"
 #include "OMX_Video.h"
 
+#define OMX_VIDEO_MAX_HP_LAYERS 6
 /**
  * This extension is used to register mapping of a virtual
  * address to a physical address. This extension is a parameter
@@ -591,14 +592,23 @@ typedef struct QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS {
 *
 * nSize         : Size of Structure in bytes
 * nVersion      : OpenMAX IL specification version information
+* nKeyFrameInterval : Indicates the I frame interval
 * nHpLayers     : Set the number of Hier-p layers for the session
 *                  - This should be <= 6. (1 Base layer +
 *                    5 Enhancement layers)
+* nTemporalLayerBitrateRatio[OMX_VIDEO_MAX_HP_LAYERS] : Bitrate to
+*                    be set for each enhancement layer
+* nMinQuantizer  : minimum session QP
+* nMaxQuantizer  : Maximun session QP
 */
 
 typedef struct QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE {
    OMX_U32 nSize;
    OMX_VERSIONTYPE nVersion;
+   OMX_U32 nKeyFrameInterval;
+   OMX_U32 nTemporalLayerBitrateRatio[OMX_VIDEO_MAX_HP_LAYERS];
+   OMX_U32 nMinQuantizer;
+   OMX_U32 nMaxQuantizer;
    OMX_U32 nHpLayers;
 } QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE;
 
