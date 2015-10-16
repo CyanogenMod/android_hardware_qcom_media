@@ -410,19 +410,19 @@ void DashCodec::setNotificationMessage(const sp<AMessage> &msg) {
 
 void DashCodec::initiateSetup(const sp<AMessage> &msg) {
     msg->setWhat(kWhatSetup);
-    msg->setTarget(id());
+    msg->setTarget(this);
     msg->post();
 }
 
 void DashCodec::initiateAllocateComponent(const sp<AMessage> &msg) {
     msg->setWhat(kWhatAllocateComponent);
-    msg->setTarget(id());
+    msg->setTarget(this);
     msg->post();
 }
 
 void DashCodec::initiateConfigureComponent(const sp<AMessage> &msg) {
     msg->setWhat(kWhatConfigureComponent);
-    msg->setTarget(id());
+    msg->setTarget(this);
     msg->post();
 }
 
