@@ -1492,7 +1492,7 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
 
                 case OMX_COMPONENT_GENERATE_HARDWARE_ERROR:
                                         DEBUG_PRINT_ERROR("OMX_COMPONENT_GENERATE_HARDWARE_ERROR");
-                                        pThis->omx_report_error ();
+                                        pThis->omx_report_error();
                                         break;
 
                 case OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING:
@@ -7980,7 +7980,8 @@ int omx_vdec::async_message_process (void *context, void* message)
             }
             if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_INPUT_UNSUPPORTED) {
                 DEBUG_PRINT_HIGH("Unsupported input");
-                omx->omx_report_error ();
+                omx->post_event ((unsigned)NULL, vdec_msg->status_code,\
+                        OMX_COMPONENT_GENERATE_HARDWARE_ERROR);
             }
             if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT) {
                 omxhdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;

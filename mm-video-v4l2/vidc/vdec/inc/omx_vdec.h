@@ -732,7 +732,7 @@ class omx_vdec: public qc_omx_component
 #endif
 
         inline void omx_report_error () {
-            if (m_cb.EventHandler && !m_error_propogated) {
+            if (m_cb.EventHandler && !m_error_propogated && m_state != OMX_StateLoaded) {
                 DEBUG_PRINT_ERROR("ERROR: Sending OMX_ErrorHardware to Client");
                 m_error_propogated = true;
                 m_cb.EventHandler(&m_cmp,m_app_data,
@@ -741,7 +741,7 @@ class omx_vdec: public qc_omx_component
         }
 
         inline void omx_report_unsupported_setting () {
-            if (m_cb.EventHandler && !m_error_propogated) {
+            if (m_cb.EventHandler && !m_error_propogated && m_state != OMX_StateLoaded) {
                 DEBUG_PRINT_ERROR(
                         "ERROR: Sending OMX_ErrorUnsupportedSetting to Client");
                 m_error_propogated = true;
@@ -750,7 +750,7 @@ class omx_vdec: public qc_omx_component
             }
         }
         inline void omx_report_hw_overload () {
-            if (m_cb.EventHandler && !m_error_propogated) {
+            if (m_cb.EventHandler && !m_error_propogated && m_state != OMX_StateLoaded) {
                 DEBUG_PRINT_ERROR(
                         "ERROR: Sending OMX_ErrorInsufficientResources to Client");
                 m_error_propogated = true;
