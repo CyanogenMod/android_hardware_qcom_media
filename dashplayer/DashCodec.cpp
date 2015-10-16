@@ -427,26 +427,26 @@ void DashCodec::initiateConfigureComponent(const sp<AMessage> &msg) {
 }
 
 void DashCodec::initiateStart() {
-    (new AMessage(kWhatStart, id()))->post();
+    (new AMessage(kWhatStart, this))->post();
 }
 
 void DashCodec::signalFlush() {
     ALOGV("[%s] signalFlush", mComponentName.c_str());
-    (new AMessage(kWhatFlush, id()))->post();
+    (new AMessage(kWhatFlush, this))->post();
 }
 
 void DashCodec::signalResume() {
-    (new AMessage(kWhatResume, id()))->post();
+    (new AMessage(kWhatResume, this))->post();
 }
 
 void DashCodec::initiateShutdown(bool keepComponentAllocated) {
-    sp<AMessage> msg = new AMessage(kWhatShutdown, id());
+    sp<AMessage> msg = new AMessage(kWhatShutdown, this);
     msg->setInt32("keepComponentAllocated", keepComponentAllocated);
     msg->post();
 }
 
 void DashCodec::signalRequestIDRFrame() {
-    (new AMessage(kWhatRequestIDRFrame, id()))->post();
+    (new AMessage(kWhatRequestIDRFrame, this))->post();
 }
 
 status_t DashCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
@@ -2748,7 +2748,7 @@ void DashCodec::BaseState::postFillThisBuffer(BufferInfo *info) {
     info->mData->meta()->clear();
     notify->setBuffer("buffer", info->mData);
 
-    sp<AMessage> reply = new AMessage(kWhatInputBufferFilled, mCodec->id());
+    sp<AMessage> reply = new AMessage(kWhatInputBufferFilled, mCodec);
     reply->setInt32("buffer-id", info->mBufferID);
 
     notify->setMessage("reply", reply);
@@ -3027,7 +3027,7 @@ bool DashCodec::BaseState::onOMXFillBufferDone(
             notify->setBuffer("buffer", info->mData);
             notify->setInt32("flags", flags);
             sp<AMessage> reply =
-                new AMessage(kWhatOutputBufferDrained, mCodec->id());
+                new AMessage(kWhatOutputBufferDrained, mCodec);
 
            if (!mCodec->mPostFormat && mCodec->mAdaptivePlayback){
                  ALOGV("Resolution will change from this buffer, set a flag");
@@ -3276,7 +3276,7 @@ bool DashCodec::UninitializedState::onAllocateComponent(const sp<AMessage> &msg)
         return false;
     }
 
-    sp<AMessage> notify = new AMessage(kWhatOMXMessage, mCodec->id());
+    sp<AMessage> notify = new AMessage(kWhatOMXMessage, mCodec);
     observer->setNotificationMessage(notify);
 
     mCodec->mComponentName = componentName;
@@ -4048,7 +4048,7 @@ bool DashCodec::FlushingState::onOMXEvent(
 
         case OMX_EventPortSettingsChanged:
         {
-            sp<AMessage> msg = new AMessage(kWhatOMXMessage, mCodec->id());
+            sp<AMessage> msg = new AMessage(kWhatOMXMessage, mCodec);
             msg->setInt32("type", omx_message::EVENT);
             msg->setInt32("node", mCodec->mNode);
             msg->setInt32("event", event);
@@ -4169,7 +4169,7 @@ bool DashCodec::FlushingOutputState::onOMXEvent(
 
         case OMX_EventPortSettingsChanged:
         {
-            sp<AMessage> msg = new AMessage(kWhatOMXMessage, mCodec->id());
+            sp<AMessage> msg = new AMessage(kWhatOMXMessage, mCodec);
             msg->setInt32("type", omx_message::EVENT);
             msg->setInt32("node", mCodec->mNode);
             msg->setInt32("event", event);
