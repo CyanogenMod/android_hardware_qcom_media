@@ -182,7 +182,7 @@ sp<AMessage> DashPlayer::Decoder::makeFormat(const sp<MetaData> &meta) {
     mCSDIndex = 0;
     for (size_t i = 0;; ++i) {
         sp<ABuffer> csd;
-        if (!msg->findBuffer(StringPrintf("csd-%d", i).c_str(), &csd)) {
+        if (!msg->findBuffer(AStringPrintf("csd-%d", i).c_str(), &csd)) {
             break;
         }
 
