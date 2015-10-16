@@ -66,7 +66,7 @@ void DashPlayer::Renderer::queueBuffer(
         bool audio,
         const sp<ABuffer> &buffer,
         const sp<AMessage> &notifyConsumed) {
-    sp<AMessage> msg = new AMessage(kWhatQueueBuffer, id());
+    sp<AMessage> msg = new AMessage(kWhatQueueBuffer, this);
     msg->setInt32("audio", static_cast<int32_t>(audio));
     msg->setBuffer("buffer", buffer);
     msg->setMessage("notifyConsumed", notifyConsumed);
@@ -79,7 +79,7 @@ void DashPlayer::Renderer::queueEOS(bool audio, status_t finalResult) {
     if(mSyncQueues)
       syncQueuesDone();
 
-    sp<AMessage> msg = new AMessage(kWhatQueueEOS, id());
+    sp<AMessage> msg = new AMessage(kWhatQueueEOS, this);
     msg->setInt32("audio", static_cast<int32_t>(audio));
     msg->setInt32("finalResult", finalResult);
     msg->post();
@@ -97,7 +97,7 @@ void DashPlayer::Renderer::flush(bool audio) {
         }
     }
 
-    sp<AMessage> msg = new AMessage(kWhatFlush, id());
+    sp<AMessage> msg = new AMessage(kWhatFlush, this);
     msg->setInt32("audio", static_cast<int32_t>(audio));
     msg->post();
 }
@@ -114,11 +114,11 @@ void DashPlayer::Renderer::signalTimeDiscontinuity() {
 }
 
 void DashPlayer::Renderer::pause() {
-    (new AMessage(kWhatPause, id()))->post();
+    (new AMessage(kWhatPause, this))->post();
 }
 
 void DashPlayer::Renderer::resume() {
-    (new AMessage(kWhatResume, id()))->post();
+    (new AMessage(kWhatResume, this))->post();
 }
 
 void DashPlayer::Renderer::onMessageReceived(const sp<AMessage> &msg) {
@@ -222,13 +222,13 @@ void DashPlayer::Renderer::postDrainAudioQueue(int64_t delayUs) {
     }
 
     mDrainAudioQueuePending = true;
-    sp<AMessage> msg = new AMessage(kWhatDrainAudioQueue, id());
+    sp<AMessage> msg = new AMessage(kWhatDrainAudioQueue, this);
     msg->setInt32("generation", mAudioQueueGeneration);
     msg->post(delayUs);
 }
 
 void DashPlayer::Renderer::signalAudioSinkChanged() {
-    (new AMessage(kWhatAudioSinkChanged, id()))->post();
+    (new AMessage(kWhatAudioSinkChanged, this))->post();
 }
 
 bool DashPlayer::Renderer::onDrainAudioQueue() {
@@ -343,7 +343,7 @@ void DashPlayer::Renderer::postDrainVideoQueue() {
 
     QueueEntry &entry = *mVideoQueue.begin();
 
-    sp<AMessage> msg = new AMessage(kWhatDrainVideoQueue, id());
+    sp<AMessage> msg = new AMessage(kWhatDrainVideoQueue, this);
     msg->setInt32("generation", mVideoQueueGeneration);
 
     int64_t delayUs;
