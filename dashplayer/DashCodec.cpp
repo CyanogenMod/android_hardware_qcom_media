@@ -62,6 +62,16 @@ static void InitOMXParams(T *params) {
     params->nVersion.s.nStep = 0;
 }
 
+struct MessageList : public RefBase {
+    MessageList() {
+    }
+    std::list<sp<AMessage> > &getList() { return mList; }
+private:
+    std::list<sp<AMessage> > mList;
+
+    DISALLOW_EVIL_CONSTRUCTORS(MessageList);
+};
+
 struct CodecObserver : public BnOMXObserver {
     CodecObserver() {}
 
@@ -70,58 +80,72 @@ struct CodecObserver : public BnOMXObserver {
     }
 
     // from IOMXObserver
-    virtual void onMessage(const omx_message &omx_msg) {
-        sp<AMessage> msg = mNotify->dup();
-
-        msg->setInt32("type", omx_msg.type);
-        msg->setInt32("node", omx_msg.node);
-
-        switch (omx_msg.type) {
-            case omx_message::EVENT:
-            {
-                msg->setInt32("event", omx_msg.u.event_data.event);
-                msg->setInt32("data1", omx_msg.u.event_data.data1);
-                msg->setInt32("data2", omx_msg.u.event_data.data2);
-                break;
-            }
-
-            case omx_message::EMPTY_BUFFER_DONE:
-            {
-                msg->setInt32("buffer", omx_msg.u.buffer_data.buffer);
-                break;
-            }
-
-            case omx_message::FILL_BUFFER_DONE:
-            {
-                msg->setInt32(
-                        "buffer", omx_msg.u.extended_buffer_data.buffer);
-                msg->setInt32(
-                        "range_offset",
-                        omx_msg.u.extended_buffer_data.range_offset);
-                msg->setInt32(
-                        "range_length",
-                        omx_msg.u.extended_buffer_data.range_length);
-                msg->setInt32(
-                        "flags",
-                        omx_msg.u.extended_buffer_data.flags);
-                msg->setInt64(
-                        "timestamp",
-                        omx_msg.u.extended_buffer_data.timestamp);
-                //msg->setPointer(
-                //        "platform_private",
-                //        omx_msg.u.extended_buffer_data.platform_private);
-                //msg->setPointer(
-                //        "data_ptr",
-                //        omx_msg.u.extended_buffer_data.data_ptr);
-                break;
-            }
-
-            default:
-                TRESPASS();
-                break;
+    virtual void onMessages(const std::list<omx_message> &messages) {
+        if (messages.empty()) {
+            return;
         }
 
-        msg->post();
+        sp<AMessage> notify = mNotify->dup();
+        bool first = true;
+        sp<MessageList> msgList = new MessageList();
+        for (std::list<omx_message>::const_iterator it = messages.cbegin();
+                it != messages.cend(); ++it) {
+            const omx_message &omx_msg = *it;
+            if (first) {
+                notify->setInt32("node", omx_msg.node);
+                first = false;
+            }
+
+            sp<AMessage> msg = new AMessage;
+            msg->setInt32("type", omx_msg.type);
+            switch (omx_msg.type) {
+                case omx_message::EVENT:
+                {
+                    msg->setInt32("event", omx_msg.u.event_data.event);
+                    msg->setInt32("data1", omx_msg.u.event_data.data1);
+                    msg->setInt32("data2", omx_msg.u.event_data.data2);
+                    break;
+                }
+
+                case omx_message::EMPTY_BUFFER_DONE:
+                {
+                    msg->setInt32("buffer", omx_msg.u.buffer_data.buffer);
+                    break;
+                }
+
+                case omx_message::FILL_BUFFER_DONE:
+                {
+                    msg->setInt32(
+                            "buffer", omx_msg.u.extended_buffer_data.buffer);
+                    msg->setInt32(
+                            "range_offset",
+                            omx_msg.u.extended_buffer_data.range_offset);
+                    msg->setInt32(
+                            "range_length",
+                            omx_msg.u.extended_buffer_data.range_length);
+                    msg->setInt32(
+                            "flags",
+                            omx_msg.u.extended_buffer_data.flags);
+                    msg->setInt64(
+                            "timestamp",
+                            omx_msg.u.extended_buffer_data.timestamp);
+                    //msg->setPointer(
+                    //        "platform_private",
+                    //        omx_msg.u.extended_buffer_data.platform_private);
+                    //msg->setPointer(
+                    //        "data_ptr",
+                    //        omx_msg.u.extended_buffer_data.data_ptr);
+                    break;
+                }
+
+                default:
+                    TRESPASS();
+                    break;
+            }
+            msgList->getList().push_back(msg);
+        }
+        notify->setObject("messages", msgList);
+        notify->post();
     }
 
 protected:
