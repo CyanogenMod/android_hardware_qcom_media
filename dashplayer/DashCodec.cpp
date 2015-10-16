@@ -522,9 +522,9 @@ status_t DashCodec::allocateBuffersOnPort(OMX_U32 portIndex) {
                     info.mData = new ABuffer(ptr, def.nBufferSize);
                 } else if (mQuirks & requiresAllocateBufferBit) {
                     err = mOMX->allocateBufferWithBackup(
-                            mNode, portIndex, mem, &info.mBufferID);
+                            mNode, portIndex, mem, &info.mBufferID, def.nBufferSize);
                 } else {
-                    err = mOMX->useBuffer(mNode, portIndex, mem, &info.mBufferID);
+                    err = mOMX->useBuffer(mNode, portIndex, mem, &info.mBufferID, def.nBufferSize);
                 }
 
                 if (mem != NULL) {
