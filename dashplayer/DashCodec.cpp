@@ -24,6 +24,8 @@
 
 #include <binder/MemoryDealer.h>
 
+#include <gui/Surface.h>
+
 #include <media/stagefright/foundation/hexdump.h>
 #include <media/stagefright/foundation/ABuffer.h>
 #include <media/stagefright/foundation/ADebug.h>
@@ -31,7 +33,6 @@
 
 #include <media/stagefright/MediaCodecList.h>
 #include <media/stagefright/MediaDefs.h>
-#include <media/stagefright/NativeWindowWrapper.h>
 #include <media/stagefright/OMXClient.h>
 #include <media/stagefright/OMXCodec.h>
 
@@ -978,9 +979,8 @@ status_t DashCodec::configureCodec(
             // crop window, and we don't trust that they will be able to.
             int usageBits = 0;
 
-            sp<NativeWindowWrapper> windowWrapper(
-                    static_cast<NativeWindowWrapper *>(obj.get()));
-            sp<ANativeWindow> nativeWindow = windowWrapper->getNativeWindow();
+            sp<ANativeWindow> nativeWindow =
+                static_cast<ANativeWindow *>(static_cast<Surface *>(obj.get()));
 
             if (nativeWindow->query(
                     nativeWindow.get(),
@@ -3408,10 +3408,8 @@ bool DashCodec::LoadedState::onConfigureComponent(
     sp<RefBase> obj;
     if (msg->findObject("native-window", &obj)
             && strncmp("OMX.google.", mCodec->mComponentName.c_str(), 11)) {
-        sp<NativeWindowWrapper> nativeWindow(
-                static_cast<NativeWindowWrapper *>(obj.get()));
-        CHECK(nativeWindow != NULL);
-        mCodec->mNativeWindow = nativeWindow->getNativeWindow();
+        mCodec->mNativeWindow = static_cast<Surface *>(obj.get());
+        CHECK(mCodec->mNativeWindow != NULL);
 
         native_window_set_scaling_mode(
                 mCodec->mNativeWindow.get(),
