@@ -65,7 +65,7 @@ void DashPlayer::Decoder::configure(const sp<MetaData> &meta) {
     ALOGV("@@@@:: Decoder::configure :: mime is --- %s ---",mime);
 
     sp<AMessage> notifyMsg =
-        new AMessage(kWhatCodecNotify, id());
+        new AMessage(kWhatCodecNotify, this);
 
     sp<AMessage> format = makeFormat(meta);
 

@@ -128,7 +128,7 @@ void DashPlayer::setDataSource(const sp<IStreamSource> &source) {
 
 status_t DashPlayer::setDataSource(
         const char *url, const KeyedVector<String8, String8> *headers) {
-    sp<AMessage> msg = new AMessage(kWhatSetDataSource, id());
+    sp<AMessage> msg = new AMessage(kWhatSetDataSource, this);
 
     sp<Source> source;
     if (!strncasecmp(url, "http://", 7) &&
@@ -159,7 +159,7 @@ void DashPlayer::setDataSource(int fd, int64_t offset, int64_t length) {
 
 #ifdef ANDROID_JB_MR2
 void DashPlayer::setVideoSurfaceTexture(const sp<IGraphicBufferProducer> &bufferProducer) {
-    sp<AMessage> msg = new AMessage(kWhatSetVideoSurface, id());
+    sp<AMessage> msg = new AMessage(kWhatSetVideoSurface, this);
     sp<Surface> surface(bufferProducer != NULL ?
                 new Surface(bufferProducer) : NULL);
     msg->setObject("surface", surface);
@@ -177,29 +177,29 @@ void DashPlayer::setVideoSurfaceTexture(const sp<ISurfaceTexture> &surfaceTextur
 #endif
 
 void DashPlayer::setAudioSink(const sp<MediaPlayerBase::AudioSink> &sink) {
-    sp<AMessage> msg = new AMessage(kWhatSetAudioSink, id());
+    sp<AMessage> msg = new AMessage(kWhatSetAudioSink, this);
     msg->setObject("sink", sink);
     msg->post();
 }
 
 void DashPlayer::start() {
-    (new AMessage(kWhatStart, id()))->post();
+    (new AMessage(kWhatStart, this))->post();
 }
 
 void DashPlayer::pause() {
-    (new AMessage(kWhatPause, id()))->post();
+    (new AMessage(kWhatPause, this))->post();
 }
 
 void DashPlayer::resume() {
-    (new AMessage(kWhatResume, id()))->post();
+    (new AMessage(kWhatResume, this))->post();
 }
 
 void DashPlayer::resetAsync() {
-    (new AMessage(kWhatReset, id()))->post();
+    (new AMessage(kWhatReset, this))->post();
 }
 
 void DashPlayer::seekToAsync(int64_t seekTimeUs) {
-    sp<AMessage> msg = new AMessage(kWhatSeek, id());
+    sp<AMessage> msg = new AMessage(kWhatSeek, this);
     msg->setInt64("seekTimeUs", seekTimeUs);
     msg->post();
 }
@@ -290,13 +290,13 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 ALOGV("creating WFDRenderer in NU player");
                 mRenderer = new WFDRenderer(
                         mAudioSink,
-                        new AMessage(kWhatRendererNotify, id()));
+                        new AMessage(kWhatRendererNotify, this));
             }
             else {
 #endif /* QCOM_WFD_SINK */
                 mRenderer = new Renderer(
                         mAudioSink,
-                        new AMessage(kWhatRendererNotify, id()));
+                        new AMessage(kWhatRendererNotify, this));
 #ifdef QCOM_WFD_SINK
             }
 #endif /* QCOM_WFD_SINK */
@@ -1036,7 +1036,7 @@ void DashPlayer::finishFlushIfPossible() {
         mResetInProgress = false;
         finishReset();
     } else if (mResetPostponed) {
-        (new AMessage(kWhatReset, id()))->post();
+        (new AMessage(kWhatReset, this))->post();
         mResetPostponed = false;
         ALOGV("Handle reset postpone");
     } else if (mAudioDecoder == NULL || mVideoDecoder == NULL) {
@@ -1117,7 +1117,7 @@ void DashPlayer::postScanSources() {
         return;
     }
 
-    sp<AMessage> msg = new AMessage(kWhatScanSources, id());
+    sp<AMessage> msg = new AMessage(kWhatScanSources, this);
     msg->setInt32("generation", mScanSourcesGeneration);
     msg->post();
 
@@ -1170,17 +1170,17 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
 
     sp<AMessage> notify;
     if (track == kAudio) {
-        notify = new AMessage(kWhatAudioNotify ,id());
+        notify = new AMessage(kWhatAudioNotify, this);
         ALOGV("Creating Audio Decoder ");
         *decoder = new Decoder(notify);
         ALOGV("@@@@:: setting Sink/Renderer pointer to decoder");
         (*decoder)->setSink(mAudioSink, mRenderer);
     } else if (track == kVideo) {
-        notify = new AMessage(kWhatVideoNotify ,id());
+        notify = new AMessage(kWhatVideoNotify, this);
         *decoder = new Decoder(notify, mSurface);
         ALOGV("Creating Video Decoder ");
     } else if (track == kText) {
-        mTextNotify = new AMessage(kWhatTextNotify ,id());
+        mTextNotify = new AMessage(kWhatTextNotify, this);
         *decoder = new Decoder(mTextNotify);
         sp<AMessage> codecRequest = new AMessage;
         codecRequest->setInt32("what", DashCodec::kWhatFillThisBuffer);
@@ -1543,7 +1543,7 @@ sp<DashPlayer::Source>
 status_t DashPlayer::prepareAsync() // only for DASH
 {
     if (mSourceType == kHttpDashSource) {
-        sp<AMessage> msg = new AMessage(kWhatPrepareAsync, id());
+        sp<AMessage> msg = new AMessage(kWhatPrepareAsync, this);
         if (msg == NULL)
         {
             ALOGE("Out of memory, AMessage is null for kWhatPrepareAsync\n");
@@ -1613,7 +1613,7 @@ status_t DashPlayer::setParameter(int key, const Parcel &request)
 
 void DashPlayer::postIsPrepareDone()
 {
-    sp<AMessage> msg = new AMessage(kWhatIsPrepareDone, id());
+    sp<AMessage> msg = new AMessage(kWhatIsPrepareDone, this);
     if (msg == NULL)
     {
         ALOGE("Out of memory, AMessage is null for kWhatIsPrepareDone\n");
@@ -1746,7 +1746,7 @@ void DashPlayer::prepareSource()
 {
     if (mSourceType = kHttpDashSource)
     {
-       mSourceNotify = new AMessage(kWhatSourceNotify ,id());
+       mSourceNotify = new AMessage(kWhatSourceNotify, this);
        if (mSource != NULL)
        {
          mSource->setupSourceData(mSourceNotify,kTrackAll);
