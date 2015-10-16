@@ -48,6 +48,9 @@ struct DashCodec : public AHierarchicalStateMachine, public CodecBase {
     virtual void initiateCreateInputSurface() {
       return;
     }
+    virtual void initiateSetInputSurface(const sp<PersistentSurface> &surface) {
+      return;
+    }
     virtual void initiateStart();
     virtual void initiateShutdown(bool keepComponentAllocated = false);
 
