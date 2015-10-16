@@ -50,6 +50,7 @@
 
 #ifdef ANDROID_JB_MR2
 #include <gui/IGraphicBufferProducer.h>
+#include <gui/Surface.h>
 #else
 #include <gui/ISurfaceTexture.h>
 #endif
@@ -158,10 +159,10 @@ void DashPlayer::setDataSource(int fd, int64_t offset, int64_t length) {
 
 #ifdef ANDROID_JB_MR2
 void DashPlayer::setVideoSurfaceTexture(const sp<IGraphicBufferProducer> &bufferProducer) {
-    sp<AMessage> msg = new AMessage(kWhatSetVideoNativeWindow, id());
+    sp<AMessage> msg = new AMessage(kWhatSetVideoSurface, id());
     sp<Surface> surface(bufferProducer != NULL ?
                 new Surface(bufferProducer) : NULL);
-    msg->setObject("native-window", new NativeWindowWrapper(surface));
+    msg->setObject("surface", surface);
     msg->post();
 }
 #else
@@ -242,14 +243,14 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
             break;
         }
 
-        case kWhatSetVideoNativeWindow:
+        case kWhatSetVideoSurface:
         {
-            ALOGV("kWhatSetVideoNativeWindow");
+            ALOGV("kWhatSetVideoSurface");
 
             sp<RefBase> obj;
-            CHECK(msg->findObject("native-window", &obj));
+            CHECK(msg->findObject("surface", &obj));
 
-            mNativeWindow = static_cast<NativeWindowWrapper *>(obj.get());
+            mSurface = static_cast<Surface *>(obj.get());
             break;
         }
 
@@ -325,7 +326,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                          mAudioDecoder != NULL, mVideoDecoder != NULL);
                 }
 
-                if(mNativeWindow != NULL) {
+                if(mSurface != NULL) {
                     instantiateDecoder(kVideo, &mVideoDecoder);
                 }
 
@@ -352,14 +353,14 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                 }
                 if (mSourceType == kHttpDashSource) {
                     if ((mAudioDecoder == NULL && mAudioSink != NULL)     ||
-                        (mVideoDecoder == NULL && mNativeWindow != NULL)  ||
+                        (mVideoDecoder == NULL && mSurface != NULL)  ||
                         (mTextDecoder == NULL)) {
                           msg->post(100000ll);
                           mScanSourcesPending = true;
                     }
                 } else {
                     if ((mAudioDecoder == NULL && mAudioSink != NULL) ||
-                        (mVideoDecoder == NULL && mNativeWindow != NULL)) {
+                        (mVideoDecoder == NULL && mSurface != NULL)) {
                            msg->post(100000ll);
                            mScanSourcesPending = true;
                     }
@@ -940,7 +941,7 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     if (what == kWhatBufferingStart) {
                       ALOGE("Source Notified Buffering Start for %s ",mTrackName);
                       if (mBufferingNotification == false) {
-                          if (track == kVideo && mNativeWindow == NULL)
+                          if (track == kVideo && mSurface == NULL)
                           {
                                ALOGE("video decoder not instantiated, no buffering for video",
                                      mBufferingNotification);
@@ -1176,7 +1177,7 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
         (*decoder)->setSink(mAudioSink, mRenderer);
     } else if (track == kVideo) {
         notify = new AMessage(kWhatVideoNotify ,id());
-        *decoder = new Decoder(notify, mNativeWindow);
+        *decoder = new Decoder(notify, mSurface);
         ALOGV("Creating Video Decoder ");
     } else if (track == kText) {
         mTextNotify = new AMessage(kWhatTextNotify ,id());
