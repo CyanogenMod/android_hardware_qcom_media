@@ -28,7 +28,7 @@ struct ABuffer;
 
 struct DashPlayer::Decoder : public AHandler {
     Decoder(const sp<AMessage> &notify,
-            const sp<NativeWindowWrapper> &nativeWindow = NULL);
+            const sp<Surface> &surface = NULL);
 
     void configure(const sp<MetaData> &meta);
 
@@ -48,7 +48,7 @@ private:
     };
 
     sp<AMessage> mNotify;
-    sp<NativeWindowWrapper> mNativeWindow;
+    sp<Surface> mSurface;
 
     sp<DashCodec> mCodec;
     sp<ALooper> mCodecLooper;

@@ -18,9 +18,10 @@
 
 #define DASH_PLAYER_H_
 
+#include <gui/Surface.h>
+
 #include <media/MediaPlayerInterface.h>
 #include <media/stagefright/foundation/AHandler.h>
-#include <media/stagefright/NativeWindowWrapper.h>
 #include "DashPlayerStats.h"
 #include <media/stagefright/foundation/ABuffer.h>
 #define KEY_DASH_ADAPTION_PROPERTIES 8002 // used for Get Adaotionset property
@@ -119,7 +120,7 @@ private:
 
     enum {
         kWhatSetDataSource              = '=DaS',
-        kWhatSetVideoNativeWindow       = '=NaW',
+        kWhatSetVideoSurface            = '=VSu',
         kWhatSetAudioSink               = '=AuS',
         kWhatMoreDataQueued             = 'more',
         kWhatStart                      = 'strt',
@@ -148,7 +149,7 @@ private:
     bool mUIDValid;
     uid_t mUID;
     sp<Source> mSource;
-    sp<NativeWindowWrapper> mNativeWindow;
+    sp<Surface> mSurface;
     sp<MediaPlayerBase::AudioSink> mAudioSink;
     sp<Decoder> mVideoDecoder;
     bool mVideoIsAVC;
