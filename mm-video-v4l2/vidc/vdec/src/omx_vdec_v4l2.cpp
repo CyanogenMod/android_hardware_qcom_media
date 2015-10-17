@@ -622,6 +622,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     client_set_fps(false),
     m_last_rendered_TS(-1),
     m_queued_codec_config_count(0),
+    current_perf_level(V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL),
     secure_scaling_to_non_secure_opb(false),
     m_force_compressed_for_dpb(false)
 {
@@ -2231,16 +2232,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
         drv_ctx.idr_only_decoding = 0;
 
-        property_get("vidc.debug.turbo", property_value, "0");
-        if (atoi(property_value)) {
-            DEBUG_PRINT_HIGH("Turbo mode debug property enabled");
-            control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
-            control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO;
-            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
-                DEBUG_PRINT_ERROR("Failed to set turbo mode");
-            }
-        }
-
+        DEBUG_PRINT_HIGH("Enabling Turbo mode");
+        request_perf_level(VIDC_TURBO);
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
         if ((strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
@@ -2881,6 +2874,7 @@ bool omx_vdec::execute_omx_flush(OMX_U32 flushType)
         input_flush_progress = true;
         output_flush_progress = true;
         dec.flags = V4L2_DEC_QCOM_CMD_FLUSH_OUTPUT | V4L2_DEC_QCOM_CMD_FLUSH_CAPTURE;
+        request_perf_level(VIDC_TURBO);
     }
 
     if (ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec)) {
@@ -8166,7 +8160,9 @@ int omx_vdec::async_message_process (void *context, void* message)
                     if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_BFRAME) {
                         output_respbuf->pic_type = PICTURE_TYPE_B;
                     }
-
+                    if (omxhdr && omxhdr->nFilledLen) {
+                        omx->request_perf_level(VIDC_NOMINAL);
+                    }
                     if (omx->output_use_buffer && omxhdr->pBuffer &&
                         vdec_msg->msgdata.output_frame.bufferaddr)
                         memcpy ( omxhdr->pBuffer, (void *)
@@ -10599,6 +10595,38 @@ OMX_ERRORTYPE omx_vdec::handle_demux_data(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     m_demux_entries = 0;
     DEBUG_PRINT_LOW("Demux table complete!");
     return OMX_ErrorNone;
+}
+
+void omx_vdec::request_perf_level(enum vidc_perf_level perf_level)
+{
+    struct v4l2_control control;
+    char property_value[PROPERTY_VALUE_MAX] = {0};
+
+    property_get("vidc.debug.turbo", property_value, "0");
+    memset(&control, 0, sizeof(v4l2_control));
+    control.id = V4L2_CID_MPEG_VIDC_SET_PERF_LEVEL;
+    switch (perf_level) {
+    case VIDC_NOMINAL:
+        if (atoi(property_value))
+            control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO;
+        else
+            control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL;
+        break;
+    case VIDC_TURBO:
+        control.value = V4L2_CID_MPEG_VIDC_PERF_LEVEL_TURBO;
+        break;
+     default:
+        DEBUG_PRINT_ERROR("Requested PERF level not supported");
+        break;
+    }
+    if ((current_perf_level == (OMX_U32)control.value) && !in_reconfig)
+        return;
+
+    if (!ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+        current_perf_level = control.value;
+    } else {
+        DEBUG_PRINT_ERROR("Failed to set PERF level");
+    }
 }
 
 omx_vdec::allocate_color_convert_buf::allocate_color_convert_buf()
