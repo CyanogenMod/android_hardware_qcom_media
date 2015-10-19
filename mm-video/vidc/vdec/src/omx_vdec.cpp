@@ -4286,8 +4286,15 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             m_vendor_config.nDataSize = config->nDataSize;
             m_vendor_config.pData =
                 (OMX_U8 *) malloc(config->nDataSize);
-            memcpy(m_vendor_config.pData, config->pData,
-                   config->nDataSize);
+            if (m_vendor_config.pData)
+            {
+                memcpy(m_vendor_config.pData, config->pData, config->nDataSize);
+            }
+            else
+            {
+                DEBUG_PRINT_ERROR("memory allocation for m_vendor_config.pData failed");
+                ret = OMX_ErrorInsufficientResources;
+            }
             m_vc1_profile = VC1_SP_MP_RCV;
         }
         else if (*((OMX_U32 *) config->pData) == VC1_AP_SEQ_START_CODE)
