@@ -7965,13 +7965,15 @@ int omx_vdec::async_message_process (void *context, void* message)
                vdec_msg->msgdata.input_frame_clientdata; */
 
             v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.input_frame_clientdata;
-            omxhdr=omx->m_inp_mem_ptr+v4l2_buf_ptr->index;
-            if (omxhdr == NULL ||
-                    ((omxhdr - omx->m_inp_mem_ptr) > (int)omx->drv_ctx.ip_buf.actualcount) ) {
+            if (omx->m_inp_mem_ptr == NULL || v4l2_buf_ptr == NULL ||
+                v4l2_buf_ptr->index >= omx->drv_ctx.ip_buf.actualcount) {
                 omxhdr = NULL;
                 vdec_msg->status_code = VDEC_S_EFATAL;
                 break;
+
             }
+            omxhdr = omx->m_inp_mem_ptr + v4l2_buf_ptr->index;
+
             if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_INPUT_UNSUPPORTED) {
                 DEBUG_PRINT_HIGH("Unsupported input");
                 omx->post_event ((unsigned)NULL, vdec_msg->status_code,\
@@ -8012,16 +8014,16 @@ int omx_vdec::async_message_process (void *context, void* message)
         case VDEC_MSG_RESP_OUTPUT_FLUSHED:
         case VDEC_MSG_RESP_OUTPUT_BUFFER_DONE:
 
-            v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.output_frame.client_data;
-            omxhdr = omx->m_out_mem_ptr+v4l2_buf_ptr->index;
+           v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.output_frame.client_data;
 
-            if (v4l2_buf_ptr == NULL ||
-                omxhdr == NULL ||
-                    ((omxhdr - omx->m_out_mem_ptr) > (int)omx->drv_ctx.op_buf.actualcount) ) {
-                omxhdr = NULL;
-                vdec_msg->status_code = VDEC_S_EFATAL;
-                break;
-            }
+           if (v4l2_buf_ptr == NULL || omx->m_out_mem_ptr == NULL ||
+               v4l2_buf_ptr->index >= omx->drv_ctx.op_buf.actualcount) {
+               omxhdr = NULL;
+               vdec_msg->status_code = VDEC_S_EFATAL;
+               break;
+           }
+
+           omxhdr = omx->m_out_mem_ptr + v4l2_buf_ptr->index;
 
             DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x) FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
                     omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
