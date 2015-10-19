@@ -2668,6 +2668,12 @@ static int Read_Buffer_From_DAT_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     }
     inputFrameSize[cnt]='\0';
     frameSize = atoi(inputFrameSize);
+    if (frameSize > (long)pBufHdr->nAllocLen)
+    {
+        frameSize = pBufHdr->nAllocLen;
+        DEBUG_PRINT("\n Oversized frame. truncating to %ld\n", frameSize);
+    }
+
     pBufHdr->nFilledLen = 0;
 
     /* get the frame length */
@@ -2912,6 +2918,11 @@ static int Read_Buffer_From_RCV_File_Seq_Layer(OMX_BUFFERHEADERTYPE  *pBufHdr)
     {
 
       DEBUG_PRINT("Read_Buffer_From_RCV_File_Seq_Layer size_struct_C: %d\n", size_struct_C);
+      if (size_struct_C > (pBufHdr->nAllocLen - VC1_SEQ_LAYER_SIZE_WITHOUT_STRUCTC))
+      {
+        size_struct_C = pBufHdr->nAllocLen - VC1_SEQ_LAYER_SIZE_WITHOUT_STRUCTC;
+        DEBUG_PRINT("\n Oversized size_struct_C. truncating to %d\n", size_struct_C);
+      }
 
       readOffset = read(inputBufferFileFd, pBufHdr->pBuffer, VC1_SEQ_LAYER_SIZE_WITHOUT_STRUCTC + size_struct_C);
 
@@ -2923,6 +2934,11 @@ static int Read_Buffer_From_RCV_File_Seq_Layer(OMX_BUFFERHEADERTYPE  *pBufHdr)
       rcv_v1 = 1;
 
       DEBUG_PRINT("Read_Buffer_From_RCV_File_Seq_Layer size_struct_C: %d\n", size_struct_C);
+      if (size_struct_C > (pBufHdr->nAllocLen - VC1_SEQ_LAYER_SIZE_V1_WITHOUT_STRUCTC))
+      {
+        size_struct_C = pBufHdr->nAllocLen - VC1_SEQ_LAYER_SIZE_V1_WITHOUT_STRUCTC;
+        DEBUG_PRINT("\n Oversized size_struct_C. truncating to %d\n", size_struct_C);
+      }
 
       readOffset = read(inputBufferFileFd, pBufHdr->pBuffer, VC1_SEQ_LAYER_SIZE_V1_WITHOUT_STRUCTC + size_struct_C);
 
@@ -3303,6 +3319,11 @@ static int Read_Buffer_From_DivX_311_File(OMX_BUFFERHEADERTYPE  *pBufHdr)
     bytes_read = read(inputBufferFileFd, &frame_size, num_bytes_size);
 
     DEBUG_PRINT("Read_Buffer_From_DivX_311_File: Frame size = %d\n", frame_size);
+    if (frame_size > (pBufHdr->nAllocLen - pBufHdr->nOffset))
+    {
+        frame_size = pBufHdr->nAllocLen - pBufHdr->nOffset;
+        DEBUG_PRINT("\n Oversized frame. truncating to %d\n", frame_size);
+    }
     n_offset += read(inputBufferFileFd, p_buffer, frame_size);
 
     pBufHdr->nTimeStamp = timeStampLfile;
