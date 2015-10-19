@@ -5624,6 +5624,7 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
 
 #ifdef _ANDROID_
 #ifdef USE_ION
+            ion_alloc_data.handle = NULL;
             m_heap_ptr[i].video_heap_ptr = new VideoHeap (drv_ctx.op_buf_ion_info[i].ion_device_fd,
                                             drv_ctx.op_buf.buffer_size,
                                             pmem_baseaddress,
