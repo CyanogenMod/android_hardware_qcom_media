@@ -4233,7 +4233,7 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             uint8 *psize;
             len = *pSrcBuf;
             len = len << 8;
-            len |= *(pSrcBuf + 1);
+            len |= (OMX_U32)(*(pSrcBuf + 1));
             psize = (uint8 *) & len;
             memcpy(pDestBuf + nal_length, pSrcBuf + 2,len);
             for (unsigned int i = 0; i < nal_length; i++)
