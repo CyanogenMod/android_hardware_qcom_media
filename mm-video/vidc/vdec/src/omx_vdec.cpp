@@ -569,6 +569,8 @@ omx_vdec::omx_vdec(): m_pipe_in(-1),
                       h264_parser(NULL),
                       client_extradata(0),
 #ifdef _ANDROID_
+                      proc_frms(0),
+                      latency(0),
                       m_enable_android_native_buffers(OMX_FALSE),
                       m_use_android_native_buffers(OMX_FALSE),
                       iDivXDrmDecrypt(NULL),
