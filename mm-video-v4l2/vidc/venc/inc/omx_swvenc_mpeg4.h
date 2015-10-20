@@ -74,6 +74,7 @@ class omx_venc: public omx_video
         swvenc_video_capability m_capability;
         bool m_max_allowed_bitrate_check;
         bool m_stopped;
+        bool format_set;
 
         int dev_handle_extradata(void *, int);
         int dev_set_format(int);
