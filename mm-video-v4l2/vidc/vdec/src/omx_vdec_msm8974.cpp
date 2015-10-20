@@ -6761,6 +6761,8 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
     if (rc) {
         /*TODO: How to handle this case */
         DEBUG_PRINT_ERROR("Failed to qbuf to driver");
+        buffer->nFilledLen = 0;
+        post_event ((unsigned long)buffer, (unsigned long)VDEC_S_SUCCESS, OMX_COMPONENT_GENERATE_FBD);
     }
 return OMX_ErrorNone;
 }
