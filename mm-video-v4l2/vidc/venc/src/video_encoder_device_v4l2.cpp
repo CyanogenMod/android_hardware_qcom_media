@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -2578,17 +2578,19 @@ bool venc_dev::venc_color_align(OMX_BUFFERHEADERTYPE *buffer,
         src_buf += width * height;
         dst_buf += y_stride * y_scanlines;
         for (int line = height / 2 - 1; line >= 0; --line) {
+            /* Align the length to 16 for better memove performance. */
             memmove(dst_buf + line * uv_stride,
                     src_buf + line * width,
-                    width);
+                    ALIGN(width, 16));
         }
 
         dst_buf = src_buf = buffer->pBuffer;
         //Copy the Y next
         for (int line = height - 1; line > 0; --line) {
+            /* Align the length to 16 for better memove performance. */
             memmove(dst_buf + line * y_stride,
                     src_buf + line * width,
-                    width);
+                    ALIGN(width, 16));
         }
     } else {
         DEBUG_PRINT_ERROR("Failed to align Chroma. from %u to %u : \
