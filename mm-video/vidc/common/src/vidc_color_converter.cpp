@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2012, 2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -25,16 +25,12 @@ WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
 ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 --------------------------------------------------------------------------*/
+#define LOG_TAG "OMX_C2D"
+
 #include <utils/Log.h>
 #include <gralloc_priv.h>
 #include "vidc_color_converter.h"
-#undef DEBUG_PRINT_LOW
-#undef DEBUG_PRINT_HIGH
-#undef DEBUG_PRINT_ERROR
-
-#define DEBUG_PRINT_LOW ALOGV
-#define DEBUG_PRINT_HIGH ALOGE
-#define DEBUG_PRINT_ERROR ALOGE
+#include "vidc_debug.h"
 
 omx_c2d_conv::omx_c2d_conv()
 {
