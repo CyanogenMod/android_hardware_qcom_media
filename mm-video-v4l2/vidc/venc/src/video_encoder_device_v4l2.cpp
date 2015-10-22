@@ -5036,7 +5036,7 @@ bool venc_dev::venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmo
             hybrid_hp.nTemporalLayerBitrateRatio[i] =  hpmode->nTemporalLayerBitrateRatio[i];
         }
     }
-    controls.count = MAX_HYB_HIERP_LAYERS;
+    controls.count = hpmode->nHpLayers;
     controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
     controls.controls = ctrl;
 
@@ -5045,6 +5045,8 @@ bool venc_dev::venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmo
         DEBUG_PRINT_ERROR("Failed to set layerwise bitrate %d", rc);
         return false;
     }
+
+    hybrid_hp.nHpLayers = hpmode->nHpLayers;
 
     DEBUG_PRINT_LOW("Success in setting Layer wise bitrate: %d, %d, %d, %d, %d, %d",
         hpmode->nTemporalLayerBitrateRatio[0],hpmode->nTemporalLayerBitrateRatio[1],
