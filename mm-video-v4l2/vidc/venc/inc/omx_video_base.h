@@ -556,7 +556,7 @@ class omx_video: public qc_omx_component
         }
 
         void complete_pending_buffer_done_cbs();
-        bool is_rgba_conv_needed();
+        bool is_conv_needed(int, int);
 
 #ifdef USE_ION
         int alloc_map_ion_memory(int size,
