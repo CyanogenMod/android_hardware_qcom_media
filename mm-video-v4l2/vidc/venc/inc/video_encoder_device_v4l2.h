@@ -504,6 +504,7 @@ class venc_dev
         bool venc_set_operatingrate(OMX_U32 rate);
         bool venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmode);
         bool venc_set_roi_qp_info(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
+        bool venc_set_low_latency(OMX_BOOL enable);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
@@ -532,6 +533,7 @@ class venc_dev
         int supported_rc_modes;
         bool is_thulium_v1;
         bool camera_mode_enabled;
+        OMX_BOOL low_latency_mode;
 
         bool venc_empty_batch (OMX_BUFFERHEADERTYPE *buf, unsigned index);
         static const int kMaxBuffersInBatch = 16;

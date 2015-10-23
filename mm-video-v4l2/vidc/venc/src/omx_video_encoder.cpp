@@ -540,6 +540,9 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sMBIStatistics.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sMBIStatistics.eMBIStatisticsType = QOMX_MBI_STATISTICS_MODE_DEFAULT;
 
+    OMX_INIT_STRUCT(&m_slowLatencyMode, QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE);
+    m_slowLatencyMode.bLowLatencyMode = OMX_FALSE;
+
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
 
@@ -1559,6 +1562,16 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     DEBUG_PRINT_ERROR("ERROR: Setting OMX_QTIIndexParamVideoEnableRoiInfo failed");
                     return OMX_ErrorUnsupportedSetting;
                 }
+                break;
+            }
+        case OMX_QTIIndexParamLowLatencyMode:
+            {
+                if (!handle->venc_set_param(paramData,
+                        (OMX_INDEXTYPE)OMX_QTIIndexParamLowLatencyMode)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QTIIndexParamLowLatencyMode failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                memcpy(&m_slowLatencyMode, paramData, sizeof(m_slowLatencyMode));
                 break;
             }
         case OMX_IndexParamVideoSliceFMO:
