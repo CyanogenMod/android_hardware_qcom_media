@@ -2232,8 +2232,6 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control);
         drv_ctx.idr_only_decoding = 0;
 
-        DEBUG_PRINT_HIGH("Enabling Turbo mode");
-        request_perf_level(VIDC_TURBO);
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
         if ((strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
@@ -5231,6 +5229,9 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                 streaming[CAPTURE_PORT] = true;
                 DEBUG_PRINT_LOW("STREAMON Successful");
             }
+
+            DEBUG_PRINT_HIGH("Enabling Turbo mode");
+            request_perf_level(VIDC_TURBO);
         }
         BITMASK_SET(&m_out_bm_count,i);
         (*bufferHdr)->pAppPrivate = appData;
@@ -5439,6 +5440,9 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                 streaming[CAPTURE_PORT] = true;
                 DEBUG_PRINT_LOW("STREAMON Successful");
             }
+
+            DEBUG_PRINT_HIGH("Enabling Turbo mode");
+            request_perf_level(VIDC_TURBO);
         }
 
         (*bufferHdr)->nAllocLen = drv_ctx.op_buf.buffer_size;
@@ -6285,6 +6289,9 @@ OMX_ERRORTYPE  omx_vdec::allocate_output_buffer(
                     streaming[CAPTURE_PORT] = true;
                     DEBUG_PRINT_LOW("STREAMON Successful");
                 }
+
+                DEBUG_PRINT_HIGH("Enabling Turbo mode");
+                request_perf_level(VIDC_TURBO);
             }
 
             (*bufferHdr)->pBuffer = (OMX_U8*)drv_ctx.ptr_outputbuffer[i].bufferaddr;
@@ -8193,6 +8200,7 @@ int omx_vdec::async_message_process (void *context, void* message)
             omx->m_reconfig_height = vdec_msg->msgdata.output_frame.picsize.frame_height;
             omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexParamPortDefinition,
                     OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+            omx->request_perf_level(VIDC_NOMINAL);
             break;
         default:
             break;
@@ -10622,6 +10630,7 @@ void omx_vdec::request_perf_level(enum vidc_perf_level perf_level)
     if ((current_perf_level == (OMX_U32)control.value) && !in_reconfig)
         return;
 
+    DEBUG_PRINT_HIGH("changing performance level to %d", control.value);
     if (!ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
         current_perf_level = control.value;
     } else {
