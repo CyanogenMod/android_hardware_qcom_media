@@ -8084,8 +8084,11 @@ int omx_vdec::async_message_process (void *context, void* message)
                                 omxhdr->nTimeStamp,
                                 (omx->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
                                 ?true:false);
-                        omx->post_event ((unsigned long)NULL,(unsigned long)omxhdr,
-                                OMX_COMPONENT_GENERATE_FTB);
+                        v4l2_buf_ptr->flags = 0x0;
+                        if(ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_QBUF, v4l2_buf_ptr)) {
+                            DEBUG_PRINT_ERROR("Failed to queue buffer back to driver");
+                            return -1;
+                        }
                         break;
                     }
                     if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT) {
