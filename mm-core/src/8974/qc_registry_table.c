@@ -327,19 +327,6 @@ omx_core_cb_type core[] =
     }
   },
   {
-    "OMX.qcom.audio.decoder.aac",
-    NULL,   // Create instance function
-    // Unique instance handle
-    {
-      NULL
-    },
-    NULL,   // Shared object library handle
-    "libOmxAacDec.so",
-    {
-      "audio_decoder.aac"
-    }
-  },
-  {
     "OMX.qcom.audio.encoder.aac",
     NULL, // Create instance function
     // Unique instance handle
@@ -430,7 +417,7 @@ omx_core_cb_type core[] =
       "audio_decoder.aac"
     }
   },
-  
+
 };
 
 const unsigned int SIZE_OF_CORE = sizeof(core) / sizeof(omx_core_cb_type);
