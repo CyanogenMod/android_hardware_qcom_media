@@ -40,7 +40,59 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 omx_core_cb_type core[] =
 {
-   {
+  {
+    "OMX.qti.video.decoder.mpeg4sw",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxSwVdec.so",
+    {
+      "video_decoder.mpeg4"
+    }
+  },
+  {
+    "OMX.qti.video.decoder.h263sw",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxSwVdec.so",
+    {
+      "video_decoder.h263"
+    }
+  },
+  {
+    "OMX.qti.video.decoder.divxsw",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxSwVdec.so",
+    {
+      "video_decoder.divx"
+    }
+  },
+  {
+    "OMX.qti.video.decoder.divx4sw",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxSwVdec.so",
+    {
+      "video_decoder.divx"
+    }
+  },
+  {
     "OMX.qcom.video.encoder.mpeg4sw",
     NULL, // Create instance function
     // Unique instance handle
