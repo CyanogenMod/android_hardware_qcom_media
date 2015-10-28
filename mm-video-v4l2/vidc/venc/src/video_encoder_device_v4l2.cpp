@@ -5542,8 +5542,8 @@ int venc_dev::BatchInfo::getSizeAt(native_handle_t *hnd, int index) {
 }
 
 int venc_dev::BatchInfo::getTimeStampAt(native_handle_t *hnd, int index) {
-    int size = hnd && (index + 2*hnd->numFds) < hnd->numInts ?
-            hnd->data[3*hnd->numFds + index] : -1;
+    int size = hnd && (index + 3*hnd->numFds) < hnd->numInts ?
+            hnd->data[4*hnd->numFds + index] : -1;
     return size;
 }
 
