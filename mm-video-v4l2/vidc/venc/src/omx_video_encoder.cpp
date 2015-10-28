@@ -855,7 +855,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 if ((pParam->eProfile == OMX_VIDEO_AVCProfileHigh)||
                         (pParam->eProfile == OMX_VIDEO_AVCProfileMain)) {
 #ifdef _MSM8974_
-                    if ((pParam->nBFrames && (pParam->nBFrames <= 4))|| (bframes && (bframes <=4))) {
+                    if (pParam->nBFrames || bframes) {
                         avc_param.nBFrames = (pParam->nBFrames > (unsigned int) bframes)? pParam->nBFrames : bframes;
                         avc_param.nRefFrames = (avc_param.nBFrames < 4)? avc_param.nBFrames + 1 : 4;
                     } else {
