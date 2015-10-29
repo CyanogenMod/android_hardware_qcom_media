@@ -154,6 +154,7 @@ char ouputextradatafilename [] = "/data/extradata";
 
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
+#define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
 
 int omx_vdec::m_secure_display = 0;
 pthread_mutex_t omx_vdec::m_secure_display_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -8609,23 +8610,21 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
   portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
   portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
   portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
-  if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) {
-      portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
-      portDefn->format.video.nFrameHeight = drv_ctx.video_resolution.frame_height;
-  } else if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar) {
-      portDefn->format.video.nStride = (drv_ctx.video_resolution.frame_width + (C2D_SP_YBUF_ALIGN-1)) & ~(C2D_SP_YBUF_ALIGN-1);
-      portDefn->format.video.nFrameHeight = drv_ctx.video_resolution.frame_height;
-      portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
+  if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
+      (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
+    portDefn->format.video.nStride = ALIGN(drv_ctx.video_resolution.frame_width, C2D_SP_YBUF_ALIGN);
+    portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
   }
-  DEBUG_PRINT_LOW("update_portdef: PortIndex = %u, Width = %d Height = %d "
-    "Stride = %u SliceHeight = %u output format = 0x%x, eColorFormat = 0x%x",
-    portDefn->nPortIndex,
-    portDefn->format.video.nFrameHeight,
-    portDefn->format.video.nFrameWidth,
-    portDefn->format.video.nStride,
-    portDefn->format.video.nSliceHeight,
-    drv_ctx.output_format,
-    portDefn->format.video.eColorFormat);
+  DEBUG_PRINT_LOW("update_portdef(%u): Width = %u Height = %u Stride = %d "
+    "SliceHeight = %u eColorFormat = 0x%x nBufSize %u nBufCnt %u",
+    (unsigned int)portDefn->nPortIndex,
+    (unsigned int)portDefn->format.video.nFrameWidth,
+    (unsigned int)portDefn->format.video.nFrameHeight,
+    (int)portDefn->format.video.nStride,
+    (unsigned int)portDefn->format.video.nSliceHeight,
+    (unsigned int)portDefn->format.video.eColorFormat,
+    (unsigned int)portDefn->nBufferSize,
+    (unsigned int)portDefn->nBufferCountActual);
   return eRet;
 }
 
