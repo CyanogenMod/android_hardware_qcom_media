@@ -228,6 +228,15 @@ struct msm_venc_low_latency {
     unsigned int enable;
 };
 
+struct msm_venc_hybrid_hp {
+   unsigned int nSize;
+   unsigned int nKeyFrameInterval;
+   unsigned int nTemporalLayerBitrateRatio[OMX_VIDEO_MAX_HP_LAYERS];
+   unsigned int nMinQuantizer;
+   unsigned int nMaxQuantizer;
+   unsigned int nHpLayers;
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -304,11 +313,12 @@ class venc_dev
         bool venc_get_vui_timing_info(OMX_U32 *enabled);
         bool venc_get_peak_bitrate(OMX_U32 *peakbitrate);
         bool venc_get_output_log_flag();
+        bool venc_check_valid_config();
         int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
         int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, int fd, int plane_offset);
         int venc_extradata_log_buffers(char *buffer_addr);
         bool venc_enable_low_latency();
-
+        bool venc_set_bitrate_type(OMX_U32 type);
         struct venc_debug_cap m_debug;
         OMX_U32 m_nDriver_fd;
         bool m_profile_set;
@@ -375,6 +385,7 @@ class venc_dev
         struct msm_venc_priority            sess_priority;
         OMX_U32                             operating_rate;
         struct msm_venc_low_latency         low_latency;
+        struct msm_venc_hybrid_hp           hybrid_hp;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -413,7 +424,7 @@ class venc_dev
         bool venc_set_vpx_error_resilience(OMX_BOOL enable);
         bool venc_set_perf_mode(OMX_U32 mode);
         bool venc_set_mbi_statistics_mode(OMX_U32 mode);
-        bool venc_set_hybrid_hierp(OMX_U32 layers);
+        bool venc_set_hybrid_hierp(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hhp);
         bool venc_calibrate_gop();
         bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
         bool venc_set_session_priority(OMX_U32 priority);
@@ -421,6 +432,7 @@ class venc_dev
         bool venc_set_max_hierp(OMX_U32 hierp_layers);
         bool venc_set_lowlatency_mode(OMX_BOOL enable);
         void venc_clip_luma_chroma(int fd, OMX_U32 offset, OMX_U32 size);
+        bool venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmode);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();

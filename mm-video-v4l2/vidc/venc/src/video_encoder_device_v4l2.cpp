@@ -221,6 +221,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     venc_handle = venc_class;
     etb = ebd = ftb = fbd = 0;
 
+    struct v4l2_control control;
     for (i = 0; i < MAX_PORT; i++)
         streaming[i] = false;
 
@@ -263,6 +264,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     enable_mv_narrow_searchrange = false;
     supported_rc_modes = RC_ALL;
     memset(&ltrinfo, 0, sizeof(ltrinfo));
+    memset(&hybrid_hp, 0, sizeof(hybrid_hp));
     sess_priority.priority = 1;
     operating_rate = 0;
     format_set = false;
@@ -2025,12 +2027,9 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
             }
         case OMX_QcomIndexParamVideoHybridHierpMode:
             {
-                QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* pParam =
-                    (QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE*)paramData;
-
-                if (!venc_set_hybrid_hierp(pParam->nHpLayers)) {
+                if (!venc_set_hybrid_hierp((QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE*)paramData)) {
                      DEBUG_PRINT_ERROR("Setting hybrid Hier-P mode failed");
-                     return OMX_ErrorUnsupportedSetting;
+                     return false;
                 }
                 break;
             }
@@ -2055,10 +2054,28 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
     return true;
 }
 
+bool venc_dev::venc_check_valid_config()
+{
+   if (streaming[OUTPUT_PORT] && streaming[CAPTURE_PORT] &&
+       ((m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264 && hier_layers.hier_mode == HIER_P_HYBRID) ||
+       (m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC && hier_layers.hier_mode == HIER_P))) {
+        DEBUG_PRINT_ERROR("venc_set_config not allowed run time for following usecases");
+        DEBUG_PRINT_ERROR("For H264 : When Hybrid Hier P enabled");
+        DEBUG_PRINT_ERROR("For H265 : When Hier P enabled");
+        return false;
+    }
+   return true;
+}
+
 bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
 {
 
     DEBUG_PRINT_LOW("Inside venc_set_config");
+
+    if(!venc_check_valid_config()) {
+        DEBUG_PRINT_ERROR("venc_set_config not allowed for this configuration");
+        return false;
+    }
 
     switch ((int)index) {
         case OMX_IndexConfigVideoBitrate:
@@ -2480,6 +2497,19 @@ inline const char* hiermode_string(int val)
     }
 }
 
+inline const char* bitrate_type_string(int val)
+{
+    switch(val)
+    {
+    case V4L2_CID_MPEG_VIDC_VIDEO_VENC_BITRATE_DISABLE:
+        return "CUMULATIVE";
+    case V4L2_CID_MPEG_VIDC_VIDEO_VENC_BITRATE_ENABLE:
+        return "LAYER WISE";
+    default:
+        return "Unknown Bitrate Type";
+    }
+}
+
 void venc_dev::venc_config_print()
 {
 
@@ -2525,6 +2555,14 @@ void venc_dev::venc_config_print()
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: Hier layers: %d, Hier Mode: %s VPX_ErrorResilience: %d",
             hier_layers.numlayers, hiermode_string(hier_layers.hier_mode), vpx_err_resilience.enable);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Hybrid_HP PARAMS: Layers: %d, Frame Interval : %d, MinQP: %d, Max_QP: %d",
+            hybrid_hp.nHpLayers, hybrid_hp.nKeyFrameInterval, hybrid_hp.nMinQuantizer, hybrid_hp.nMaxQuantizer);
+
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Hybrid_HP PARAMS: Layer0: %d, Layer1: %d, Later2: %d, Layer3: %d, Layer4: %d, Layer5: %d",
+            hybrid_hp.nTemporalLayerBitrateRatio[0], hybrid_hp.nTemporalLayerBitrateRatio[1],
+            hybrid_hp.nTemporalLayerBitrateRatio[2], hybrid_hp.nTemporalLayerBitrateRatio[3],
+            hybrid_hp.nTemporalLayerBitrateRatio[4], hybrid_hp.nTemporalLayerBitrateRatio[5]);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: Performace level: %d", performance_level.perflevel);
 
@@ -4360,24 +4398,89 @@ bool venc_dev::venc_calibrate_gop()
     return true;
 }
 
-bool venc_dev::venc_set_hybrid_hierp(OMX_U32 layers)
+bool venc_dev::venc_set_bitrate_type(OMX_U32 type)
 {
-    DEBUG_PRINT_LOW("venc_set_hybrid_hierp layers: %u", layers);
+    struct v4l2_control control;
+    int rc = 0;
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_VENC_BITRATE_TYPE;
+    control.value = type;
+    DEBUG_PRINT_LOW("Set Bitrate type to %s for %d \n", bitrate_type_string(type), type);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Request to set Bitrate type to %s failed",
+            bitrate_type_string(type));
+        return false;
+    }
+    return true;
+}
+
+bool venc_dev::venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmode)
+{
+    DEBUG_PRINT_LOW("venc_set_layer_bitrates");
+    struct v4l2_ext_control ctrl[MAX_HYB_HIERP_LAYERS];
+    struct v4l2_ext_controls controls;
+    int rc = 0;
+    OMX_U32 i;
+
+    if (!venc_set_bitrate_type(V4L2_CID_MPEG_VIDC_VIDEO_VENC_BITRATE_ENABLE)) {
+        DEBUG_PRINT_ERROR("Failed to set layerwise bitrate type %d", rc);
+        return false;
+    }
+
+    for (i = 0; i < hpmode->nHpLayers; i++) {
+        if (!hpmode->nTemporalLayerBitrateRatio[i]) {
+            DEBUG_PRINT_ERROR("invalid bitrate settings for layer %d\n", i);
+            return false;
+        } else {
+            ctrl[i].id = V4L2_CID_MPEG_VIDC_VENC_PARAM_LAYER_BITRATE;
+            ctrl[i].value = hpmode->nTemporalLayerBitrateRatio[i];
+            hybrid_hp.nTemporalLayerBitrateRatio[i] =  hpmode->nTemporalLayerBitrateRatio[i];
+        }
+    }
+    controls.count = MAX_HYB_HIERP_LAYERS;
+    controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+    controls.controls = ctrl;
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_EXT_CTRLS, &controls);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set layerwise bitrate %d", rc);
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success in setting Layer wise bitrate: %d, %d, %d, %d, %d, %d",
+        hpmode->nTemporalLayerBitrateRatio[0],hpmode->nTemporalLayerBitrateRatio[1],
+        hpmode->nTemporalLayerBitrateRatio[2],hpmode->nTemporalLayerBitrateRatio[3],
+        hpmode->nTemporalLayerBitrateRatio[4],hpmode->nTemporalLayerBitrateRatio[5]);
+
+    return true;
+}
+
+bool venc_dev::venc_set_hybrid_hierp(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hhp)
+{
+    DEBUG_PRINT_LOW("venc_set_hybrid_hierp layers");
     struct v4l2_control control;
     int rc;
 
-    if (!venc_validate_hybridhp_params(layers, 0, 0, (int) HIER_P_HYBRID)) {
+    if (!venc_validate_hybridhp_params(hhp->nHpLayers, 0, 0, (int) HIER_P_HYBRID)) {
         DEBUG_PRINT_ERROR("Invalid settings, Hybrid HP enabled with LTR OR Hier-pLayers OR bframes");
         return false;
     }
 
-    if (!layers || layers > MAX_HYB_HIERP_LAYERS) {
-        DEBUG_PRINT_ERROR("Invalid numbers of layers set: %d (max supported is 6)", layers);
+    if (!hhp->nHpLayers || hhp->nHpLayers > MAX_HYB_HIERP_LAYERS) {
+        DEBUG_PRINT_ERROR("Invalid numbers of layers set: %d (max supported is 6)", hhp->nHpLayers);
         return false;
     }
+    if (!venc_set_intra_period(hhp->nKeyFrameInterval, 0)) {
+       DEBUG_PRINT_ERROR("Failed to set Intraperiod: %d", hhp->nKeyFrameInterval);
+       return false;
+    }
 
-    hier_layers.numlayers = layers;
-    hier_layers.hier_mode = HIER_P_HYBRID;
+    hier_layers.numlayers = hhp->nHpLayers;
+    if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
+        hier_layers.hier_mode = HIER_P_HYBRID;
+    } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+        hier_layers.hier_mode = HIER_P;
+    }
     if (venc_calibrate_gop()) {
      // Update the driver with the new nPframes and nBframes
         control.id = V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES;
@@ -4401,27 +4504,67 @@ bool venc_dev::venc_set_hybrid_hierp(OMX_U32 layers)
         DEBUG_PRINT_ERROR("Invalid settings, Hybrid HP enabled with LTR OR Hier-pLayers OR bframes");
         return false;
     }
-
-    control.id = V4L2_CID_MPEG_VIDC_VIDEO_HYBRID_HIERP_MODE;
-    control.value = layers - 1;
+    if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_HYBRID_HIERP_MODE;
+    } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_HIER_P_NUM_LAYERS;
+    }
+    control.value = hhp->nHpLayers - 1;
 
     DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x, val=%d",
                     control.id, control.value);
 
     rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
     if (rc) {
-        DEBUG_PRINT_ERROR("Failed to set hybrid hierp %d", rc);
+        DEBUG_PRINT_ERROR("Failed to set hybrid hierp/hierp %d", rc);
         return false;
     }
 
     DEBUG_PRINT_LOW("SUCCESS IOCTL set control for id=%x, val=%d",
                     control.id, control.value);
-    control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC;
-    control.value = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC_ENABLED;
-    if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
-        DEBUG_PRINT_ERROR("Failed to enable SVC_NAL");
+    if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC;
+        control.value = V4L2_CID_MPEG_VIDC_VIDEO_H264_NAL_SVC_ENABLED;
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to enable SVC_NAL");
+            return false;
+        }
+    } else if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_MAX_HIERP_LAYERS;
+        control.value = hhp->nHpLayers - 1;
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+            DEBUG_PRINT_ERROR("Failed to enable SVC_NAL");
+            return false;
+        }
+    } else {
+        DEBUG_PRINT_ERROR("Failed : Unsupported codec for Hybrid Hier P : %d", m_sVenc_cfg.codectype);
         return false;
     }
+
+    if(venc_set_session_qp_range (hhp->nMinQuantizer,
+                hhp->nMaxQuantizer) == false) {
+        DEBUG_PRINT_ERROR("ERROR: Setting QP Range for hybridHP [%u %u] failed",
+            (unsigned int)hhp->nMinQuantizer, (unsigned int)hhp->nMaxQuantizer);
+        return false;
+    } else {
+        session_qp_values.minqp = hhp->nMinQuantizer;
+        session_qp_values.maxqp = hhp->nMaxQuantizer;
+    }
+
+    if (!venc_set_layer_bitrates(hhp)) {
+       DEBUG_PRINT_ERROR("Failed to set Layer wise bitrate: %d, %d, %d, %d, %d, %d",
+            hhp->nTemporalLayerBitrateRatio[0],hhp->nTemporalLayerBitrateRatio[1],
+            hhp->nTemporalLayerBitrateRatio[2],hhp->nTemporalLayerBitrateRatio[3],
+            hhp->nTemporalLayerBitrateRatio[4],hhp->nTemporalLayerBitrateRatio[5]);
+       return false;
+    }
+    // Set this or else the layer0 bitrate will be overwritten by
+    // default value in component
+    m_sVenc_cfg.targetbitrate  = bitrate.target_bitrate = hhp->nTemporalLayerBitrateRatio[0];
+    hybrid_hp.nHpLayers = hhp->nHpLayers;
+    hybrid_hp.nKeyFrameInterval = hhp->nKeyFrameInterval;
+    hybrid_hp.nMaxQuantizer = hhp->nMaxQuantizer;
+    hybrid_hp.nMinQuantizer = hhp->nMinQuantizer;
     return true;
 }
 

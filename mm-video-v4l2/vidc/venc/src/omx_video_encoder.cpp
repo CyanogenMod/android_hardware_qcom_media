@@ -54,7 +54,6 @@ extern int m_pipe;
 static int bframes;
 static int entropy;
 static int perfmode;
-static int hybrid_hp;
 static int lowlatency;
 
 // factory function executed by the core to create instances
@@ -163,13 +162,9 @@ omx_venc::omx_venc()
     property_get("vidc.debug.perf.mode", property_value, "0");
     perfmode = atoi(property_value);
     property_value[0] = '\0';
-    property_get("vidc.debug.hybrid.hierp", property_value, "0");
-    hybrid_hp = atoi(property_value);
-    property_value[0] = '\0';
     property_get("vidc.debug.lowlatency", property_value, "0");
     lowlatency = atoi(property_value);
     property_value[0] = '\0';
-
     m_perf_control.send_hint_to_mpctl(true);
     DEBUG_PRINT_HIGH("omx_venc: constructor completed");
 }
@@ -600,19 +595,6 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
             DEBUG_PRINT_ERROR("Failed setting PerfMode to %d", pParam.nPerfMode);
     }
 
-    if (hybrid_hp)
-    {
-        if (hybrid_hp <= MAX_HYB_HIERP_LAYERS) {
-            QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE hyb_hp;
-            hyb_hp.nHpLayers = hybrid_hp;
-            DEBUG_PRINT_LOW("hybrid_hp = 0x%x", hyb_hp.nHpLayers);
-            if (!handle->venc_set_param(&hyb_hp, (OMX_INDEXTYPE)OMX_QcomIndexParamVideoHybridHierpMode)) {
-                DEBUG_PRINT_ERROR("Failed setting hybrid_hp to %d", hyb_hp.nHpLayers);
-            }
-        } else {
-            DEBUG_PRINT_ERROR("Max hybrid_hp layers supported is %d", hybrid_hp);
-        }
-    }
 
     if (lowlatency)
     {
