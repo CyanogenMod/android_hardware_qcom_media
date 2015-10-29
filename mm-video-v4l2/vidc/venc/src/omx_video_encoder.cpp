@@ -1505,6 +1505,15 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 break;
             }
+        case OMX_QcomIndexParamBatchSize:
+            {
+               if(!handle->venc_set_param(paramData,
+                         (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize)) {
+                   DEBUG_PRINT_ERROR("Attempting to set batch size failed");
+                   return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {

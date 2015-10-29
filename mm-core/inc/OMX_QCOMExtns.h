@@ -508,6 +508,7 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     OMX_QcomIndexConfigH264EntropyCodingCabac = 0x7F000049,
 
+    /* "OMX.QCOM.index.param.video.InputBatch" */
     OMX_QcomIndexParamBatchSize = 0x7F00004A,
 
     OMX_QcomIndexConfigMaxHierPLayers = 0x7F00004B,
