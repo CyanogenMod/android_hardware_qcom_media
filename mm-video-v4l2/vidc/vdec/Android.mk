@@ -98,8 +98,6 @@ endif
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
-libmm-vdec-inc          := bionic/libc/include
-libmm-vdec-inc          += bionic/libstdc++/include
 libmm-vdec-inc          += $(LOCAL_PATH)/inc 
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += $(call project-path-for,qcom-media)/mm-core/inc
