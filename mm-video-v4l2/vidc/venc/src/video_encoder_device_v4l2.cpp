@@ -2872,52 +2872,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
     pmem_tmp = (struct pmem *)buf_addr;
     DEBUG_PRINT_LOW("venc_use_buf:: pmem_tmp = %p", pmem_tmp);
 
-    if (port == PORT_INDEX_IN) {
-        extra_idx = EXTRADATA_IDX(num_input_planes);
-
-        if ((num_input_planes > 1) && (extra_idx)) {
-            rc = allocate_extradata(&input_extradata_info);
-
-            if (rc)
-                DEBUG_PRINT_ERROR("Failed to allocate extradata: %d\n", rc);
-        }
-        buf.index = index;
-        buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-        buf.memory = V4L2_MEMORY_USERPTR;
-        plane[0].length = pmem_tmp->size;
-        plane[0].m.userptr = (unsigned long)pmem_tmp->buffer;
-        plane[0].reserved[0] = pmem_tmp->fd;
-        plane[0].reserved[1] = 0;
-        plane[0].data_offset = pmem_tmp->offset;
-        buf.m.planes = plane;
-        buf.length = num_input_planes;
-
-if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
-            extradata_index = venc_get_index_from_fd(pmem_tmp->fd);
-            if (extradata_index < 0 ) {
-                DEBUG_PRINT_ERROR("Extradata index calculation went wrong for fd = %d", pmem_tmp->fd);
-                return OMX_ErrorBadParameter;
-            }
-            plane[extra_idx].length = input_extradata_info.buffer_size;
-            plane[extra_idx].m.userptr = (unsigned long) (input_extradata_info.uaddr + extradata_index * input_extradata_info.buffer_size);
-#ifdef USE_ION
-            plane[extra_idx].reserved[0] = input_extradata_info.ion.fd_ion_data.fd;
-#endif
-            plane[extra_idx].reserved[1] = input_extradata_info.buffer_size * extradata_index;
-            plane[extra_idx].data_offset = 0;
-        } else if  (extra_idx >= VIDEO_MAX_PLANES) {
-            DEBUG_PRINT_ERROR("Extradata index is more than allowed: %d\n", extra_idx);
-            return OMX_ErrorBadParameter;
-        }
-
-
-        DEBUG_PRINT_LOW("Registering [%d] fd=%d size=%d userptr=%p", index,
-                pmem_tmp->fd, plane[0].length, plane[0].m.userptr);
-        rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
-
-        if (rc)
-            DEBUG_PRINT_LOW("VIDIOC_PREPARE_BUF Failed");
-    } else if (port == PORT_INDEX_OUT) {
+    if (port == PORT_INDEX_OUT) {
         extra_idx = EXTRADATA_IDX(num_output_planes);
 
         if ((num_output_planes > 1) && (extra_idx)) {
@@ -2955,6 +2910,8 @@ if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
 
         if (rc)
             DEBUG_PRINT_LOW("VIDIOC_PREPARE_BUF Failed");
+    } else if (port == PORT_INDEX_IN) {
+            DEBUG_PRINT_LOW("No need to call VIDIOC_PREPARE_BUF on input port");
     } else {
         DEBUG_PRINT_ERROR("ERROR: venc_use_buf:Invalid Port Index ");
         return false;
@@ -3138,7 +3095,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
         // CPU (Eg: MediaCodec)  0            --             0              bufhdr
         // ---------------------------------------------------------------------------------------
         if (metadatamode) {
-            plane[0].m.userptr = index;
+            plane[0].m.userptr = (unsigned long)bufhdr->pBuffer;
             meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
 
             if (!meta_buf) {
@@ -3352,7 +3309,7 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
 
     bool status = true;
     if (metadatamode) {
-        plane.m.userptr = index;
+        plane.m.userptr = (unsigned long)bufhdr->pBuffer;
         meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
 
         if (!color_format) {
@@ -3410,10 +3367,6 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
             plane.length = plane.bytesused = BatchInfo::getSizeAt(hnd, i);
             buf.m.planes = &plane;
             buf.length = 1;
-
-            rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
-            if (rc)
-                DEBUG_PRINT_LOW("VIDIOC_PREPARE_BUF Failed");
 
             if (bufhdr->nFlags & OMX_BUFFERFLAG_EOS)
                 buf.flags |= V4L2_QCOM_BUF_FLAG_EOS;
