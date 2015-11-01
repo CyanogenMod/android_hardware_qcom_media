@@ -98,8 +98,6 @@ endif
 include $(CLEAR_VARS)
 LOCAL_PATH:= $(ROOT_DIR)
 
-libmm-vdec-inc          := bionic/libc/include
-libmm-vdec-inc          += bionic/libstdc++/include
 libmm-vdec-inc          += $(LOCAL_PATH)/inc 
 libmm-vdec-inc          += $(OMX_VIDEO_PATH)/vidc/common/inc
 libmm-vdec-inc          += $(call project-path-for,qcom-media)/mm-core/inc
@@ -153,6 +151,9 @@ endif
 LOCAL_SRC_FILES         += ../common/src/extra_data_handler.cpp
 LOCAL_SRC_FILES         += ../common/src/vidc_color_converter.cpp
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+
+# omx_vdec_msm8974.cpp:9375:16: address of array 'extra->data' will always evaluate to 'true'
+LOCAL_CLANG_CFLAGS      += -Wno-pointer-bool-conversion
 
 include $(BUILD_SHARED_LIBRARY)
 
