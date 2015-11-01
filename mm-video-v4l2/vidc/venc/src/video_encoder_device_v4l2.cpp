@@ -213,8 +213,6 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&hier_p_layers,0,sizeof(hier_p_layers));
     memset(&ltrinfo, 0, sizeof(ltrinfo));
     memset(&m_debug,0,sizeof(m_debug));
-    sess_priority.priority = 1;
-    operating_rate = 0;
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vidc.enc.log.in", property_value, "0");
@@ -965,12 +963,6 @@ bool venc_dev::venc_open(OMX_U32 codec)
         control.value = 0x7fffffff;
         if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control))
             DEBUG_PRINT_ERROR("Failed to set V4L2_CID_MPEG_VIDC_VIDEO_NUM_P_FRAMES");
-    }
-
-    sess_priority.priority = 1; /* default to non-real-time */
-    if (venc_set_session_priority(sess_priority.priority)) {
-        DEBUG_PRINT_ERROR("Setting session priority failed");
-        return OMX_ErrorUnsupportedSetting;
     }
 
     return true;
@@ -1947,26 +1939,6 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
-        case OMX_IndexConfigPriority:
-            {
-                OMX_PARAM_U32TYPE *priority = (OMX_PARAM_U32TYPE *)configData;
-                DEBUG_PRINT_LOW("Set_config: priority %u",priority->nU32);
-                if (!venc_set_session_priority(priority->nU32)) {
-                    DEBUG_PRINT_ERROR("Failed to set priority");
-                    return false;
-                }
-                break;
-            }
-        case OMX_IndexConfigOperatingRate:
-            {
-                OMX_PARAM_U32TYPE *rate = (OMX_PARAM_U32TYPE *)configData;
-                DEBUG_PRINT_LOW("Set_config: operating rate %d", rate->nU32);
-                if (!venc_set_operatingrate(rate->nU32)) {
-                    DEBUG_PRINT_ERROR("Failed to set operating rate");
-                    return false;
-                }
-                break;
-            }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -2179,10 +2151,6 @@ void venc_dev::venc_config_print()
     DEBUG_PRINT_HIGH("ENC_CONFIG: VUI timing info enabled: %d", vui_timing_info.enabled);
 
     DEBUG_PRINT_HIGH("ENC_CONFIG: Peak bitrate: %d", peak_bitrate.peakbitrate);
-
-    DEBUG_PRINT_HIGH("ENC_CONFIG: Session Priority: %u", sess_priority.priority);
-
-    DEBUG_PRINT_HIGH("ENC_CONFIG: Operating Rate: %u", operating_rate);
 }
 
 bool venc_dev::venc_reconfig_reqbufs()
@@ -4025,57 +3993,6 @@ bool venc_dev::venc_set_peak_bitrate(OMX_U32 nPeakBitrate)
 
     DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
 
-    return true;
-}
-
-bool venc_dev::venc_set_session_priority(OMX_U32 priority) {
-    struct v4l2_control control;
-
-    control.id = V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY;
-    switch(priority) {
-        case 0:
-            control.value = V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_ENABLE;
-            break;
-        case 1:
-            control.value = V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_DISABLE;
-            break;
-        default:
-            priority = 1;
-            control.value = V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_DISABLE;
-            DEBUG_PRINT_ERROR("Unsupported priority level %u", priority);
-            break;
-    }
-
-    if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
-        DEBUG_PRINT_ERROR("Failed to set V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_%s",
-                priority == 0 ? "ENABLE" : "DISABLE");
-        return false;
-    }
-
-    sess_priority.priority = priority;
-
-    DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, val=%d",
-            control.id, control.value);
-    return true;
-}
-
-bool venc_dev::venc_set_operatingrate(OMX_U32 rate) {
-    struct v4l2_control control;
-
-    control.id = V4L2_CID_MPEG_VIDC_VIDEO_OPERATING_RATE;
-    control.value = rate;
-
-    DEBUG_PRINT_LOW("venc_set_operating_rate: %d fps", rate >> 16);
-    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d", control.id, control.value);
-
-    if(ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
-        hw_overload = errno == EBUSY;
-        DEBUG_PRINT_ERROR("Failed to set operating rate %d fps (%s)",
-                rate >> 16, hw_overload ? "HW overload" : strerror(errno));
-        return false;
-    }
-    operating_rate = rate;
-    DEBUG_PRINT_LOW("Operating Rate Set = %d fps",  rate >> 16);
     return true;
 }
 
