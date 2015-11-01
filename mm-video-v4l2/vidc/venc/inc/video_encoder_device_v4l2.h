@@ -202,10 +202,6 @@ struct msm_venc_peak_bitrate {
     unsigned int peakbitrate;
 };
 
-struct msm_venc_priority {
-    OMX_U32 priority;
-};
-
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -333,8 +329,6 @@ class venc_dev
         struct msm_venc_perf_level          performance_level;
         struct msm_venc_vui_timing_info     vui_timing_info;
         struct msm_venc_peak_bitrate        peak_bitrate;
-        struct msm_venc_priority            sess_priority;
-        OMX_U32                             operating_rate;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -369,8 +363,6 @@ class venc_dev
         bool venc_set_perf_level(QOMX_VIDEO_PERF_LEVEL ePerfLevel);
         bool venc_set_vui_timing_info(OMX_BOOL enable);
         bool venc_set_peak_bitrate(OMX_U32 nPeakBitrate);
-        bool venc_set_session_priority(OMX_U32 priority);
-        bool venc_set_operatingrate(OMX_U32 rate);
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
         OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
