@@ -40,6 +40,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <media/msm_media_info.h>
 #include <cutils/properties.h>
 #include <media/hardware/HardwareAPI.h>
+#include <inttypes.h>
 
 #ifdef _ANDROID_
 #include <media/hardware/HardwareAPI.h>
@@ -2481,7 +2482,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
         buf.m.planes = plane;
         buf.length = 1;
 
-        DEBUG_PRINT_LOW("Registering [%d] fd=%d size=%d userptr=%p", index,
+        DEBUG_PRINT_LOW("Registering [%d] fd=%d size=%d userptr=%lu", index,
                 pmem_tmp->fd, plane[0].length, plane[0].m.userptr);
         rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
 
@@ -2898,7 +2899,7 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
             // timestamp differences from camera are in nano-seconds
             bufTimeStamp = bufhdr->nTimeStamp + BatchInfo::getTimeStampAt(hnd, i) / 1000;
 
-            DEBUG_PRINT_LOW(" Q Batch [%d of %d] : buf=%x fd=%d len=%d TS=%lld",
+            DEBUG_PRINT_LOW(" Q Batch [%d of %d] : buf=%p fd=%d len=%d TS=%lld",
                 i, numBufs, bufhdr, plane.reserved[0], plane.length, bufTimeStamp);
             buf.timestamp.tv_sec = bufTimeStamp / 1000000;
             buf.timestamp.tv_usec = (bufTimeStamp % 1000000);
