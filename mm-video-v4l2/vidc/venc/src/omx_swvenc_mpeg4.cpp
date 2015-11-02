@@ -2009,6 +2009,16 @@ bool omx_venc::dev_get_vui_timing_info(OMX_U32 *enabled)
     RETURN(false);
 }
 
+bool omx_venc::dev_get_vqzip_sei_info(OMX_U32 *enabled)
+{
+    ENTER_FUNC();
+
+    (void)enabled;
+    DEBUG_PRINT_ERROR("Get vqzip sei info is not supported");
+
+    RETURN(false);
+}
+
 bool omx_venc::dev_get_peak_bitrate(OMX_U32 *peakbitrate)
 {
     //TBD: store the peak bitrate in class and return here;
@@ -2016,6 +2026,17 @@ bool omx_venc::dev_get_peak_bitrate(OMX_U32 *peakbitrate)
 
     (void)peakbitrate;
     DEBUG_PRINT_ERROR("Get peak bitrate is not supported");
+
+    RETURN(false);
+}
+
+bool omx_venc::dev_get_batch_size(OMX_U32 *size)
+{
+    ENTER_FUNC();
+
+    (void)size;
+
+    DEBUG_PRINT_ERROR("Get batch size is not supported");
 
     RETURN(false);
 }
@@ -2144,7 +2165,7 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
    RETURN(true);
 }
 
-int omx_venc::dev_handle_extradata(void *buffer, int index)
+int omx_venc::dev_handle_output_extradata(void *buffer, int index)
 {
    ENTER_FUNC();
 
@@ -2152,7 +2173,17 @@ int omx_venc::dev_handle_extradata(void *buffer, int index)
    (void)index;
 
    RETURN(true);
-    //return handle->handle_extradata(buffer, index);
+}
+
+int omx_venc::dev_handle_input_extradata(void *buffer, int index, int fd)
+{
+   ENTER_FUNC();
+
+   (void)buffer;
+   (void)index;
+   (void)fd;
+
+   RETURN(true);
 }
 
 int omx_venc::dev_set_format(int color)
