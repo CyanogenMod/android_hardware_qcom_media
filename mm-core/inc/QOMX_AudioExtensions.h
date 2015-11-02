@@ -515,6 +515,7 @@ typedef struct QOMX_AUDIO_PARAM_ALACTYPE {
     OMX_U32 nSize; /* Size of the structure in bytes */
     OMX_VERSIONTYPE nVersion; /**< OMX specification version information */
     OMX_U32 nPortIndex; /* Port that this structure applies to */
+    OMX_BOOL bBytesStreamMode; /*enable byte stream mode*/
     OMX_U32 nFrameLength; /* Frames per packet when no explicit frames per packet setting is present in the packet header */
     OMX_U8 nCompatibleVersion; /* Indicates the compatible version */
     OMX_U8 nBitDepth; /* Bit depth of the source PCM data */
@@ -533,6 +534,7 @@ typedef struct QOMX_AUDIO_PARAM_APETYPE {
     OMX_U32 nSize; /* Size of the structure in bytes */
     OMX_VERSIONTYPE nVersion; /**< OMX specification version information */
     OMX_U32 nPortIndex; /* Port that this structure applies to */
+    OMX_BOOL bBytesStreamMode; /*enable byte stream mode*/
     OMX_U16 nCompatibleVersion; /* Indicates the compatible version */
     OMX_U16 nCompressionLevel; /* The compression level present in the encoded packet */
     OMX_U32 nFormatFlags; /* Reserved parameter for future use */
@@ -558,6 +560,7 @@ enum {
     kKeyIndexAlacAvgBitRate = 16,
     kKeyIndexAlacSamplingRate = 20,
     kKeyIndexAlacChannelLayoutTag = 24,
+    kKeyIndexAlacMax = kKeyIndexAlacChannelLayoutTag,
 };
 
 enum {
@@ -571,6 +574,7 @@ enum {
     kKeyIndexApeNumChannels = 22,
     kKeyIndexApeSampleRate = 24,
     kKeyIndexApeSeekTablePresent = 28,
+    kKeyIndexApeMax = kKeyIndexApeSeekTablePresent,
 };
 
 enum {
