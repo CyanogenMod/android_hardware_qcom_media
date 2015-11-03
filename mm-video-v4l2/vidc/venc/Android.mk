@@ -22,8 +22,12 @@ libmm-venc-def += -D_ANDROID_ICS_
 libmm-venc-def += -D_MSM8974_
 
 TARGETS_THAT_USE_FLAG_MSM8226 := msm8226 msm8916
+
+ifneq "$(wildcard $(QCPATH) )" ""
+# relevant libraries are not built for OSS builds as QCPATH is null in OSS builds.
 TARGETS_THAT_NEED_SW_VENC_MPEG4 := msm8909
 TARGETS_THAT_NEED_SW_VENC_HEVC := msm8992
+endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 libmm-venc-def += -DMAX_RES_720P
