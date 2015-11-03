@@ -4528,6 +4528,10 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
   if (!m_out_mem_ptr) {
     DEBUG_PRINT_HIGH("Use_op_buf:Allocating output headers");
     eRet = allocate_output_headers();
+    if (eRet) {
+      DEBUG_PRINT_ERROR("ERROR in allocating output header buffers\n");
+      return OMX_ErrorInsufficientResources;
+    }
 
 #ifdef MAX_RES_1080P
     if(drv_ctx.enable_sec_metadata)
@@ -5082,13 +5086,20 @@ OMX_ERRORTYPE omx_vdec::allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
     m_inp_heap_ptr = (OMX_BUFFERHEADERTYPE*) \
                      calloc( (sizeof(OMX_BUFFERHEADERTYPE)),
                      drv_ctx.ip_buf.actualcount);
+    if (m_inp_heap_ptr == NULL)
+    {
+      DEBUG_PRINT_ERROR("\n m_inp_heap_ptr Allocation failed ");
+      return OMX_ErrorInsufficientResources;
+    }
     m_phdr_pmem_ptr = (OMX_BUFFERHEADERTYPE**) \
                      calloc( (sizeof(OMX_BUFFERHEADERTYPE*)),
                      drv_ctx.ip_buf.actualcount);
 
-    if (m_inp_heap_ptr == NULL)
+    if (m_phdr_pmem_ptr == NULL)
     {
-      DEBUG_PRINT_ERROR("\n m_inp_heap_ptr Allocation failed ");
+      free(m_inp_heap_ptr);
+      m_inp_heap_ptr = NULL;
+      DEBUG_PRINT_ERROR("\n m_phdr_pmem_ptr Allocation failed ");
       return OMX_ErrorInsufficientResources;
     }
   }
