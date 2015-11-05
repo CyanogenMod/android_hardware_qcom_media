@@ -426,6 +426,7 @@ void* venc_dev::async_venc_message_thread (void *input)
             while (!ioctl(pfds[0].fd, VIDIOC_DQBUF, &v4l2_buf)) {
                 venc_msg.msgcode=VEN_MSG_INPUT_BUFFER_DONE;
                 venc_msg.statuscode=VEN_S_SUCCESS;
+                omx->handle->ebd++;
 
                 if (omx->handle->mBatchSize) {
                     int bufIndex = omx->handle->mBatchInfo.retrieveBufferAt(v4l2_buf.index);
@@ -437,7 +438,7 @@ void* venc_dev::async_venc_message_thread (void *input)
                         DEBUG_PRINT_LOW(" EBD for %d [v4l2-id=%d].. batch still pending",
                                 bufIndex, v4l2_buf.index);
                         //do not return to client yet
-                        break;
+                        continue;
                     }
                     v4l2_buf.index = bufIndex;
                 }
@@ -447,7 +448,6 @@ void* venc_dev::async_venc_message_thread (void *input)
                     omxhdr = &omx_venc_base->m_inp_mem_ptr[v4l2_buf.index];
 
                 venc_msg.buf.clientdata=(void*)omxhdr;
-                omx->handle->ebd++;
 
                 DEBUG_PRINT_LOW("sending EBD %p [id=%d]", omxhdr, v4l2_buf.index);
                 if (omx->async_message_process(input,&venc_msg) < 0) {
