@@ -397,7 +397,8 @@ DashCodec::DashCodec()
       mMetaDataBuffersToSubmit(0),
       mCurrentWidth(0),
       mCurrentHeight(0),
-      mAdaptivePlayback(false) {
+      mAdaptivePlayback(false),
+      mDPBSize(0) {
     mUninitializedState = new UninitializedState(this);
     mLoadedState = new LoadedState(this);
     mLoadedToIdleState = new LoadedToIdleState(this);
@@ -632,6 +633,11 @@ OMX_U32 *bufferCount, OMX_U32 *bufferSize,
         ALOGE("native_window_set_usage failed: %s (%d)", strerror(-err), -err);
         return err;
     }
+
+    // Computation of dpbSize.
+    // If extrabuffers allocated by firmware changes this calculation needs to
+    // be updated. #output buffers = dpbSize + 2 extrabuffers allocated by firmware
+     mDPBSize = def.nBufferCountMin - 2;
 
     *minUndequeuedBuffers = 0;
     err = mNativeWindow->query(
@@ -2516,6 +2522,7 @@ void DashCodec::sendFormatChange() {
             notify->setInt32("stride", videoDef->nStride);
             notify->setInt32("slice-height", videoDef->nSliceHeight);
             notify->setInt32("color-format", videoDef->eColorFormat);
+            notify->setInt32("dpb-size", mDPBSize);
             ALOGV("sendformatchange: %lu %lu", videoDef->nFrameWidth, videoDef->nFrameHeight);
 
             //If dynamic buffering mode cache the latest width and height. Will be used for VENUS macors to calculate filledLen in fbd's.

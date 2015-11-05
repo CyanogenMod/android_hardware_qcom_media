@@ -110,6 +110,10 @@ struct DashPlayer::Source : public RefBase {
       return false;
     }
 
+    virtual bool isLiveStream() {
+        return false;
+    }
+
 protected:
     virtual ~Source() {}
 

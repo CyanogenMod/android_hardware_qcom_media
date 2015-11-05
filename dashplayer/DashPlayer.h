@@ -299,6 +299,16 @@ private:
     int32_t mCurrentHeight;
     int32_t mColorFormat;
 
+    int mDPBSize;
+    bool mDPBCheckToDelayRendering;
+    int64_t mVideoDecoderStartTimeUs;
+    int64_t mVideoDecoderSetupTimeUs;
+    int64_t mDelayRenderingUs;
+    int64_t mFirstVideoSampleUs;
+    int64_t mVideoSampleDurationUs;
+    int64_t mLastReadAudioMediaTimeUs;
+    int64_t mLastReadAudioRealTimeUs;
+
     DISALLOW_EVIL_CONSTRUCTORS(DashPlayer);
 };
 
