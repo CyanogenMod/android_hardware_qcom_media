@@ -404,6 +404,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
   OMX_ERRORTYPE  eRet = OMX_ErrorNone;
   int cmp_index = -1;
   int hnd_index = -1;
+  int vpp_cmp_index = -1;
 
   DEBUG_PRINT("OMXCORE API :  GetHandle %p %s %p\n", handle,
                                                      componentName,
@@ -466,7 +467,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
            && (!strcmp("1", value) || !strcmp("true", value))) {
         DEBUG_PRINT("VPP property is enabled");
         if (!strcmp(core[cmp_index].so_lib_name, "libOmxVdec.so")) {
-          int vpp_cmp_index = get_cmp_index("OMX.qti.vdec.vpp");
+          vpp_cmp_index = get_cmp_index("OMX.qti.vdec.vpp");
           if (vpp_cmp_index < 0) {
             DEBUG_PRINT_ERROR("Unable to find VPP OMX lib in registry ");
           } else {
@@ -510,7 +511,16 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
 
           }
           qc_omx_component_set_callbacks(hComp,callBacks,appData);
-          hnd_index = get_comp_handle_index(optComponentName);
+
+          if (vpp_cmp_index >= 0)
+          {
+            hnd_index = get_comp_handle_index("OMX.qti.vdec.vpp");
+          }
+          else
+          {
+            hnd_index = get_comp_handle_index(optComponentName);
+          }
+
           if(hnd_index >= 0)
           {
             core[cmp_index].inst[hnd_index]= *handle = (OMX_HANDLETYPE) hComp;
