@@ -4592,6 +4592,8 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                               " expected %u, got %lu",
                               drv_ctx.op_buf.buffer_size, (OMX_U32)handle->size);
             return OMX_ErrorBadParameter;
+        } else {
+            drv_ctx.op_buf.buffer_size = (OMX_U32)handle->size;
         }
 
         if (!m_use_android_native_buffers) {
