@@ -2833,7 +2833,12 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
 #ifdef _MSM8974_
     int align_size;
 #endif
-    DEBUG_PRINT_HIGH("allocate_output_buffer()for %lu bytes", bytes);
+    if (!secure_session) {
+        DEBUG_PRINT_HIGH("allocate_output_buffer()for %lu bytes", bytes);
+    } else {
+        DEBUG_PRINT_HIGH("secure session: allocate_output_buffer()for %lu bytes", m_sOutPortDef.nBufferSize);
+    }
+
     if (!m_out_mem_ptr) {
         int nBufHdrSize        = 0;
         DEBUG_PRINT_HIGH("%s: size = %lu, actual cnt %lu", __FUNCTION__,
@@ -2868,7 +2873,11 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                 bufHdr->nSize              = sizeof(OMX_BUFFERHEADERTYPE);
                 bufHdr->nVersion.nVersion  = OMX_SPEC_VERSION;
                 // Set the values when we determine the right HxW param
-                bufHdr->nAllocLen          = bytes;
+                if (!secure_session) {
+                    bufHdr->nAllocLen      = bytes;
+                } else {
+                    bufHdr->nAllocLen      = m_sOutPortDef.nBufferSize;
+                }
                 bufHdr->nFilledLen         = 0;
                 bufHdr->pAppPrivate        = appData;
                 bufHdr->nOutputPortIndex   = PORT_INDEX_OUT;
