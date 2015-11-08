@@ -241,16 +241,47 @@ enum v4l2_ports {
     MAX_PORT
 };
 
-struct extradata_buffer_info {
-    unsigned long buffer_size;
-    char* uaddr;
-    int count;
-    int size;
-    OMX_BOOL allocated;
-    enum v4l2_ports port_index;
-#ifdef USE_ION
-    struct venc_ion ion;
-#endif
+class encExtradata {
+private:
+    enum {
+        FREE,
+        BUSY,
+        FOR_CONFIG,
+    };
+    struct info {
+        int status;
+        void *cookie;
+    };
+    pthread_mutex_t lock;
+    unsigned int mCount;
+    ssize_t mSize;
+    char *mUaddr;
+    struct venc_ion mIon;
+    struct info mIndex[MAX_V4L2_BUFS];
+    class omx_venc *mVencHandle;
+    int __get(char **userptr, int *fd, unsigned *offset, ssize_t *size, int type);
+    OMX_ERRORTYPE __allocate();
+    void __free();
+    void __debug();
+public:
+    unsigned int mDbgEtbCount;
+    encExtradata(class omx_venc *venc_handle);
+    ~encExtradata();
+    void update(unsigned int count, ssize_t size);
+    /* Get extradata whose status is FREE. */
+    OMX_ERRORTYPE get(char **userptr, int *fd, unsigned *offset, ssize_t *size);
+    /* Get extradata which is tagged with cookie via setCookieForConfigExtradata. If no extradata is tagged with this cookie then get extradata whose status is FREE. */
+    OMX_ERRORTYPE get(void *cookie, char **userptr, int *fd, unsigned *offset, ssize_t *size);
+    /* return the extradata back to the pool of FREE extradata. */
+    OMX_ERRORTYPE put(char *userptr);
+    /* If there is already an extradata with status FOR_CONFIG, return that else return FREE extradata. */
+    OMX_ERRORTYPE getForConfig(char **userptr, int *fd, unsigned *offset, ssize_t *size);
+    /* Return the extradata pointer corresponding to the index. Does not change status of extradata. */
+    OMX_ERRORTYPE peek(unsigned index, char **userptr, int *fd, unsigned* offset, ssize_t *size);
+    /* Attach a cookie to extradata. Extradata with this cookie can be retrieved via getExtradata call.*/
+    void setCookieForConfig(void *cookie);
+    ssize_t getBufferSize();
+    unsigned int getBufferCount();
 };
 
 struct statistics {
@@ -320,6 +351,7 @@ class venc_dev
                         unsigned long inputformat);
         int venc_extradata_log_buffers(char *buffer_addr);
         bool venc_set_bitrate_type(OMX_U32 type);
+        int venc_roiqp_log_buffers(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
 
         class venc_dev_vqzip
         {
@@ -369,17 +401,17 @@ class venc_dev
         pthread_t m_tid;
         bool async_thread_created;
         class omx_venc *venc_handle;
-        OMX_ERRORTYPE allocate_extradata(struct extradata_buffer_info *extradata_info);
-        void free_extradata();
         int append_mbi_extradata(void *, struct msm_vidc_extradata_header*);
-        bool handle_output_extradata(void *, int);
-        bool handle_input_extradata(void *, int, int);
+        bool handle_output_extradata(void *);
+        bool handle_input_extradata(void *);
         int venc_set_format(int);
         bool deinterlace_enabled;
         bool hw_overload;
         bool is_gralloc_source_ubwc;
         bool is_camera_source_ubwc;
         OMX_U32 fd_list[64];
+        encExtradata mInputExtradata;
+        encExtradata mOutputExtradata;
 
     private:
         OMX_U32                             m_codec;
@@ -460,7 +492,6 @@ class venc_dev
         bool venc_set_batch_size(OMX_U32 size);
         bool venc_calibrate_gop();
         void venc_set_vqzip_defaults();
-        int venc_get_index_from_fd(OMX_U32 fd);
         bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
         bool venc_set_max_hierp(OMX_U32 hierp_layers);
         bool venc_set_baselayerid(OMX_U32 baseid);
@@ -470,6 +501,7 @@ class venc_dev
         bool venc_set_session_priority(OMX_U32 priority);
         bool venc_set_operatingrate(OMX_U32 rate);
         bool venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmode);
+        bool venc_set_roi_qp_info(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
@@ -488,8 +520,6 @@ class venc_dev
         int metadatamode;
         bool streaming[MAX_PORT];
         bool extradata;
-        struct extradata_buffer_info input_extradata_info;
-        struct extradata_buffer_info output_extradata_info;
 
         pthread_mutex_t pause_resume_mlock;
         pthread_cond_t pause_resume_cond;
