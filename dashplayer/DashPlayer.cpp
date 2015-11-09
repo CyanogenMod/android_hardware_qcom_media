@@ -47,6 +47,9 @@
 #define DP_MSG_MEDIUM(...) if(mLogLevel >= 2){ALOGE(__VA_ARGS__);}
 #define DP_MSG_LOW(...) if(mLogLevel >= 3){ALOGE(__VA_ARGS__);}
 
+#define AUDIO_DISCONTINUITY_THRESHOLD 100000ll
+#define AUDIO_TS_DISCONTINUITY_THRESHOLD 200000ll
+
 namespace android {
 
 struct DashPlayer::Action : public RefBase {
@@ -139,7 +142,16 @@ DashPlayer::DashPlayer()
       mQCTimedTextListenerPresent(false),
       mCurrentWidth(0),
       mCurrentHeight(0),
-      mColorFormat(0){
+      mColorFormat(0),
+      mDPBSize(0),
+      mDPBCheckToDelayRendering(true),
+      mVideoDecoderStartTimeUs(0),
+      mVideoDecoderSetupTimeUs(0),
+      mDelayRenderingUs(0),
+      mFirstVideoSampleUs(-1),
+      mVideoSampleDurationUs(0),
+      mLastReadAudioMediaTimeUs(-1),
+      mLastReadAudioRealTimeUs(-1) {
       mTrackName = new char[6];
 
       char property_value[PROPERTY_VALUE_MAX] = {0};
@@ -665,6 +677,11 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
                     CHECK(format->findInt32("height", &mCurrentHeight));
                     CHECK(format->findInt32("color-format", &mColorFormat));
                     DP_MSG_ERROR("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ kWhatOutputFormatChanged:: video new height:%d width%d", mCurrentWidth, mCurrentHeight);
+                    CHECK(msg->findInt32("dpb-size", &mDPBSize));
+                    // Port settings change. Reset below flag to check if
+                    // decoderSetupTime < renderingtime#dpbframes in renderBuffer() and introduce rendering delay
+                    mDPBCheckToDelayRendering = true;
+                    mFirstVideoSampleUs = -1;
                 }
             } else if (what == Decoder::kWhatShutdownCompleted) {
                 DP_MSG_ERROR("%s shutdown completed", mTrackName);
@@ -718,8 +735,14 @@ void DashPlayer::onMessageReceived(const sp<AMessage> &msg) {
             } else if (what == Decoder::kWhatDrainThisBuffer) {
                 if(track == kAudio || track == kVideo) {
                     DP_MSG_LOW("@@@@:: Dashplayer :: MESSAGE FROM CODEC +++++++++++++++++++++++++++++++ Codec::kWhatRenderBuffer:: %s",track == kAudio ? "audio" : "video");
-                        renderBuffer(track, msg);
+
+                    // Compute video decoder setup time whenever new decoder is instantiated
+                    // Used to compute startup delay for livestreams when high dpbSize
+                    if (track == kVideo && mVideoDecoderSetupTimeUs == 0) {
+                        mVideoDecoderSetupTimeUs = ALooper::GetNowUs() - mVideoDecoderStartTimeUs;
                     }
+                    renderBuffer(track, msg);
+                }
             } else {
                 DP_MSG_LOW("Unhandled codec notification %d.", what);
             }
@@ -1397,6 +1420,9 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
          if (mRenderer != NULL) {
             mRenderer->setMediaPresence(true,true);
         }
+
+        mLastReadAudioMediaTimeUs = -1;
+
     } else if (track == kVideo) {
         notify = new AMessage(kWhatVideoNotify ,this);
         *decoder = new Decoder(notify, mNativeWindow);
@@ -1404,6 +1430,11 @@ status_t DashPlayer::instantiateDecoder(int track, sp<Decoder> *decoder) {
         if (mRenderer != NULL) {
             mRenderer->setMediaPresence(false,true);
         }
+
+        mVideoDecoderSetupTimeUs = 0;
+        mVideoDecoderStartTimeUs = ALooper::GetNowUs();
+        mDelayRenderingUs = 0;
+
     } else if (track == kText) {
         mTextNotify = new AMessage(kWhatTextNotify ,this);
         *decoder = new Decoder(mTextNotify);
@@ -1555,6 +1586,22 @@ status_t DashPlayer::feedDecoderInputData(int track, const sp<AMessage> &msg) {
                sendTextPacket(NULL, err);
                return err;
             }
+        }
+
+        if (mSource != NULL && mSource->isLiveStream() &&
+                      track == kAudio && err == OK) {
+            int64_t timeUs;
+            CHECK(accessUnit->meta()->findInt64("timeUs", &timeUs));
+
+            if (timeUs >=0 && mLastReadAudioMediaTimeUs >= 0 &&
+                    ((timeUs - mLastReadAudioMediaTimeUs) > AUDIO_TS_DISCONTINUITY_THRESHOLD) &&
+                    ((ALooper::GetNowUs() - mLastReadAudioRealTimeUs) > AUDIO_DISCONTINUITY_THRESHOLD)) {
+                if (mRenderer != NULL && mDPBSize > 0 && mVideoSampleDurationUs > 0) {
+                    mRenderer->queueDelay(mDPBSize * mVideoSampleDurationUs);
+                }
+            }
+            mLastReadAudioMediaTimeUs = timeUs;
+            mLastReadAudioRealTimeUs = ALooper::GetNowUs();
         }
 
         dropAccessUnit = false;
@@ -1806,6 +1853,63 @@ void DashPlayer::renderBuffer(bool audio, const sp<AMessage> &msg) {
             }
           }
         }
+      }
+
+      /* This code handles freezes in foll. live embms use case for stream needing high DPB size.
+         Firmware will only return FBD's if the dpb (decoded picutre buffer) list is full. i.e.
+         if number of decoded frames in the dpb list falls below the dpb capacity fw will not
+         issue FBD to output buffers.
+
+         In a typical live scenario where we play current segment and next segment is only available
+         for download in the next available segment time, if the dpb size is high a lot of
+         frames are held by the fw toward the end of current segment before the next segment download
+         completes and sends samples on input port for decoding. This will cause momentary freezes
+         at the boundary of each segment for clips with high DPB.
+
+         Fix here is to adds a delay before rendering starts so that the media samples rendering cycle
+         is pushed ahead. This ensures the dpb queue is not running dry toward the end of current segment
+         and by then next segment has become available, downloaded and samples are sent.
+
+         Below condition adds this initial delay only for live content type where dpb size is high such that
+         mDecoderSetupTime < rendering time of #dpbSize number of frames
+
+         Equation:
+         if(decoderSetupTime < renderingTime for #dpb frames(i.e. dpbSize x sample duration))
+         {
+             introduce start up delay in rendering =
+                 renderingTime for #dpb frames - decoderSetupTime
+         } */
+
+      if (mSource != NULL && mSource->isLiveStream()
+              && !audio && mDPBCheckToDelayRendering) {
+
+          int64_t mediaTimeUs = 0;
+          CHECK(buffer->meta()->findInt64("timeUs", &mediaTimeUs));
+
+          if (mFirstVideoSampleUs < 0) {
+              mFirstVideoSampleUs = mediaTimeUs;
+          } else {
+              mVideoSampleDurationUs = mediaTimeUs - mFirstVideoSampleUs;
+
+              if (mDPBSize > 0 && mVideoSampleDurationUs > 0 &&
+                            (mVideoDecoderSetupTimeUs < (mDPBSize * mVideoSampleDurationUs))) {
+                  int delayRenderingUs = ((mDPBSize * mVideoSampleDurationUs) - mVideoDecoderSetupTimeUs);
+
+                  if (mDelayRenderingUs < delayRenderingUs) {
+                      DP_MSG_ERROR("videoDecoderSetupTime(%lld msec) < rendering time(%lld msec) of #dpbSize(%d) frames with sample duration(%llu msec)."
+                                   "rendering delay queued up to now = %lld msec,  queue additional delay = %lld msec",
+                                      (int64_t)mVideoDecoderSetupTimeUs/1000,
+                                      (int64_t)(double)(mDPBSize*mVideoSampleDurationUs/1000),
+                                      mDPBSize,
+                                      (int64_t)mVideoSampleDurationUs/1000,
+                                      (int64_t)mDelayRenderingUs/1000,
+                                      (int64_t)((delayRenderingUs - mDelayRenderingUs)/1000));
+                      mRenderer->queueDelay((delayRenderingUs - mDelayRenderingUs));
+                      mDelayRenderingUs = delayRenderingUs;
+                  }
+              }
+              mDPBCheckToDelayRendering = false;
+          }
       }
 
       mRenderer->queueBuffer(audio, buffer, reply);

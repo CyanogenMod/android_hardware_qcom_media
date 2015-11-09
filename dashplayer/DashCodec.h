@@ -305,6 +305,9 @@ private:
     bool mAdaptivePlayback;
     Vector<OMX_PARAM_PORTDEFINITIONTYPE*> mFormats;
     Vector<OMX_CONFIG_RECTTYPE*> mOutputCrops;
+
+    int mDPBSize;
+
     DISALLOW_EVIL_CONSTRUCTORS(DashCodec);
 };
 

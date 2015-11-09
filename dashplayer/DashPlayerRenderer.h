@@ -45,6 +45,8 @@ struct DashPlayer::Renderer : public AHandler {
     void resume();
     void notifySeekPosition(int64_t seekTime);
 
+    void queueDelay(int64_t delayUs);
+
     enum {
         kWhatEOS                = 'eos ',
         kWhatFlushComplete      = 'fluC',
@@ -66,6 +68,7 @@ private:
         kWhatAudioSinkChanged   = 'auSC',
         kWhatPause              = 'paus',
         kWhatResume             = 'resm',
+        kWhatDelayQueued        = 'queD'
     };
 
     struct QueueEntry {
@@ -100,7 +103,7 @@ private:
     bool mHasVideo;
     bool mSyncQueues;
 
-    bool mIsFirstVideoframeReceived;
+    int mNumVideoframesReceived;
     bool mPendingPostAudioDrains;
 
     bool mPaused;
@@ -133,6 +136,8 @@ private:
     bool dropBufferWhileFlushing(bool audio, const sp<AMessage> &msg);
     void syncQueuesDone();
 
+    void onDelayQueued();
+
     // for qualcomm statistics profiling
   public:
 
@@ -142,6 +147,11 @@ private:
   private:
     sp<DashPlayerStats> mStats;
     int mLogLevel;
+
+    Mutex mDelayLock;
+    bool mDelayPending;
+    int64_t mDelayToQueueUs;
+    int64_t mDelayToQueueTimeRealUs;
 
     DISALLOW_EVIL_CONSTRUCTORS(Renderer);
 };
