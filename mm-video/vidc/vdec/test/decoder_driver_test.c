@@ -1189,6 +1189,11 @@ static int Read_Buffer_From_DAT_File(unsigned char *dataptr, unsigned int length
 
   /* get the frame length */
   fseek(inputBufferFile, -1, SEEK_CUR);
+  if (frameSize > (long)length)
+  {
+      frameSize = length;
+      DEBUG_PRINT ("\n Oversized Frame. truncating to %ld",frameSize);
+  }
   bytes_read = fread(dataptr, 1, frameSize,  inputBufferFile);
 
   if(bytes_read == 0 || bytes_read < frameSize ) {
