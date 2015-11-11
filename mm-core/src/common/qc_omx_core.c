@@ -586,6 +586,7 @@ OMX_FreeHandle(OMX_IN OMX_HANDLETYPE hComp)
     if ((eRet = qc_omx_component_deinit(hComp)) == OMX_ErrorNone)
     {
         pthread_mutex_lock(&lock_core);
+        clear_cmp_handle(hComp);
         /* Unload component library */
     if( (i < (int)SIZE_OF_CORE) && core[i].so_lib_handle)
     {
@@ -611,7 +612,6 @@ OMX_FreeHandle(OMX_IN OMX_HANDLETYPE hComp)
                                    number_of_adec_nt_session);
            }
     }
-    clear_cmp_handle(hComp);
     pthread_mutex_unlock(&lock_core);
     }
     else
