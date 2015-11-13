@@ -403,7 +403,7 @@ class venc_dev
         class omx_venc *venc_handle;
         int append_mbi_extradata(void *, struct msm_vidc_extradata_header*);
         bool handle_output_extradata(void *);
-        bool handle_input_extradata(void *);
+        bool handle_input_extradata(void *, int);
         int venc_set_format(int);
         bool deinterlace_enabled;
         bool hw_overload;

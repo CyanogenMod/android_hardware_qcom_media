@@ -3699,7 +3699,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
                     return OMX_ErrorUndefined;
             }
     }
-    if (m_sExtraData && !dev_handle_input_extradata((void *)buffer))
+    if (m_sExtraData && !dev_handle_input_extradata((void *)buffer, fd))
             DEBUG_PRINT_ERROR("Failed to parse input extradata\n");
 #ifdef _MSM8974_
     if (dev_empty_buf(buffer, pmem_data_buf,nBufIndex,fd) != true)
