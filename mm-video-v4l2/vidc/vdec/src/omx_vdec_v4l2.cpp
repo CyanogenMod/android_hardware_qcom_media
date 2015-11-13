@@ -172,8 +172,8 @@ void* async_message_thread (void *input)
         if (!rc) {
             DEBUG_PRINT_ERROR("Poll timedout");
             break;
-        } else if (rc < 0) {
-            DEBUG_PRINT_ERROR("Error while polling: %d", rc);
+        } else if (rc < 0 && errno != EINTR && errno != EAGAIN) {
+            DEBUG_PRINT_ERROR("Error while polling: %d, errno = %d", rc, errno);
             break;
         }
         if ((pfds[1].revents & POLLIN) || (pfds[1].revents & POLLERR)) {
