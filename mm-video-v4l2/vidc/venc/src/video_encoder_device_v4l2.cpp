@@ -595,7 +595,7 @@ int venc_dev::append_mbi_extradata(void *dst, struct msm_vidc_extradata_header* 
     return mbi->nDataSize + sizeof(*mbi);
 }
 
-bool venc_dev::handle_input_extradata(void *buffer)
+bool venc_dev::handle_input_extradata(void *buffer, int fd)
 {
     OMX_BUFFERHEADERTYPE *p_bufhdr = (OMX_BUFFERHEADERTYPE *) buffer;
     OMX_OTHER_EXTRADATATYPE *p_extra = NULL;
@@ -624,7 +624,7 @@ bool venc_dev::handle_input_extradata(void *buffer)
     }
     unsigned char *pVirt;
     int size = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height);
-    pVirt= (unsigned char *)mmap(NULL, size, PROT_READ|PROT_WRITE,MAP_SHARED, extra_fd, 0);
+    pVirt= (unsigned char *)mmap(NULL, size, PROT_READ|PROT_WRITE,MAP_SHARED, fd, 0);
 
     p_extra = (OMX_OTHER_EXTRADATATYPE *) ((unsigned long)(pVirt + ((width * height * 3) / 2) + 3)&(~3));
     char *p_extradata = userptr;
@@ -668,7 +668,7 @@ bool venc_dev::handle_input_extradata(void *buffer)
                 qp_payload = (OMX_QCOM_EXTRADATA_QP *)p_extra->data;
                 payload = (struct  msm_vidc_frame_qp_payload *)(data->data);
                 payload->frame_qp = qp_payload->nQP;
-                DEBUG_PRINT_LOW("FRame QP = %d", payload->frame_qp);
+                DEBUG_PRINT_LOW("Frame QP = %d", payload->frame_qp);
                 data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
                 break;
             }
@@ -696,6 +696,7 @@ bool venc_dev::handle_input_extradata(void *buffer)
 
     }
     munmap(pVirt, size);
+    mInputExtradata.put(userptr);
     return true;
 }
 
@@ -6502,6 +6503,7 @@ encExtradata::~encExtradata()
     mCount = 0;
     mSize = 0;
     mVencHandle = NULL;
+    pthread_mutex_destroy(&lock);
 }
 
 OMX_ERRORTYPE encExtradata::__allocate()
@@ -6551,7 +6553,7 @@ int encExtradata::__get(char **userptr, int *fd, unsigned *offset, ssize_t *size
         }
     }
     if (i >= mCount) {
-        DEBUG_PRINT_ERROR("No Free extradata available");
+        DEBUG_PRINT_HIGH("No Free extradata available");
         return -1;
     }
     *userptr = mUaddr + i * mSize;
@@ -6722,10 +6724,10 @@ void encExtradata::update(unsigned int count, ssize_t size)
 
 void encExtradata::__debug()
 {
-    DEBUG_PRINT_ERROR("encExtradata: this: %p, mCount: %d, mSize: %d, mUaddr: %p, mVencHandle: %p",
+    DEBUG_PRINT_HIGH("encExtradata: this: %p, mCount: %d, mSize: %d, mUaddr: %p, mVencHandle: %p",
             this, mCount, mSize, mUaddr, mVencHandle);
     for (unsigned i = 0; i < mCount; i++) {
-        DEBUG_PRINT_ERROR("index: %d, status: %d, cookie: %#x\n", i, mIndex[i].status, mIndex[i].cookie);
+        DEBUG_PRINT_HIGH("index: %d, status: %d, cookie: %#x\n", i, mIndex[i].status, mIndex[i].cookie);
     }
 }
 
