@@ -335,9 +335,36 @@ bool DashPlayer::Decoder::handleAnOutputBuffer() {
             return false;
         }
 
+        /* Computation of dpbSize
+
+           #dpbSize = #output buffers
+                      - 2 extrabuffers allocated by firmware
+                      - minUndequeuedBufs (query from native window)
+                      - 3 extrabuffers allocated by codec
+           If extrabuffers allocated by firmware or ACodec changes,
+           above eq. needs to be updated
+        */
+
+        int dpbSize = 0;
+        if (mNativeWindow != NULL) {
+            sp<ANativeWindow> nativeWindow = mNativeWindow.get();
+            if (nativeWindow != NULL) {
+                int minUndequeuedBufs = 0;
+                status_t err = nativeWindow->query(nativeWindow.get(),
+                    NATIVE_WINDOW_MIN_UNDEQUEUED_BUFFERS, &minUndequeuedBufs);
+                if (err == NO_ERROR) {
+                    dpbSize = (mOutputBuffers.size() - minUndequeuedBufs - 5) > 0 ?
+                        (mOutputBuffers.size() - minUndequeuedBufs - 5) : 0;
+                    DPD_MSG_ERROR("[%s] computed DPB size of video stream = %d",
+                        mComponentName.c_str(), dpbSize);
+                }
+            }
+        }
+
         sp<AMessage> notify = mNotify->dup();
         notify->setInt32("what", kWhatOutputFormatChanged);
         notify->setMessage("format", format);
+        notify->setInt32("dpb-size", dpbSize);
         notify->post();
         return true;
     } else if (res == INFO_DISCONTINUITY) {
