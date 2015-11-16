@@ -1909,6 +1909,20 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexParamBatchSize:
+            {
+                OMX_PARAM_U32TYPE* pParam =
+                    (OMX_PARAM_U32TYPE*)paramData;
+
+                if (pParam->nPortIndex == PORT_INDEX_OUT) {
+                    DEBUG_PRINT_ERROR("For the moment, client-driven batching not supported"
+                            " on output port");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+
+                /* Nothing else to do, this is just here for API compatibility */
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",

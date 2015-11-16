@@ -1885,6 +1885,16 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                      memcpy(initqp, &m_sParamInitqp, sizeof(m_sParamInitqp));
                 break;
             }
+         case OMX_QcomIndexParamBatchSize:
+            {
+                OMX_PARAM_U32TYPE* batch =
+                    reinterpret_cast<OMX_PARAM_U32TYPE *>(paramData);
+
+                // This is just around for API compatibility, just fill in something and return it
+                batch->nU32 = 0;
+                batch->nPortIndex = PORT_INDEX_IN;
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -2048,6 +2058,11 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     if (!strncmp(paramName, "OMX.google.android.index.prependSPSPPSToIDRFrames",
             sizeof("OMX.google.android.index.prependSPSPPSToIDRFrames") - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR;
+        return OMX_ErrorNone;
+    }
+    if (!strncmp(paramName, "OMX.QCOM.index.param.video.InputBatch",
+            sizeof("OMX.QCOM.index.param.video.InputBatch") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize;
         return OMX_ErrorNone;
     }
     return OMX_ErrorNotImplemented;
