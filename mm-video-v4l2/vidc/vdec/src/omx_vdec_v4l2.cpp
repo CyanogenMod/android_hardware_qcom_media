@@ -8296,13 +8296,37 @@ int omx_vdec::async_message_process (void *context, void* message)
                     if (omxhdr && (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DROP_FRAME) &&
                             !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) &&
                             !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS)) {
+                        unsigned int index = v4l2_buf_ptr->index;
+                        unsigned int extra_idx = EXTRADATA_IDX(omx->drv_ctx.num_planes);
+                        struct v4l2_plane *plane = v4l2_buf_ptr->m.planes;
                         omx->time_stamp_dts.remove_time_stamp(
                                 omxhdr->nTimeStamp,
                                 (omx->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
                                 ?true:false);
+                        plane[0].bytesused = 0;
+                        plane[0].m.userptr =
+                            (unsigned long)omx->drv_ctx.ptr_outputbuffer[index].bufferaddr -
+                            (unsigned long)omx->drv_ctx.ptr_outputbuffer[index].offset;
+                        plane[0].reserved[0] = omx->drv_ctx.ptr_outputbuffer[index].pmem_fd;
+                        plane[0].reserved[1] = omx->drv_ctx.ptr_outputbuffer[index].offset;
+                        plane[0].data_offset = 0;
                         v4l2_buf_ptr->flags = 0x0;
+                        if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
+                            plane[extra_idx].bytesused = 0;
+                            plane[extra_idx].length = omx->drv_ctx.extradata_info.buffer_size;
+                            plane[extra_idx].m.userptr = (long unsigned int) (omx->drv_ctx.extradata_info.uaddr + index * omx->drv_ctx.extradata_info.buffer_size);
+#ifdef USE_ION
+                            plane[extra_idx].reserved[0] = omx->drv_ctx.extradata_info.ion.fd_ion_data.fd;
+#endif
+                            plane[extra_idx].reserved[1] = v4l2_buf_ptr->index * omx->drv_ctx.extradata_info.buffer_size;
+                            plane[extra_idx].data_offset = 0;
+                        } else if (extra_idx >= VIDEO_MAX_PLANES) {
+                            DEBUG_PRINT_ERROR("Extradata index higher than expected: %u", extra_idx);
+                            return -1;
+                        }
+
                         if(ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_QBUF, v4l2_buf_ptr)) {
-                            DEBUG_PRINT_ERROR("Failed to queue buffer back to driver");
+                            DEBUG_PRINT_ERROR("Failed to queue buffer back to driver: %d, %d, %d", v4l2_buf_ptr->length, v4l2_buf_ptr->m.planes[0].reserved[0], v4l2_buf_ptr->m.planes[1].reserved[0]);
                             return -1;
                         }
                         break;
