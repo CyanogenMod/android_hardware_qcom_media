@@ -106,7 +106,7 @@ void* enc_message_thread(void *input)
     int res = 0;
     struct timeval tv;
 
-    DEBUG_PRINT_LOW("omx_venc: message thread start");
+    DEBUG_PRINT_HIGH("omx_venc: message thread start");
     prctl(PR_SET_NAME, (unsigned long)"VideoEncMsgThread", 0, 0, 0);
      while (!omx->msg_thread_stop) {
 
@@ -130,15 +130,21 @@ void* enc_message_thread(void *input)
         }
 
         if (1 == n) {
+            if (omx->omx_close_msg_thread(id)) {
+                break;
+            }
             omx->process_event_cb(omx, id);
         }
 #ifdef QLE_BUILD
         if (n < 0) break;
 #else
-        if ((n < 0) && (errno != EINTR)) break;
+        if ((n < 0) && (errno != EINTR)) {
+            DEBUG_PRINT_LOW("ERROR: read from pipe failed, ret %d errno %d", n, errno);
+            break;
+        }
 #endif
     }
-    DEBUG_PRINT_LOW("omx_venc: message thread stop");
+    DEBUG_PRINT_HIGH("omx_venc: message thread stop");
     return 0;
 }
 
@@ -301,13 +307,17 @@ omx_video::omx_video():
 omx_video::~omx_video()
 {
     DEBUG_PRINT_HIGH("~omx_video(): Inside Destructor()");
-    if (m_pipe_in >= 0) close(m_pipe_in);
-    if (m_pipe_out >= 0) close(m_pipe_out);
     if (msg_thread_created) {
         msg_thread_stop = true;
+        DEBUG_PRINT_HIGH("Signalling close to OMX Msg Thread");
+        post_message(this, OMX_COMPONENT_CLOSE_MSG);
         DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit");
         pthread_join(msg_thread_id,NULL);
     }
+    if (m_pipe_in >= 0) close(m_pipe_in);
+    if (m_pipe_out >= 0) close(m_pipe_out);
+    m_pipe_in = -1;
+    m_pipe_out = -1;
     DEBUG_PRINT_HIGH("omx_video: Waiting on Async Thread exit");
     /*For V4L2 based drivers, pthread_join is done in device_close
      * so no need to do it here*/

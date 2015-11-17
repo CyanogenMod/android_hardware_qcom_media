@@ -418,7 +418,8 @@ class omx_video: public qc_omx_component
             OMX_COMPONENT_GENERATE_STOP_DONE = 0x10,
             OMX_COMPONENT_GENERATE_HARDWARE_ERROR = 0x11,
             OMX_COMPONENT_GENERATE_LTRUSE_FAILED = 0x12,
-            OMX_COMPONENT_GENERATE_ETB_OPQ = 0x13
+            OMX_COMPONENT_GENERATE_ETB_OPQ = 0x13,
+            OMX_COMPONENT_CLOSE_MSG = 0x14
         };
 
         struct omx_event {
@@ -552,6 +553,10 @@ class omx_video: public qc_omx_component
                                  struct ion_fd_data *fd_data,int flag);
         void free_ion_memory(struct venc_ion *buf_ion_info);
 #endif
+
+        inline bool omx_close_msg_thread(unsigned char id) {
+            return (id == OMX_COMPONENT_CLOSE_MSG);
+        }
 
         //*************************************************************
         //*******************MEMBER VARIABLES *************************

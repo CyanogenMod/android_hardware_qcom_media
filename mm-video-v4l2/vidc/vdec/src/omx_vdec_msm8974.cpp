@@ -337,8 +337,12 @@ void* dec_message_thread(void *input)
         }
 
         if (1 == n) {
+            if (omx->omx_close_msg_thread(id)) {
+                break;
+            }
             omx->process_event_cb(omx, id);
         }
+
         if ((n < 0) && (errno != EINTR)) {
             DEBUG_PRINT_LOW("ERROR: read from pipe failed, ret %d errno %d", n, errno);
             break;
@@ -825,15 +829,17 @@ omx_vdec::~omx_vdec()
     m_pmem_info = NULL;
     struct v4l2_decoder_cmd dec;
     DEBUG_PRINT_HIGH("In OMX vdec Destructor");
-    if (m_pipe_in) close(m_pipe_in);
-    if (m_pipe_out) close(m_pipe_out);
-    m_pipe_in = -1;
-    m_pipe_out = -1;
     if (msg_thread_created) {
+        DEBUG_PRINT_HIGH("Signalling close to OMX Msg Thread");
         message_thread_stop = true;
+        post_message(this, OMX_COMPONENT_CLOSE_MSG);
         DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
         pthread_join(msg_thread_id,NULL);
     }
+    close(m_pipe_in);
+    close(m_pipe_out);
+    m_pipe_in = -1;
+    m_pipe_out = -1;
     DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
     dec.cmd = V4L2_DEC_CMD_STOP;
     if (drv_ctx.video_driver_fd >=0 ) {
