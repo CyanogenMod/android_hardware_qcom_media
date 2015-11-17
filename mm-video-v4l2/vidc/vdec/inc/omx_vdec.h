@@ -523,6 +523,7 @@ class omx_vdec: public qc_omx_component
             OMX_COMPONENT_GENERATE_INFO_FIELD_DROPPED = 0x16,
             OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING = 0x17,
             OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD = 0x18,
+            OMX_COMPONENT_CLOSE_MSG = 0x19
         };
 
         enum vc1_profile_type {
@@ -777,7 +778,12 @@ class omx_vdec: public qc_omx_component
         nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
 
+public:
+        inline bool omx_close_msg_thread(unsigned char id) {
+            return (id == OMX_COMPONENT_CLOSE_MSG);
+        }
 
+private:
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
