@@ -70,7 +70,7 @@ REFERENCES
 #ifdef USE_ION
 #include <linux/msm_ion.h>
 #endif
-
+#include <errno.h>
 //////////////////////////
 // MACROS
 //////////////////////////
@@ -371,13 +371,13 @@ void* PmemMalloc(OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO* pMem, int nSize)
   }
   nSize = (nSize + 4095) & (~4095);
   ion_data.alloc_data.len = nSize;
-  ion_data.alloc_data.heap_mask = 0x1 << ION_CP_MM_HEAP_ID;
+  ion_data.alloc_data.heap_mask = 0x1 << ION_IOMMU_HEAP_ID;
   ion_data.alloc_data.align = 4096;
   ion_data.alloc_data.flags = 0;
 
   rc = ioctl(ion_data.ion_device_fd,ION_IOC_ALLOC,&ion_data.alloc_data);
   if(rc || !ion_data.alloc_data.handle) {
-         E("\n ION ALLOC memory failed ");
+         E("\n ION ALLOC memory failed with error %s", strerror(errno));
          ion_data.alloc_data.handle=NULL;
          return NULL;
   }
@@ -531,6 +531,7 @@ OMX_ERRORTYPE ConfigureEncoder()
    CHK(result);
    portdef.format.video.nFrameWidth = m_sProfile.nFrameWidth;
    portdef.format.video.nFrameHeight = m_sProfile.nFrameHeight;
+   portdef.format.video.nBitrate = m_sProfile.nBitrate;
 
    E ("\n Height %d width %d bit rate %d",portdef.format.video.nFrameHeight
       ,portdef.format.video.nFrameWidth,portdef.format.video.nBitrate);
@@ -728,7 +729,8 @@ result = OMX_SetParameter(m_hHandle,
    CHK(result);
 
    OMX_VIDEO_PARAM_PORTFORMATTYPE framerate; // OMX_IndexParamVidePortFormat
-   framerate.nPortIndex = 0;
+   framerate.nPortIndex = PORT_INDEX_IN;
+   framerate.nIndex = PORT_INDEX_IN;
    result = OMX_GetParameter(m_hHandle,
                              OMX_IndexParamVideoPortFormat,
                              &framerate);
@@ -990,6 +992,7 @@ result = OMX_SetParameter(m_hHandle,
                           OMX_IndexConfigVideoFramerate,
                           &enc_framerate);
    CHK(result);
+
    return OMX_ErrorNone;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -1237,18 +1240,14 @@ OMX_ERRORTYPE VencTest_EncodeFrame(void* pYUVBuff,
    D("calling OMX empty this buffer");
    for (int i = 0; i < num_in_buffers; i++)
    {
-      if (pYUVBuff == m_pInBuffers[i]->pBuffer)
-      {
-         m_pInBuffers[i]->nTimeStamp = nTimeStamp;
-    D("Sending Buffer - %x", m_pInBuffers[i]->pBuffer);
-         result = OMX_EmptyThisBuffer(m_hHandle,
-                                      m_pInBuffers[i]);
-         /* Counting Buffers supplied to OpenMax Encoder */
-         if(OMX_ErrorNone == result)
-            ebd_cnt++;
-         CHK(result);
-         break;
-      }
+      m_pInBuffers[i]->nTimeStamp = nTimeStamp;
+      D("Sending Buffer - %x", m_pInBuffers[i]->pBuffer);
+      result = OMX_EmptyThisBuffer(m_hHandle,
+                                   m_pInBuffers[i]);
+      /* Counting Buffers supplied to OpenMax Encoder */
+      if(OMX_ErrorNone == result)
+         ebd_cnt++;
+      CHK(result);
    }
    return result;
 }
@@ -1937,7 +1936,7 @@ int main(int argc, char** argv)
    memset(&m_sMsgQ, 0, sizeof(MsgQ));
    parseArgs(argc, argv);
 
-   D("fps=%d, bitrate=%d, width=%d, height=%d",
+   D("fps=%f, bitrate=%d, width=%d, height=%d",
      m_sProfile.nFramerate,
      m_sProfile.nBitrate,
      m_sProfile.nFrameWidth,
