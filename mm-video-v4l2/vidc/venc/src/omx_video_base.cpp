@@ -4524,6 +4524,9 @@ int omx_video::alloc_map_ion_memory(int size,
         alloc_data->align = SECURE_ALIGN;
         alloc_data->flags = flag;
         alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
+        if (alloc_data->flags & ION_FLAG_CP_BITSTREAM) {
+            alloc_data->heap_id_mask |= ION_HEAP(ION_SECURE_DISPLAY_HEAP_ID);
+        }
         DEBUG_PRINT_HIGH("ION ALLOC sec buf: size %u align %u flags %x",
                 (unsigned int)alloc_data->len, (unsigned int)alloc_data->align,
                 alloc_data->flags);

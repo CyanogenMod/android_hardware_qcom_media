@@ -8947,8 +8947,14 @@ int omx_vdec::alloc_map_ion_memory(OMX_U32 buffer_size,
     }
 
     alloc_data->heap_id_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
-    if (secure_mode && (alloc_data->flags & ION_SECURE))
+    if (secure_mode && (alloc_data->flags & ION_SECURE)) {
         alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
+    }
+
+    /* Use secure display cma heap for obvious reasons. */
+    if (alloc_data->flags & ION_FLAG_CP_BITSTREAM) {
+        alloc_data->heap_id_mask |= ION_HEAP(ION_SECURE_DISPLAY_HEAP_ID);
+    }
 
     rc = ioctl(fd,ION_IOC_ALLOC,alloc_data);
     if (rc || !alloc_data->handle) {
