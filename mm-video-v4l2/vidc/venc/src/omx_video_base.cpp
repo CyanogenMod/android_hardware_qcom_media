@@ -271,7 +271,8 @@ omx_video::omx_video():
     m_etb_count(0),
     m_fbd_count(0),
     m_event_port_settings_sent(false),
-    hw_overload(false)
+    hw_overload(false),
+    m_graphicBufferSize(0)
 {
     DEBUG_PRINT_HIGH("omx_video(): Inside Constructor()");
     memset(&m_cmp,0,sizeof(m_cmp));
@@ -5099,7 +5100,7 @@ OMX_ERRORTYPE omx_video::push_empty_eos_buffer(OMX_HANDLETYPE hComp,
         if (!mUsesColorConversion && !mUseProxyColorFormat)
             emptyEosBufHdr.nAllocLen = m_sInPortDef.nBufferSize;
         else if (mUseProxyColorFormat)
-            emptyEosBufHdr.nAllocLen = m_graphicBufferSize;
+            emptyEosBufHdr.nAllocLen = m_graphicBufferSize > 0 ? m_graphicBufferSize : m_sInPortDef.nBufferSize;
         if (dev_empty_buf(&emptyEosBufHdr, 0, index, m_pInput_pmem[index].fd) != true) {
             DEBUG_PRINT_ERROR("ERROR: in dev_empty_buf for empty eos buffer");
             dev_free_buf(&Input_pmem_info, PORT_INDEX_IN);
