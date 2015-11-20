@@ -101,8 +101,6 @@ struct OMX_QCOM_PARAM_MEMMAPENTRYTYPE
 
 #define QOMX_VIDEO_BUFFERFLAG_CANCEL 0x00800000
 
-#define QOMX_VIDEO_BUFFERFLAG_CANCEL 0x00800000
-
 #define OMX_QCOM_PORTDEFN_EXTN   "OMX.QCOM.index.param.portdefn"
 /* Allowed APIs on the above Index: OMX_GetParameter() and OMX_SetParameter() */
 
