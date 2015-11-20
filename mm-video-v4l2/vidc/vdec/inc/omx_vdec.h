@@ -455,7 +455,7 @@ class omx_vdec: public qc_omx_component
         void buf_ref_add(int nPortIndex);
         void buf_ref_remove();
         OMX_ERRORTYPE set_dpb(bool is_split_mode, int dpb_color_format);
-        OMX_ERRORTYPE decide_dpb_buffer_mode();
+        OMX_ERRORTYPE decide_dpb_buffer_mode(bool force_split_mode);
         void request_perf_level(enum vidc_perf_level perf_level);
         int dpb_bit_depth;
 
@@ -951,6 +951,7 @@ class omx_vdec: public qc_omx_component
         OMX_CONFIG_RECTTYPE rectangle;
         OMX_U32 prev_n_filled_len;
         bool is_down_scalar_enabled;
+        bool m_force_down_scalar;
 #endif
         struct custom_buffersize {
             OMX_U32 input_buffersize;
@@ -980,6 +981,11 @@ class omx_vdec: public qc_omx_component
         OMX_ERRORTYPE enable_adaptive_playback(unsigned long width, unsigned long height);
         bool is_thulium_v1;
         static bool m_disable_ubwc_mode;
+        OMX_U32 m_downscalar_width;
+        OMX_U32 m_downscalar_height;
+        int decide_downscalar();
+        int enable_downscalar();
+        int disable_downscalar();
 
         unsigned int m_fill_output_msg;
         bool client_set_fps;
