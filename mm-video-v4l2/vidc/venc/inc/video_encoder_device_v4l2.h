@@ -400,6 +400,7 @@ class venc_dev
         bool m_max_allowed_bitrate_check;
         pthread_t m_tid;
         bool async_thread_created;
+        bool async_thread_force_stop;
         class omx_venc *venc_handle;
         int append_mbi_extradata(void *, struct msm_vidc_extradata_header*);
         bool handle_output_extradata(void *);

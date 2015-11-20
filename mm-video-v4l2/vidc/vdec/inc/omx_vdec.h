@@ -458,6 +458,7 @@ class omx_vdec: public qc_omx_component
         OMX_ERRORTYPE decide_dpb_buffer_mode(bool force_split_mode);
         void request_perf_level(enum vidc_perf_level perf_level);
         int dpb_bit_depth;
+        bool async_thread_force_stop;
 
     private:
         // Bit Positions
