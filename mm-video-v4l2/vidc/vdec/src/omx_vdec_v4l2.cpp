@@ -348,8 +348,12 @@ void* message_thread(void *input)
         }
 
         if (1 == n) {
+            if (omx->omx_close_msg_thread(id)) {
+                break;
+            }
             omx->process_event_cb(omx, id);
         }
+
         if ((n < 0) && (errno != EINTR)) {
             DEBUG_PRINT_LOW("ERROR: read from pipe failed, ret %d errno %d", n, errno);
             break;
@@ -851,11 +855,15 @@ omx_vdec::~omx_vdec()
 {
     m_pmem_info = NULL;
     DEBUG_PRINT_HIGH("In OMX vdec Destructor");
-    close(m_pipe_in);
-    close(m_pipe_out);
+    DEBUG_PRINT_HIGH("Signalling close to OMX Msg Thread");
+    post_message(this, OMX_COMPONENT_CLOSE_MSG);
     DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
     if (msg_thread_created)
         pthread_join(msg_thread_id,NULL);
+    close(m_pipe_in);
+    close(m_pipe_out);
+    m_pipe_in = -1;
+    m_pipe_out = -1;
     DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
     if(!eventfd_write(m_poll_efd, 1)) {
        if (async_thread_created)
