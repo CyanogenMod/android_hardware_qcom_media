@@ -40,6 +40,7 @@
 #include <string.h>
 #include <assert.h>
 #include <pthread.h>
+#include <time.h>
 
 #include <cutils/properties.h>
 
@@ -204,7 +205,7 @@ void omx_swvdec_ts_list::reset()
  */
 bool omx_swvdec_ts_list::push(long long timestamp)
 {
-    bool retval = true;
+    bool retval;
 
     pthread_mutex_lock(&m_mutex);
 
@@ -237,9 +238,16 @@ bool omx_swvdec_ts_list::push(long long timestamp)
             index_curr--;
             index_prev--;
         }
+
+        OMX_SWVDEC_LOG_LOW("timestamp %lld pushed", timestamp);
+
+        retval = true;
     }
     else
     {
+        OMX_SWVDEC_LOG_ERROR("timestamp %lld push failed; list full",
+                             timestamp);
+
         retval = false;
     }
 
@@ -268,10 +276,14 @@ bool omx_swvdec_ts_list::pop(long long *p_timestamp)
         m_list[m_count_filled - 1].filled = false;
         m_count_filled--;
 
+        OMX_SWVDEC_LOG_LOW("timestamp %lld popped", *p_timestamp);
+
         retval = true;
     }
     else
     {
+        OMX_SWVDEC_LOG_ERROR("timestamp pop failed; list empty");
+
         retval = false;
     }
 
@@ -291,26 +303,56 @@ omx_swvdec_diag::omx_swvdec_diag():
     m_file_ip(NULL),
     m_file_op(NULL)
 {
+    time_t time_raw;
+
+    struct tm *time_info;
+
+    char time_string[16];
+
+    char filename_ip[PROPERTY_VALUE_MAX];
+    char filename_op[PROPERTY_VALUE_MAX];
+
     char property_value[PROPERTY_VALUE_MAX] = {0};
+
+    time_raw = time(NULL);
+
+    time_info = localtime(&time_raw);
+
+    // time string: "YYYYmmddTHHMMSS"
+    strftime(time_string, sizeof(time_string), "%Y%m%dT%H%M%S", time_info);
+
+    // default ip filename: "/data/misc/media/omx_swvdec_YYYYmmddTHHMMSS_ip.bin"
+    snprintf(filename_ip,
+             sizeof(filename_ip),
+             "%s/omx_swvdec_%s_ip.bin",
+             DIAG_FILE_PATH,
+             time_string);
+
+    // default op filename: "/data/misc/media/omx_swvdec_YYYYmmddTHHMMSS_op.yuv"
+    snprintf(filename_op,
+             sizeof(filename_op),
+             "%s/omx_swvdec_%s_op.yuv",
+             DIAG_FILE_PATH,
+             time_string);
 
     if (property_get("omx_swvdec.dump.ip", property_value, NULL))
     {
         m_dump_ip = atoi(property_value);
-        OMX_SWVDEC_LOG_LOW("omx_swvdec.dump.ip: %d", m_dump_ip);
+
+        OMX_SWVDEC_LOG_HIGH("omx_swvdec.dump.ip: %d", m_dump_ip);
     }
 
     if (property_get("omx_swvdec.dump.op", property_value, NULL))
     {
         m_dump_op = atoi(property_value);
-        OMX_SWVDEC_LOG_LOW("omx_swvdec.dump.op: %d", m_dump_op);
+
+        OMX_SWVDEC_LOG_HIGH("omx_swvdec.dump.op: %d", m_dump_op);
     }
 
-    if (property_get("omx_swvdec.filename.ip",
-                     property_value,
-                     DIAG_FILENAME_IP))
+    if (m_dump_ip && property_get("omx_swvdec.filename.ip",
+                                  property_value,
+                                  filename_ip))
     {
-        OMX_SWVDEC_LOG_LOW("omx_swvdec.filename.ip: %s", m_filename_ip);
-
         m_filename_ip =
             (char *) malloc((strlen(property_value) + 1) * sizeof(char));
 
@@ -323,15 +365,21 @@ omx_swvdec_diag::omx_swvdec_diag():
         else
         {
             strncpy(m_filename_ip, property_value, strlen(property_value) + 1);
+
+            OMX_SWVDEC_LOG_HIGH("omx_swvdec.filename.ip: %s", m_filename_ip);
+
+            if ((m_file_ip = fopen(m_filename_ip, "wb")) == NULL)
+            {
+                OMX_SWVDEC_LOG_ERROR("cannot open input file '%s'",
+                                     m_filename_ip);
+            }
         }
     }
 
-    if (property_get("omx_swvdec.filename.op",
-                     property_value,
-                     DIAG_FILENAME_OP))
+    if (m_dump_op && property_get("omx_swvdec.filename.op",
+                                  property_value,
+                                  filename_op))
     {
-        OMX_SWVDEC_LOG_LOW("omx_swvdec.filename.op: %s", m_filename_op);
-
         m_filename_op =
             (char *) malloc((strlen(property_value) + 1) * sizeof(char));
 
@@ -344,33 +392,15 @@ omx_swvdec_diag::omx_swvdec_diag():
         else
         {
             strncpy(m_filename_op, property_value, strlen(property_value) + 1);
-        }
-    }
 
-    if (m_dump_ip && (m_filename_ip != NULL))
-    {
-        if ((m_file_ip = fopen(m_filename_ip, "rb")) == NULL)
-        {
-            OMX_SWVDEC_LOG_ERROR("cannot open input file '%s'", m_filename_ip);
-            m_dump_ip = 0;
-        }
-    }
-    else
-    {
-        m_dump_ip = 0;
-    }
+            OMX_SWVDEC_LOG_HIGH("omx_swvdec.filename.op: %s", m_filename_op);
 
-    if (m_dump_op && (m_filename_op != NULL))
-    {
-        if ((m_file_op = fopen(m_filename_op, "rb")) == NULL)
-        {
-            OMX_SWVDEC_LOG_ERROR("cannot open output file '%s'", m_filename_op);
-            m_dump_op = 0;
+            if ((m_file_op = fopen(m_filename_op, "wb")) == NULL)
+            {
+                OMX_SWVDEC_LOG_ERROR("cannot open output file '%s'",
+                                     m_filename_op);
+            }
         }
-    }
-    else
-    {
-        m_dump_op = 0;
     }
 }
 
@@ -413,7 +443,7 @@ omx_swvdec_diag::~omx_swvdec_diag()
 void omx_swvdec_diag::dump_ip(unsigned char *p_buffer,
                               unsigned int   filled_length)
 {
-    if (m_dump_ip)
+    if (m_dump_ip && (m_file_ip != NULL))
     {
         fwrite(p_buffer, sizeof(unsigned char), filled_length, m_file_ip);
     }
@@ -434,7 +464,7 @@ void omx_swvdec_diag::dump_op(unsigned char *p_buffer,
                               unsigned int   stride,
                               unsigned int   scanlines)
 {
-    if (m_dump_op)
+    if (m_dump_op && (m_file_op != NULL))
     {
         unsigned char *p_buffer_y;
         unsigned char *p_buffer_uv;
