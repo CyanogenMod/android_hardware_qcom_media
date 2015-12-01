@@ -2165,25 +2165,29 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
    RETURN(true);
 }
 
-int omx_venc::dev_handle_output_extradata(void *buffer, int index)
+int omx_venc::dev_handle_output_extradata(void *buffer)
 {
    ENTER_FUNC();
 
    (void)buffer;
-   (void)index;
 
    RETURN(true);
 }
 
-int omx_venc::dev_handle_input_extradata(void *buffer, int index, int fd)
+int omx_venc::dev_handle_input_extradata(void *buffer)
 {
    ENTER_FUNC();
 
    (void)buffer;
-   (void)index;
-   (void)fd;
 
    RETURN(true);
+}
+
+void omx_venc::dev_set_extradata_cookie(void *buffer)
+{
+   ENTER_FUNC();
+
+   (void)buffer;
 }
 
 int omx_venc::dev_set_format(int color)
