@@ -3709,8 +3709,16 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
                     return OMX_ErrorUndefined;
             }
     }
-    if (m_sExtraData && !dev_handle_input_extradata((void *)buffer))
+    if (m_sExtraData && !dev_handle_input_extradata((void *)buffer, fd)) {
             DEBUG_PRINT_ERROR("Failed to parse input extradata\n");
+#ifdef _ANDROID_ICS_
+        omx_release_meta_buffer(buffer);
+#endif
+        post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_EBD);
+        /*Generate an async error and move to invalid state*/
+        pending_input_buffers--;
+        return OMX_ErrorBadParameter;
+    }
 #ifdef _MSM8974_
     if (dev_empty_buf(buffer, pmem_data_buf,nBufIndex,fd) != true)
 #else
