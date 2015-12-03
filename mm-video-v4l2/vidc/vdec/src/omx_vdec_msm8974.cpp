@@ -1258,6 +1258,12 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                                 pThis->drv_ctx.video_resolution.frame_width,
                                                 pThis->drv_ctx.video_resolution.frame_height);
 
+                                            /* Update new resolution */
+                                            pThis->framesize.nWidth =
+                                                pThis->drv_ctx.video_resolution.frame_width;
+                                            pThis->framesize.nHeight =
+                                                pThis->drv_ctx.video_resolution.frame_height;
+
                                             /* Update C2D with new resolution */
                                             if (!pThis->client_buffers.update_buffer_req()) {
                                                 DEBUG_PRINT_ERROR("Setting C2D buffer requirements failed");
