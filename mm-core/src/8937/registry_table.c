@@ -53,6 +53,19 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.qcom.video.decoder.avc.dsmode",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVideoDSMode.so",
+    {
+      "video_decoder.avc"
+    }
+  },
+  {
     "OMX.qcom.video.decoder.avc.secure",
     NULL,   // Create instance function
     // Unique instance handle
@@ -63,6 +76,20 @@ omx_core_cb_type core[] =
     "libOmxVdec.so",
     {
       "video_decoder.avc"
+    }
+  },
+  {
+    "OMX.qcom.file.muxer",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+
+    "libOmxMux.so",
+    {
+      "container_muxer.mp2"
     }
   },
   {
@@ -93,6 +120,19 @@ omx_core_cb_type core[] =
   },
    {
     "OMX.qcom.video.encoder.avc",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVenc.so",
+    {
+      "video_encoder.avc"
+    }
+  },
+  {
+    "OMX.qcom.video.encoder.avc.secure",
     NULL, // Create instance function
     // Unique instance handle
     {
