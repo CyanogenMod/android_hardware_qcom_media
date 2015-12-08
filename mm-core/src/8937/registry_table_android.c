@@ -407,6 +407,22 @@ omx_core_cb_type core[] =
       "audio_decoder.aac"
     }
   },
+  {
+    "OMX.qti.vdec.vpp",
+    NULL, // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVpp.so",
+    {
+      "video_decoder.vpp"
+    }
+  }
 };
 
 const unsigned int SIZE_OF_CORE = sizeof(core) / sizeof(omx_core_cb_type);
