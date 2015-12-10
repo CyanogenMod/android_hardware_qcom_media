@@ -613,6 +613,8 @@ class omx_vdec: public qc_omx_component
         void free_output_buffer_header();
         void free_input_buffer_header();
 
+        void unmap_dynamic_buffer(OMX_BUFFERHEADERTYPE *buffer);
+
         OMX_ERRORTYPE allocate_input_heap_buffer(OMX_HANDLETYPE       hComp,
                 OMX_BUFFERHEADERTYPE **bufferHdr,
                 OMX_U32              port,

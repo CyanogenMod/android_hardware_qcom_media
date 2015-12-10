@@ -7530,19 +7530,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
 
         if (il_buffer) {
             log_output_buffers(il_buffer);
-            if (dynamic_buf_mode) {
-                unsigned int nPortIndex = 0;
-                nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
-
-                if (!secure_mode) {
-                    munmap(drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr,
-                        drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size);
-                }
-
-                //Clear graphic buffer handles in dynamic mode
-                native_buffer[nPortIndex].privatehandle = NULL;
-                native_buffer[nPortIndex].nativehandle = NULL;
-            }
+            unmap_dynamic_buffer(buffer);
             m_cb.FillBufferDone (hComp,m_app_data,il_buffer);
         } else {
             DEBUG_PRINT_ERROR("Invalid buffer address from get_il_buf_hdr");
@@ -7785,6 +7773,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                                 omxhdr->nTimeStamp,
                                 (omx->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
                                 ?true:false);
+                        omx->unmap_dynamic_buffer(omxhdr);
                         omx->post_event ((unsigned long)NULL,(unsigned long)omx->client_buffers.get_il_buf_hdr(omxhdr),
                                 OMX_COMPONENT_GENERATE_FTB);
                         break;
@@ -8749,6 +8738,20 @@ void omx_vdec::free_input_buffer_header()
         drv_ctx.ip_buf_ion_info = NULL;
     }
 #endif
+}
+
+void omx_vdec::unmap_dynamic_buffer(OMX_BUFFERHEADERTYPE *buffer) {
+    if (dynamic_buf_mode) {
+        unsigned int nPortIndex = 0;
+        nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
+        if (!secure_mode) {
+            munmap(drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr,
+                drv_ctx.ptr_outputbuffer[nPortIndex].mmaped_size);
+        }
+        //Clear graphic buffer handles in dynamic mode
+        native_buffer[nPortIndex].privatehandle = NULL;
+        native_buffer[nPortIndex].nativehandle = NULL;
+    }
 }
 
 int omx_vdec::stream_off(OMX_U32 port)
