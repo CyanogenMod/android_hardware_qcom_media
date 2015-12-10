@@ -167,7 +167,7 @@ void* async_message_thread (void *input)
     int error_code = 0,rc=0,bytes_read = 0,bytes_written = 0;
     DEBUG_PRINT_HIGH("omx_vdec: Async thread start");
     prctl(PR_SET_NAME, (unsigned long)"VideoDecCallBackThread", 0, 0, 0);
-    while (1) {
+    while (!omx->async_thread_force_stop) {
         rc = poll(pfds, 2, POLL_TIMEOUT);
         if (!rc) {
             DEBUG_PRINT_ERROR("Poll timedout");
@@ -728,6 +728,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     async_thread_id = 0;
     msg_thread_created = false;
     async_thread_created = false;
+    async_thread_force_stop = false;
 #ifdef _ANDROID_ICS_
     memset(&native_buffer, 0 ,(sizeof(struct nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
 #endif
@@ -865,10 +866,13 @@ omx_vdec::~omx_vdec()
     m_pipe_in = -1;
     m_pipe_out = -1;
     DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
-    if(!eventfd_write(m_poll_efd, 1)) {
-       if (async_thread_created)
-          pthread_join(async_thread_id,NULL);
+    if(eventfd_write(m_poll_efd, 1)) {
+         DEBUG_PRINT_ERROR("eventfd_write failed for fd: %d, errno = %d, force stop async_thread", m_poll_efd, errno);
+         async_thread_force_stop = true;
     }
+
+    if (async_thread_created)
+        pthread_join(async_thread_id,NULL);
     unsubscribe_to_events(drv_ctx.video_driver_fd);
     close(m_poll_efd);
     close(drv_ctx.video_driver_fd);
