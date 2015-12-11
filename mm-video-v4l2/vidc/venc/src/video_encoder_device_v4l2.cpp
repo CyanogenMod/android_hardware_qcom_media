@@ -614,10 +614,10 @@ bool venc_dev::handle_input_extradata(void *buffer, int fd)
         return false;
     }
 
-    if (!(control.value & V4L2_MPEG_VIDC_EXTRADATA_YUV_STATS ||
-        control.value & V4L2_MPEG_VIDC_EXTRADATA_VQZIP_SEI ||
-        control.value & V4L2_MPEG_VIDC_EXTRADATA_FRAME_QP ||
-        control.value & V4L2_MPEG_VIDC_EXTRADATA_INPUT_CROP)) {
+    if (!(control.value == V4L2_MPEG_VIDC_EXTRADATA_YUV_STATS ||
+        control.value == V4L2_MPEG_VIDC_EXTRADATA_VQZIP_SEI ||
+        control.value == V4L2_MPEG_VIDC_EXTRADATA_FRAME_QP ||
+        control.value == V4L2_MPEG_VIDC_EXTRADATA_INPUT_CROP)) {
         DEBUG_PRINT_LOW("Input extradata not enabled");
         return true;
     }
@@ -698,8 +698,8 @@ bool venc_dev::handle_input_extradata(void *buffer, int fd)
             p_extra = (OMX_OTHER_EXTRADATATYPE *)((char *)p_extra + p_extra->nSize);
         }
 
-        if (control.value & V4L2_MPEG_VIDC_EXTRADATA_YUV_STATS ||
-            control.value & V4L2_MPEG_VIDC_EXTRADATA_VQZIP_SEI) {
+        if (control.value == V4L2_MPEG_VIDC_EXTRADATA_YUV_STATS ||
+            control.value == V4L2_MPEG_VIDC_EXTRADATA_VQZIP_SEI) {
             if (!mInputExtradata.vqzip_sei_found) {
                 DEBUG_PRINT_ERROR("VQZIP is enabled, But no VQZIP SEI found. Rejecting the session");
                 munmap(pVirt, size);
@@ -5460,7 +5460,8 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
         rate_ctrl.rcmode = control.value;
     }
 
-    if (eControlRate == OMX_Video_ControlRateVariable && (supported_rc_modes & RC_VBR_CFR)) {
+    if (eControlRate == OMX_Video_ControlRateVariable && (supported_rc_modes & RC_VBR_CFR)
+        && m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
         /* Enable VQZIP SEI by default for camcorder RC modes */
 
         control.id = V4L2_CID_MPEG_VIDC_VIDEO_VQZIP_SEI;
