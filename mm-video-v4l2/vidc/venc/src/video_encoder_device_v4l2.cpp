@@ -588,7 +588,7 @@ int venc_dev::append_mbi_extradata(void *dst, struct msm_vidc_extradata_header* 
 
     /* TODO: Once Venus 3XX target names are known, nFormat should 2 for those
      * targets, since the payload format will be different */
-    mbi->nFormat = 1;
+    mbi->nFormat = 2;
     mbi->nDataSize = src->data_size;
     memcpy(&mbi->data, &src->data, src->data_size);
 
