@@ -54,14 +54,13 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2015-11-23T10:35:08+0530"
+#define OMX_SWVDEC_VERSION_DATE "2015-12-04T11:56:00+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
 #define OMX_SWVDEC_NUM_INSTANCES 1 ///< number of OMX SwVdec instances
 
-// @todo Make this macro default and store in a variable?
-#define OMX_SWVDEC_IP_BUFFER_COUNT 5 ///< OMX SwVdec input buffer count
+#define OMX_SWVDEC_IP_BUFFER_COUNT_MIN 5 ///< OMX SwVdec minimum ip buffer count
 
 /// frame dimensions structure
 typedef struct {
@@ -122,7 +121,7 @@ typedef struct {
 } OMX_SWVDEC_META_BUFFER_INFO;
 
 #define DEFAULT_FRAME_WIDTH  1920 ///< default frame width
-#define DEFAULT_FRAME_HEIGHT 1088 ///< default frame height
+#define DEFAULT_FRAME_HEIGHT 1080 ///< default frame height
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y)) ///< maximum
 #define MIN(x, y) (((x) < (y)) ? (x) : (y)) ///< minimum
@@ -265,6 +264,9 @@ private:
     FRAME_DIMENSIONS m_frame_dimensions; ///< frame dimensions
     FRAME_ATTRIBUTES m_frame_attributes; ///< frame attributes
 
+    FRAME_DIMENSIONS m_frame_dimensions_max;
+                                 ///< max frame dimensions for adaptive playback
+
     ASYNC_THREAD m_async_thread; ///< asynchronous thread
 
     omx_swvdec_queue m_queue_command; ///< command queue
@@ -281,9 +283,14 @@ private:
 
     bool m_sync_frame_decoding_mode; ///< sync frame decoding mode enabled?
     bool m_android_native_buffers;   ///< android native buffers enabled?
-    bool m_meta_buffer_mode;         ///< meta buffer mode enabled?
+
+    bool m_meta_buffer_mode_disabled; ///< meta buffer mode disabled?
+    bool m_meta_buffer_mode;          ///< meta buffer mode enabled?
+    bool m_adaptive_playback_mode;    ///< adaptive playback mode enabled?
 
     bool m_port_reconfig_inprogress; ///< port reconfiguration in progress?
+
+    bool m_dimensions_update_inprogress; ///< dimensions update in progress?
 
     sem_t m_sem_cmd; ///< semaphore for command processing
 
@@ -301,6 +308,8 @@ private:
     OMX_ERRORTYPE set_frame_dimensions(unsigned int width,
                                        unsigned int height);
     OMX_ERRORTYPE set_frame_attributes(OMX_COLOR_FORMATTYPE color_format);
+    OMX_ERRORTYPE set_adaptive_playback(unsigned int max_width,
+                                        unsigned int max_height);
 
     OMX_ERRORTYPE get_video_port_format(
         OMX_VIDEO_PARAM_PORTFORMATTYPE *p_port_format);
@@ -322,6 +331,7 @@ private:
 
     OMX_ERRORTYPE set_frame_dimensions_swvdec();
     OMX_ERRORTYPE set_frame_attributes_swvdec();
+    OMX_ERRORTYPE set_adaptive_playback_swvdec();
 
     // functions to get SwVdec properties and set OMX component properties
 
@@ -388,17 +398,18 @@ private:
 
     // events raised internally
     enum {
-        OMX_SWVDEC_EVENT_CMD,           ///< command event
-        OMX_SWVDEC_EVENT_CMD_ACK,       ///< command acknowledgement
-        OMX_SWVDEC_EVENT_ERROR,         ///< error event
-        OMX_SWVDEC_EVENT_ETB,           ///< ETB event
-        OMX_SWVDEC_EVENT_EBD,           ///< EBD event
-        OMX_SWVDEC_EVENT_FTB,           ///< FTB event
-        OMX_SWVDEC_EVENT_FBD,           ///< FBD event
-        OMX_SWVDEC_EVENT_EOS,           ///< EOS event
-        OMX_SWVDEC_EVENT_FLUSH_PORT_IP, ///< flush ip port event
-        OMX_SWVDEC_EVENT_FLUSH_PORT_OP, ///< flush op port event
-        OMX_SWVDEC_EVENT_PORT_RECONFIG  ///< port reconfig event
+        OMX_SWVDEC_EVENT_CMD,               ///< command event
+        OMX_SWVDEC_EVENT_CMD_ACK,           ///< command acknowledgement
+        OMX_SWVDEC_EVENT_ERROR,             ///< error event
+        OMX_SWVDEC_EVENT_ETB,               ///< ETB event
+        OMX_SWVDEC_EVENT_EBD,               ///< EBD event
+        OMX_SWVDEC_EVENT_FTB,               ///< FTB event
+        OMX_SWVDEC_EVENT_FBD,               ///< FBD event
+        OMX_SWVDEC_EVENT_EOS,               ///< EOS event
+        OMX_SWVDEC_EVENT_FLUSH_PORT_IP,     ///< flush ip port event
+        OMX_SWVDEC_EVENT_FLUSH_PORT_OP,     ///< flush op port event
+        OMX_SWVDEC_EVENT_PORT_RECONFIG,     ///< port reconfig event
+        OMX_SWVDEC_EVENT_DIMENSIONS_UPDATED ///< dimensions updated event
     };
 
     OMX_ERRORTYPE async_thread_create();
@@ -436,6 +447,7 @@ private:
     OMX_ERRORTYPE async_process_event_flush_port_ip();
     OMX_ERRORTYPE async_process_event_flush_port_op();
     OMX_ERRORTYPE async_process_event_port_reconfig();
+    OMX_ERRORTYPE async_process_event_dimensions_updated();
 };
 
 #endif // #ifndef _OMX_SWVDEC_H_
