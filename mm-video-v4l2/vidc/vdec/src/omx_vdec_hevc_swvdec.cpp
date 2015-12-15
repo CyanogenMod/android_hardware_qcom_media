@@ -116,6 +116,7 @@ extern "C"{
 #define Log2(number, power)  { OMX_U32 temp = number; power = 0; while( (0 == (temp & 0x1)) &&  power < 16) { temp >>=0x1; power++; } }
 #define Q16ToFraction(q,num,den) { OMX_U32 power; Log2(q,power);  num = q >> power; den = 0x1 << (16 - power); }
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
+#define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
 
 #define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
 
@@ -3037,22 +3038,25 @@ bool omx_vdec::post_event(unsigned long p1,
 
 OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType)
 {
-    OMX_ERRORTYPE eRet = OMX_ErrorNoMore;
+    OMX_ERRORTYPE eRet = OMX_ErrorNone;
     if(!profileLevelType)
         return OMX_ErrorBadParameter;
-
     if(profileLevelType->nPortIndex == 0) {
-        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevchybrid",OMX_MAX_STRINGNAME_SIZE) ||
-            !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevcswvdec",OMX_MAX_STRINGNAME_SIZE) ||
-            !strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevc",OMX_MAX_STRINGNAME_SIZE) )
+        if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.hevcswvdec",OMX_MAX_STRINGNAME_SIZE))
         {
+            if(profileLevelType->nProfileIndex == 0) {
+                profileLevelType->eProfile = OMX_VIDEO_HEVCProfileMain;
+                profileLevelType->eLevel = OMX_VIDEO_HEVCMainTierLevel31;
+            }
+            else {
             DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %d",
                 (int)profileLevelType->nProfileIndex);
             eRet = OMX_ErrorNoMore;
+            }
         }
         else
         {
-            DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %lu", profileLevelType->nProfileIndex);
+            DEBUG_PRINT_ERROR("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported ret NoMore for codecs %s", drv_ctx.kind);
             eRet = OMX_ErrorNoMore;
         }
     }
@@ -8605,6 +8609,13 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
     portDefn->format.video.nFrameWidth  =  drv_ctx.video_resolution.frame_width;
     portDefn->format.video.nStride = drv_ctx.video_resolution.stride;
     portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
+
+    if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
+       (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
+        portDefn->format.video.nStride = ALIGN(drv_ctx.video_resolution.frame_width, 16);
+        portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
+    }
+
     DEBUG_PRINT_HIGH("update_portdef Width = %lu Height = %lu Stride = %ld"
         " SliceHeight = %lu", portDefn->format.video.nFrameWidth,
         portDefn->format.video.nFrameHeight,
