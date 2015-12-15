@@ -7266,8 +7266,8 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
     }
     buf.m.planes = plane;
     buf.length = drv_ctx.num_planes;
-    DEBUG_PRINT_LOW("SENDING FTB TO F/W - fd[0] = %d fd[1] = %d offset[1] = %d",
-             plane[0].reserved[0],plane[extra_idx].reserved[0], plane[extra_idx].reserved[1]);
+    DEBUG_PRINT_LOW("SENDING FTB TO F/W - fd[0] = %d fd[1] = %d offset[1] = %d in_flush = %d",
+             plane[0].reserved[0],plane[extra_idx].reserved[0], plane[extra_idx].reserved[1], output_flush_progress);
 
     rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
     if (rc) {
@@ -8300,6 +8300,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                     }
 
                     if (omxhdr && (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DROP_FRAME) &&
+                            !omx->output_flush_progress &&
                             !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) &&
                             !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS)) {
                         unsigned int index = v4l2_buf_ptr->index;
@@ -8331,6 +8332,8 @@ int omx_vdec::async_message_process (void *context, void* message)
                             return -1;
                         }
 
+                         DEBUG_PRINT_LOW("SENDING FTB TO F/W from async_message_process - fd[0] = %d fd[1] = %d offset[1] = %d in_flush = %d",
+                               plane[0].reserved[0],plane[extra_idx].reserved[0], plane[extra_idx].reserved[1], omx->output_flush_progress);
                         if(ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_QBUF, v4l2_buf_ptr)) {
                             DEBUG_PRINT_ERROR("Failed to queue buffer back to driver: %d, %d, %d", v4l2_buf_ptr->length, v4l2_buf_ptr->m.planes[0].reserved[0], v4l2_buf_ptr->m.planes[1].reserved[0]);
                             return -1;
