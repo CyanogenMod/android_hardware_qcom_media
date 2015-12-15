@@ -558,6 +558,7 @@ class venc_dev
             static inline int getFdAt(native_handle_t *, int index);
             static inline int getOffsetAt(native_handle_t *, int index);
             static inline int getSizeAt(native_handle_t *, int index);
+            static inline int getUsageAt(native_handle_t *, int index);
             static inline int getColorFormatAt(native_handle_t *, int index);
             static inline int getTimeStampAt(native_handle_t *, int index);
         };

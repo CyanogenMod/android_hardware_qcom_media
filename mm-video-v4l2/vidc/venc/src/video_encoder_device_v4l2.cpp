@@ -3116,27 +3116,28 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     if (!streaming[OUTPUT_PORT] && !(m_sVenc_cfg.inputformat == V4L2_PIX_FMT_RGB32 ||
                         m_sVenc_cfg.inputformat == V4L2_PIX_FMT_RGBA8888_UBWC)) {
                         int usage = 0;
-                        struct v4l2_format fmt;
-                        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-                        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
-                        fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
-                        fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+                        OMX_COLOR_FORMATTYPE color_format = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+                        if (!mBatchSize && hnd->numFds + hnd->numInts > 5) {
+                            color_format = (OMX_COLOR_FORMATTYPE)hnd->data[5];
+                        } else if (mBatchSize) {
+                            color_format = (OMX_COLOR_FORMATTYPE)BatchInfo::getColorFormatAt(hnd, 0);
+                        }
+
                         if (!mBatchSize && hnd->numFds + hnd->numInts > 3) {
                             usage = hnd->data[3];
                         } else if (mBatchSize) {
-                            usage = BatchInfo::getColorFormatAt(hnd, 0);
+                            usage = BatchInfo::getUsageAt(hnd, 0);
                         }
-                        if (usage & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED) {
-                            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12_UBWC;
-                        }
+
                         if (usage & private_handle_t::PRIV_FLAGS_ITU_R_709) {
                             buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
                         }
-                        fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
-                        if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
+
+                        if (!venc_set_color_format(color_format)) {
                             DEBUG_PRINT_ERROR("Failed setting color format in Camerasource %x", m_sVenc_cfg.inputformat);
                             return false;
                         }
+
                         if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
                             DEBUG_PRINT_ERROR("VIDIOC_REQBUFS OUTPUT_MPLANE Failed");
                             return false;
@@ -6385,9 +6386,15 @@ int venc_dev::BatchInfo::getSizeAt(native_handle_t *hnd, int index) {
     return size;
 }
 
-int venc_dev::BatchInfo::getColorFormatAt(native_handle_t *hnd, int index) {
+int venc_dev::BatchInfo::getUsageAt(native_handle_t *hnd, int index) {
     int usage = hnd && (index + 2*hnd->numFds) < hnd->numInts ?
             hnd->data[3*hnd->numFds + index] : 0;
+    return usage;
+}
+
+int venc_dev::BatchInfo::getColorFormatAt(native_handle_t *hnd, int index) {
+    int usage = hnd && (index + 4*hnd->numFds) < hnd->numInts ?
+            hnd->data[5*hnd->numFds + index] : 0;
     return usage;
 }
 
