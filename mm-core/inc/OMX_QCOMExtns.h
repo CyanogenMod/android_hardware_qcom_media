@@ -547,6 +547,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Configure ROI info */
     OMX_QTIIndexConfigVideoRoiInfo = 0x7F000059,
+
+    /* Force OPB to UnCompressed mode */
+    OMX_QTIIndexParamForceUnCompressedForOPB = 0x7F00005A,
 };
 
 /**
@@ -1088,6 +1091,20 @@ typedef struct OMX_QTI_VIDEO_PARAM_FORCE_COMPRESSED_FOR_DPB_TYPE {
     OMX_VERSIONTYPE nVersion;   /** OMX specification version information */
     OMX_BOOL bEnable;           /** Enable/disable the setting */
 } OMX_QTI_VIDEO_PARAM_FORCE_COMPRESSED_FOR_DPB_TYPE;
+
+/**
+ * This structure describes the parameters corresponding
+ * to OMX_QTIIndexParamForceUnCompressedForOPB extension. Enabling this
+ * extension will force the OPB to be linear for the current video session.
+ * If this property is not set, then the OPB will be set to linear or compressed
+ * based on resolution selected and/or if cpu access is requested on the
+ * OPB buffer.
+ */
+typedef struct OMX_QTI_VIDEO_PARAM_FORCE_UNCOMPRESSED_FOR_OPB_TYPE {
+    OMX_U32 nSize;              /** Sizeo f the structure in bytes */
+    OMX_VERSIONTYPE nVersion;   /** OMX specification version information */
+    OMX_BOOL bEnable;           /** Enable/disable the setting */
+} OMX_QTI_VIDEO_PARAM_FORCE_UNCOMPRESSED_FOR_OPB_TYPE;
 
 typedef struct OMX_VENDOR_EXTRADATATYPE  {
     OMX_U32 nPortIndex;

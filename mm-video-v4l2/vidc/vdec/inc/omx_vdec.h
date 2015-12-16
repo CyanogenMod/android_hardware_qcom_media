@@ -982,7 +982,7 @@ class omx_vdec: public qc_omx_component
         OMX_ERRORTYPE enable_smoothstreaming();
         OMX_ERRORTYPE enable_adaptive_playback(unsigned long width, unsigned long height);
         bool is_thulium_v1;
-        static bool m_disable_ubwc_mode;
+        bool m_disable_ubwc_mode;
         OMX_U32 m_downscalar_width;
         OMX_U32 m_downscalar_height;
         int decide_downscalar();
@@ -1125,11 +1125,11 @@ class omx_vdec: public qc_omx_component
                 formatsNonSurfaceMode[index] : OMX_COLOR_FormatMax;
         }
 
-        static OMX_COLOR_FORMATTYPE getPreferredColorFormatDefaultMode(OMX_U32 index) {
+        OMX_COLOR_FORMATTYPE getPreferredColorFormatDefaultMode(OMX_U32 index) {
             //for surface mode (normal playback), advertise native/accelerated formats first
             OMX_COLOR_FORMATTYPE format = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
 
-            if (!omx_vdec::m_disable_ubwc_mode) {
+            if (!m_disable_ubwc_mode) {
                 OMX_COLOR_FORMATTYPE formatsDefault[] = {
                     [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed,
                     [1] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
