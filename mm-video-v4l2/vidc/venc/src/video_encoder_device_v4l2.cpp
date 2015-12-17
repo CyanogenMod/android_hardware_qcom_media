@@ -3166,6 +3166,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     return false;
                 }
             } else if (!color_format) {
+                int usage = 0;
 
                 if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
                     native_handle_t *hnd = (native_handle_t*)meta_buf->meta_handle;
@@ -3174,24 +3175,24 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         return false;
                     }
 
+                    if (!mBatchSize && hnd->numFds + hnd->numInts > 3) {
+                        usage = hnd->data[3];
+                    } else if (mBatchSize) {
+                        usage = BatchInfo::getColorFormatAt(hnd, 0);
+                    }
+                    if (usage & private_handle_t::PRIV_FLAGS_ITU_R_709) {
+                        buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
+                    }
+
                     if (!streaming[OUTPUT_PORT] && !(m_sVenc_cfg.inputformat == V4L2_PIX_FMT_RGB32 ||
                         m_sVenc_cfg.inputformat == V4L2_PIX_FMT_RGBA8888_UBWC)) {
-                        int usage = 0;
                         struct v4l2_format fmt;
                         fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
                         m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
                         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
                         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
-                        if (!mBatchSize && hnd->numFds + hnd->numInts > 3) {
-                            usage = hnd->data[3];
-                        } else if (mBatchSize) {
-                            usage = BatchInfo::getColorFormatAt(hnd, 0);
-                        }
                         if (usage & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED) {
                             m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12_UBWC;
-                        }
-                        if (usage & private_handle_t::PRIV_FLAGS_ITU_R_709) {
-                            buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
                         }
                         fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
