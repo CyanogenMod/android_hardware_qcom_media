@@ -459,6 +459,7 @@ class omx_vdec: public qc_omx_component
         void request_perf_level(enum vidc_perf_level perf_level);
         int dpb_bit_depth;
         bool async_thread_force_stop;
+        volatile bool message_thread_stop;
 
     private:
         // Bit Positions
@@ -779,12 +780,6 @@ class omx_vdec: public qc_omx_component
         nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
 
-public:
-        inline bool omx_close_msg_thread(unsigned char id) {
-            return (id == OMX_COMPONENT_CLOSE_MSG);
-        }
-
-private:
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
