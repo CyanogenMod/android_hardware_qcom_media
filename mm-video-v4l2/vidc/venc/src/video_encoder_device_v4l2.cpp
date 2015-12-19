@@ -6556,9 +6556,11 @@ encExtradata::encExtradata(class omx_venc *venc_handle)
 {
     mCount = 0;
     mSize = 0;
+    mUaddr = NULL;
+    memset(&mIon, -1, sizeof(struct venc_ion));
+    memset(mIndex, 0, sizeof(mIndex));
     mVencHandle = venc_handle;
     mDbgEtbCount = 0;
-    memset(mIndex, 0, sizeof(mIndex));
     pthread_mutex_init(&lock, NULL);
     vqzip_sei_found = false;
 }
