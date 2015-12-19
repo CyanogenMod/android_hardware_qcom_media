@@ -5142,6 +5142,8 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 OMX_ErrorUnsupportedSetting : OMX_ErrorNone;
         if (ret)
             DEBUG_PRINT_ERROR("Failed to set picture type decode");
+
+        return ret;
     } else if ((int)configIndex == (int)OMX_IndexConfigPriority) {
         OMX_PARAM_U32TYPE *priority = (OMX_PARAM_U32TYPE *)configData;
         DEBUG_PRINT_LOW("Set_config: priority %d",priority->nU32);
