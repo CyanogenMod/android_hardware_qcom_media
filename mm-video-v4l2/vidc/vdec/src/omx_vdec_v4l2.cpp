@@ -66,6 +66,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #include <qdMetaData.h>
+#include <gralloc_priv.h>
 
 #ifdef ANDROID_JELLYBEAN_MR2
 #include "QComOMXMetadata.h"
@@ -629,7 +630,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_queued_codec_config_count(0),
     current_perf_level(V4L2_CID_MPEG_VIDC_PERF_LEVEL_NOMINAL),
     secure_scaling_to_non_secure_opb(false),
-    m_force_compressed_for_dpb(false)
+    m_force_compressed_for_dpb(false),
+    m_is_display_session(false)
 {
     m_pipe_in = -1;
     m_pipe_out = -1;
@@ -1068,10 +1070,11 @@ int omx_vdec::decide_downscalar()
        return rc;
     }
 
-    DEBUG_PRINT_HIGH("%s: driver wxh = %dx%d, downscalar wxh = %dx%d", __func__,
-        fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, m_downscalar_width, m_downscalar_height);
+    DEBUG_PRINT_HIGH("%s: driver wxh = %dx%d, downscalar wxh = %dx%d m_is_display_session = %d", __func__,
+        fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height, m_downscalar_width, m_downscalar_height, m_is_display_session);
 
-    if (fmt.fmt.pix_mp.width * fmt.fmt.pix_mp.height > m_downscalar_width * m_downscalar_height) {
+    if ((fmt.fmt.pix_mp.width * fmt.fmt.pix_mp.height > m_downscalar_width * m_downscalar_height) &&
+         m_is_display_session) {
         rc = enable_downscalar();
         if (rc < 0) {
             DEBUG_PRINT_ERROR("%s: enable_downscalar failed\n", __func__);
@@ -7113,6 +7116,14 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         //We'll restore this size later on, so that it's transparent to client
         buffer->nFilledLen = 0;
         buffer->nAllocLen = handle->size;
+
+        if (handle->flags & private_handle_t::PRIV_FLAGS_DISP_CONSUMER) {
+            m_is_display_session = true;
+        } else {
+            m_is_display_session = false;
+        }
+        DEBUG_PRINT_LOW("%s: m_is_display_session = %d", __func__, m_is_display_session);
+
     }
 
 
