@@ -503,7 +503,7 @@ class venc_dev
         bool venc_set_operatingrate(OMX_U32 rate);
         bool venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmode);
         bool venc_set_roi_qp_info(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
-
+        bool venc_set_lowlatency_mode(OMX_BOOL enable);
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
         OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
