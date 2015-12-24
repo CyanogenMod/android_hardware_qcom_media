@@ -54,7 +54,7 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2015-12-04T11:56:00+0530"
+#define OMX_SWVDEC_VERSION_DATE "2015-12-24T12:31:48+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
@@ -433,8 +433,8 @@ private:
     OMX_ERRORTYPE async_process_event_cmd_port_disable(
         bool         *p_cmd_ack,
         unsigned int  port_index);
-    OMX_ERRORTYPE async_process_event_cmd_port_enable(bool         *p_cmd_ack,
-                                                      unsigned int  port_index);
+    OMX_ERRORTYPE async_process_event_cmd_port_enable(bool        *p_cmd_ack,
+                                                      unsigned int port_index);
     OMX_ERRORTYPE async_process_event_etb(OMX_BUFFERHEADERTYPE *p_buffer_hdr,
                                           unsigned int          index);
     OMX_ERRORTYPE async_process_event_ftb(OMX_BUFFERHEADERTYPE *p_buffer_hdr,
