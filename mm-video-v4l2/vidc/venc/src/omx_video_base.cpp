@@ -102,9 +102,28 @@ void* message_thread(void *input)
     unsigned char id;
     int n;
 
+    fd_set readFds;
+    int res = 0;
+    struct timeval tv;
+
     DEBUG_PRINT_LOW("omx_venc: message thread start");
     prctl(PR_SET_NAME, (unsigned long)"VideoEncMsgThread", 0, 0, 0);
-    while (1) {
+     while (!omx->msg_thread_stop) {
+
+        tv.tv_sec = 2;
+        tv.tv_usec = 0;
+
+        FD_ZERO(&readFds);
+        FD_SET(omx->m_pipe_in, &readFds);
+
+        res = select(omx->m_pipe_in + 1, &readFds, NULL, NULL, &tv);
+        if (res < 0) {
+            DEBUG_PRINT_ERROR("select() ERROR: %s", strerror(errno));
+            continue;
+        } else if (res == 0 /*timeout*/ || omx->msg_thread_stop) {
+            continue;
+        }
+
         n = read(omx->m_pipe_in, &id, 1);
         if (0 == n) {
             break;
@@ -126,7 +145,13 @@ void* message_thread(void *input)
 void post_message(omx_video *omx, unsigned char id)
 {
     DEBUG_PRINT_LOW("omx_venc: post_message %d", id);
-    write(omx->m_pipe_out, &id, 1);
+    int ret_value;
+    ret_value = write(omx->m_pipe_out, &id, 1);
+    if (ret_value <= 0) {
+        DEBUG_PRINT_ERROR("post_message to pipe failed : %s", strerror(errno));
+    } else {
+        DEBUG_PRINT_LOW("post_message to pipe done %d",ret_value);
+    }
 }
 
 // omx_cmd_queue destructor
@@ -251,6 +276,7 @@ omx_video::omx_video():
     memset(&m_pCallbacks,0,sizeof(m_pCallbacks));
     async_thread_created = false;
     msg_thread_created = false;
+    msg_thread_stop = false;
 
     mUsesColorConversion = false;
     pthread_mutex_init(&m_lock, NULL);
@@ -277,9 +303,11 @@ omx_video::~omx_video()
     DEBUG_PRINT_HIGH("~omx_video(): Inside Destructor()");
     if (m_pipe_in >= 0) close(m_pipe_in);
     if (m_pipe_out >= 0) close(m_pipe_out);
-    DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit");
-    if (msg_thread_created)
+    if (msg_thread_created) {
+        msg_thread_stop = true;
+        DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit");
         pthread_join(msg_thread_id,NULL);
+    }
     DEBUG_PRINT_HIGH("omx_video: Waiting on Async Thread exit");
     /*For V4L2 based drivers, pthread_join is done in device_close
      * so no need to do it here*/

@@ -309,10 +309,27 @@ void* message_thread(void *input)
     unsigned char id;
     int n;
 
+    fd_set readFds;
+    int res = 0;
+    struct timeval tv;
+
     DEBUG_PRINT_HIGH("omx_vdec: message thread start");
     prctl(PR_SET_NAME, (unsigned long)"VideoDecMsgThread", 0, 0, 0);
-    while (1) {
+    while (!omx->message_thread_stop) {
 
+        tv.tv_sec = 2;
+        tv.tv_usec = 0;
+
+        FD_ZERO(&readFds);
+        FD_SET(omx->m_pipe_in, &readFds);
+
+        res = select(omx->m_pipe_in + 1, &readFds, NULL, NULL, &tv);
+        if (res < 0) {
+             DEBUG_PRINT_ERROR("select() ERROR: %s", strerror(errno));
+             continue;
+        } else if (res == 0 /*timeout*/ || omx->message_thread_stop) {
+            continue;
+        }
         n = read(omx->m_pipe_in, &id, 1);
 
         if (0 == n) {
@@ -336,7 +353,11 @@ void post_message(omx_vdec *omx, unsigned char id)
     int ret_value;
     DEBUG_PRINT_LOW("omx_vdec: post_message %d pipe out%d", id,omx->m_pipe_out);
     ret_value = write(omx->m_pipe_out, &id, 1);
-    DEBUG_PRINT_LOW("post_message to pipe done %d",ret_value);
+    if (ret_value <= 0) {
+        DEBUG_PRINT_ERROR("post_message to pipe failed : %s", strerror(errno));
+    } else {
+        DEBUG_PRINT_LOW("post_message to pipe done %d",ret_value);
+    }
 }
 
 // omx_cmd_queue destructor
@@ -678,6 +699,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     async_thread_id = 0;
     msg_thread_created = false;
     async_thread_created = false;
+    message_thread_stop = false;
 #ifdef _ANDROID_ICS_
     memset(&native_buffer, 0 ,(sizeof(struct nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
 #endif
@@ -807,9 +829,11 @@ omx_vdec::~omx_vdec()
     if (m_pipe_out) close(m_pipe_out);
     m_pipe_in = -1;
     m_pipe_out = -1;
-    DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
-    if (msg_thread_created)
+    if (msg_thread_created) {
+        message_thread_stop = true;
+        DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
         pthread_join(msg_thread_id,NULL);
+    }
     DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
     dec.cmd = V4L2_DEC_CMD_STOP;
     if (drv_ctx.video_driver_fd >=0 ) {

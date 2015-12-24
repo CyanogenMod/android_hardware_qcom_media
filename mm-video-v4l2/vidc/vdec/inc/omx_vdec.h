@@ -479,6 +479,7 @@ class omx_vdec: public qc_omx_component
         bool is_component_secure();
         void buf_ref_add(long fd, OMX_U32 offset);
         void buf_ref_remove(long fd, OMX_U32 offset);
+        volatile bool message_thread_stop;
 
     private:
         // Bit Positions
