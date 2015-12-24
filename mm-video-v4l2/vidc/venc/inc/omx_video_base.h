@@ -355,6 +355,7 @@ class omx_video: public qc_omx_component
         pthread_t async_thread_id;
         bool async_thread_created;
         bool msg_thread_created;
+        volatile bool msg_thread_stop;
 
         OMX_U8 m_nkind[128];
 
@@ -566,10 +567,6 @@ class omx_video: public qc_omx_component
                                  struct ion_fd_data *fd_data,int flag);
         void free_ion_memory(struct venc_ion *buf_ion_info);
 #endif
-
-        inline bool omx_close_msg_thread(unsigned char id) {
-            return (id == OMX_COMPONENT_CLOSE_MSG);
-        }
 
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
