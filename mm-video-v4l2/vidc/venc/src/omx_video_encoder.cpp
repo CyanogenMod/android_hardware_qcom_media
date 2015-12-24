@@ -485,7 +485,6 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sParamAVC.nPFrames = (m_sOutPortFormat.xFramerate * 2 - 1); // 2 second intra period for default outport fps
     m_sParamAVC.nBFrames = 0;
     m_sParamAVC.bUseHadamard = OMX_FALSE;
-    m_sParamAVC.nRefFrames = 1;
     m_sParamAVC.nRefIdx10ActiveMinus1 = 1;
     m_sParamAVC.nRefIdx11ActiveMinus1 = 0;
     m_sParamAVC.bEnableUEP = OMX_FALSE;
@@ -852,31 +851,31 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(&avc_param, pParam, sizeof( struct OMX_VIDEO_PARAM_AVCTYPE));
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoAvc");
 
+                avc_param.nBFrames = 0;
                 if ((pParam->eProfile == OMX_VIDEO_AVCProfileHigh)||
                         (pParam->eProfile == OMX_VIDEO_AVCProfileMain)) {
-#ifdef _MSM8974_
-                    if ((pParam->nBFrames && (pParam->nBFrames <= 4))|| (bframes && (bframes <=4))) {
-                        avc_param.nBFrames = (pParam->nBFrames > (unsigned int) bframes)? pParam->nBFrames : bframes;
-                        avc_param.nRefFrames = (avc_param.nBFrames < 4)? avc_param.nBFrames + 1 : 4;
-                    } else {
-                        avc_param.nBFrames = 0;
-                        avc_param.nRefFrames = 1;
-                    }
-                    DEBUG_PRINT_HIGH("AVC: RefFrames: %u, BFrames: %u", (unsigned int)avc_param.nRefFrames, (unsigned int)avc_param.nBFrames);
 
+                    if (pParam->nBFrames) {
+                        avc_param.nBFrames = pParam->nBFrames;
+                        DEBUG_PRINT_LOW("B frames set using Client setparam to %d",
+                            avc_param.nBFrames);
+                    }
+
+                    if (bframes ) {
+                        avc_param.nBFrames = bframes;
+                        DEBUG_PRINT_LOW("B frames set using setprop to %d",
+                            avc_param.nBFrames);
+                    }
+
+                    DEBUG_PRINT_HIGH("AVC: BFrames: %u", (unsigned int)avc_param.nBFrames);
                     avc_param.bEntropyCodingCABAC = (OMX_BOOL)(avc_param.bEntropyCodingCABAC && entropy);
                     avc_param.nCabacInitIdc = entropy ? avc_param.nCabacInitIdc : 0;
-#endif
                 } else {
-                    if (pParam->nRefFrames != 1) {
-                        DEBUG_PRINT_ERROR("Warning: Only 1 RefFrame is supported, changing RefFrame from %u to 1)", (unsigned int)pParam->nRefFrames);
-                        avc_param.nRefFrames = 1;
-                    }
                     if (pParam->nBFrames) {
                         DEBUG_PRINT_ERROR("Warning: B frames not supported");
-                        avc_param.nBFrames = 0;
                     }
                 }
+
                 if (handle->venc_set_param(&avc_param,OMX_IndexParamVideoAvc) != true) {
                     return OMX_ErrorUnsupportedSetting;
                 }
