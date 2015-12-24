@@ -811,9 +811,17 @@ int venc_dev::venc_set_format(int format)
 {
     int rc = true;
 
-    if (format)
+    if (format) {
         color_format = format;
-    else {
+
+        switch (color_format) {
+        case NV12_128m:
+            return venc_set_color_format((OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m);
+        default:
+            return false;
+        }
+
+    } else {
         color_format = 0;
         rc = false;
     }

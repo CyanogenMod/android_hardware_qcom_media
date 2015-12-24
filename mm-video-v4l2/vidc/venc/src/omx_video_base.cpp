@@ -4875,7 +4875,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
                 }
                 c2d_opened = true;
 #ifdef _MSM8974_
-                if (!dev_set_format(handle->format))
+                if (!dev_set_format(NV12_128m))
                     DEBUG_PRINT_ERROR("cannot set color format");
 #endif
             }
