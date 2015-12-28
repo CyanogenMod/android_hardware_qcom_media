@@ -2169,11 +2169,12 @@ int omx_venc::dev_handle_output_extradata(void *buffer)
    RETURN(true);
 }
 
-int omx_venc::dev_handle_input_extradata(void *buffer)
+int omx_venc::dev_handle_input_extradata(void *buffer, int fd)
 {
    ENTER_FUNC();
 
    (void)buffer;
+   (void)fd;
 
    RETURN(true);
 }
