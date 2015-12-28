@@ -6541,7 +6541,7 @@ OMX_ERRORTYPE encExtradata::__allocate()
 int encExtradata::__get(char **userptr, int *fd, unsigned *offset, ssize_t *size, int type)
 {
     unsigned i = 0;
-    if (__allocate() != OMX_ErrorNone) {
+    if (!mSize || (__allocate() != OMX_ErrorNone)) {
         return -1;
     }
     for (i = 0; i < mCount; i++) {
@@ -6596,7 +6596,7 @@ OMX_ERRORTYPE encExtradata::get(void *cookie, char **userptr, int *fd, unsigned 
     } else {
         int index = __get(userptr, fd, offset, size, FREE);
         if (index < 0 ) {
-            DEBUG_PRINT_HIGH("%s: failed(%d, %p)", i, cookie);
+            DEBUG_PRINT_HIGH("%s: failed(%d, %p)", __func__, i, cookie);
             __debug();
             rc = OMX_ErrorInsufficientResources;
         }
