@@ -140,7 +140,6 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
 
     omx_swvdec_log_init();
 
-    // set m_meta_buffer_mode_disabled via ADB setprop
     {
         char property_value[PROPERTY_VALUE_MAX] = {0};
 
@@ -163,8 +162,6 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
         retval = OMX_ErrorIncorrectStateOperation;
         goto component_init_exit;
     }
-
-    // set up codec type variables based on component name string
 
     if (!strncmp(cmp_name,
                  "OMX.qti.video.decoder.mpeg4sw",
@@ -218,8 +215,6 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
 
         SWVDEC_STATUS retval_swvdec;
 
-        // initialize SwVdec core library
-
         callback.pfn_empty_buffer_done  = swvdec_empty_buffer_done_callback;
         callback.pfn_fill_buffer_done   = swvdec_fill_buffer_done_callback;
         callback.pfn_event_notification = swvdec_event_handler_callback;
@@ -236,7 +231,6 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
 
         m_swvdec_created = true;
 
-        // set frame dimensions for OMX component & SwVdec core
         if ((retval = set_frame_dimensions(DEFAULT_FRAME_WIDTH,
                                            DEFAULT_FRAME_HEIGHT)) !=
             OMX_ErrorNone)
@@ -244,12 +238,10 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
             goto component_init_exit;
         }
 
-        // set color format
         m_omx_color_formattype =
             ((OMX_COLOR_FORMATTYPE)
              OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m);
 
-        // set frame attributes for OMX component & SwVdec core
         if ((retval = set_frame_attributes(m_omx_color_formattype)) !=
             OMX_ErrorNone)
         {
@@ -257,27 +249,23 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
         }
     }
 
-    // get SwVdec buffer requirements for input port; set m_port_ip
     if ((retval = get_buffer_requirements_swvdec(OMX_CORE_PORT_INDEX_IP)) !=
         OMX_ErrorNone)
     {
         goto component_init_exit;
     }
 
-    // get SwVdec buffer requirements for output port; set m_port_op
     if ((retval = get_buffer_requirements_swvdec(OMX_CORE_PORT_INDEX_OP)) !=
         OMX_ErrorNone)
     {
         goto component_init_exit;
     }
 
-    // create callback thread's mutex & condition variable
     if ((retval = async_thread_create()) != OMX_ErrorNone)
     {
         goto component_init_exit;
     }
 
-    // create semaphore for command processing
     if (sem_init(&m_sem_cmd, 0, 0))
     {
         OMX_SWVDEC_LOG_ERROR("failed to create command processing semaphore");
@@ -286,7 +274,6 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
         goto component_init_exit;
     }
 
-    // create mutex for meta buffer info array
     if (pthread_mutex_init(&m_meta_buffer_array_mutex, NULL))
     {
         OMX_SWVDEC_LOG_ERROR("failed to create meta buffer info array mutex");
@@ -295,8 +282,8 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
         goto component_init_exit;
     }
 
-    // move to 'loaded' state
     OMX_SWVDEC_LOG_HIGH("OMX_StateInvalid -> OMX_StateLoaded");
+
     m_state = OMX_StateLoaded;
 
 component_init_exit:
@@ -328,6 +315,7 @@ OMX_ERRORTYPE omx_swvdec::component_deinit(OMX_HANDLETYPE cmp_handle)
     if (m_swvdec_created)
     {
         swvdec_deinit(m_swvdec_handle);
+
         m_swvdec_handle = NULL;
     }
 
@@ -459,6 +447,7 @@ OMX_ERRORTYPE omx_swvdec::send_command(OMX_HANDLETYPE  cmp_handle,
 
             retval = OMX_ErrorBadPortIndex;
         }
+
         break;
     }
 
@@ -492,15 +481,12 @@ OMX_ERRORTYPE omx_swvdec::send_command(OMX_HANDLETYPE  cmp_handle,
 
     if (retval != OMX_ErrorNone)
     {
-        // command not processed; return error code via event handler callback
         async_post_event(OMX_SWVDEC_EVENT_ERROR, retval, 0);
     }
     else
     {
-        // post command event
         async_post_event(OMX_SWVDEC_EVENT_CMD, cmd, param);
 
-        // wait on command semaphore
         sem_wait(&m_sem_cmd);
     }
 
@@ -1285,7 +1271,9 @@ OMX_ERRORTYPE omx_swvdec::get_config(OMX_HANDLETYPE cmp_handle,
     }
 
     if (retval != OMX_ErrorNone)
+    {
         goto get_config_exit;
+    }
 
     switch (config_index)
     {
@@ -1301,7 +1289,6 @@ OMX_ERRORTYPE omx_swvdec::get_config(OMX_HANDLETYPE cmp_handle,
         {
             if (m_dimensions_update_inprogress)
             {
-                // query updated dimensions from SwVdec core
                 retval = get_frame_dimensions_swvdec();
 
                 m_dimensions_update_inprogress = false;
@@ -1474,7 +1461,9 @@ OMX_ERRORTYPE omx_swvdec::get_extension_index(OMX_HANDLETYPE cmp_handle,
     }
 
     if (retval != OMX_ErrorNone)
+    {
         goto get_extension_index_exit;
+    }
 
     OMX_SWVDEC_LOG_API("'%s'", param_name);
 
@@ -1659,7 +1648,6 @@ OMX_ERRORTYPE omx_swvdec::use_buffer(OMX_HANDLETYPE         cmp_handle,
                     (m_port_ip.populated == OMX_TRUE) &&
                     (m_port_op.populated == OMX_TRUE))
                 {
-                    // start SwVdec
                     if ((retval_swvdec = swvdec_start(m_swvdec_handle)) !=
                         SWVDEC_STATUS_SUCCESS)
                     {
@@ -1681,7 +1669,6 @@ OMX_ERRORTYPE omx_swvdec::use_buffer(OMX_HANDLETYPE         cmp_handle,
                 {
                     if (m_port_reconfig_inprogress)
                     {
-                        // start SwVdec
                         if ((retval_swvdec = swvdec_start(m_swvdec_handle)) !=
                             SWVDEC_STATUS_SUCCESS)
                         {
@@ -1795,7 +1782,6 @@ OMX_ERRORTYPE omx_swvdec::allocate_buffer(OMX_HANDLETYPE         cmp_handle,
                 (m_port_ip.populated == OMX_TRUE) &&
                 (m_port_op.populated == OMX_TRUE))
             {
-                // start SwVdec
                 if ((retval_swvdec = swvdec_start(m_swvdec_handle)) !=
                     SWVDEC_STATUS_SUCCESS)
                 {
@@ -1827,7 +1813,6 @@ OMX_ERRORTYPE omx_swvdec::allocate_buffer(OMX_HANDLETYPE         cmp_handle,
             {
                 if (m_port_reconfig_inprogress)
                 {
-                    // start SwVdec
                     if ((retval_swvdec = swvdec_start(m_swvdec_handle)) !=
                         SWVDEC_STATUS_SUCCESS)
                     {
@@ -1927,7 +1912,6 @@ OMX_ERRORTYPE omx_swvdec::free_buffer(OMX_HANDLETYPE        cmp_handle,
         {
             SWVDEC_STATUS retval_swvdec;
 
-            // stop SwVdec
             if ((retval_swvdec = swvdec_stop(m_swvdec_handle)) ==
                 SWVDEC_STATUS_SUCCESS)
             {
@@ -2628,15 +2612,15 @@ OMX_ERRORTYPE omx_swvdec::set_frame_attributes(
          * alignment factors:
          *
          * - stride:         16
-         * - scanlines_y:     1
-         * - scanlines_uv:    1
+         * - scanlines_y:    16
+         * - scanlines_uv:   16
          * - size:         4096
          */
 
-        m_frame_attributes.stride    = ALIGN(width, 16);
-        m_frame_attributes.scanlines = ALIGN(height, 1);
+        m_frame_attributes.stride    = ALIGN(width,  16);
+        m_frame_attributes.scanlines = ALIGN(height, 16);
 
-        scanlines_uv = ALIGN(height / 2, 1);
+        scanlines_uv = ALIGN(height / 2, 16);
 
         plane_size_y  = (m_frame_attributes.stride *
                          m_frame_attributes.scanlines);
@@ -2728,7 +2712,8 @@ OMX_ERRORTYPE omx_swvdec::get_video_port_format(
     {
         if (p_port_format->nIndex == 0)
         {
-            p_port_format->eColorFormat       = OMX_COLOR_FormatUnused;
+            p_port_format->eColorFormat = OMX_COLOR_FormatUnused;
+
             p_port_format->eCompressionFormat = m_omx_video_codingtype;
 
             OMX_SWVDEC_LOG_HIGH("color format 0x%08x, "
@@ -2751,6 +2736,7 @@ OMX_ERRORTYPE omx_swvdec::get_video_port_format(
         {
             p_port_format->eColorFormat =
                 OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m;
+
             p_port_format->eCompressionFormat = OMX_VIDEO_CodingUnused;
 
             OMX_SWVDEC_LOG_HIGH("color format 0x%08x, "
@@ -2761,6 +2747,7 @@ OMX_ERRORTYPE omx_swvdec::get_video_port_format(
         else if (p_port_format->nIndex == 1)
         {
             p_port_format->eColorFormat = OMX_COLOR_FormatYUV420SemiPlanar;
+
             p_port_format->eCompressionFormat = OMX_VIDEO_CodingUnused;
 
             OMX_SWVDEC_LOG_HIGH("color format 0x%08x, "
@@ -2768,7 +2755,6 @@ OMX_ERRORTYPE omx_swvdec::get_video_port_format(
                                 p_port_format->eColorFormat,
                                 p_port_format->eCompressionFormat);
         }
-        // Here, add additional supported color formats as necessary.
         else
         {
             OMX_SWVDEC_LOG_HIGH("index '%d' unsupported; no more color formats",
@@ -2802,7 +2788,6 @@ OMX_ERRORTYPE omx_swvdec::set_video_port_format(
 
     if (p_port_format->nPortIndex == OMX_CORE_PORT_INDEX_IP)
     {
-        // do nothing
         OMX_SWVDEC_LOG_HIGH("OMX_IndexParamVideoPortFormat, port index 0; "
                             "doing nothing");
     }
@@ -2873,7 +2858,6 @@ OMX_ERRORTYPE omx_swvdec::get_port_definition(
         p_port_def->format.video.nFrameWidth  = m_frame_dimensions.width;
         p_port_def->format.video.nFrameHeight = m_frame_dimensions.height;
 
-        // if port reconfiguration in progress, update frame attributes
         if (m_port_reconfig_inprogress)
         {
             if ((retval = set_frame_attributes(m_omx_color_formattype)) !=
@@ -3032,16 +3016,19 @@ OMX_ERRORTYPE omx_swvdec::set_port_definition(
         {
             OMX_SWVDEC_LOG_HIGH("updating frame dimensions & attributes");
 
-            retval = set_frame_dimensions(p_port_def->format.video.nFrameWidth,
-                                          p_port_def->format.video.nFrameHeight);
-
-            if (retval != OMX_ErrorNone)
+            if ((retval =
+                 set_frame_dimensions(p_port_def->format.video.nFrameWidth,
+                                      p_port_def->format.video.nFrameHeight)) !=
+                OMX_ErrorNone)
+            {
                 goto set_port_definition_exit;
+            }
 
-            retval = set_frame_attributes(m_omx_color_formattype);
-
-            if (retval != OMX_ErrorNone)
+            if ((retval = set_frame_attributes(m_omx_color_formattype)) !=
+                OMX_ErrorNone)
+            {
                 goto set_port_definition_exit;
+            }
 
             // nBufferSize updated based on (possibly new) frame attributes
 
@@ -3101,6 +3088,7 @@ OMX_ERRORTYPE omx_swvdec::get_supported_profilelevel(
         {
             p_profilelevel->eProfile = OMX_VIDEO_H263ProfileBaseline;
             p_profilelevel->eLevel   = OMX_VIDEO_H263Level70;
+
             OMX_SWVDEC_LOG_HIGH("H.263 baseline profile, level 70");
         }
         else
@@ -3120,12 +3108,14 @@ OMX_ERRORTYPE omx_swvdec::get_supported_profilelevel(
         {
             p_profilelevel->eProfile = OMX_VIDEO_MPEG4ProfileSimple;
             p_profilelevel->eLevel   = OMX_VIDEO_MPEG4Level5;
+
             OMX_SWVDEC_LOG_HIGH("MPEG-4 simple profile, level 5");
         }
         else if (p_profilelevel->nProfileIndex == 1)
         {
             p_profilelevel->eProfile = OMX_VIDEO_MPEG4ProfileAdvancedSimple;
             p_profilelevel->eLevel   = OMX_VIDEO_MPEG4Level5;
+
             OMX_SWVDEC_LOG_HIGH("MPEG-4 advanced simple profile, level 5");
         }
         else
@@ -3231,10 +3221,10 @@ OMX_ERRORTYPE omx_swvdec::describe_color_format(
              * alignment factors:
              *
              * - stride:    16
-             * - scanlines:  1
+             * - scanlines: 16
              */
             stride    = ALIGN(p_img->mWidth,  16);
-            scanlines = ALIGN(p_img->mHeight,  1);
+            scanlines = ALIGN(p_img->mHeight, 16);
 
             p_img->mBitDepth = 8;
 
@@ -3542,7 +3532,6 @@ OMX_ERRORTYPE omx_swvdec::get_buffer_requirements_swvdec(
 
         if (m_sync_frame_decoding_mode)
         {
-            // only 1 output buffer for sync frame decoding mode
             p_buffer_req->mincount = 1;
         }
 
@@ -3600,8 +3589,6 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_ip(
 
     if (m_buffer_array_ip == NULL)
     {
-        // input buffer info array not allocated; allocate here
-
         OMX_SWVDEC_LOG_HIGH("allocating buffer info array, %d element%s",
                             m_port_ip.def.nBufferCountActual,
                             (m_port_ip.def.nBufferCountActual > 1) ? "s" : "");
@@ -3741,8 +3728,6 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_op(
 
     if (m_buffer_array_op == NULL)
     {
-        // output buffer info array not allocated; allocate here
-
         OMX_SWVDEC_LOG_HIGH("allocating buffer info array, %d element%s",
                             m_port_op.def.nBufferCountActual,
                             (m_port_op.def.nBufferCountActual > 1) ? "s" : "");
@@ -3869,8 +3854,6 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_ip_info_array()
         goto buffer_allocate_ip_hdr_exit;
     }
 
-    // input buffer info array not allocated; allocate here
-
     OMX_SWVDEC_LOG_HIGH("allocating buffer info array, %d element%s",
                         m_port_ip.def.nBufferCountActual,
                         (m_port_ip.def.nBufferCountActual > 1) ? "s" : "");
@@ -3933,8 +3916,6 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_op_info_array()
         retval = OMX_ErrorInsufficientResources;
         goto buffer_allocate_op_hdr_exit;
     }
-
-    // output buffer info array not allocated; allocate here
 
     OMX_SWVDEC_LOG_HIGH("allocating buffer info array, %d element%s",
                         m_port_op.def.nBufferCountActual,
@@ -4006,8 +3987,6 @@ OMX_ERRORTYPE omx_swvdec::buffer_use_op(
 
     if (m_buffer_array_op == NULL)
     {
-        // output buffer info array not allocated; allocate here
-
         OMX_SWVDEC_LOG_HIGH("allocating buffer info array, %d element%s",
                             m_port_op.def.nBufferCountActual,
                             (m_port_op.def.nBufferCountActual > 1) ? "s" : "");
@@ -4020,8 +3999,6 @@ OMX_ERRORTYPE omx_swvdec::buffer_use_op(
 
     if (m_meta_buffer_mode && (m_meta_buffer_array == NULL))
     {
-        // meta buffer info array not allocated; allocate here
-
         OMX_SWVDEC_LOG_HIGH("allocating meta buffer info array, %d element%s",
                             m_port_op.def.nBufferCountActual,
                             (m_port_op.def.nBufferCountActual > 1) ? "s" : "");
@@ -4211,17 +4188,18 @@ OMX_ERRORTYPE omx_swvdec::buffer_deallocate_ip(
 
             ion_memory_free(&m_buffer_array_ip[ii].ion_info);
 
-            // check if all buffers are unpopulated
             for (ii = 0; ii < m_port_ip.def.nBufferCountActual; ii++)
             {
                 if (m_buffer_array_ip[ii].buffer_populated)
+                {
                     break;
+                }
             }
 
-            // if no buffers are populated, de-allocate input buffer info array
             if (ii == m_port_ip.def.nBufferCountActual)
             {
                 buffer_deallocate_ip_info_array();
+
                 m_port_ip.unpopulated = OMX_TRUE;
             }
         }
@@ -4318,14 +4296,14 @@ OMX_ERRORTYPE omx_swvdec::buffer_deallocate_op(
 
         m_port_op.populated = OMX_FALSE;
 
-        // check if all buffers are unpopulated
         for (ii = 0; ii < m_port_op.def.nBufferCountActual; ii++)
         {
             if (m_buffer_array_op[ii].buffer_populated)
+            {
                 break;
+            }
         }
 
-        // if no buffers are populated, de-allocate output buffer info array
         if (ii == m_port_op.def.nBufferCountActual)
         {
             buffer_deallocate_op_info_array();
@@ -4409,6 +4387,7 @@ void omx_swvdec::meta_buffer_array_deallocate()
     assert(m_meta_buffer_array != NULL);
 
     free(m_meta_buffer_array);
+
     m_meta_buffer_array = NULL;
 }
 
@@ -4654,10 +4633,10 @@ int omx_swvdec::ion_memory_alloc_map(struct ion_allocation_data *p_alloc_data,
         goto ion_memory_alloc_map_exit;
     }
 
-    p_alloc_data->len   = size;
-    p_alloc_data->align = (alignment < 4096) ? 4096 : alignment;
+    p_alloc_data->len          = size;
+    p_alloc_data->align        = (alignment < 4096) ? 4096 : alignment;
     p_alloc_data->heap_id_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
-    p_alloc_data->flags = 0;
+    p_alloc_data->flags        = 0;
 
     OMX_SWVDEC_LOG_LOW("heap_id_mask 0x%08x, len %d, align %d",
                        p_alloc_data->heap_id_mask,
@@ -4669,8 +4648,10 @@ int omx_swvdec::ion_memory_alloc_map(struct ion_allocation_data *p_alloc_data,
     if (rc || (p_alloc_data->handle == 0))
     {
         OMX_SWVDEC_LOG_ERROR("ioctl() for allocation failed");
+
         close(fd);
         fd = -ENOMEM;
+
         goto ion_memory_alloc_map_exit;
     }
 
@@ -4689,8 +4670,10 @@ int omx_swvdec::ion_memory_alloc_map(struct ion_allocation_data *p_alloc_data,
         ion_memory_free(&ion_buf_info);
 
         p_fd_data->fd = -1;
+
         close(fd);
         fd = -ENOMEM;
+
         goto ion_memory_alloc_map_exit;
     }
 
@@ -4792,12 +4775,14 @@ void omx_swvdec::swvdec_event_handler(SWVDEC_EVENT event, void *p_data)
     {
         async_post_event(OMX_SWVDEC_EVENT_FLUSH_PORT_IP, 0, 0);
         async_post_event(OMX_SWVDEC_EVENT_FLUSH_PORT_OP, 0, 0);
+
         break;
     }
 
     case SWVDEC_EVENT_FLUSH_OP_DONE:
     {
         async_post_event(OMX_SWVDEC_EVENT_FLUSH_PORT_OP, 0, 0);
+
         break;
     }
 
@@ -4824,12 +4809,14 @@ void omx_swvdec::swvdec_event_handler(SWVDEC_EVENT event, void *p_data)
     case SWVDEC_EVENT_RECONFIG_REQUIRED:
     {
         async_post_event(OMX_SWVDEC_EVENT_PORT_RECONFIG, 0, 0);
+
         break;
     }
 
     case SWVDEC_EVENT_DIMENSIONS_UPDATED:
     {
         async_post_event(OMX_SWVDEC_EVENT_DIMENSIONS_UPDATED, 0, 0);
+
         break;
     }
 
@@ -4837,6 +4824,7 @@ void omx_swvdec::swvdec_event_handler(SWVDEC_EVENT event, void *p_data)
     default:
     {
         async_post_event(OMX_SWVDEC_EVENT_ERROR, OMX_ErrorHardware, 0);
+
         break;
     }
 
@@ -4958,6 +4946,7 @@ OMX_ERRORTYPE omx_swvdec::async_thread_create()
             }
 
             sem_wait(&m_async_thread.sem_thread_created);
+
             m_async_thread.created = true;
         }
     }
@@ -4973,9 +4962,11 @@ void omx_swvdec::async_thread_destroy()
     if (m_async_thread.created)
     {
         m_async_thread.exit = true;
+
         sem_post(&m_async_thread.sem_event);
 
         pthread_join(m_async_thread.handle, NULL);
+
         m_async_thread.created = false;
     }
 
@@ -5093,6 +5084,7 @@ void omx_swvdec::async_process_event(void *p_cmp)
     if (p_cmp == NULL)
     {
         OMX_SWVDEC_LOG_ERROR("p_cmp = NULL");
+
         goto async_process_event_exit;
     }
 
@@ -5105,6 +5097,7 @@ void omx_swvdec::async_process_event(void *p_cmp)
         (p_omx_swvdec->m_queue_port_ip.pop(&event_info) == false))
     {
         OMX_SWVDEC_LOG_LOW("no event popped");
+
         goto async_process_event_exit;
     }
 
@@ -5214,6 +5207,7 @@ void omx_swvdec::async_process_event(void *p_cmp)
     default:
     {
         assert(0);
+
         retval = OMX_ErrorUndefined;
         break;
     }
@@ -5242,7 +5236,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_cmd(OMX_COMMANDTYPE cmd,
 {
     OMX_ERRORTYPE retval = OMX_ErrorNone;
 
-    bool cmd_ack = false; // set to 'true' if command is to be acknowledged
+    bool cmd_ack = false;
 
     SWVDEC_STATUS retval_swvdec;
 
@@ -5286,8 +5280,6 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_cmd(OMX_COMMANDTYPE cmd,
 
     } // switch (cmd)
 
-    // post appropriate event
-
     if (retval != OMX_ErrorNone)
     {
         async_post_event(OMX_SWVDEC_EVENT_ERROR, retval, 0);
@@ -5297,7 +5289,6 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_cmd(OMX_COMMANDTYPE cmd,
         async_post_event(OMX_SWVDEC_EVENT_CMD_ACK, cmd, param);
     }
 
-    // post to command semaphore
     sem_post(&m_sem_cmd);
 
     return retval;
@@ -5452,7 +5443,6 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_cmd_state_set(
         if ((m_port_ip.populated == OMX_TRUE) &&
             (m_port_op.populated == OMX_TRUE))
         {
-            // start SwVdec
             if ((retval_swvdec = swvdec_start(m_swvdec_handle)) ==
                 SWVDEC_STATUS_SUCCESS)
             {
@@ -5492,7 +5482,6 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_cmd_state_set(
         if ((m_port_ip.unpopulated == OMX_TRUE) &&
             (m_port_op.unpopulated == OMX_TRUE))
         {
-            // stop SwVdec
             if ((retval_swvdec = swvdec_stop(m_swvdec_handle)) ==
                 SWVDEC_STATUS_SUCCESS)
             {
@@ -5709,8 +5698,8 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_cmd_port_disable(
  * @retval OMX_ERRORTYPE
  */
 OMX_ERRORTYPE omx_swvdec::async_process_event_cmd_port_enable(
-    bool         *p_cmd_ack,
-    unsigned int  port_index)
+    bool        *p_cmd_ack,
+    unsigned int port_index)
 {
     OMX_ERRORTYPE retval = OMX_ErrorNone;
 
@@ -6094,6 +6083,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_flush_port_ip()
         case OMX_SWVDEC_EVENT_ETB:
         {
             p_buffer_hdr = (OMX_BUFFERHEADERTYPE *) event_info.event_param1;
+
             index = event_info.event_param2;
 
             // compensate decrement in async_process_event_ebd()
@@ -6106,6 +6096,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_flush_port_ip()
         case OMX_SWVDEC_EVENT_EBD:
         {
             p_buffer_hdr = (OMX_BUFFERHEADERTYPE *) event_info.event_param1;
+
             index = event_info.event_param2;
 
             retval = async_process_event_ebd(p_buffer_hdr, index);
@@ -6161,6 +6152,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_flush_port_op()
         case OMX_SWVDEC_EVENT_FTB:
         {
             p_buffer_hdr = (OMX_BUFFERHEADERTYPE *) event_info.event_param1;
+
             index = event_info.event_param2;
 
             // compensate decrement in async_process_event_fbd()
@@ -6173,6 +6165,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_flush_port_op()
         case OMX_SWVDEC_EVENT_FBD:
         {
             p_buffer_hdr = (OMX_BUFFERHEADERTYPE *) event_info.event_param1;
+
             index = event_info.event_param2;
 
             retval = async_process_event_fbd(p_buffer_hdr, index);
