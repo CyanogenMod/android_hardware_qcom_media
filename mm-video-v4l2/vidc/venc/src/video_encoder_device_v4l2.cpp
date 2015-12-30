@@ -1443,7 +1443,12 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         ret = ioctl(m_nDriver_fd, VIDIOC_G_FMT, &fmt);
         m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
 
-        m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = actualCount;
+        if (metadatamode && mBatchSize) {
+            m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = actualCount;
+        } else {
+            m_sInput_buff_property.mincount = m_sInput_buff_property.actualcount = bufreq.count;
+        }
+
         *min_buff_count = m_sInput_buff_property.mincount;
         *actual_buff_count = m_sInput_buff_property.actualcount;
 #ifdef USE_ION
