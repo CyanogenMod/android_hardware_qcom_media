@@ -2226,9 +2226,9 @@ int omx_venc::dev_handle_output_extradata(void *buffer)
     return handle->handle_output_extradata(buffer);
 }
 
-int omx_venc::dev_handle_input_extradata(void *buffer)
+int omx_venc::dev_handle_input_extradata(void *buffer, int fd)
 {
-    return handle->handle_input_extradata(buffer);
+    return handle->handle_input_extradata(buffer, fd);
 }
 
 void omx_venc::dev_set_extradata_cookie(void *cookie)
