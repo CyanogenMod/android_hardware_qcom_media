@@ -5996,11 +5996,21 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
                 }
             }
 
+            if (m_meta_buffer_mode)
+            {
+                pthread_mutex_lock(&m_meta_buffer_array_mutex);
+            }
+
             m_diag.dump_op(p_buffer,
                            m_frame_dimensions.width,
                            m_frame_dimensions.height,
                            m_frame_attributes.stride,
                            m_frame_attributes.scanlines);
+
+            if (m_meta_buffer_mode)
+            {
+                pthread_mutex_unlock(&m_meta_buffer_array_mutex);
+            }
         }
 
         if (p_buffer_hdr->nFlags & OMX_BUFFERFLAG_EOS)
