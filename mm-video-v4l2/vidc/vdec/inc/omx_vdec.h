@@ -455,9 +455,10 @@ class omx_vdec: public qc_omx_component
         void buf_ref_add(int nPortIndex);
         void buf_ref_remove();
         OMX_ERRORTYPE set_dpb(bool is_split_mode, int dpb_color_format);
-        OMX_ERRORTYPE decide_dpb_buffer_mode();
+        OMX_ERRORTYPE decide_dpb_buffer_mode(bool force_split_mode);
         void request_perf_level(enum vidc_perf_level perf_level);
         int dpb_bit_depth;
+        bool async_thread_force_stop;
 
     private:
         // Bit Positions
@@ -523,6 +524,7 @@ class omx_vdec: public qc_omx_component
             OMX_COMPONENT_GENERATE_INFO_FIELD_DROPPED = 0x16,
             OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING = 0x17,
             OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD = 0x18,
+            OMX_COMPONENT_CLOSE_MSG = 0x19
         };
 
         enum vc1_profile_type {
@@ -777,7 +779,12 @@ class omx_vdec: public qc_omx_component
         nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
 
+public:
+        inline bool omx_close_msg_thread(unsigned char id) {
+            return (id == OMX_COMPONENT_CLOSE_MSG);
+        }
 
+private:
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
@@ -951,6 +958,7 @@ class omx_vdec: public qc_omx_component
         OMX_CONFIG_RECTTYPE rectangle;
         OMX_U32 prev_n_filled_len;
         bool is_down_scalar_enabled;
+        bool m_force_down_scalar;
 #endif
         struct custom_buffersize {
             OMX_U32 input_buffersize;
@@ -980,6 +988,11 @@ class omx_vdec: public qc_omx_component
         OMX_ERRORTYPE enable_adaptive_playback(unsigned long width, unsigned long height);
         bool is_thulium_v1;
         static bool m_disable_ubwc_mode;
+        OMX_U32 m_downscalar_width;
+        OMX_U32 m_downscalar_height;
+        int decide_downscalar();
+        int enable_downscalar();
+        int disable_downscalar();
 
         unsigned int m_fill_output_msg;
         bool client_set_fps;
@@ -1125,8 +1138,8 @@ class omx_vdec: public qc_omx_component
                 OMX_COLOR_FORMATTYPE formatsDefault[] = {
                     [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed,
                     [1] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
-                    [2] = OMX_COLOR_FormatYUV420Planar,
-                    [3] = OMX_COLOR_FormatYUV420SemiPlanar,
+                    [2] = OMX_COLOR_FormatYUV420SemiPlanar,
+                    [3] = OMX_COLOR_FormatYUV420Planar,
                     [4] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
                 };
                 format = (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?
@@ -1134,8 +1147,8 @@ class omx_vdec: public qc_omx_component
             } else {
                 OMX_COLOR_FORMATTYPE formatsDefault[] = {
                     [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
-                    [1] = OMX_COLOR_FormatYUV420Planar,
-                    [2] = OMX_COLOR_FormatYUV420SemiPlanar,
+                    [1] = OMX_COLOR_FormatYUV420SemiPlanar,
+                    [2] = OMX_COLOR_FormatYUV420Planar,
                     [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
                 };
                 format = (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?

@@ -233,8 +233,9 @@ class omx_video: public qc_omx_component
         virtual bool dev_loaded_start_done(void) = 0;
         virtual bool dev_loaded_stop_done(void) = 0;
         virtual bool is_secure_session(void) = 0;
-        virtual int dev_handle_output_extradata(void*, int) = 0;
-        virtual int dev_handle_input_extradata(void*, int, int) = 0;
+        virtual int dev_handle_output_extradata(void*) = 0;
+        virtual int dev_handle_input_extradata(void*, int) = 0;
+        virtual void dev_set_extradata_cookie(void*) = 0;
         virtual int dev_set_format(int) = 0;
         virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
         virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
@@ -429,7 +430,8 @@ class omx_video: public qc_omx_component
             OMX_COMPONENT_GENERATE_LTRUSE_FAILED = 0x12,
             OMX_COMPONENT_GENERATE_ETB_OPQ = 0x13,
             OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING = 0x14,
-            OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD = 0x15
+            OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD = 0x15,
+            OMX_COMPONENT_CLOSE_MSG = 0x16
         };
 
         struct omx_event {
@@ -556,7 +558,7 @@ class omx_video: public qc_omx_component
         }
 
         void complete_pending_buffer_done_cbs();
-        bool is_rgba_conv_needed();
+        bool is_conv_needed(int, int);
 
 #ifdef USE_ION
         int alloc_map_ion_memory(int size,
@@ -564,6 +566,10 @@ class omx_video: public qc_omx_component
                                  struct ion_fd_data *fd_data,int flag);
         void free_ion_memory(struct venc_ion *buf_ion_info);
 #endif
+
+        inline bool omx_close_msg_thread(unsigned char id) {
+            return (id == OMX_COMPONENT_CLOSE_MSG);
+        }
 
         //*************************************************************
         //*******************MEMBER VARIABLES *************************

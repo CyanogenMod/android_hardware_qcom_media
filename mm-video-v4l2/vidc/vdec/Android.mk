@@ -30,7 +30,8 @@ TARGETS_THAT_USE_HEVC_ADSP_HEAP := msm8226 msm8974
 TARGETS_THAT_HAVE_VENUS_HEVC := apq8084 msm8994 msm8996
 TARGETS_THAT_NEED_HEVC_LIB := msm8974 msm8610 msm8226 msm8916
 TARGETS_THAT_NEED_SW_HEVC := msm8974 msm8226 msm8916
-TARGETS_THAT_SUPPORT_UBWC := msm8996
+TARGETS_THAT_SUPPORT_UBWC := msm8996 titanium
+TARGETS_THAT_NEED_SW_VDEC := msm8937
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_HEVC_ADSP_HEAP)),true)
 libmm-vdec-def += -D_HEVC_USE_ADSP_HEAP_
@@ -74,6 +75,7 @@ libmm-vdec-inc          += $(TOP)/frameworks/native/include/media/hardware
 libmm-vdec-inc      	+= $(call project-path-for,qcom-media)/libc2dcolorconvert
 libmm-vdec-inc      	+= $(TOP)/frameworks/av/include/media/stagefright
 libmm-vdec-inc      	+= $(TARGET_OUT_HEADERS)/mm-video/SwVdec
+libmm-vdec-inc      	+= $(TARGET_OUT_HEADERS)/mm-video/swvdec
 libmm-vdec-inc      	+= $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
 ifeq ($(PLATFORM_SDK_VERSION), 18)  #JB_MR2
@@ -162,7 +164,31 @@ LOCAL_SRC_FILES         += src/hevc_utils.cpp
 LOCAL_STATIC_LIBRARIES  := libOmxVidcCommon
 
 include $(BUILD_SHARED_LIBRARY)
+endif
+endif
 
+# ---------------------------------------------------------------------------------
+# 			Make the Shared library (libOmxSwVdec)
+# ---------------------------------------------------------------------------------
+
+include $(CLEAR_VARS)
+ifneq "$(wildcard $(QCPATH) )" ""
+ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VDEC)),true)
+
+LOCAL_MODULE                  := libOmxSwVdec
+LOCAL_MODULE_TAGS             := optional
+LOCAL_CFLAGS                  := $(libmm-vdec-def)
+LOCAL_C_INCLUDES              += $(libmm-vdec-inc)
+LOCAL_ADDITIONAL_DEPENDENCIES := $(libmm-vdec-add-dep)
+
+LOCAL_PRELINK_MODULE          := false
+LOCAL_SHARED_LIBRARIES        := liblog libcutils
+LOCAL_SHARED_LIBRARIES        += libswvdec
+
+LOCAL_SRC_FILES               := src/omx_swvdec.cpp
+LOCAL_SRC_FILES               += src/omx_swvdec_utils.cpp
+
+include $(BUILD_SHARED_LIBRARY)
 endif
 endif
 

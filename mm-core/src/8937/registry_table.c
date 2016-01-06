@@ -31,18 +31,17 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
                             O p e n M A X   w r a p p e r s
                              O p e n  M A X   C o r e
 
-  This module contains the registry table for the QTI's OpenMAX core.
+ This module contains the registry table for the QTI's OpenMAX core.
 
 *//*========================================================================*/
-
 
 #include "qc_omx_core.h"
 
 omx_core_cb_type core[] =
 {
-   {
+  {
     "OMX.qcom.video.decoder.avc",
-    NULL, // Create instance function
+    NULL,   // Create instance function
     // Unique instance handle
     {
       NULL
@@ -53,9 +52,9 @@ omx_core_cb_type core[] =
       "video_decoder.avc"
     }
   },
-   {
+  {
     "OMX.qcom.video.decoder.avc.secure",
-    NULL, // Create instance function
+    NULL,   // Create instance function
     // Unique instance handle
     {
       NULL
@@ -81,7 +80,7 @@ omx_core_cb_type core[] =
   },
   {
     "OMX.qcom.video.decoder.vp8",
-    NULL, // Create instance function
+    NULL,   // Create instance function
     // Unique instance handle
     {
       NULL
@@ -105,7 +104,7 @@ omx_core_cb_type core[] =
       "video_encoder.avc"
     }
   },
-  {
+   {
     "OMX.qti.video.decoder.mpeg4sw",
     NULL, // Create instance function
     // Unique instance handle
@@ -245,38 +244,6 @@ omx_core_cb_type core[] =
     "libOmxWmaDec.so",
     {
      "audio_decoder.wma"
-    }
-  },
-  {
-    "OMX.qcom.audio.decoder.wmaLossLess",
-    NULL,   // Create instance function
-    // Unique instance handle
-    {
-     NULL,
-     NULL,
-     NULL,
-     NULL
-    },
-    NULL,   // Shared object library handle
-    "libOmxWmaDec.so",
-    {
-     "audio_decoder.wma"
-    }
-  },
-  {
-    "OMX.qcom.audio.decoder.amrwbplus",
-    NULL,   // Create instance function
-    // Unique instance handle
-    {
-     NULL,
-     NULL,
-     NULL,
-     NULL
-    },
-    NULL,   // Shared object library handle
-    "libOmxAmrwbplusDec.so",
-    {
-     "audio_decoder.awbplus"
     }
   },
   {
@@ -438,7 +405,7 @@ omx_core_cb_type core[] =
     {
       "audio_decoder.aac"
     }
-  },
+  }
 };
 
 const unsigned int SIZE_OF_CORE = sizeof(core) / sizeof(omx_core_cb_type);

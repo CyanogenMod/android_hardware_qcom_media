@@ -541,6 +541,12 @@ enum OMX_QCOM_EXTN_INDEXTYPE
      * and OPB is cpu_access */
     /* OMX.QTI.index.param.video.ForceCompressedForDPB */
     OMX_QTIIndexParamForceCompressedForDPB = 0x7F000057,
+
+    /* Enable ROI info */
+    OMX_QTIIndexParamVideoEnableRoiInfo = 0x7F000058,
+
+    /* Configure ROI info */
+    OMX_QTIIndexConfigVideoRoiInfo = 0x7F000059,
 };
 
 /**
@@ -1262,6 +1268,24 @@ typedef struct OMX_QCOM_EXTRADATA_VQZIPSEI {
     OMX_U8 data[0];
 } OMX_QCOM_EXTRADATA_VQZIPSEI;
 
+typedef struct OMX_QTI_VIDEO_PARAM_ENABLE_ROIINFO {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_BOOL        bEnableRoiInfo;
+} OMX_QTI_VIDEO_PARAM_ENABLE_ROIINFO;
+
+typedef struct OMX_QTI_VIDEO_CONFIG_ROIINFO {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_S32         nUpperQpOffset;
+    OMX_S32         nLowerQpOffset;
+    OMX_BOOL        bUseRoiInfo;
+    OMX_S32         nRoiMBInfoSize;
+    OMX_PTR         pRoiMBInfo;
+} OMX_QTI_VIDEO_CONFIG_ROIINFO;
+
 typedef enum OMX_QCOM_EXTRADATATYPE
 {
     OMX_ExtraDataFrameInfo =               0x7F000001,
@@ -1578,6 +1602,8 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QTI_INDEX_PARAM_VIDEO_PREFER_ADAPTIVE_PLAYBACK "OMX.QTI.index.param.video.PreferAdaptivePlayback"
 #define OMX_QTI_INDEX_CONFIG_VIDEO_SETTIMEDATA "OMX.QTI.index.config.video.settimedata"
 #define OMX_QTI_INDEX_PARAM_VIDEO_FORCE_COMPRESSED_FOR_DPB "OMX.QTI.index.param.video.ForceCompressedForDPB"
+#define OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO "OMX.QTI.index.param.enableRoiInfo"
+#define OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO "OMX.QTI.index.config.RoiInfo"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,
@@ -1738,6 +1764,7 @@ typedef enum QOMX_VPP_HQVCONTROLTYPE {
     VPP_HQV_CONTROL_CADE = 0x1,
     VPP_HQV_CONTROL_CNR = 0x04,
     VPP_HQV_CONTROL_AIE = 0x05,
+    VPP_HQV_CONTROL_FRC = 0x06,
     VPP_HQV_CONTROL_CUST = 0x07,
     VPP_HQV_CONTROL_GLOBAL_DEMO = VPP_HQV_CONTROL_GLOBAL_START,
     VPP_HQV_CONTROL_MAX,
@@ -1748,6 +1775,15 @@ typedef enum QOMX_VPP_HQV_HUE_MODE {
     VPP_HQV_HUE_MODE_ON,
     VPP_HQV_HUE_MODE_MAX,
 } QOMX_VPP_HQV_HUE_MODE;
+
+typedef enum QOMX_VPP_HQV_FRC_MODE {
+   VPP_HQV_FRC_MODE_OFF,
+   VPP_HQV_FRC_MODE_LOW,
+   VPP_HQV_FRC_MODE_MED,
+   VPP_HQV_FRC_MODE_HIGH,
+   VPP_HQV_FRC_MODE_MAX,
+} QOMX_VPP_HQV_FRC_MODE;
+
 
 typedef struct QOMX_VPP_HQVCTRL_CADE {
     QOMX_VPP_HQV_MODE mode;
@@ -1778,6 +1814,9 @@ typedef struct QOMX_VPP_HQVCTRL_GLOBAL_DEMO {
     OMX_U32 process_percent;
 } QOMX_VPP_HQVCTRL_GLOBAL_DEMO;
 
+typedef struct QOMX_VPP_HQVCTRL_FRC {
+    QOMX_VPP_HQV_FRC_MODE mode;
+} QOMX_VPP_HQVCTRL_FRC;
 
 typedef struct QOMX_VPP_HQVCONTROL {
     QOMX_VPP_HQV_MODE mode;
@@ -1788,6 +1827,7 @@ typedef struct QOMX_VPP_HQVCONTROL {
         QOMX_VPP_HQVCTRL_AIE aie;
         QOMX_VPP_HQVCTRL_CUSTOM custom;
         QOMX_VPP_HQVCTRL_GLOBAL_DEMO global_demo;
+        QOMX_VPP_HQVCTRL_FRC frc;
     };
 } QOMX_VPP_HQVCONTROL;
 
