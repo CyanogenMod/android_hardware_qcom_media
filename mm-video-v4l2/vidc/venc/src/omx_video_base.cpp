@@ -3334,6 +3334,10 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                 //secure handle fd struct native_handle_t*
                 m_pOutput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
                 native_handle_t *handle = native_handle_create(1, 0);
+                if (!handle) {
+                    DEBUG_PRINT_ERROR("ERROR: native handle creation failed");
+                    return OMX_ErrorInsufficientResources;
+                }
                 handle->data[0] = m_pOutput_pmem[i].fd;
                 char *data = (char*) m_pOutput_pmem[i].buffer;
                 OMX_U32 type = 1;
