@@ -86,7 +86,7 @@ char output_extradata_filename [] = "/data/misc/media/extradata";
 #endif
 
 #define DEFAULT_FPS 30
-#define MAX_SUPPORTED_FPS 120
+#define MAX_SUPPORTED_FPS 240
 #define DEFAULT_WIDTH_ALIGNMENT 128
 #define DEFAULT_HEIGHT_ALIGNMENT 32
 
@@ -2099,6 +2099,8 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
     drv_ctx.frame_rate.fps_numerator = DEFAULT_FPS;
     drv_ctx.frame_rate.fps_denominator = 1;
+    operating_frame_rate = DEFAULT_FPS;
+    high_fps = false;
     m_poll_efd = eventfd(0, 0);
     if (m_poll_efd < 0) {
         DEBUG_PRINT_ERROR("Failed to create event fd(%s)", strerror(errno));
@@ -5204,6 +5206,8 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 
         control.id = V4L2_CID_MPEG_VIDC_VIDEO_OPERATING_RATE;
         control.value = rate->nU32;
+
+        operating_frame_rate = rate->nU32 >> 16;
 
         if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
             ret = errno == -EBUSY ? OMX_ErrorInsufficientResources :
@@ -8452,7 +8456,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                     if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_BFRAME) {
                         output_respbuf->pic_type = PICTURE_TYPE_B;
                     }
-                    if (omxhdr && omxhdr->nFilledLen) {
+                    if (omxhdr && omxhdr->nFilledLen && !omx->high_fps) {
                         omx->request_perf_level(VIDC_NOMINAL);
                     }
                     if (omx->output_use_buffer && omxhdr->pBuffer &&
@@ -8485,7 +8489,9 @@ int omx_vdec::async_message_process (void *context, void* message)
             omx->m_reconfig_height = vdec_msg->msgdata.output_frame.picsize.frame_height;
             omx->post_event (OMX_CORE_OUTPUT_PORT_INDEX, OMX_IndexParamPortDefinition,
                     OMX_COMPONENT_GENERATE_PORT_RECONFIG);
-            omx->request_perf_level(VIDC_NOMINAL);
+            if (!omx->high_fps) {
+                omx->request_perf_level(VIDC_NOMINAL);
+            }
             break;
         default:
             break;
@@ -9425,6 +9431,33 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
         eRet = OMX_ErrorInsufficientResources;
         return eRet;
     } else {
+        bool is_res_1080p_or_below = (drv_ctx.video_resolution.frame_width <= 1920 &&
+                                     drv_ctx.video_resolution.frame_height <= 1088) ||
+                                     (drv_ctx.video_resolution.frame_height <= 1088 &&
+                                      drv_ctx.video_resolution.frame_width <= 1920);
+
+        int fps = drv_ctx.frame_rate.fps_numerator / (float)drv_ctx.frame_rate.fps_denominator;
+        bool fps_above_180 =  (fps >= 180 || operating_frame_rate >= 180) ? true : false;
+        bool increase_output = (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT) && (bufreq.count >= 16);
+
+        if (increase_output && fps_above_180 &&
+            output_capability == V4L2_PIX_FMT_H264 &&
+            is_res_1080p_or_below) {
+            high_fps = true;
+            DEBUG_PRINT_LOW("High fps - fps = %d operating_rate = %d", fps, operating_frame_rate);
+            DEBUG_PRINT_LOW("getbufreq[output]: Increase buffer count (%d) to (%d) to support high fps",
+                            bufreq.count, bufreq.count + 10);
+            bufreq.count += 10;
+            ret = ioctl(drv_ctx.video_driver_fd,VIDIOC_REQBUFS, &bufreq);
+            if (ret) {
+                DEBUG_PRINT_ERROR("(Failed to set updated buffer count to driver");
+                eRet = OMX_ErrorInsufficientResources;
+                return eRet;
+            }
+            DEBUG_PRINT_LOW("new buf count = %d set to driver", bufreq.count);
+            request_perf_level(VIDC_TURBO);
+        }
+
         buffer_prop->actualcount = bufreq.count;
         buffer_prop->mincount = bufreq.count;
         DEBUG_PRINT_HIGH("Count = %d",bufreq.count);

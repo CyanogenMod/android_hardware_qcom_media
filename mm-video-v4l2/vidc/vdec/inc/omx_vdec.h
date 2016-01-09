@@ -977,6 +977,9 @@ class omx_vdec: public qc_omx_component
 
         bool m_input_pass_buffer_fd;
 
+        OMX_U32 operating_frame_rate;
+        bool high_fps;
+
         OMX_U32 m_smoothstreaming_width;
         OMX_U32 m_smoothstreaming_height;
         OMX_ERRORTYPE enable_smoothstreaming();
