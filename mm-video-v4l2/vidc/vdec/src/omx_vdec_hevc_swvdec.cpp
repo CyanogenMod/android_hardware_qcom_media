@@ -3374,6 +3374,20 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 (int)portDefn->format.video.nFrameHeight,
                 (int)portDefn->format.video.nFrameWidth);
 
+            // for 8x26, if the dimension exceeds 720p, reject it
+            // so that the stagefright can try the software hevc component
+            char platform_name[PROPERTY_VALUE_MAX];
+            property_get("ro.board.platform", platform_name, "0");
+            if (!strncmp(platform_name, "msm8226", 7))
+            {
+                if ((portDefn->format.video.nFrameHeight *
+                        portDefn->format.video.nFrameWidth) > (736 * 1280))
+                {
+                        DEBUG_PRINT_ERROR("8926 hevc-hybrid supports up to 720p only");
+                        return OMX_ErrorBadParameter;
+                }
+            }
+
             // for pure dsp mode, if the dimension exceeds 720p, reject it
             // so that the stagefright can try the hybrid component
             if (!m_pSwVdec &&
