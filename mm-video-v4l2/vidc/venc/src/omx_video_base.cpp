@@ -289,6 +289,14 @@ omx_video::omx_video():
     pthread_mutex_init(&m_lock, NULL);
     sem_init(&m_cmd_lock,0,0);
     DEBUG_PRINT_LOW("meta_buffer_hdr = %p", meta_buffer_hdr);
+
+    memset(m_platform, 0, sizeof(m_platform));
+#ifdef _ANDROID_
+    char platform_name[PROPERTY_VALUE_MAX] = {0};
+    property_get("ro.board.platform", platform_name, "0");
+    strncpy(m_platform, platform_name, sizeof(m_platform));
+    *(m_platform + sizeof(m_platform) - 1) = '\0';
+#endif
 }
 
 
@@ -4704,13 +4712,14 @@ bool omx_video::omx_c2d_conv::convert(int src_fd, void *src_base, void *src_vira
 }
 
 bool omx_video::omx_c2d_conv::open(unsigned int height,unsigned int width,
-        ColorConvertFormat src, ColorConvertFormat dest,unsigned int src_stride)
+        ColorConvertFormat src, ColorConvertFormat dest, unsigned int src_stride,
+        unsigned int flags)
 {
     bool status = false;
     pthread_mutex_lock(&c_lock);
     if (!c2dcc) {
         c2dcc = mConvertOpen(width, height, width, height,
-                src,dest,0,src_stride);
+                src, dest, flags, src_stride);
         if (c2dcc) {
             src_format = src;
             status = true;
@@ -4779,8 +4788,15 @@ bool omx_video::omx_c2d_conv::get_buffer_size(int port,unsigned int &buf_size)
 
 bool omx_video::is_conv_needed(int hal_fmt, int hal_flags)
 {
-    bool bRet = hal_fmt == HAL_PIXEL_FORMAT_RGBA_8888 &&
-        !(hal_flags & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED);
+    bool bRet = false;
+
+    if (!strncmp(m_platform, "msm8996", 7)) {
+        bRet = hal_fmt == HAL_PIXEL_FORMAT_RGBA_8888 &&
+            !(hal_flags & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED);
+    } else {
+        bRet = hal_fmt == HAL_PIXEL_FORMAT_RGBA_8888;
+    }
+
 #ifdef _HW_RGBA
     bRet = false;
 #endif
@@ -4840,7 +4856,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
                         (unsigned int)m_sInPortDef.format.video.nFrameHeight);
                 if (!c2d_conv.open(m_sInPortDef.format.video.nFrameHeight,
                             m_sInPortDef.format.video.nFrameWidth,
-                            RGBA8888, NV12_128m, handle->width)) {
+                            RGBA8888, NV12_128m, handle->width, handle->flags)) {
                     m_pCallbacks.EmptyBufferDone(hComp,m_app_data,buffer);
                     DEBUG_PRINT_ERROR("Color conv open failed");
                     return OMX_ErrorBadParameter;
