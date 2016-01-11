@@ -267,6 +267,10 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
     m_sInPortDef.format.video.eCompressionFormat =  OMX_VIDEO_CodingUnused;
 
+    m_omx_color_formattype =
+            ((OMX_COLOR_FORMATTYPE)
+             OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m);
+
     /* set the frame size */
     Prop.id = SWVENC_PROPERTY_ID_FRAME_SIZE;
     Prop.info.frame_size.height = m_sInPortDef.format.video.nFrameHeight;
@@ -739,7 +743,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                 }
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoPortFormat %d",
                       portFmt->eColorFormat);
-
+                m_omx_color_formattype = portFmt->eColorFormat;
                 /* set the input color format */
                 Prop.id = SWVENC_PROPERTY_ID_COLOR_FORMAT;
                 Prop.info.color_format = color_format;
