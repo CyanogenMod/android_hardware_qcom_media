@@ -1,7 +1,7 @@
 /**
  * @copyright
  *
- *   Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *   Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions are met:
@@ -54,7 +54,7 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2015-12-31T14:35:24+0530"
+#define OMX_SWVDEC_VERSION_DATE "2016-01-11T14:20:55+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
