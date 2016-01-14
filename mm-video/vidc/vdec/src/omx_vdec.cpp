@@ -72,18 +72,18 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 
 #ifdef INPUT_BUFFER_LOG
-#define INPUT_BUFFER_FILE_NAME "/data/input-bitstream.\0\0\0\0"
-#define INPUT_BUFFER_FILE_NAME_LEN 30
+#define INPUT_BUFFER_FILE_NAME "/data/misc/media/input-bitstream.\0\0\0\0"
+#define INPUT_BUFFER_FILE_NAME_LEN 50
 FILE *inputBufferFile1;
 char inputfilename [INPUT_BUFFER_FILE_NAME_LEN] = "\0";
 #endif
 #ifdef OUTPUT_BUFFER_LOG
 FILE *outputBufferFile1;
-char outputfilename [] = "/data/output.yuv";
+char outputfilename [] = "/data/misc/media/output.yuv";
 #endif
 #ifdef OUTPUT_EXTRADATA_LOG
 FILE *outputExtradataFile;
-char ouputextradatafilename [] = "/data/extradata";
+char ouputextradatafilename [] = "/data/misc/media/extradata";
 #endif
 
 #define DEFAULT_FPS 30
@@ -6570,13 +6570,22 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
      }
 #endif // _ANDROID_
 #ifdef INPUT_BUFFER_LOG
-    fclose (inputBufferFile1);
+    if (inputBufferFile1)
+    {
+        fclose (inputBufferFile1);
+    }
 #endif
 #ifdef OUTPUT_BUFFER_LOG
-    fclose (outputBufferFile1);
+    if (outputBufferFile1)
+    {
+        fclose (outputBufferFile1);
+    }
 #endif
 #ifdef OUTPUT_EXTRADATA_LOG
-    fclose (outputExtradataFile);
+    if (outputExtradataFile)
+    {
+        fclose (outputExtradataFile);
+    }
 #endif
 
     if (secure_mode) {
