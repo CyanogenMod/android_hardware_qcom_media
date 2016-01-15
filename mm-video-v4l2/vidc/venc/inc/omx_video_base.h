@@ -631,6 +631,7 @@ class omx_video: public qc_omx_component
         OMX_SKYPE_VIDEO_PARAM_DRIVERVER m_sDriverVer;
         OMX_SKYPE_VIDEO_CONFIG_QP m_sConfigQP;
         QOMX_EXTNINDEX_VIDEO_VENC_SAR m_sSar;
+        QOMX_VIDEO_H264ENTROPYCODINGTYPE m_sParamEntropy;
         PrependSPSPPSToIDRFramesParams m_sPrependSPSPPS;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;

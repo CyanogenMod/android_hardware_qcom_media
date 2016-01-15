@@ -3965,11 +3965,6 @@ bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
         return true;
     }
 
-    if (vqzip_sei_info.enabled) {
-        DEBUG_PRINT_HIGH("VQZIP is enabled. Profile and Level set by client. Skipping validation");
-        return true;
-    }
-
     DEBUG_PRINT_LOW("Validating Profile/Level from table");
 
     if (!venc_validate_profile_level(&eProfile, &eLevel)) {
@@ -4798,6 +4793,12 @@ bool venc_dev::venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config)
             (unsigned int)nTargetBitrate);
     struct v4l2_control control;
     int rc = 0;
+
+    if (vqzip_sei_info.enabled) {
+        DEBUG_PRINT_HIGH("For VQZIP 1.0, Bitrate setting is not supported");
+        return true;
+    }
+
     control.id = V4L2_CID_MPEG_VIDEO_BITRATE;
     control.value = nTargetBitrate;
 
@@ -4835,6 +4836,12 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
     parm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
     parm.parm.output.timeperframe.numerator = frame_rate_cfg.fps_denominator;
     parm.parm.output.timeperframe.denominator = frame_rate_cfg.fps_numerator;
+
+    if (vqzip_sei_info.enabled) {
+        DEBUG_PRINT_HIGH("For VQZIP 1.0, Framerate setting is not supported");
+        return true;
+    }
+
 
     if (frame_rate_cfg.fps_numerator > 0)
         rc = ioctl(m_nDriver_fd, VIDIOC_S_PARM, &parm);
@@ -6105,6 +6112,11 @@ bool venc_dev::venc_validate_profile_level(OMX_U32 *eProfile, OMX_U32 *eLevel)
     unsigned const int *profile_tbl = NULL;
     OMX_U32 mb_per_frame, mb_per_sec;
     bool profile_level_found = false;
+
+    if (vqzip_sei_info.enabled) {
+        DEBUG_PRINT_HIGH("VQZIP is enabled. Profile and Level set by client. Skipping validation");
+        return true;
+    }
 
     DEBUG_PRINT_LOW("Init profile table for respective codec");
 
