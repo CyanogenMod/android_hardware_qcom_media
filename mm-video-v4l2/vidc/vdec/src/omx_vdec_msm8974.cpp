@@ -9081,11 +9081,14 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
         portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
     }
 
-    if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
-       (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
+    if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) {
+           portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
+           portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
+    } else if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar) {
            portDefn->format.video.nStride = ALIGN(drv_ctx.video_resolution.frame_width, 16);
            portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
     }
+
     DEBUG_PRINT_HIGH("update_portdef(%u): Width = %u Height = %u Stride = %d "
             "SliceHeight = %u eColorFormat = %d nBufSize %u nBufCnt %u",
             (unsigned int)portDefn->nPortIndex,
