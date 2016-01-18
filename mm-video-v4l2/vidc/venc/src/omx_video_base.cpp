@@ -1511,7 +1511,6 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             (unsigned int)m_sInPortDef.nBufferSize, (unsigned int)m_sInPortDef.nBufferCountMin,
                             (unsigned int)m_sInPortDef.nBufferCountActual);
                     memcpy(portDefn, &m_sInPortDef, sizeof(m_sInPortDef));
-                    portDefn->format.video.eColorFormat = m_omx_color_formattype;
 #ifdef _ANDROID_ICS_
                     if (meta_mode_enable) {
                         portDefn->nBufferSize = sizeof(encoder_media_buffer_type);
