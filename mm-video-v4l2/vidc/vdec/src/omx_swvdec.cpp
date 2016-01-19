@@ -1,7 +1,7 @@
 /**
  * @copyright
  *
- *   Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *   Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions are met:
@@ -2207,6 +2207,8 @@ OMX_ERRORTYPE omx_swvdec::fill_this_buffer(OMX_HANDLETYPE        cmp_handle,
                                      "fd %d of size %d",
                                      p_private_handle->fd,
                                      m_port_op.def.nBufferSize);
+
+                pthread_mutex_unlock(&m_meta_buffer_array_mutex);
 
                 retval = OMX_ErrorInsufficientResources;
                 goto fill_this_buffer_exit;

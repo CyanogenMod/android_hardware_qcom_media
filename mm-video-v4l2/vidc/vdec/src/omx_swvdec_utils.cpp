@@ -1,7 +1,7 @@
 /**
  * @copyright
  *
- *   Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *   Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions are met:
@@ -90,6 +90,7 @@ omx_swvdec_queue::omx_swvdec_queue()
 
     m_count_total  = OMX_SWVDEC_QUEUE_ELEMENTS;
     m_count_filled = 0;
+
     m_index_write  = 0;
     m_index_read   = 0;
 
@@ -123,6 +124,7 @@ bool omx_swvdec_queue::push(OMX_SWVDEC_EVENT_INFO *p_event_info)
         m_queue[m_index_write] = *p_event_info;
 
         m_index_write = (m_index_write + 1) % m_count_total;
+
         m_count_filled++;
     }
     else
@@ -156,6 +158,7 @@ bool omx_swvdec_queue::pop(OMX_SWVDEC_EVENT_INFO *p_event_info)
         memset(&m_queue[m_index_read], 0, sizeof(OMX_SWVDEC_EVENT_INFO));
 
         m_index_read = (m_index_read + 1) % m_count_total;
+
         m_count_filled--;
     }
     else
@@ -192,6 +195,7 @@ omx_swvdec_ts_list::~omx_swvdec_ts_list()
 void omx_swvdec_ts_list::reset()
 {
     memset(m_list, 0, sizeof(m_list));
+
     m_count_filled = 0;
 }
 
@@ -219,6 +223,7 @@ bool omx_swvdec_ts_list::push(long long timestamp)
 
         m_list[m_count_filled].filled    = true;
         m_list[m_count_filled].timestamp = timestamp;
+
         m_count_filled++;
 
         // iterate backwards
@@ -273,7 +278,9 @@ bool omx_swvdec_ts_list::pop(long long *p_timestamp)
     if (m_count_filled)
     {
         *p_timestamp = m_list[m_count_filled - 1].timestamp;
+
         m_list[m_count_filled - 1].filled = false;
+
         m_count_filled--;
 
         OMX_SWVDEC_LOG_LOW("timestamp %lld popped", *p_timestamp);
@@ -318,8 +325,16 @@ omx_swvdec_diag::omx_swvdec_diag():
 
     time_info = localtime(&time_raw);
 
-    // time string: "YYYYmmddTHHMMSS"
-    strftime(time_string, sizeof(time_string), "%Y%m%dT%H%M%S", time_info);
+    if (time_info != NULL)
+    {
+        // time string: "YYYYmmddTHHMMSS"
+        strftime(time_string, sizeof(time_string), "%Y%m%dT%H%M%S", time_info);
+    }
+    else
+    {
+        // time string: "19700101T000000"
+        snprintf(time_string, sizeof(time_string), "19700101T000000");
+    }
 
     // default ip filename: "/data/misc/media/omx_swvdec_YYYYmmddTHHMMSS_ip.bin"
     snprintf(filename_ip,
@@ -364,7 +379,7 @@ omx_swvdec_diag::omx_swvdec_diag():
         }
         else
         {
-            strncpy(m_filename_ip, property_value, strlen(property_value) + 1);
+            strlcpy(m_filename_ip, property_value, strlen(property_value) + 1);
 
             OMX_SWVDEC_LOG_HIGH("omx_swvdec.filename.ip: %s", m_filename_ip);
 
@@ -391,7 +406,7 @@ omx_swvdec_diag::omx_swvdec_diag():
         }
         else
         {
-            strncpy(m_filename_op, property_value, strlen(property_value) + 1);
+            strlcpy(m_filename_op, property_value, strlen(property_value) + 1);
 
             OMX_SWVDEC_LOG_HIGH("omx_swvdec.filename.op: %s", m_filename_op);
 
