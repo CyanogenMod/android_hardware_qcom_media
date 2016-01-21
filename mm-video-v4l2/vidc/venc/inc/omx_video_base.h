@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -173,8 +173,8 @@ class omx_video: public qc_omx_component
                 ~omx_c2d_conv();
                 bool init();
                 bool open(unsigned int height,unsigned int width,
-                        ColorConvertFormat src,
-                        ColorConvertFormat dest,unsigned int src_stride);
+                        ColorConvertFormat src, ColorConvertFormat dest,
+                        unsigned int src_stride, unsigned int flags);
                 bool convert(int src_fd, void *src_base, void *src_viraddr,
                         int dest_fd, void *dest_base, void *dest_viraddr);
                 bool get_buffer_size(int port,unsigned int &buf_size);
@@ -674,6 +674,7 @@ class omx_video: public qc_omx_component
         extra_data_handler extra_data_handle;
         bool hw_overload;
         OMX_U32 m_graphicBufferSize;
+        char m_platform[OMX_MAX_STRINGNAME_SIZE];
 };
 
 #endif // __OMX_VIDEO_BASE_H__

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012 - 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012 - 2016, The Linux Foundation. All rights reserved.
  *
  * redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -37,6 +37,7 @@
 #include <string.h>
 #include <errno.h>
 #include <media/msm_media_info.h>
+#include <gralloc_priv.h>
 
 #undef LOG_TAG
 #define LOG_TAG "C2DColorConvert"
@@ -329,6 +330,8 @@ void* C2DColorConverter::getDummySurfaceDef(ColorConvertFormat format, size_t wi
     } else {
         C2D_RGB_SURFACE_DEF * surfaceDef = new C2D_RGB_SURFACE_DEF;
         surfaceDef->format = getC2DFormat(format);
+        if (mFlags & private_handle_t::PRIV_FLAGS_UBWC_ALIGNED)
+            surfaceDef->format |= C2D_FORMAT_UBWC_COMPRESSED;
         surfaceDef->width = width;
         surfaceDef->height = height;
         surfaceDef->buffer = (void *)0xaaaaaaaa;
