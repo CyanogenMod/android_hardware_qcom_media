@@ -612,12 +612,7 @@ class omx_vdec: public qc_omx_component
                 OMX_PTR                appData,
                 OMX_U32                bytes,
                 OMX_U8                 *buffer);
-#ifdef MAX_RES_720P
-        OMX_ERRORTYPE get_supported_profile_level_for_720p(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
-#endif
-#ifdef MAX_RES_1080P
-        OMX_ERRORTYPE get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
-#endif
+        OMX_ERRORTYPE get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType);
 
         OMX_ERRORTYPE allocate_desc_buffer(OMX_U32 index);
         OMX_ERRORTYPE allocate_output_headers();
