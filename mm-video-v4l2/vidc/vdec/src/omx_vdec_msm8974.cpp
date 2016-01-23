@@ -4191,7 +4191,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 break;
             }
             if (m_disable_dynamic_buf_mode) {
-                DEBUG_PRINT_HIGH("Dynamic buffer mode disabled by setprop");
+                DEBUG_PRINT_HIGH("Dynamic buffer mode is disabled");
                 eRet = OMX_ErrorUnsupportedSetting;
                 break;
             }
@@ -4278,6 +4278,15 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             break;
         }
 
+        case OMX_QTIIndexParamVideoPreferAdaptivePlayback:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QTIIndexParamVideoPreferAdaptivePlayback");
+            m_disable_dynamic_buf_mode = ((QOMX_ENABLETYPE *)paramData)->bEnable;
+            if (m_disable_dynamic_buf_mode) {
+                DEBUG_PRINT_HIGH("Prefer Adaptive Playback is set");
+            }
+            break;
+        }
 #endif
         case OMX_QcomIndexParamVideoCustomBufferSize:
         {
@@ -4773,6 +4782,8 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
 #ifdef ADAPTIVE_PLAYBACK_SUPPORTED
     else if (extn_equals(paramName, "OMX.google.android.index.prepareForAdaptivePlayback")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoAdaptivePlaybackMode;
+    } else if (extn_equals(paramName, OMX_QTI_INDEX_PARAM_VIDEO_PREFER_ADAPTIVE_PLAYBACK)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamVideoPreferAdaptivePlayback;
     }
 #endif
 #ifdef FLEXYUV_SUPPORTED
