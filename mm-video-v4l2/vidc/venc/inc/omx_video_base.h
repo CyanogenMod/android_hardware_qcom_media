@@ -635,7 +635,6 @@ class omx_video: public qc_omx_component
         OMX_SKYPE_VIDEO_CONFIG_QP m_sConfigQP;
         QOMX_EXTNINDEX_VIDEO_VENC_SAR m_sSar;
         PrependSPSPPSToIDRFramesParams m_sPrependSPSPPS;
-        OMX_COLOR_FORMATTYPE m_omx_color_formattype;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
 
