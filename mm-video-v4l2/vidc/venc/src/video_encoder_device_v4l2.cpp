@@ -606,6 +606,21 @@ bool venc_dev::handle_input_extradata(void *buffer, int fd)
     int extra_fd;
     unsigned offset;
     ssize_t extra_size;
+    struct v4l2_control control;
+
+    memset(&control, 0, sizeof(control));
+    control.id =  V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+    if (ioctl(m_nDriver_fd, VIDIOC_G_CTRL, &control) < 0) {
+        return false;
+    }
+
+    if (!(control.value & V4L2_MPEG_VIDC_EXTRADATA_YUV_STATS ||
+        control.value & V4L2_MPEG_VIDC_EXTRADATA_VQZIP_SEI ||
+        control.value & V4L2_MPEG_VIDC_EXTRADATA_FRAME_QP ||
+        control.value & V4L2_MPEG_VIDC_EXTRADATA_INPUT_CROP)) {
+        DEBUG_PRINT_LOW("Input extradata not enabled");
+        return true;
+    }
 
     /*
      * At this point encoder component doesn't know where the extradata is
@@ -672,6 +687,10 @@ bool venc_dev::handle_input_extradata(void *buffer, int fd)
                 data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
                 break;
             }
+            case OMX_ExtraDataVQZipSEI:
+                DEBUG_PRINT_LOW("VQZIP SEI Found ");
+                mInputExtradata.vqzip_sei_found = true;
+                break;
             default:
                 break;
             }
@@ -679,14 +698,22 @@ bool venc_dev::handle_input_extradata(void *buffer, int fd)
             p_extra = (OMX_OTHER_EXTRADATATYPE *)((char *)p_extra + p_extra->nSize);
         }
 
-        data->nSize = (sizeof(OMX_OTHER_EXTRADATATYPE) +  sizeof(struct VQZipStats) + 3)&(~3);
-        data->nVersion.nVersion = OMX_SPEC_VERSION;
-        data->nPortIndex = 0;
-        data->eType = (OMX_EXTRADATATYPE)MSM_VIDC_EXTRADATA_YUVSTATS_INFO;
-        data->nDataSize = sizeof(struct VQZipStats);
-        vqzip.fill_stats_data((void*)pVirt, (void*) data->data);
-
-        data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
+        if (control.value & V4L2_MPEG_VIDC_EXTRADATA_YUV_STATS ||
+            control.value & V4L2_MPEG_VIDC_EXTRADATA_VQZIP_SEI) {
+            if (!mInputExtradata.vqzip_sei_found) {
+                DEBUG_PRINT_ERROR("VQZIP is enabled, But no VQZIP SEI found. Rejecting the session");
+                munmap(pVirt, size);
+                mInputExtradata.put(userptr);
+                return false;
+            }
+            data->nSize = (sizeof(OMX_OTHER_EXTRADATATYPE) +  sizeof(struct VQZipStats) + 3)&(~3);
+            data->nVersion.nVersion = OMX_SPEC_VERSION;
+            data->nPortIndex = 0;
+            data->eType = (OMX_EXTRADATATYPE)MSM_VIDC_EXTRADATA_YUVSTATS_INFO;
+            data->nDataSize = sizeof(struct VQZipStats);
+            vqzip.fill_stats_data((void*)pVirt, (void*) data->data);
+            data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
+        }
 
         data->nSize = sizeof(OMX_OTHER_EXTRADATATYPE);
         data->nVersion.nVersion = OMX_SPEC_VERSION;
@@ -2634,10 +2661,24 @@ unsigned venc_dev::venc_set_message_thread_id(pthread_t tid)
     return 0;
 }
 
-void venc_dev::venc_set_vqzip_defaults()
+bool venc_dev::venc_set_vqzip_defaults()
 {
     struct v4l2_control control;
-    int rc = 0;
+    int rc = 0, num_mbs_per_frame;
+
+    num_mbs_per_frame = m_sVenc_cfg.input_height * m_sVenc_cfg.input_width;
+
+    switch (num_mbs_per_frame) {
+    case OMX_CORE_720P_WIDTH  * OMX_CORE_720P_HEIGHT:
+    case OMX_CORE_1080P_WIDTH * OMX_CORE_1080P_HEIGHT:
+    case OMX_CORE_4KUHD_WIDTH * OMX_CORE_4KUHD_HEIGHT:
+    case OMX_CORE_4KDCI_WIDTH * OMX_CORE_4KDCI_HEIGHT:
+        break;
+    default:
+        DEBUG_PRINT_ERROR("VQZIP is not supported for this resoultion : %d X %d",
+            m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
+        return false;
+    }
 
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL;
     control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_OFF;
@@ -2658,6 +2699,21 @@ void venc_dev::venc_set_vqzip_defaults()
     if (rc)
         DEBUG_PRINT_ERROR("Failed to set B frame period for VQZIP");
 
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_PERF_MODE;
+    control.value = V4L2_MPEG_VIDC_VIDEO_PERF_MAX_QUALITY;
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc)
+        DEBUG_PRINT_ERROR("Failed to set Max quality for VQZIP");
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_IDR_PERIOD;
+    control.value = 1;
+
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc)
+        DEBUG_PRINT_ERROR("Failed to set IDR period for VQZIP");
+
+    return true;
 }
 
 
@@ -2681,8 +2737,8 @@ unsigned venc_dev::venc_start(void)
                 __func__, codec_profile.profile, profile_level.level);
     }
 
-    if (vqzip_sei_info.enabled)
-        venc_set_vqzip_defaults();
+    if (vqzip_sei_info.enabled && !venc_set_vqzip_defaults())
+        return 1;
 
     venc_config_print();
 
@@ -5404,6 +5460,17 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
         rate_ctrl.rcmode = control.value;
     }
 
+    if (eControlRate == OMX_Video_ControlRateVariable && (supported_rc_modes & RC_VBR_CFR)) {
+        /* Enable VQZIP SEI by default for camcorder RC modes */
+
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_VQZIP_SEI;
+        control.value = V4L2_CID_MPEG_VIDC_VIDEO_VQZIP_SEI_ENABLE;
+        DEBUG_PRINT_HIGH("Set VQZIP SEI:");
+        if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control) < 0) {
+            DEBUG_PRINT_HIGH("Non-Fatal: Request to set VQZIP failed");
+        }
+    }
+
     return status;
 }
 
@@ -6511,6 +6578,7 @@ encExtradata::encExtradata(class omx_venc *venc_handle)
     mVencHandle = venc_handle;
     mDbgEtbCount = 0;
     pthread_mutex_init(&lock, NULL);
+    vqzip_sei_found = false;
 }
 
 encExtradata::~encExtradata()
