@@ -51,6 +51,9 @@
 
 #include "swvdec_api.h"
 
+static unsigned int split_buffer_mpeg4(unsigned int         *offset_array,
+                                       OMX_BUFFERHEADERTYPE *p_buffer_hdr);
+
 /**
  * ----------------
  * PUBLIC FUNCTIONS
@@ -83,6 +86,7 @@ omx_swvdec::omx_swvdec():
     m_meta_buffer_mode_disabled(false),
     m_meta_buffer_mode(false),
     m_adaptive_playback_mode(false),
+    m_arbitrary_bytes_mode(false),
     m_port_reconfig_inprogress(false),
     m_dimensions_update_inprogress(false),
     m_buffer_array_ip(NULL),
@@ -201,6 +205,8 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
 
         m_swvdec_codec         = SWVDEC_CODEC_MPEG4;
         m_omx_video_codingtype = ((OMX_VIDEO_CODINGTYPE) QOMX_VIDEO_CodingDivx);
+
+        m_arbitrary_bytes_mode = true;
     }
     else
     {
@@ -4439,6 +4445,57 @@ void omx_swvdec::meta_buffer_ref_remove(unsigned int fd,
 }
 
 /**
+ * @brief Split MPEG-4 bitstream buffer into multiple frames (if they exist).
+ *
+ * @param[in,out] offset_array: Array of offsets to frame headers.
+ * @param[in]     p_buffer_hdr: Pointer to buffer header.
+ *
+ * @retval Number of frames in buffer.
+ */
+unsigned int split_buffer_mpeg4(unsigned int         *offset_array,
+                                OMX_BUFFERHEADERTYPE *p_buffer_hdr)
+{
+    unsigned char *p_buffer = p_buffer_hdr->pBuffer;
+
+    unsigned int byte_count = 0;
+
+    unsigned int num_frame_headers = 0;
+
+    unsigned int next_4bytes;
+
+    while ((byte_count < p_buffer_hdr->nFilledLen) &&
+           (num_frame_headers < OMX_SWVDEC_MAX_FRAMES_PER_ETB))
+    {
+        next_4bytes = *((unsigned int *) p_buffer);
+
+        next_4bytes = __builtin_bswap32(next_4bytes);
+
+        if (next_4bytes == 0x000001B6)
+        {
+            OMX_SWVDEC_LOG_HIGH("%p, buffer %p: "
+                                "frame header at %d bytes offset",
+                                p_buffer_hdr,
+                                p_buffer_hdr->pBuffer,
+                                byte_count);
+
+            offset_array[num_frame_headers] = byte_count;
+
+            num_frame_headers++;
+
+            p_buffer   += 4;
+            byte_count += 4;
+        }
+        else
+        {
+            p_buffer++;
+            byte_count++;
+        }
+    }
+
+    return num_frame_headers;
+}
+
+/**
  * @brief Check if ip port is populated, i.e., if all ip buffers are populated.
  *
  * @retval  true
@@ -5816,19 +5873,76 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
 
         assert(p_buffer_swvdec->p_buffer == p_buffer_hdr->pBuffer);
 
-        p_buffer_swvdec->flags         = p_buffer_hdr->nFlags;
-        p_buffer_swvdec->timestamp     = p_buffer_hdr->nTimeStamp;
-        p_buffer_swvdec->filled_length = p_buffer_hdr->nFilledLen;
-
-        m_diag.dump_ip(p_buffer_swvdec->p_buffer,
-                       p_buffer_swvdec->filled_length);
-
-        retval_swvdec = swvdec_emptythisbuffer(m_swvdec_handle,
-                                               p_buffer_swvdec);
-
-        if (retval_swvdec != SWVDEC_STATUS_SUCCESS)
+        if (m_arbitrary_bytes_mode &&
+            ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) == 0))
         {
-            retval = retval_swvdec2omx(retval_swvdec);
+            unsigned int offset_array[OMX_SWVDEC_MAX_FRAMES_PER_ETB] = {0};
+
+            unsigned int num_frame_headers = 1;
+
+            if (m_omx_video_codingtype ==
+                ((OMX_VIDEO_CODINGTYPE) QOMX_VIDEO_CodingDivx))
+            {
+                num_frame_headers = split_buffer_mpeg4(offset_array,
+                                                       p_buffer_hdr);
+            }
+            else
+            {
+                assert(0);
+            }
+
+            m_buffer_array_ip[index].split_count = num_frame_headers - 1;
+
+            for (unsigned int ii = 0; ii < num_frame_headers; ii++)
+            {
+                p_buffer_swvdec->flags     = p_buffer_hdr->nFlags;
+                p_buffer_swvdec->timestamp = p_buffer_hdr->nTimeStamp;
+
+                if (ii == 0)
+                {
+                    p_buffer_swvdec->offset        = 0;
+                    p_buffer_swvdec->filled_length = (offset_array[ii + 1] ?
+                                                      offset_array[ii + 1] :
+                                                      p_buffer_hdr->nFilledLen);
+                }
+                else
+                {
+                    p_buffer_swvdec->offset        = offset_array[ii];
+                    p_buffer_swvdec->filled_length =
+                        p_buffer_hdr->nFilledLen - offset_array[ii];
+                }
+
+                m_diag.dump_ip(p_buffer_swvdec->p_buffer +
+                               p_buffer_swvdec->offset,
+                               p_buffer_swvdec->filled_length);
+
+                retval_swvdec = swvdec_emptythisbuffer(m_swvdec_handle,
+                                                       p_buffer_swvdec);
+
+                if (retval_swvdec != SWVDEC_STATUS_SUCCESS)
+                {
+                    retval = retval_swvdec2omx(retval_swvdec);
+                    break;
+                }
+            }
+        }
+        else
+        {
+            p_buffer_swvdec->flags         = p_buffer_hdr->nFlags;
+            p_buffer_swvdec->offset        = 0;
+            p_buffer_swvdec->timestamp     = p_buffer_hdr->nTimeStamp;
+            p_buffer_swvdec->filled_length = p_buffer_hdr->nFilledLen;
+
+            m_diag.dump_ip(p_buffer_swvdec->p_buffer + p_buffer_swvdec->offset,
+                           p_buffer_swvdec->filled_length);
+
+            retval_swvdec = swvdec_emptythisbuffer(m_swvdec_handle,
+                                                   p_buffer_swvdec);
+
+            if (retval_swvdec != SWVDEC_STATUS_SUCCESS)
+            {
+                retval = retval_swvdec2omx(retval_swvdec);
+            }
         }
     }
 
@@ -5896,14 +6010,21 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_ebd(
 
     if (index < m_port_ip.def.nBufferCountActual)
     {
-        m_port_ip.num_pending_buffers--;
+        if (m_arbitrary_bytes_mode && m_buffer_array_ip[index].split_count)
+        {
+            m_buffer_array_ip[index].split_count--;
+        }
+        else
+        {
+            m_port_ip.num_pending_buffers--;
 
-        OMX_SWVDEC_LOG_CALLBACK(
-            "EmptyBufferDone(): %p, buffer %p",
-            p_buffer_hdr,
-            m_buffer_array_ip[index].buffer_swvdec.p_buffer);
+            OMX_SWVDEC_LOG_CALLBACK(
+                "EmptyBufferDone(): %p, buffer %p",
+                p_buffer_hdr,
+                m_buffer_array_ip[index].buffer_swvdec.p_buffer);
 
-        m_callback.EmptyBufferDone(&m_cmp, m_app_data, p_buffer_hdr);
+            m_callback.EmptyBufferDone(&m_cmp, m_app_data, p_buffer_hdr);
+        }
     }
     else
     {
