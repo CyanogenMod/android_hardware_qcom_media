@@ -1053,7 +1053,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     }
 
     sess_priority.priority = 1; /* default to non-real-time */
-    if (venc_set_session_priority(sess_priority.priority)) {
+    if (!venc_set_session_priority(sess_priority.priority)) {
         DEBUG_PRINT_ERROR("Setting session priority failed");
         return OMX_ErrorUnsupportedSetting;
     }
