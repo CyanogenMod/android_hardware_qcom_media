@@ -2911,6 +2911,17 @@ unsigned venc_dev::venc_start(void)
             return 1;
         }
     }
+
+    /* This is intentionally done after SEQ_HEADER check. Because
+     * PIC_ORDER_CNT is tightly coupled with lowlatency. Low latency
+     * flag is also overloaded not to send SPS in separate buffer.
+     * Hence lowlatency setting is done after SEQ_HEADER check.
+     * Don't change this sequence unless you know what you are doing.
+     */
+
+    if (m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264)
+        venc_set_low_latency((OMX_BOOL)!intra_period.num_bframes);
+
     stopped = 0;
     return 0;
 }
