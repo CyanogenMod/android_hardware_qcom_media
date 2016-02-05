@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2015, Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -4622,7 +4622,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         handle = (private_handle_t *)media_buffer->meta_handle;
     }
 
-    if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
+    if (media_buffer && media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
         return empty_this_buffer_proxy(hComp, buffer);
     }
 
