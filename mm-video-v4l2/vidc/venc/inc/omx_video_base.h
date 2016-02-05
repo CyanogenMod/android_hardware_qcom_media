@@ -672,7 +672,6 @@ class omx_video: public qc_omx_component
         OMX_U8                m_cRole[OMX_MAX_STRINGNAME_SIZE];
         extra_data_handler extra_data_handle;
         bool hw_overload;
-        OMX_U32 m_graphicBufferSize;
         char m_platform[OMX_MAX_STRINGNAME_SIZE];
 };
 
