@@ -282,7 +282,6 @@ public:
     void setCookieForConfig(void *cookie);
     ssize_t getBufferSize();
     unsigned int getBufferCount();
-    bool vqzip_sei_found;
 };
 
 struct statistics {
@@ -492,7 +491,7 @@ class venc_dev
         bool venc_set_hybrid_hierp(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hhp);
         bool venc_set_batch_size(OMX_U32 size);
         bool venc_calibrate_gop();
-        bool venc_set_vqzip_defaults();
+        void venc_set_vqzip_defaults();
         bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
         bool venc_set_max_hierp(OMX_U32 hierp_layers);
         bool venc_set_baselayerid(OMX_U32 baseid);
