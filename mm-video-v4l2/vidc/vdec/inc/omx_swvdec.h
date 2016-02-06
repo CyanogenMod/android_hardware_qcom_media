@@ -54,7 +54,7 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2016-02-02T11:25:02+0530"
+#define OMX_SWVDEC_VERSION_DATE "2016-02-06T12:15:40+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
@@ -117,10 +117,8 @@ typedef struct {
 
 /// meta_buffer information structure
 typedef struct {
-    unsigned int fd;        ///< file descriptor
-    unsigned int dup_fd;    ///< duplicate file descriptor
-    unsigned int offset;    ///< offset
-    unsigned int ref_count; ///< reference count
+    int fd;        ///< file descriptor
+    int ref_count; ///< reference count
 } OMX_SWVDEC_META_BUFFER_INFO;
 
 #define DEFAULT_FRAME_WIDTH  1920 ///< default frame width
@@ -284,7 +282,6 @@ private:
 
     OMX_PRIORITYMGMTTYPE m_prio_mgmt; ///< priority management
 
-    bool m_sync_frame_decoding_mode; ///< sync frame decoding mode enabled?
     bool m_android_native_buffers;   ///< android native buffers enabled?
 
     bool m_meta_buffer_mode_disabled; ///< meta buffer mode disabled?
@@ -363,10 +360,8 @@ private:
 
     OMX_ERRORTYPE meta_buffer_array_allocate();
     void          meta_buffer_array_deallocate();
-    void          meta_buffer_ref_add(unsigned int index,
-                                      unsigned int fd,
-                                      unsigned int offset);
-    void          meta_buffer_ref_remove(unsigned int fd, unsigned int offset);
+    void          meta_buffer_ref_add(unsigned int index, int fd);
+    void          meta_buffer_ref_remove(int fd);
 
     OMX_BOOL port_ip_populated();
     OMX_BOOL port_op_populated();
