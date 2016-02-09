@@ -1682,6 +1682,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_sParamProfileLevel, sizeof(m_sParamProfileLevel));
                 break;
             }
+        case OMX_QcomIndexConfigH264EntropyCodingCabac:
+            {
+                QOMX_VIDEO_H264ENTROPYCODINGTYPE * pParam = (QOMX_VIDEO_H264ENTROPYCODINGTYPE*)paramData;
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexConfigH264EntropyCodingCabac");
+                memcpy(pParam, &m_sParamEntropy, sizeof(m_sParamEntropy));
+                break;
+            }
             /*Component should support this port definition*/
         case OMX_IndexParamAudioInit:
             {

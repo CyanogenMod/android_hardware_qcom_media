@@ -355,6 +355,9 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
         m_sParamProfileLevel.eLevel = (OMX_U32) OMX_VIDEO_HEVCMainTierLevel1;
     }
 
+    OMX_INIT_STRUCT(&m_sParamEntropy,  QOMX_VIDEO_H264ENTROPYCODINGTYPE);
+    m_sParamEntropy.bCabac = OMX_FALSE;
+
     // Initialize the video parameters for input port
     OMX_INIT_STRUCT(&m_sInPortDef, OMX_PARAM_PORTDEFINITIONTYPE);
     m_sInPortDef.nPortIndex= (OMX_U32) PORT_INDEX_IN;
