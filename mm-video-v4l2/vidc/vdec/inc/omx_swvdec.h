@@ -54,13 +54,15 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2016-01-21T17:14:05+0530"
+#define OMX_SWVDEC_VERSION_DATE "2016-02-02T11:25:02+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
 #define OMX_SWVDEC_NUM_INSTANCES 1 ///< number of OMX SwVdec instances
 
 #define OMX_SWVDEC_IP_BUFFER_COUNT_MIN 5 ///< OMX SwVdec minimum ip buffer count
+
+#define OMX_SWVDEC_MAX_FRAMES_PER_ETB 2 ///< maximum number of frames per ETB
 
 /// frame dimensions structure
 typedef struct {
@@ -98,6 +100,7 @@ typedef struct {
     struct vdec_bufferpayload buffer_payload;
     SWVDEC_BUFFER             buffer_swvdec;
     bool                      buffer_populated;
+    unsigned int              split_count;
 } OMX_SWVDEC_BUFFER_INFO;
 
 /// @endcond
@@ -287,6 +290,7 @@ private:
     bool m_meta_buffer_mode_disabled; ///< meta buffer mode disabled?
     bool m_meta_buffer_mode;          ///< meta buffer mode enabled?
     bool m_adaptive_playback_mode;    ///< adaptive playback mode enabled?
+    bool m_arbitrary_bytes_mode;      ///< arbitrary bytes mode enabled?
 
     bool m_port_reconfig_inprogress; ///< port reconfiguration in progress?
 

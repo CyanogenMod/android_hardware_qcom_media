@@ -2230,6 +2230,16 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QcomIndexConfigVideoVencLowLatencyMode:
+            {
+                QOMX_ENABLETYPE *pParam = (QOMX_ENABLETYPE*)paramData;
+
+                if (!venc_set_lowlatency_mode(pParam->bEnable)) {
+                     DEBUG_PRINT_ERROR("Setting low latency mode failed");
+                     return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -5529,6 +5539,28 @@ bool venc_dev::venc_set_max_hierp(OMX_U32 hierp_layers)
                 hierp_layers);
         return false;
     }
+}
+
+bool venc_dev::venc_set_lowlatency_mode(OMX_BOOL enable)
+{
+    int rc = 0;
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_MODE;
+    if (enable)
+        control.value = V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_ENABLE;
+    else
+        control.value = V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_DISABLE;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set lowlatency control");
+        return false;
+    }
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
+
+    return true;
 }
 
 bool venc_dev::venc_set_baselayerid(OMX_U32 baseid)

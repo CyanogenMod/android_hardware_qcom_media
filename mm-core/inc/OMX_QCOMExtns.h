@@ -547,6 +547,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Configure ROI info */
     OMX_QTIIndexConfigVideoRoiInfo = 0x7F000059,
+
+    /* Encoder Low Latency mode */
+    OMX_QcomIndexConfigVideoVencLowLatencyMode = 0x7F00005A,
 };
 
 /**
