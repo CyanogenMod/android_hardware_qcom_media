@@ -81,7 +81,6 @@ omx_swvdec::omx_swvdec():
     m_swvdec_created(false),
     m_omx_video_codingtype(OMX_VIDEO_CodingUnused),
     m_omx_color_formattype(OMX_COLOR_FormatUnused),
-    m_sync_frame_decoding_mode(false),
     m_android_native_buffers(false),
     m_meta_buffer_mode_disabled(false),
     m_meta_buffer_mode(false),
@@ -1066,8 +1065,10 @@ OMX_ERRORTYPE omx_swvdec::set_parameter(OMX_HANDLETYPE cmp_handle,
         case OMX_QcomIndexParamVideoSyncFrameDecodingMode:
         {
             OMX_SWVDEC_LOG_API("OMX_QcomIndexParamVideoSyncFrameDecodingMode");
+            OMX_SWVDEC_LOG_ERROR("OMX_QcomIndexParamVideoSyncFrameDecodingMode "
+                                 "unsupported");
 
-            m_sync_frame_decoding_mode = true;
+            retval = OMX_ErrorUnsupportedIndex;
             break;
         }
 
@@ -2058,12 +2059,6 @@ OMX_ERRORTYPE omx_swvdec::empty_this_buffer(OMX_HANDLETYPE        cmp_handle,
         goto empty_this_buffer_exit;
     }
 
-    if (m_sync_frame_decoding_mode &&
-        ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) == 0))
-    {
-        p_buffer_hdr->nFlags |= OMX_BUFFERFLAG_EOS;
-    }
-
     OMX_SWVDEC_LOG_API("%p: buffer %p, flags 0x%08x, filled length %d, "
                        "timestamp %lld",
                        p_buffer_hdr,
@@ -2232,9 +2227,7 @@ OMX_ERRORTYPE omx_swvdec::fill_this_buffer(OMX_HANDLETYPE        cmp_handle,
 
         pthread_mutex_unlock(&m_meta_buffer_array_mutex);
 
-        meta_buffer_ref_add(ii,
-                            p_buffer_payload->pmem_fd,
-                            p_buffer_payload->offset);
+        meta_buffer_ref_add(ii, p_buffer_payload->pmem_fd);
     }
 
     OMX_SWVDEC_LOG_LOW("%p: buffer %p",
@@ -3498,11 +3491,6 @@ OMX_ERRORTYPE omx_swvdec::get_buffer_requirements_swvdec(
             goto get_buffer_requirements_swvdec_exit;
         }
 
-        if (m_sync_frame_decoding_mode)
-        {
-            p_buffer_req->mincount = 1;
-        }
-
         m_port_op.def.nBufferSize        = p_buffer_req->size;
         m_port_op.def.nBufferCountMin    = p_buffer_req->mincount;
         m_port_op.def.nBufferCountActual = MAX(p_buffer_req->mincount,
@@ -4235,7 +4223,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_deallocate_op(
 
         if (m_meta_buffer_mode)
         {
-            // do nothing; munmap() & close() done in FBD or RR
+            // do nothing; munmap() & FD reset done in FBD or RR
         }
         else if (m_android_native_buffers)
         {
@@ -4244,7 +4232,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_deallocate_op(
 
             m_buffer_array_op[ii].buffer_payload.pmem_fd = -1;
         }
-        else if (m_sync_frame_decoding_mode)
+        else
         {
             munmap(m_buffer_array_op[ii].buffer_payload.bufferaddr,
                    m_buffer_array_op[ii].buffer_payload.mmaped_size);
@@ -4254,10 +4242,6 @@ OMX_ERRORTYPE omx_swvdec::buffer_deallocate_op(
             m_buffer_array_op[ii].buffer_payload.pmem_fd = -1;
 
             ion_memory_free(&m_buffer_array_op[ii].ion_info);
-        }
-        else
-        {
-            assert(0);
         }
 
         m_buffer_array_op[ii].buffer_populated = false;
@@ -4343,6 +4327,15 @@ OMX_ERRORTYPE omx_swvdec::meta_buffer_array_allocate()
 
         retval = OMX_ErrorInsufficientResources;
     }
+    else
+    {
+        unsigned int ii;
+
+        for (ii = 0; ii < m_port_op.def.nBufferCountActual; ii++)
+        {
+            m_meta_buffer_array[ii].fd = -1;
+        }
+    }
 
     return retval;
 }
@@ -4362,36 +4355,19 @@ void omx_swvdec::meta_buffer_array_deallocate()
 /**
  * @brief Add meta buffer reference.
  *
- * @param[in] index:
- * @param[in] fd:
- * @param[in] offset:
+ * @param[in] index: Buffer index.
+ * @param[in] fd:    File descriptor.
  */
-void omx_swvdec::meta_buffer_ref_add(unsigned int index,
-                                     unsigned int fd,
-                                     unsigned int offset)
+void omx_swvdec::meta_buffer_ref_add(unsigned int index, int fd)
 {
     pthread_mutex_lock(&m_meta_buffer_array_mutex);
 
-    if ((m_meta_buffer_array[index].dup_fd != 0) &&
-        (m_meta_buffer_array[index].fd     != fd) &&
-        (m_meta_buffer_array[index].offset != offset))
+    if (m_meta_buffer_array[index].ref_count == 0)
     {
-        OMX_SWVDEC_LOG_LOW("index %d taken by fd %d, offset %d",
-                           index,
-                           m_meta_buffer_array[index].fd,
-                           m_meta_buffer_array[index].offset);
+        m_meta_buffer_array[index].fd = fd;
     }
-    else
-    {
-        if (m_meta_buffer_array[index].dup_fd == 0)
-        {
-            m_meta_buffer_array[index].fd     = fd;
-            m_meta_buffer_array[index].dup_fd = dup(fd);
-            m_meta_buffer_array[index].offset = offset;
-        }
 
-        m_meta_buffer_array[index].ref_count++;
-    }
+    m_meta_buffer_array[index].ref_count++;
 
     pthread_mutex_unlock(&m_meta_buffer_array_mutex);
 }
@@ -4399,11 +4375,9 @@ void omx_swvdec::meta_buffer_ref_add(unsigned int index,
 /**
  * @brief Remove meta buffer reference.
  *
- * @param[in] fd:
- * @param[in] offset:
+ * @param[in] fd: File descriptor.
  */
-void omx_swvdec::meta_buffer_ref_remove(unsigned int fd,
-                                        unsigned int offset)
+void omx_swvdec::meta_buffer_ref_remove(int fd)
 {
     unsigned int ii;
 
@@ -4411,18 +4385,13 @@ void omx_swvdec::meta_buffer_ref_remove(unsigned int fd,
 
     for (ii = 0; ii < m_port_op.def.nBufferCountActual; ii++)
     {
-        if ((m_meta_buffer_array[ii].fd     == fd) &&
-            (m_meta_buffer_array[ii].offset == offset))
+        if (m_meta_buffer_array[ii].fd == fd)
         {
             m_meta_buffer_array[ii].ref_count--;
 
             if (m_meta_buffer_array[ii].ref_count == 0)
             {
-                close(m_meta_buffer_array[ii].dup_fd);
-
-                m_meta_buffer_array[ii].fd = 0;
-                m_meta_buffer_array[ii].dup_fd = 0;
-                m_meta_buffer_array[ii].offset = 0;
+                m_meta_buffer_array[ii].fd = -1;
 
                 munmap(m_buffer_array_op[ii].buffer_payload.bufferaddr,
                        m_buffer_array_op[ii].buffer_payload.mmaped_size);
@@ -4818,8 +4787,7 @@ void omx_swvdec::swvdec_event_handler(SWVDEC_EVENT event, void *p_data)
         if (m_meta_buffer_mode)
         {
             meta_buffer_ref_remove(
-                m_buffer_array_op[index].buffer_payload.pmem_fd,
-                m_buffer_array_op[index].buffer_payload.offset);
+                m_buffer_array_op[index].buffer_payload.pmem_fd);
         }
 
         break;
@@ -6050,6 +6018,8 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
 {
     OMX_ERRORTYPE retval = OMX_ErrorNone;
 
+    static long long timestamp_prev = 0;
+
     if (index < m_port_op.def.nBufferCountActual)
     {
         OMX_U8 *p_buffer;
@@ -6067,16 +6037,13 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
 
         if (p_buffer_hdr->nFilledLen)
         {
-            if (m_sync_frame_decoding_mode)
+            if (m_ts_list.pop(&p_buffer_hdr->nTimeStamp) == false)
             {
-                p_buffer_hdr->nTimeStamp = 0;
+                OMX_SWVDEC_LOG_ERROR("failed to pop timestamp from list");
             }
             else
             {
-                if (m_ts_list.pop(&p_buffer_hdr->nTimeStamp) == false)
-                {
-                    OMX_SWVDEC_LOG_ERROR("failed to pop timestamp from list");
-                }
+                timestamp_prev = p_buffer_hdr->nTimeStamp;
             }
 
             if (m_meta_buffer_mode)
@@ -6095,6 +6062,10 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
                 pthread_mutex_unlock(&m_meta_buffer_array_mutex);
             }
         }
+        else
+        {
+            p_buffer_hdr->nTimeStamp = timestamp_prev;
+        }
 
         if (p_buffer_hdr->nFlags & OMX_BUFFERFLAG_EOS)
         {
@@ -6107,16 +6078,16 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
             ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_READONLY)) == 0)
         {
             meta_buffer_ref_remove(
-                m_buffer_array_op[index].buffer_payload.pmem_fd,
-                m_buffer_array_op[index].buffer_payload.offset);
+                m_buffer_array_op[index].buffer_payload.pmem_fd);
         }
 
         OMX_SWVDEC_LOG_CALLBACK(
             "FillBufferDone(): %p, buffer %p, "
-            "flags 0x%08x, timestamp %lld",
+            "flags 0x%08x, filled length %d, timestamp %lld",
             p_buffer_hdr,
             p_buffer,
             p_buffer_hdr->nFlags,
+            p_buffer_hdr->nFilledLen,
             p_buffer_hdr->nTimeStamp);
 
         m_callback.FillBufferDone(&m_cmp, m_app_data, p_buffer_hdr);
