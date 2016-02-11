@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -474,6 +474,9 @@ omx_core_cb_type core[] =
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
@@ -483,14 +486,49 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.qti.audio.decoder.alac.sw",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxAlacDecSw.so",
+    {
+      "audio_decoder.alac"
+    }
+  },
+  {
     "OMX.qcom.audio.decoder.ape",
     NULL,   // Create instance function
     // Unique instance handle
     {
+      NULL,
+      NULL,
+      NULL,
       NULL
     },
     NULL,   // Shared object library handle
     "libOmxApeDec.so",
+    {
+      "audio_decoder.ape"
+    }
+  },
+  {
+    "OMX.qti.audio.decoder.ape.sw",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxApeDecSw.so",
     {
       "audio_decoder.ape"
     }
