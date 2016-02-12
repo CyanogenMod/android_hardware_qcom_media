@@ -6672,11 +6672,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorInvalidState;
     }
 
-    if (!m_out_bEnabled) {
-        DEBUG_PRINT_ERROR("ERROR:FTB incorrect state operation, output port is disabled.");
-        return OMX_ErrorIncorrectStateOperation;
-    }
-
     nPortIndex = buffer - client_buffers.get_il_buf_hdr();
     if (buffer == NULL ||
             (nPortIndex >= drv_ctx.op_buf.actualcount)) {
@@ -6731,7 +6726,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
     DEBUG_PRINT_LOW("FTBProxy: bufhdr = %p, bufhdr->pBuffer = %p",
             bufferAdd, bufferAdd->pBuffer);
     /*Return back the output buffer to client*/
-    if (m_out_bEnabled != OMX_TRUE || output_flush_progress == true) {
+    if (m_out_bEnabled != OMX_TRUE || output_flush_progress == true || in_reconfig) {
         DEBUG_PRINT_LOW("Output Buffers return flush/disable condition");
         buffer->nFilledLen = 0;
         m_cb.FillBufferDone (hComp,m_app_data,buffer);
