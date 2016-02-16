@@ -6571,26 +6571,34 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
     }
     if (!streaming[OUTPUT_PORT]) {
         enum v4l2_buf_type buf_type;
-        int ret,r;
+        int rc,r;
 
         buf_type=V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         DEBUG_PRINT_LOW("send_command_proxy(): Idle-->Executing");
-        ret=ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMON,&buf_type);
-        if (!ret) {
+        rc=ioctl(drv_ctx.video_driver_fd, VIDIOC_STREAMON,&buf_type);
+        if (!rc) {
             DEBUG_PRINT_HIGH("Streamon on OUTPUT Plane was successful");
             streaming[OUTPUT_PORT] = true;
         } else if (errno == EBUSY) {
             DEBUG_PRINT_ERROR("Failed to call stream on OUTPUT due to HW_OVERLOAD");
-            post_event ((unsigned long)buffer, VDEC_S_SUCCESS,
-                    OMX_COMPONENT_GENERATE_EBD);
-            return OMX_ErrorInsufficientResources;
+            ret = OMX_ErrorInsufficientResources;
         } else {
             DEBUG_PRINT_ERROR("Failed to call streamon on OUTPUT");
             DEBUG_PRINT_LOW("If Stream on failed no buffer should be queued");
-            post_event ((unsigned long)buffer, VDEC_S_SUCCESS,
-                    OMX_COMPONENT_GENERATE_EBD);
-            return OMX_ErrorBadParameter;
+            ret = OMX_ErrorBadParameter;
         }
+    }
+    if (ret != OMX_ErrorNone) {
+        if (codec_config_flag)  {
+            android_atomic_dec(&m_queued_codec_config_count);
+            if ((android_atomic_add(0, &m_queued_codec_config_count) == 0) &&
+                BITMASK_PRESENT(&m_flags, OMX_COMPONENT_FLUSH_DEFERRED)) {
+                DEBUG_PRINT_ERROR("streamon failed: sem post for m_safe_flush to avoid waiting");
+                sem_post(&m_safe_flush);
+            }
+        }
+        empty_buffer_done(&m_cmp,buffer);
+        return ret;
     }
     DEBUG_PRINT_LOW("[ETBP] pBuf(%p) nTS(%lld) Sz(%u)",
             frameinfo.bufferaddr, (long long)frameinfo.timestamp,
