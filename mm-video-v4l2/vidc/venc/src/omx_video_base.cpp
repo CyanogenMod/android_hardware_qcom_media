@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2015, Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -4327,6 +4327,17 @@ int omx_video::alloc_map_ion_memory(int size,
         alloc_data->len = (size + (SZ_4K - 1)) & ~(SZ_4K - 1);
         alloc_data->align = SZ_4K;
         alloc_data->flags = (flag & ION_FLAG_CACHED ? ION_FLAG_CACHED : 0);
+
+        /* If color format is Vanilla NV12, we will need to use caching for optimal
+           color alignment performance.
+         */
+
+        if (m_sInPortDef.format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar &&
+           (m_sInPortDef.format.video.nFrameWidth * m_sInPortDef.format.video.nFrameHeight >= 1920 * 1080))
+        {
+            DEBUG_PRINT_HIGH("Enabling cacheing for this buffer");
+            alloc_data->flags = ION_FLAG_CACHED;
+        }
 #ifdef MAX_RES_720P
         alloc_data->heap_id_mask = ION_HEAP(MEM_HEAP_ID);
 #else
