@@ -3208,11 +3208,6 @@ OMX_ERRORTYPE omx_swvdec::describe_color_format(
             break;
         }
 
-        case OMX_COLOR_FormatYUV420SemiPlanar:
-        {
-            return OMX_ErrorUnsupportedSetting;
-        }
-
         default:
         {
             OMX_SWVDEC_LOG_ERROR("color format '0x%08x' invalid/unsupported",
@@ -4969,17 +4964,12 @@ void omx_swvdec::async_thread_destroy()
  * @param[in] event_id:     Event ID.
  * @param[in] event_param1: Event parameter 1.
  * @param[in] event_param2: Event parameter 2.
- *
- * @retval  true if post event successful
- * @retval false if post event unsuccessful
  */
-bool omx_swvdec::async_post_event(unsigned long event_id,
+void omx_swvdec::async_post_event(unsigned long event_id,
                                   unsigned long event_param1,
                                   unsigned long event_param2)
 {
     OMX_SWVDEC_EVENT_INFO event_info;
-
-    bool retval = true;
 
     event_info.event_id     = event_id;
     event_info.event_param1 = event_param1;
@@ -4991,31 +4981,26 @@ bool omx_swvdec::async_post_event(unsigned long event_id,
     case OMX_SWVDEC_EVENT_ETB:
     case OMX_SWVDEC_EVENT_EBD:
     {
-        retval = m_queue_port_ip.push(&event_info);
+        m_queue_port_ip.push(&event_info);
         break;
     }
 
     case OMX_SWVDEC_EVENT_FTB:
     case OMX_SWVDEC_EVENT_FBD:
     {
-        retval = m_queue_port_op.push(&event_info);
+        m_queue_port_op.push(&event_info);
         break;
     }
 
     default:
     {
-        retval = m_queue_command.push(&event_info);
+        m_queue_command.push(&event_info);
         break;
     }
 
     }
 
-    if (retval == true)
-    {
-        sem_post(&m_async_thread.sem_event);
-    }
-
-    return retval;
+    sem_post(&m_async_thread.sem_event);
 }
 
 /**
@@ -5836,7 +5821,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
         if (p_buffer_hdr->nFilledLen &&
             ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) == 0))
         {
-            m_ts_list.push(p_buffer_hdr->nTimeStamp);
+            m_queue_timestamp.push(p_buffer_hdr->nTimeStamp);
         }
 
         assert(p_buffer_swvdec->p_buffer == p_buffer_hdr->pBuffer);
@@ -6037,12 +6022,18 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
 
         if (p_buffer_hdr->nFilledLen)
         {
-            if (m_ts_list.pop(&p_buffer_hdr->nTimeStamp) == false)
+            if (m_queue_timestamp.empty())
             {
-                OMX_SWVDEC_LOG_ERROR("failed to pop timestamp from list");
+                OMX_SWVDEC_LOG_ERROR("timestamp queue empty");
+
+                p_buffer_hdr->nTimeStamp = timestamp_prev;
             }
             else
             {
+                p_buffer_hdr->nTimeStamp = m_queue_timestamp.top();
+
+                m_queue_timestamp.pop();
+
                 timestamp_prev = p_buffer_hdr->nTimeStamp;
             }
 
@@ -6071,7 +6062,10 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
         {
             async_post_event(OMX_SWVDEC_EVENT_EOS, 0, 0);
 
-            m_ts_list.reset();
+            while (m_queue_timestamp.empty() == false)
+            {
+                m_queue_timestamp.pop();
+            }
         }
 
         if (m_meta_buffer_mode &&
@@ -6269,7 +6263,10 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_flush_port_op()
 
     if (m_port_reconfig_inprogress == false)
     {
-        m_ts_list.reset();
+        while (m_queue_timestamp.empty() == false)
+        {
+            m_queue_timestamp.pop();
+        }
     }
 
     m_port_op.flush_inprogress = OMX_FALSE;
