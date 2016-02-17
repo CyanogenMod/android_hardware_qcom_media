@@ -266,6 +266,7 @@ venc_dev::venc_dev(class omx_venc *venc_class):mInputExtradata(venc_class), mOut
     memset(&hybrid_hp, 0, sizeof(hybrid_hp));
     sess_priority.priority = 1;
     operating_rate = 0;
+    low_latency_mode = OMX_FALSE;
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vidc.enc.log.in", property_value, "0");
@@ -2272,6 +2273,16 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QTIIndexParamLowLatencyMode:
+            {
+                QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE* pParam =
+                    (QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE*)paramData;
+                if (!venc_set_low_latency(pParam->bLowLatencyMode)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QTIIndexParamLowLatencyMode failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             DEBUG_PRINT_ERROR("ERROR: Unsupported parameter in venc_set_param: %u",
@@ -2781,14 +2792,20 @@ unsigned venc_dev::venc_start(void)
 
     streaming[CAPTURE_PORT] = true;
 
-    control.id = V4L2_CID_MPEG_VIDC_VIDEO_REQUEST_SEQ_HEADER;
-    control.value = 1;
-    ret = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
-    if (ret) {
-        DEBUG_PRINT_ERROR("failed to request seq header");
-        return 1;
-    }
+    /*
+     * Workaround for Skype usecase. Skpye doesn't like SPS\PPS come as
+       seperate buffer. It wants SPS\PPS with IDR frame FTB.
+     */
 
+    if (!low_latency_mode) {
+        control.id = V4L2_CID_MPEG_VIDC_VIDEO_REQUEST_SEQ_HEADER;
+        control.value = 1;
+        ret = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+        if (ret) {
+            DEBUG_PRINT_ERROR("failed to request seq header");
+            return 1;
+        }
+    }
 
     stopped = 0;
     return 0;
@@ -5616,6 +5633,28 @@ bool venc_dev::venc_set_max_hierp(OMX_U32 hierp_layers)
                 hierp_layers);
         return false;
     }
+}
+
+bool venc_dev::venc_set_low_latency(OMX_BOOL enable)
+{
+    struct v4l2_control control;
+
+    if (m_sVenc_cfg.codectype != V4L2_PIX_FMT_H264) {
+        DEBUG_PRINT_ERROR("Low Latency mode is valid only for H264");
+        return false;
+    }
+
+    enable ? control.value = 2 : control.value = 0;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_PIC_ORDER_CNT;
+    if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_ERROR("Failed to set H264_PICORDER_CNT");
+        return false;
+    }
+
+    low_latency_mode = (OMX_BOOL) enable;
+
+    return true;
 }
 
 bool venc_dev::venc_set_baselayerid(OMX_U32 baseid)

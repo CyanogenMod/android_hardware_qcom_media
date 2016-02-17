@@ -2045,6 +2045,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_sSar, sizeof(m_sSar));
                 break;
             }
+        case OMX_QTIIndexParamLowLatencyMode:
+           {
+               QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE * pParam =
+                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE *>(paramData);
+                memcpy(pParam, &m_slowLatencyMode, sizeof(m_slowLatencyMode));
+                break;
+           }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -2294,6 +2301,7 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize;
         return OMX_ErrorNone;
     }
+
     if (!strncmp(paramName, OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO,
             sizeof(OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO) - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamVideoEnableRoiInfo;
@@ -2304,6 +2312,13 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoRoiInfo;
         return OMX_ErrorNone;
     }
+
+    if (!strncmp(paramName, "OMX.QTI.index.param.video.LowLatency",
+            sizeof("OMX.QTI.index.param.video.LowLatency") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamLowLatencyMode;
+        return OMX_ErrorNone;
+    }
+
     return OMX_ErrorNotImplemented;
 }
 

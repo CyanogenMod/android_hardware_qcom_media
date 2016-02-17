@@ -635,6 +635,7 @@ class omx_video: public qc_omx_component
         PrependSPSPPSToIDRFramesParams m_sPrependSPSPPS;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
+        QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE m_slowLatencyMode;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;
