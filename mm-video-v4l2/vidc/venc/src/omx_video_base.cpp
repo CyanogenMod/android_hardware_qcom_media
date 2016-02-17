@@ -5060,7 +5060,6 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
             Input_pmem_info.fd = handle->fd;
             Input_pmem_info.offset = 0;
             Input_pmem_info.size = handle->size;
-            m_graphicBufferSize = handle->size;
             if (is_conv_needed(handle->format, handle->flags))
                 ret = convert_queue_buffer(hComp,Input_pmem_info,index);
             else if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE ||
@@ -5129,10 +5128,9 @@ OMX_ERRORTYPE omx_video::push_empty_eos_buffer(OMX_HANDLETYPE hComp,
         emptyEosBufHdr.nTimeStamp = buffer->nTimeStamp;
         emptyEosBufHdr.nFlags = buffer->nFlags;
         emptyEosBufHdr.pBuffer = NULL;
-        if (!mUsesColorConversion && !mUseProxyColorFormat)
+        if (!mUsesColorConversion)
             emptyEosBufHdr.nAllocLen = m_sInPortDef.nBufferSize;
-        else if (mUseProxyColorFormat)
-            emptyEosBufHdr.nAllocLen = m_graphicBufferSize;
+
         if (dev_empty_buf(&emptyEosBufHdr, 0, index, m_pInput_pmem[index].fd) != true) {
             DEBUG_PRINT_ERROR("ERROR: in dev_empty_buf for empty eos buffer");
             dev_free_buf(&Input_pmem_info, PORT_INDEX_IN);
