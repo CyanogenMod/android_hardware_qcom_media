@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1752,27 +1752,26 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 nRotation = pParam->nRotation - m_sConfigFrameRotation.nRotation;
                 if (nRotation < 0)
                     nRotation = -nRotation;
-                if (nRotation == 90 || nRotation == 270) {
-                    DEBUG_PRINT_HIGH("set_config: updating device Dims");
-                    if (handle->venc_set_config(configData,
-                                OMX_IndexConfigCommonRotate) != true) {
+
+                DEBUG_PRINT_HIGH("set_config: updating device Dims");
+
+                if (handle->venc_set_config(configData,
+                    OMX_IndexConfigCommonRotate) != true) {
                         DEBUG_PRINT_ERROR("ERROR: Set OMX_IndexConfigCommonRotate failed");
                         return OMX_ErrorUnsupportedSetting;
-                    } else {
-                        OMX_U32 nFrameWidth;
-                        OMX_U32 nFrameHeight;
-
-                        DEBUG_PRINT_HIGH("set_config: updating port Dims");
-
-                        nFrameWidth = m_sOutPortDef.format.video.nFrameWidth;
-                        nFrameHeight = m_sOutPortDef.format.video.nFrameHeight;
-                        m_sOutPortDef.format.video.nFrameWidth  = nFrameHeight;
-                        m_sOutPortDef.format.video.nFrameHeight = nFrameWidth;
-                        m_sConfigFrameRotation.nRotation = pParam->nRotation;
-                    }
-                } else {
-                    m_sConfigFrameRotation.nRotation = pParam->nRotation;
                 }
+                if (nRotation == 90 || nRotation == 270) {
+                    OMX_U32 nFrameWidth;
+                    OMX_U32 nFrameHeight;
+
+                    DEBUG_PRINT_HIGH("set_config: updating port Dims Rotation angle = %d",
+                        pParam->nRotation);
+                    nFrameWidth = m_sOutPortDef.format.video.nFrameWidth;
+                    nFrameHeight = m_sOutPortDef.format.video.nFrameHeight;
+                    m_sOutPortDef.format.video.nFrameWidth  = nFrameHeight;
+                    m_sOutPortDef.format.video.nFrameHeight = nFrameWidth;
+                }
+                m_sConfigFrameRotation.nRotation = pParam->nRotation;
                 break;
             }
         case OMX_QcomIndexConfigVideoFramePackingArrangement:
