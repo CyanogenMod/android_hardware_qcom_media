@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -107,6 +107,8 @@ char output_extradata_filename [] = "/data/misc/media/extradata";
 #define VC1_STRUCT_B_POS            24
 #define VC1_SEQ_LAYER_SIZE          36
 #define POLL_TIMEOUT 0x7fffffff
+#define WIDTH_4K 4096
+#define HEIGHT_4K 2160
 
 #define MEM_DEVICE "/dev/ion"
 #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
@@ -3662,27 +3664,20 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            drv_ctx.frame_rate.fps_numerator = (int)
                                                drv_ctx.frame_rate.fps_numerator / drv_ctx.frame_rate.fps_denominator;
                                        drv_ctx.frame_rate.fps_denominator = 1;
-                                       frm_int = drv_ctx.frame_rate.fps_denominator * 1e6 /
-                                           drv_ctx.frame_rate.fps_numerator;
-                                       DEBUG_PRINT_LOW("set_parameter: frm_int(%u) fps(%.2f)",
-                                               (unsigned int)frm_int, drv_ctx.frame_rate.fps_numerator /
-                                               (float)drv_ctx.frame_rate.fps_denominator);
-
-                                       struct v4l2_outputparm oparm;
-                                       /*XXX: we're providing timing info as seconds per frame rather than frames
-                                        * per second.*/
-                                       oparm.timeperframe.numerator = drv_ctx.frame_rate.fps_denominator;
-                                       oparm.timeperframe.denominator = drv_ctx.frame_rate.fps_numerator;
-
-                                       struct v4l2_streamparm sparm;
-                                       sparm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-                                       sparm.parm.output = oparm;
-                                       if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_PARM, &sparm)) {
-                                           DEBUG_PRINT_ERROR("Unable to convey fps info to driver, performance might be affected");
-                                           eRet = OMX_ErrorHardware;
+                                       eRet = set_frame_rate(drv_ctx.frame_rate.fps_numerator,drv_ctx.frame_rate.fps_denominator);
+                                       if (eRet != OMX_ErrorNone)
                                            break;
-                                       }
-                                       m_perf_control.request_cores(frm_int);
+                                   }
+                                   // If resolution is 4096x2160 (True UHD), then
+                                   // set frame rate to 24fps for best effort decoding.
+                                   if (portDefn->format.video.nFrameWidth * portDefn->format.video.nFrameHeight >= WIDTH_4K * HEIGHT_4K) {
+                                       drv_ctx.frame_rate.fps_numerator = 24;
+                                       drv_ctx.frame_rate.fps_denominator = 1;
+                                       DEBUG_PRINT_HIGH("Setting %lu fps framerate for WxH = %dx%d", drv_ctx.frame_rate.fps_numerator,
+                                             portDefn->format.video.nFrameWidth, portDefn->format.video.nFrameHeight);
+                                       eRet = set_frame_rate(drv_ctx.frame_rate.fps_numerator,drv_ctx.frame_rate.fps_denominator);
+                                       if (eRet != OMX_ErrorNone)
+                                           break;
                                    }
 
                                    if (drv_ctx.video_resolution.frame_height !=
@@ -9357,6 +9352,37 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
         }
     }
     prev_ts = act_timestamp;
+}
+
+OMX_ERRORTYPE omx_vdec::set_frame_rate(OMX_U64 numerator, OMX_U64 denominator)
+{
+    struct v4l2_outputparm oparm;
+    struct v4l2_streamparm sparm;
+    OMX_ERRORTYPE eRet = OMX_ErrorNone;
+
+    /* Sanity Check*/
+    if (!numerator || !denominator) {
+        DEBUG_PRINT_ERROR("%s: Invalid arguments", __func__);
+        return OMX_ErrorBadParameter;
+    }
+
+    frm_int = denominator * 1e6 / numerator;
+    DEBUG_PRINT_LOW("set_parameter: frm_int(%u) fps(%.2f)",
+            (unsigned int)frm_int, numerator / (float) denominator);
+
+    /*we're providing timing info as seconds per frame rather than frames
+     * per second.*/
+    oparm.timeperframe.numerator = denominator;
+    oparm.timeperframe.denominator = numerator;
+
+    sparm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+    sparm.parm.output = oparm;
+    if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_PARM, &sparm)) {
+        DEBUG_PRINT_ERROR("Unable to convey fps info to driver, performance might be affected");
+        return OMX_ErrorHardware;
+    }
+    m_perf_control.request_cores(frm_int);
+    return eRet;
 }
 
 void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)

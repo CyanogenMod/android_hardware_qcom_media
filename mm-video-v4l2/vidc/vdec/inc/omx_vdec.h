@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2016, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -683,6 +683,7 @@ class omx_vdec: public qc_omx_component
         int stream_off(OMX_U32 port);
         void adjust_timestamp(OMX_S64 &act_timestamp);
         void set_frame_rate(OMX_S64 act_timestamp);
+        OMX_ERRORTYPE set_frame_rate(OMX_U64 numerator, OMX_U64 denominator);
         void handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr);
         void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
         void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
