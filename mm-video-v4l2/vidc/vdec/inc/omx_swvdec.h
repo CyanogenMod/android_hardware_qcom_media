@@ -54,7 +54,7 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2016-02-06T12:15:40+0530"
+#define OMX_SWVDEC_VERSION_DATE "2016-02-17T15:40:01+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
@@ -302,7 +302,10 @@ private:
     pthread_mutex_t              m_meta_buffer_array_mutex;
                                             ///< mutex for metabuffer info array
 
-    omx_swvdec_ts_list m_ts_list; ///< timestamp list
+    std::priority_queue <OMX_TICKS,
+                         std::vector<OMX_TICKS>,
+                         std::greater<OMX_TICKS> > m_queue_timestamp;
+                                                   ///< timestamp priority queue
 
     omx_swvdec_diag m_diag; ///< diagnostics class variable
 
@@ -416,7 +419,7 @@ private:
 
     static void   async_thread(void *p_cmp);
 
-    bool          async_post_event(unsigned long event_id,
+    void          async_post_event(unsigned long event_id,
                                    unsigned long event_param1,
                                    unsigned long event_param2);
 
