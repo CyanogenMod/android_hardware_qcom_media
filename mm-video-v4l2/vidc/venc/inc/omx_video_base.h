@@ -139,7 +139,7 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 #ifdef _ANDROID_ICS_
 #define MAX_NUM_INPUT_BUFFERS 64
 #endif
-void* message_thread(void *);
+void* message_thread_enc(void *);
 
 enum omx_venc_extradata_types {
     VENC_EXTRADATA_SLICEINFO = 0x100,
