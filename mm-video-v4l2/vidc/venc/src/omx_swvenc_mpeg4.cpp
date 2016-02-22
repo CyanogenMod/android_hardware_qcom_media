@@ -95,6 +95,7 @@ omx_venc::omx_venc()
     mUseProxyColorFormat = false;
     get_syntaxhdr_enable = false;
     m_bSeqHdrRequested = false;
+    format_set = false;
 
     EXIT_FUNC();
 }
@@ -688,15 +689,18 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                 (OMX_VIDEO_PARAM_PORTFORMATTYPE *)paramData;
             DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoPortFormat %d",
                     portFmt->eColorFormat);
+            SWVENC_COLOR_FORMAT color_format;
 
             /* set the driver with the corresponding values */
             if (PORT_INDEX_IN == portFmt->nPortIndex)
             {
-                if (portFmt->eColorFormat == (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FormatAndroidOpaque)
+                if (portFmt->eColorFormat ==
+                    ((OMX_COLOR_FORMATTYPE) QOMX_COLOR_FormatAndroidOpaque))
                 {
                     /* meta_mode = 2 (kMetadataBufferTypeGrallocSource) */
-                    m_sInPortFormat.eColorFormat = (OMX_COLOR_FORMATTYPE)
-                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+                    m_sInPortFormat.eColorFormat =
+                        (OMX_COLOR_FORMATTYPE) QOMX_COLOR_FormatYVU420SemiPlanar;
+                    color_format = SWVENC_COLOR_FORMAT_NV21;
                     if (!mUseProxyColorFormat)
                     {
                        if (!c2d_conv.init())
@@ -712,7 +716,24 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                 else
                 {
                     m_sInPortFormat.eColorFormat = portFmt->eColorFormat;
-                    m_sInPortDef.format.video.eColorFormat = portFmt->eColorFormat;
+                    if ((portFmt->eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar) ||
+                        (portFmt->eColorFormat ==
+                         ((OMX_COLOR_FORMATTYPE) QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m)))
+                    {
+                        color_format = SWVENC_COLOR_FORMAT_NV12;
+                    }
+                    else if (portFmt->eColorFormat ==
+                             ((OMX_COLOR_FORMATTYPE) QOMX_COLOR_FormatYVU420SemiPlanar))
+                    {
+                        color_format = SWVENC_COLOR_FORMAT_NV21;
+                    }
+                    else
+                    {
+                        DEBUG_PRINT_ERROR("%s: OMX_IndexParamVideoPortFormat %d invalid",
+                                          __FUNCTION__,
+                                          portFmt->eColorFormat);
+                        RETURN(OMX_ErrorBadParameter);
+                    }
                     m_input_msg_id = OMX_COMPONENT_GENERATE_ETB;
                     mUseProxyColorFormat = false;
                 }
@@ -721,7 +742,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
 
                 /* set the input color format */
                 Prop.id = SWVENC_PROPERTY_ID_COLOR_FORMAT;
-                Prop.info.color_format = SWVENC_COLOR_FORMAT_NV12;
+                Prop.info.color_format = color_format;
                 Ret = swvenc_setproperty(m_hSwVenc, &Prop);
                 if (Ret != SWVENC_S_SUCCESS)
                 {
@@ -1663,7 +1684,7 @@ OMX_U32 omx_venc::dev_stop(void)
             __FUNCTION__, Ret);
           RETURN(-1);
        }
-
+       format_set = false;
        m_stopped = true;
 
        /* post STOP_DONE event as start is synchronus */
@@ -1792,6 +1813,16 @@ bool omx_venc::dev_empty_buf
           {
               offset = meta_buf->meta_handle->data[1];
               size = meta_buf->meta_handle->data[2];
+              if (!format_set &&
+                  (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 5))
+              {
+                  format_set = true;
+                  if (((OMX_COLOR_FORMATTYPE) meta_buf->meta_handle->data[5]) !=
+                      m_sInPortFormat.eColorFormat)
+                  {
+                      return false;
+                  }
+              }
           }
           else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource)
           {
@@ -1868,13 +1899,13 @@ bool omx_venc::dev_fill_buf
     opbuffer.p_extradata = NULL;
     opbuffer.p_client_data = (unsigned char *)bufhdr;
 
-    DEBUG_PRINT_LOW("FTB: p_buffer (%p) size (%d) filled_len (%d) flags (0x%X) timestamp (%lld) clientData (0x%X)",
+    DEBUG_PRINT_LOW("FTB: p_buffer (%p) size (%d) filled_len (%d) flags (0x%X) timestamp (%lld) clientData (%p)",
       opbuffer.p_buffer,
       opbuffer.size,
       opbuffer.filled_length,
       opbuffer.flags,
       opbuffer.timestamp,
-      (unsigned int)opbuffer.p_client_data);
+      opbuffer.p_client_data);
     DEBUG_PRINT_LOW("FTB: extradata_type (%d) p_extradata (%p)",
       opbuffer.extradata_type,
       opbuffer.p_extradata);
