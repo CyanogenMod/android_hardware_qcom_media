@@ -124,7 +124,7 @@ public:
     omx_swvdec_diag();
     ~omx_swvdec_diag();
 
-    void dump_ip(unsigned char *p_buffer, unsigned int   filled_length);
+    void dump_ip(unsigned char *p_buffer, unsigned int filled_length);
     void dump_op(unsigned char *p_buffer,
                  unsigned int   width,
                  unsigned int   height,
