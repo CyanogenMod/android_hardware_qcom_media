@@ -4255,20 +4255,26 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
                 eRet = OMX_ErrorNoMore;
             }
 #else
+            char property_value[PROPERTY_VALUE_MAX] = {0};
+            OMX_VIDEO_AVCLEVELTYPE level = OMX_VIDEO_AVCLevel4;
+            if (property_get("media.msm8956hw", property_value, "0") && atoi(property_value)) {
+                level = OMX_VIDEO_AVCLevel51;
+            }
+
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileBaseline;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
 
             } else if (profileLevelType->nProfileIndex == 1) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileMain;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
             } else if (profileLevelType->nProfileIndex == 2) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileHigh;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
 #ifdef _MSM8226_
             } else if (profileLevelType->nProfileIndex == 3) {
                 profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
 #endif
             } else {
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %d",
