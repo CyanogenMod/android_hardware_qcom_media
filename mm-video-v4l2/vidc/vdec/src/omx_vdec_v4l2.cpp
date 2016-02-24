@@ -3377,13 +3377,18 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVEL
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileBaseline;
                 profileLevelType->eLevel   = OMX_VIDEO_AVCLevel51;
-
             } else if (profileLevelType->nProfileIndex == 1) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileMain;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel51;
+                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else if (profileLevelType->nProfileIndex == 2) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileHigh;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel51;
+                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
+            } else if (profileLevelType->nProfileIndex == 3) {
+                profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
+                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
+            } else if (profileLevelType->nProfileIndex == 4) {
+                profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedHigh;
+                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else {
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
                         (unsigned int)profileLevelType->nProfileIndex);
