@@ -3721,6 +3721,9 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            }
                                        }
                                    }
+                                   if (eRet) {
+                                       break;
+                                   }
                                    if (m_custom_buffersize.input_buffersize
                                         && (portDefn->nBufferSize > m_custom_buffersize.input_buffersize)) {
                                        DEBUG_PRINT_ERROR("ERROR: Custom buffer size set by client: %d, trying to set: %d",
