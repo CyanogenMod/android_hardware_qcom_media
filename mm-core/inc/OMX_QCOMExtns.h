@@ -493,6 +493,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QcomIndexParamVideoHybridHierpMode = 0x7F000043,
 
     OMX_QcomIndexFlexibleYUVDescription = 0x7F000044,
+
+    /*"OMX.google.android.index.allocateNativeHandle"*/
+    OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F000045,
 };
 
 /**

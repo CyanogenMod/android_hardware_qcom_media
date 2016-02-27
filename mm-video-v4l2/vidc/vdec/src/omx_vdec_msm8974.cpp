@@ -590,6 +590,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
 #endif
     m_desc_buffer_ptr(NULL),
     secure_mode(false),
+    allocate_native_handle(false),
     m_other_extradata(NULL),
     m_profile(0),
     client_set_fps(false),
@@ -3925,6 +3926,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                        eRet = use_android_native_buffer(hComp, paramData);
                                    }
                                    break;
+        case OMX_GoogleAndroidIndexAllocateNativeHandle: {
+                AllocateNativeHandleParams* allocateNativeHandleParams = (AllocateNativeHandleParams *) paramData;
+                if (allocateNativeHandleParams != NULL) {
+                    allocate_native_handle = allocateNativeHandleParams->enable;
+                }
+            }
+            break;
 #endif
         case OMX_QcomIndexParamEnableTimeStampReorder: {
                                        QOMX_INDEXTIMESTAMPREORDER *reorder = (QOMX_INDEXTIMESTAMPREORDER *)paramData;
@@ -4538,6 +4546,8 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexUseAndroidNativeBuffer;
     } else if (extn_equals(paramName, "OMX.google.android.index.getAndroidNativeBufferUsage")) {
         *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage;
+    } else if (extn_equals(paramName, "OMX.google.android.index.allocateNativeHandle")) {
+        *indexType = (OMX_INDEXTYPE)OMX_GoogleAndroidIndexAllocateNativeHandle;
     }
 #endif
     else if (extn_equals(paramName, "OMX.google.android.index.storeMetaDataInBuffers")) {
@@ -5124,8 +5134,12 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
                         drv_ctx.ptr_inputbuffer[index].bufferaddr);
                 munmap (drv_ctx.ptr_inputbuffer[index].bufferaddr,
                         drv_ctx.ptr_inputbuffer[index].mmaped_size);
+                close (drv_ctx.ptr_inputbuffer[index].pmem_fd);
+            } else if (allocate_native_handle){
+                native_handle_t *nh = (native_handle_t *)bufferHdr->pBuffer;
+                native_handle_close(nh);
+                native_handle_delete(nh);
             }
-            close (drv_ctx.ptr_inputbuffer[index].pmem_fd);
             drv_ctx.ptr_inputbuffer[index].pmem_fd = -1;
             if (m_desc_buffer_ptr && m_desc_buffer_ptr[index].buf_addr) {
                 free(m_desc_buffer_ptr[index].buf_addr);
@@ -5451,10 +5465,16 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
         input = *bufferHdr;
         BITMASK_SET(&m_inp_bm_count,i);
         DEBUG_PRINT_LOW("Buffer address %p of pmem",*bufferHdr);
-        if (secure_mode)
+        if (allocate_native_handle) {
+            native_handle_t *nh = native_handle_create(1 /*numFds*/, 0 /*numInts*/);
+            nh->data[0] = drv_ctx.ptr_inputbuffer[i].pmem_fd;
+            input->pBuffer = (OMX_U8 *)nh;
+        } else if (secure_mode) {
+            /*Legacy method, pass ion fd stashed directly in pBuffer*/
             input->pBuffer = (OMX_U8 *)(intptr_t)drv_ctx.ptr_inputbuffer [i].pmem_fd;
-        else
+        } else {
             input->pBuffer           = (OMX_U8 *)buf_addr;
+        }
         input->nSize             = sizeof(OMX_BUFFERHEADERTYPE);
         input->nVersion.nVersion = OMX_SPEC_VERSION;
         input->nAllocLen         = drv_ctx.ip_buf.buffer_size;
@@ -6269,7 +6289,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
     }
 #endif
 
-log_input_buffers((const char *)temp_buffer->bufferaddr, temp_buffer->buffer_len);
+    log_input_buffers((const char *)temp_buffer->bufferaddr, temp_buffer->buffer_len);
 
     if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
         frameinfo.flags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
