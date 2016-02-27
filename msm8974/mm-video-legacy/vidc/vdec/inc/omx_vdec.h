@@ -811,6 +811,7 @@ private:
     omx_time_stamp_reorder time_stamp_dts;
     desc_buffer_hdr *m_desc_buffer_ptr;
     bool secure_mode;
+    bool allocate_native_handle;
     OMX_QCOM_EXTRADATA_FRAMEINFO *m_extradata;
     bool codec_config_flag;
     OMX_CONFIG_RECTTYPE rectangle;
