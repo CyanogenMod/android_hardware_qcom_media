@@ -969,6 +969,7 @@ class omx_vdec: public qc_omx_component
 
         unsigned int m_fill_output_msg;
         bool client_set_fps;
+        unsigned int stereo_output_mode;
         class allocate_color_convert_buf
         {
             public:

@@ -128,7 +128,7 @@ extern "C" {
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 #define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
 
-#define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA)
+#define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA | OMX_FRAMEPACK_EXTRADATA)
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
 
@@ -591,6 +591,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_other_extradata(NULL),
     m_profile(0),
     client_set_fps(false),
+    stereo_output_mode(HAL_NO_3D),
     m_last_rendered_TS(-1),
     m_queued_codec_config_count(0),
     secure_scaling_to_non_secure_opb(false)
@@ -7303,6 +7304,13 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                          UPDATE_REFRESH_RATE, (void*)&current_framerate);
         }
 
+        if (buffer->nFilledLen && m_enable_android_native_buffers && m_out_mem_ptr) {
+            OMX_U32 buf_index = buffer - m_out_mem_ptr;
+            DEBUG_PRINT_LOW("stereo_output_mode = %d",stereo_output_mode);
+            setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                               S3D_FORMAT, (void*)&stereo_output_mode);
+        }
+
         if (il_buffer) {
             log_output_buffers(il_buffer);
             if (dynamic_buf_mode) {
@@ -9267,6 +9275,26 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                 case MSM_VIDC_EXTRADATA_S3D_FRAME_PACKING:
                     struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload;
                     s3d_frame_packing_payload = (struct msm_vidc_s3d_frame_packing_payload *)(void *)data->data;
+                    switch (s3d_frame_packing_payload->fpa_type) {
+                        case MSM_VIDC_FRAMEPACK_SIDE_BY_SIDE:
+                            if (s3d_frame_packing_payload->content_interprtation_type == 1)
+                                stereo_output_mode = HAL_3D_SIDE_BY_SIDE_L_R;
+                            else if (s3d_frame_packing_payload->content_interprtation_type == 2)
+                                stereo_output_mode = HAL_3D_SIDE_BY_SIDE_R_L;
+                            else {
+                                DEBUG_PRINT_ERROR("Unsupported side-by-side framepacking type");
+                                stereo_output_mode = HAL_NO_3D;
+                            }
+                            break;
+                        case MSM_VIDC_FRAMEPACK_TOP_BOTTOM:
+                            stereo_output_mode = HAL_3D_TOP_BOTTOM;
+                            break;
+                        default:
+                            DEBUG_PRINT_ERROR("Unsupported framepacking type");
+                            stereo_output_mode = HAL_NO_3D;
+                    }
+                    DEBUG_PRINT_LOW("setMetaData FRAMEPACKING : fpa_type = %lu, content_interprtation_type = %lu, stereo_output_mode= %d",
+                        s3d_frame_packing_payload->fpa_type, s3d_frame_packing_payload->content_interprtation_type, stereo_output_mode);
                     if (client_extradata & OMX_FRAMEPACK_EXTRADATA) {
                         append_framepack_extradata(p_extra, s3d_frame_packing_payload);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
@@ -9399,6 +9427,10 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             }
         }
         if (requested_extradata & OMX_FRAMEPACK_EXTRADATA) {
+            if (secure_mode) {
+                DEBUG_PRINT_HIGH("S3D frame packing not supported for secure sessions");
+                return OMX_ErrorUnsupportedSetting;
+            }
             if (output_capability == V4L2_PIX_FMT_H264) {
                 DEBUG_PRINT_HIGH("enable OMX_FRAMEPACK_EXTRADATA");
                 control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
@@ -9525,7 +9557,7 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
                 "                  cancel_flag: %u \n"
                 "                         type: %u \n"
                 " quincunx_sampling_flagFormat: %u \n"
-                "  content_interpretation_type: %u \n"
+                "  content_interprtation_type: %u \n"
                 "        spatial_flipping_flag: %u \n"
                 "          frame0_flipped_flag: %u \n"
                 "             field_views_flag: %u \n"
