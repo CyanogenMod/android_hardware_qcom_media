@@ -1895,8 +1895,6 @@ bool omx_venc::dev_fill_buf
     opbuffer.size = bufhdr->nAllocLen;
     opbuffer.filled_length = bufhdr->nFilledLen;
     opbuffer.flags = bufhdr->nFlags;
-    opbuffer.extradata_type = SWVENC_EXTRADATA_TYPE_NONE;
-    opbuffer.p_extradata = NULL;
     opbuffer.p_client_data = (unsigned char *)bufhdr;
 
     DEBUG_PRINT_LOW("FTB: p_buffer (%p) size (%d) filled_len (%d) flags (0x%X) timestamp (%lld) clientData (%p)",
@@ -1906,9 +1904,6 @@ bool omx_venc::dev_fill_buf
       opbuffer.flags,
       opbuffer.timestamp,
       opbuffer.p_client_data);
-    DEBUG_PRINT_LOW("FTB: extradata_type (%d) p_extradata (%p)",
-      opbuffer.extradata_type,
-      opbuffer.p_extradata);
 
     if ( false == m_bSeqHdrRequested)
     {
