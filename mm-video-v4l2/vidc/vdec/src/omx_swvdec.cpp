@@ -3208,6 +3208,12 @@ OMX_ERRORTYPE omx_swvdec::describe_color_format(
             break;
         }
 
+        case OMX_COLOR_FormatYUV420SemiPlanar:
+        {
+            // do nothing; standard OMX color formats should not be described
+            break;
+        }
+
         default:
         {
             OMX_SWVDEC_LOG_ERROR("color format '0x%08x' invalid/unsupported",
@@ -4214,8 +4220,6 @@ OMX_ERRORTYPE omx_swvdec::buffer_deallocate_op(
 
     if (ii < m_port_op.def.nBufferCountActual)
     {
-        assert(m_buffer_array_op[ii].buffer_payload.pmem_fd > 0);
-
         if (m_meta_buffer_mode)
         {
             // do nothing; munmap() & FD reset done in FBD or RR
@@ -4370,40 +4374,28 @@ void omx_swvdec::meta_buffer_ref_add(unsigned int index, int fd)
 /**
  * @brief Remove meta buffer reference.
  *
- * @param[in] fd: File descriptor.
+ * @param[in] index: Buffer index.
  */
-void omx_swvdec::meta_buffer_ref_remove(int fd)
+void omx_swvdec::meta_buffer_ref_remove(unsigned int index)
 {
-    unsigned int ii;
-
     pthread_mutex_lock(&m_meta_buffer_array_mutex);
 
-    for (ii = 0; ii < m_port_op.def.nBufferCountActual; ii++)
+    m_meta_buffer_array[index].ref_count--;
+
+    if (m_meta_buffer_array[index].ref_count == 0)
     {
-        if (m_meta_buffer_array[ii].fd == fd)
-        {
-            m_meta_buffer_array[ii].ref_count--;
+        m_meta_buffer_array[index].fd = -1;
 
-            if (m_meta_buffer_array[ii].ref_count == 0)
-            {
-                m_meta_buffer_array[ii].fd = -1;
+        munmap(m_buffer_array_op[index].buffer_payload.bufferaddr,
+               m_buffer_array_op[index].buffer_payload.mmaped_size);
 
-                munmap(m_buffer_array_op[ii].buffer_payload.bufferaddr,
-                       m_buffer_array_op[ii].buffer_payload.mmaped_size);
+        m_buffer_array_op[index].buffer_payload.bufferaddr  = NULL;
+        m_buffer_array_op[index].buffer_payload.offset      = 0;
+        m_buffer_array_op[index].buffer_payload.mmaped_size = 0;
 
-                m_buffer_array_op[ii].buffer_payload.bufferaddr  = NULL;
-                m_buffer_array_op[ii].buffer_payload.offset      = 0;
-                m_buffer_array_op[ii].buffer_payload.mmaped_size = 0;
-
-                m_buffer_array_op[ii].buffer_swvdec.p_buffer = NULL;
-                m_buffer_array_op[ii].buffer_swvdec.size     = 0;
-            }
-
-            break;
-        }
+        m_buffer_array_op[index].buffer_swvdec.p_buffer = NULL;
+        m_buffer_array_op[index].buffer_swvdec.size     = 0;
     }
-
-    assert(ii < m_port_op.def.nBufferCountActual);
 
     pthread_mutex_unlock(&m_meta_buffer_array_mutex);
 }
@@ -4781,8 +4773,7 @@ void omx_swvdec::swvdec_event_handler(SWVDEC_EVENT event, void *p_data)
 
         if (m_meta_buffer_mode)
         {
-            meta_buffer_ref_remove(
-                m_buffer_array_op[index].buffer_payload.pmem_fd);
+            meta_buffer_ref_remove(index);
         }
 
         break;
@@ -5827,6 +5818,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
         assert(p_buffer_swvdec->p_buffer == p_buffer_hdr->pBuffer);
 
         if (m_arbitrary_bytes_mode &&
+            p_buffer_hdr->nFilledLen &&
             ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) == 0))
         {
             unsigned int offset_array[OMX_SWVDEC_MAX_FRAMES_PER_ETB] = {0};
@@ -6071,8 +6063,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
         if (m_meta_buffer_mode &&
             ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_READONLY)) == 0)
         {
-            meta_buffer_ref_remove(
-                m_buffer_array_op[index].buffer_payload.pmem_fd);
+            meta_buffer_ref_remove(index);
         }
 
         OMX_SWVDEC_LOG_CALLBACK(

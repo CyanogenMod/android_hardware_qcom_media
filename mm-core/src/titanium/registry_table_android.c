@@ -664,7 +664,7 @@ omx_core_cb_type core[] =
     }
   },
   {
-    "OMX.qcom.vdec.vpp",
+    "OMX.qti.vdec.vpp",
     NULL, // Create instance function
     // Unique instance handle
     {
