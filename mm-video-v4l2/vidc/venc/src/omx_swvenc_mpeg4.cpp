@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -739,7 +739,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter
                 }
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoPortFormat %d",
                       portFmt->eColorFormat);
-
+                m_sInPortDef.format.video.eColorFormat = m_sInPortFormat.eColorFormat;
                 /* set the input color format */
                 Prop.id = SWVENC_PROPERTY_ID_COLOR_FORMAT;
                 Prop.info.color_format = color_format;
