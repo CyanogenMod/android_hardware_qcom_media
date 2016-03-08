@@ -10716,7 +10716,7 @@ void omx_vdec::append_user_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     extra->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
     extra->eType = (OMX_EXTRADATATYPE)OMX_ExtraDataMP2UserData;
     extra->nDataSize = userdata_size;
-    if (extra->data && p_user->data && extra->nDataSize)
+    if (extra->nDataSize && (p_user->nDataSize >= extra->nDataSize))
         memcpy(extra->data, p_user->data, extra->nDataSize);
     print_debug_extradata(extra);
 }
@@ -11755,7 +11755,7 @@ OMX_ERRORTYPE omx_vdec::describeColorFormat(OMX_PTR pParam) {
     DEBUG_PRINT_LOW("  FrameWidth x FrameHeight : %d x %d", params->nFrameWidth, params->nFrameHeight);
     DEBUG_PRINT_LOW("  YWidth x YHeight : %d x %d", img->mWidth, img->mHeight);
     for (size_t i = 0; i < img->mNumPlanes; ++i) {
-        DEBUG_PRINT_LOW("    Plane[%d] : offset=%d / xStep=%d / yStep = %d",
+        DEBUG_PRINT_LOW("    Plane[%zd] : offset=%d / xStep=%d / yStep = %d",
                 i, img->mPlane[i].mOffset, img->mPlane[i].mColInc, img->mPlane[i].mRowInc);
     }
     return OMX_ErrorNone;

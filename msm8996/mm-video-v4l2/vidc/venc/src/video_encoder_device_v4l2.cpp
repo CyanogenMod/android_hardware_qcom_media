@@ -1003,7 +1003,7 @@ int venc_dev::venc_input_log_buffers(OMX_BUFFERHEADERTYPE *pbuffer, int fd, int 
                 break;
             default:
                 color_format = COLOR_FMT_NV12;
-                DEBUG_PRINT_LOW("Default format NV12 is set for logging [%d]", inputformat);
+                DEBUG_PRINT_LOW("Default format NV12 is set for logging [%lu]", inputformat);
                 break;
         }
 
@@ -2262,7 +2262,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 struct v4l2_control control;
                 if (m_sVenc_cfg.codectype != V4L2_PIX_FMT_H264 &&
                         m_sVenc_cfg.codectype != V4L2_PIX_FMT_HEVC) {
-                    DEBUG_PRINT_ERROR("OMX_QTIIndexParamVideoEnableRoiInfo is not supported for %d codec", m_sVenc_cfg.codectype);
+                    DEBUG_PRINT_ERROR("OMX_QTIIndexParamVideoEnableRoiInfo is not supported for %lu codec", m_sVenc_cfg.codectype);
                     return OMX_ErrorUnsupportedSetting;
                 }
                 control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
@@ -2692,7 +2692,7 @@ bool venc_dev::venc_set_vqzip_defaults()
     case OMX_CORE_4KDCI_WIDTH * OMX_CORE_4KDCI_HEIGHT:
         break;
     default:
-        DEBUG_PRINT_ERROR("VQZIP is not supported for this resoultion : %d X %d",
+        DEBUG_PRINT_ERROR("VQZIP is not supported for this resoultion : %lu X %lu",
             m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
         return false;
     }
@@ -3216,7 +3216,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         }
                         fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
-                            DEBUG_PRINT_ERROR("Failed setting color format in Camerasource %x", m_sVenc_cfg.inputformat);
+                            DEBUG_PRINT_ERROR("Failed setting color format in Camerasource %lx", m_sVenc_cfg.inputformat);
                             return false;
                         }
                         if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
@@ -3242,7 +3242,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         plane[0].length = hnd->data[2];
                         plane[0].bytesused = hnd->data[2];
                     }
-                    DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x format 0x%x",
+                    DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x format 0x%lx",
                             fd, plane[0].bytesused, plane[0].length, buf.flags, m_sVenc_cfg.inputformat);
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
                     private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
@@ -3272,7 +3272,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
                         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
-                            DEBUG_PRINT_ERROR("Failed setting color format in Grallocsource %x", m_sVenc_cfg.inputformat);
+                            DEBUG_PRINT_ERROR("Failed setting color format in Grallocsource %lx", m_sVenc_cfg.inputformat);
                             return false;
                         }
                         if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
@@ -3286,7 +3286,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     plane[0].length = handle->size;
                     plane[0].bytesused = handle->size;
                     DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
-                                ": filled %d of %d format 0x%x", fd, plane[0].bytesused, plane[0].length, m_sVenc_cfg.inputformat);
+                                ": filled %d of %d format 0x%lx", fd, plane[0].bytesused, plane[0].length, m_sVenc_cfg.inputformat);
                 }
             } else {
                 plane[0].m.userptr = (unsigned long) bufhdr->pBuffer;
@@ -3463,7 +3463,7 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
             // timestamp differences from camera are in nano-seconds
             bufTimeStamp = bufhdr->nTimeStamp + BatchInfo::getTimeStampAt(hnd, i) / 1000;
 
-            DEBUG_PRINT_LOW(" Q Batch [%d of %d] : buf=%x fd=%d len=%d TS=%lld",
+            DEBUG_PRINT_LOW(" Q Batch [%d of %d] : buf=%p fd=%d len=%d TS=%lld",
                 i, numBufs, bufhdr, plane.reserved[0], plane.length, bufTimeStamp);
             buf.timestamp.tv_sec = bufTimeStamp / 1000000;
             buf.timestamp.tv_usec = (bufTimeStamp % 1000000);
@@ -5168,7 +5168,7 @@ bool venc_dev::venc_set_hybrid_hierp(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hhp)
             return false;
         }
     } else {
-        DEBUG_PRINT_ERROR("Failed : Unsupported codec for Hybrid Hier P : %d", m_sVenc_cfg.codectype);
+        DEBUG_PRINT_ERROR("Failed : Unsupported codec for Hybrid Hier P : %lu", m_sVenc_cfg.codectype);
         return false;
     }
 
@@ -5751,14 +5751,14 @@ bool venc_dev::venc_set_roi_qp_info(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo) {
     }
     if (m_sVenc_cfg.codectype != V4L2_PIX_FMT_H264 &&
         m_sVenc_cfg.codectype != V4L2_PIX_FMT_HEVC) {
-        DEBUG_PRINT_ERROR("OMX_QTIIndexConfigVideoRoiInfo is not supported for %d codec", m_sVenc_cfg.codectype);
+        DEBUG_PRINT_ERROR("OMX_QTIIndexConfigVideoRoiInfo is not supported for %lu codec", m_sVenc_cfg.codectype);
         return false;
     }
 
     venc_roiqp_log_buffers(roiInfo);
     mInputExtradata.getForConfig(&userptr, &fd, &offset, &size);
     if (!userptr || size < roiInfo->nRoiMBInfoSize) {
-        DEBUG_PRINT_ERROR("ROI extradata insufficient. Check if OMX_QTIIndexParamVideoEnableRoiInfo was set. (%p, %u, %u)", userptr, size, roiInfo->nRoiMBInfoSize);
+        DEBUG_PRINT_ERROR("ROI extradata insufficient. Check if OMX_QTIIndexParamVideoEnableRoiInfo was set. (%p, %zd, %u)", userptr, size, roiInfo->nRoiMBInfoSize);
         return false;
     }
 
@@ -6617,7 +6617,7 @@ OMX_ERRORTYPE encExtradata::__allocate()
             &mIon.ion_alloc_data,
             &mIon.fd_ion_data, 0);
     if (mIon.ion_device_fd < 0) {
-        DEBUG_PRINT_ERROR("Failed to alloc extradata memory: %d", totalSize);
+        DEBUG_PRINT_ERROR("Failed to alloc extradata memory: %zd", totalSize);
         DEBUG_PRINT_ERROR("Check if OMX_QTIIndexParamVideoEnableRoiInfo is set.");
         return OMX_ErrorInsufficientResources;
     }
@@ -6668,7 +6668,7 @@ OMX_ERRORTYPE encExtradata::get(char **userptr, int *fd, unsigned *offset, ssize
     *size = 0;
     pthread_mutex_lock(&lock);
     index = __get(userptr, fd, offset, size, FREE);
-    DEBUG_PRINT_LOW("%s: (%d, %p, %d, %u, %d)", __func__, index, *userptr, *fd, *offset, *size);
+    DEBUG_PRINT_LOW("%s: (%d, %p, %d, %u, %zd)", __func__, index, *userptr, *fd, *offset, *size);
     pthread_mutex_unlock(&lock);
     return index < 0 ? OMX_ErrorInsufficientResources : OMX_ErrorNone;
 }
@@ -6695,12 +6695,12 @@ OMX_ERRORTYPE encExtradata::get(void *cookie, char **userptr, int *fd, unsigned 
     } else {
         int index = __get(userptr, fd, offset, size, FREE);
         if (index < 0 ) {
-            DEBUG_PRINT_HIGH("%s: failed(%d, %p)", i, cookie);
+            DEBUG_PRINT_HIGH("%s: failed(%d, %p)", __func__, i, cookie);
             __debug();
             rc = OMX_ErrorInsufficientResources;
         }
     }
-    DEBUG_PRINT_LOW("%s: (%p, %p, %d, %u, %d)", __func__, cookie, *userptr, *fd, *offset, *size);
+    DEBUG_PRINT_LOW("%s: (%p, %p, %d, %u, %zd)", __func__, cookie, *userptr, *fd, *offset, *size);
     pthread_mutex_unlock(&lock);
     return rc;
 }
@@ -6722,7 +6722,7 @@ OMX_ERRORTYPE encExtradata::getForConfig(char **userptr, int *fd, unsigned *offs
         rc = OMX_ErrorInsufficientResources;
     } else {
         mIndex[found].status = FOR_CONFIG;
-        DEBUG_PRINT_LOW("%s: (%d, %p, %d, %u, %d)", __func__, *userptr, *fd, *offset, *size);
+        DEBUG_PRINT_LOW("%s: (%p, %d, %d, %zd)", __func__, *userptr, *fd, *offset, *size);
     }
     pthread_mutex_unlock(&lock);
     return rc;
@@ -6737,7 +6737,7 @@ OMX_ERRORTYPE encExtradata::put(char *userptr)
         DEBUG_PRINT_HIGH("Userptr is NULL");
         rc = OMX_ErrorBadParameter;
     } else if (index < 0) {
-        DEBUG_PRINT_HIGH("Userptr is not in valid range: %p");
+        DEBUG_PRINT_HIGH("Userptr is not in valid range: %p", userptr);
         __debug();
         rc = OMX_ErrorBadParameter;
     } else {
@@ -6766,7 +6766,7 @@ OMX_ERRORTYPE encExtradata::peek(unsigned index, char **userptr, int *fd, unsign
             *size = mSize;
         }
     }
-    DEBUG_PRINT_LOW("%s: (%d, %p, %d, %u, %d)", __func__, index, *userptr, *fd, *offset, *size);
+    DEBUG_PRINT_LOW("%s: (%d, %p, %d, %u, %zd)", __func__, index, *userptr, *fd, *offset, *size);
     pthread_mutex_unlock(&lock);
     return rc;
 }
@@ -6782,7 +6782,7 @@ void encExtradata::setCookieForConfig(void *cookie)
     if (found >= 0) {
         mIndex[found].cookie = cookie;
     } else {
-        DEBUG_PRINT_HIGH("Failed to set cookie for extradata: %d, cookie: %d\n",
+        DEBUG_PRINT_HIGH("Failed to set cookie for extradata: %d, cookie: %p\n",
             found, cookie);
         __debug();
     }
@@ -6815,16 +6815,16 @@ void encExtradata::update(unsigned int count, ssize_t size)
     __free();
     mCount = count <= MAX_V4L2_BUFS ? count : MAX_V4L2_BUFS;
     mSize = size;
-    DEBUG_PRINT_LOW("%s: (%d, %d)", __func__, mCount, mSize);
+    DEBUG_PRINT_LOW("%s: (%d, %zd)", __func__, mCount, mSize);
     pthread_mutex_unlock(&lock);
 }
 
 void encExtradata::__debug()
 {
-    DEBUG_PRINT_HIGH("encExtradata: this: %p, mCount: %d, mSize: %d, mUaddr: %p, mVencHandle: %p",
+    DEBUG_PRINT_HIGH("encExtradata: this: %p, mCount: %d, mSize: %zd, mUaddr: %p, mVencHandle: %p",
             this, mCount, mSize, mUaddr, mVencHandle);
     for (unsigned i = 0; i < mCount; i++) {
-        DEBUG_PRINT_HIGH("index: %d, status: %d, cookie: %#x\n", i, mIndex[i].status, mIndex[i].cookie);
+        DEBUG_PRINT_HIGH("index: %d, status: %d, cookie: %p\n", i, mIndex[i].status, mIndex[i].cookie);
     }
 }
 
