@@ -1558,15 +1558,6 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(&m_sSar, paramData, sizeof(m_sSar));
                 break;
             }
-        case OMX_QTIIndexParamVideoEnableRoiInfo:
-            {
-                if (!handle->venc_set_param(paramData,
-                            (OMX_INDEXTYPE)OMX_QTIIndexParamVideoEnableRoiInfo)) {
-                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QTIIndexParamVideoEnableRoiInfo failed");
-                    return OMX_ErrorUnsupportedSetting;
-                }
-                break;
-            }
         case OMX_QTIIndexParamLowLatencyMode:
             {
                 if (!handle->venc_set_param(paramData,
@@ -1575,6 +1566,16 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     return OMX_ErrorUnsupportedSetting;
                 }
                 memcpy(&m_slowLatencyMode, paramData, sizeof(m_slowLatencyMode));
+                break;
+            }
+        case OMX_QTIIndexParamVideoEnableRoiInfo:
+            {
+                if (!handle->venc_set_param(paramData,
+                            (OMX_INDEXTYPE)OMX_QTIIndexParamVideoEnableRoiInfo)) {
+                    DEBUG_PRINT_ERROR("ERROR: Setting OMX_QTIIndexParamVideoEnableRoiInfo failed");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                m_sExtraData |= VENC_EXTRADATA_ROI;
                 break;
             }
         case OMX_IndexParamVideoSliceFMO:
@@ -1921,15 +1922,15 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
-        case OMX_QcomIndexConfigMaxHierPLayers:
+        case OMX_QcomIndexConfigNumHierPLayers:
         {
-            QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS* pParam =
-                (QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS*)configData;
-            if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers)) {
-                DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigMaxHierPLayers failed");
+            QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS* pParam =
+                (QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS*)configData;
+            if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigNumHierPLayers)) {
+                DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigNumHierPLayers failed");
                 return OMX_ErrorUnsupportedSetting;
             }
-            memcpy(&m_sMaxHPlayers, pParam, sizeof(m_sMaxHPlayers));
+            memcpy(&m_sHPlayers, pParam, sizeof(m_sHPlayers));
             break;
         }
         case OMX_QcomIndexConfigBaseLayerId:
@@ -1977,6 +1978,22 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                     DEBUG_PRINT_ERROR("Failed to set OMX_QTIIndexConfigVideoRoiInfo");
                     return OMX_ErrorUnsupportedSetting;
                 }
+                break;
+            }
+        case OMX_IndexConfigTimePosition:
+            {
+                OMX_TIME_CONFIG_TIMESTAMPTYPE* pParam =
+                    (OMX_TIME_CONFIG_TIMESTAMPTYPE*) configData;
+                pthread_mutex_lock(&timestamp.m_lock);
+                timestamp.m_TimeStamp = (OMX_U64)pParam->nTimestamp;
+                DEBUG_PRINT_LOW("Buffer = %p, Timestamp = %llu", timestamp.pending_buffer, (OMX_U64)pParam->nTimestamp);
+                if (timestamp.is_buffer_pending && (OMX_U64)timestamp.pending_buffer->nTimeStamp == timestamp.m_TimeStamp) {
+                    DEBUG_PRINT_INFO("Queueing back pending buffer %p", timestamp.pending_buffer);
+                    this->post_event((unsigned long)hComp,(unsigned long)timestamp.pending_buffer,m_input_msg_id);
+                    timestamp.pending_buffer = NULL;
+                    timestamp.is_buffer_pending = false;
+                }
+                pthread_mutex_unlock(&timestamp.m_lock);
                 break;
             }
         default:
@@ -2098,6 +2115,24 @@ OMX_U32 omx_venc::dev_set_message_thread_id(pthread_t tid)
 bool omx_venc::dev_use_buf(void *buf_addr,unsigned port,unsigned index)
 {
     return handle->venc_use_buf(buf_addr,port,index);
+}
+
+bool omx_venc::dev_buffer_ready_to_queue(OMX_BUFFERHEADERTYPE *buffer)
+{
+    bool bRet = true;
+
+    pthread_mutex_lock(&timestamp.m_lock);
+
+    if ((!m_slowLatencyMode.bLowLatencyMode) || ((OMX_U64)buffer->nTimeStamp == (OMX_U64)timestamp.m_TimeStamp)) {
+        DEBUG_PRINT_LOW("ETB is ready to be queued");
+    } else {
+        DEBUG_PRINT_INFO("ETB is defeffed due to timeStamp mismatch");
+        timestamp.is_buffer_pending = true;
+        timestamp.pending_buffer = buffer;
+        bRet = false;
+    }
+    pthread_mutex_unlock(&timestamp.m_lock);
+    return bRet;
 }
 
 bool omx_venc::dev_free_buf(void *buf_addr,unsigned port)
@@ -2235,19 +2270,14 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
 #endif
 }
 
-int omx_venc::dev_handle_output_extradata(void *buffer)
+int omx_venc::dev_handle_output_extradata(void *buffer, int index)
 {
-    return handle->handle_output_extradata(buffer);
+    return handle->handle_output_extradata(buffer, index);
 }
 
-int omx_venc::dev_handle_input_extradata(void *buffer, int fd)
+int omx_venc::dev_handle_input_extradata(void *buffer, int index, int fd)
 {
-    return handle->handle_input_extradata(buffer, fd);
-}
-
-void omx_venc::dev_set_extradata_cookie(void *cookie)
-{
-    handle->mInputExtradata.setCookieForConfig(cookie);
+    return handle->handle_input_extradata(buffer, index, fd);
 }
 
 int omx_venc::dev_set_format(int color)
