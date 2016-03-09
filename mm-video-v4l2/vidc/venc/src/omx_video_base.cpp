@@ -294,8 +294,7 @@ omx_video::omx_video():
 #ifdef _ANDROID_
     char platform_name[PROPERTY_VALUE_MAX] = {0};
     property_get("ro.board.platform", platform_name, "0");
-    strncpy(m_platform, platform_name, sizeof(m_platform));
-    *(m_platform + sizeof(m_platform) - 1) = '\0';
+    strlcpy(m_platform, platform_name, sizeof(m_platform));
 #endif
 }
 
