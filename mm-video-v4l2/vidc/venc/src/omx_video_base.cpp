@@ -1860,6 +1860,11 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                  memcpy(initqp, &m_sParamInitqp, sizeof(m_sParamInitqp));
                  break;
             }
+        case OMX_IndexParamConsumerUsageBits:
+            {
+                 eRet = OMX_ErrorNotImplemented;
+                 break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
