@@ -17,6 +17,14 @@
 LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
+#===============================================================================
+#             Deploy the headers that can be exposed
+#===============================================================================
+
+LOCAL_COPY_HEADERS_TO   := mm-core/omxcore
+LOCAL_COPY_HEADERS      := QComOMXMetadata.h \
+                           QComOMXPlugin.h
+
 LOCAL_SRC_FILES := \
     QComOMXPlugin.cpp                      \
 
@@ -28,6 +36,7 @@ endif
 
 LOCAL_C_INCLUDES:= \
         frameworks/native/include/media/openmax \
+        $(TARGET_OUT_HEADERS)/mm-core/omxcore/ \
         frameworks/native/include/media/hardware
 
 LOCAL_SHARED_LIBRARIES :=       \
