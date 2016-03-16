@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2015, Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -96,37 +96,68 @@ typedef struct OMXComponentCapabilityFlagsType {
 } OMXComponentCapabilityFlagsType;
 #define OMX_COMPONENT_CAPABILITY_TYPE_INDEX 0xFF7A347
 
-void* message_thread(void *input)
+void* enc_message_thread(void *input)
 {
     omx_video* omx = reinterpret_cast<omx_video*>(input);
     unsigned char id;
     int n;
 
-    DEBUG_PRINT_LOW("omx_venc: message thread start");
+    fd_set readFds;
+    int res = 0;
+    struct timeval tv;
+
+    DEBUG_PRINT_HIGH("omx_venc: message thread start");
     prctl(PR_SET_NAME, (unsigned long)"VideoEncMsgThread", 0, 0, 0);
-    while (1) {
+     while (!omx->msg_thread_stop) {
+
+        tv.tv_sec = 2;
+        tv.tv_usec = 0;
+
+        FD_ZERO(&readFds);
+        FD_SET(omx->m_pipe_in, &readFds);
+
+        res = select(omx->m_pipe_in + 1, &readFds, NULL, NULL, &tv);
+        if (res < 0) {
+            DEBUG_PRINT_ERROR("select() ERROR: %s", strerror(errno));
+            continue;
+        } else if (res == 0 /*timeout*/ || omx->msg_thread_stop) {
+            continue;
+        }
+
         n = read(omx->m_pipe_in, &id, 1);
         if (0 == n) {
             break;
         }
 
         if (1 == n) {
+            if (omx->omx_close_msg_thread(id)) {
+                break;
+            }
             omx->process_event_cb(omx, id);
         }
 #ifdef QLE_BUILD
         if (n < 0) break;
 #else
-        if ((n < 0) && (errno != EINTR)) break;
+        if ((n < 0) && (errno != EINTR)) {
+            DEBUG_PRINT_LOW("ERROR: read from pipe failed, ret %d errno %d", n, errno);
+            break;
+        }
 #endif
     }
-    DEBUG_PRINT_LOW("omx_venc: message thread stop");
+    DEBUG_PRINT_HIGH("omx_venc: message thread stop");
     return 0;
 }
 
 void post_message(omx_video *omx, unsigned char id)
 {
     DEBUG_PRINT_LOW("omx_venc: post_message %d", id);
-    write(omx->m_pipe_out, &id, 1);
+    int ret_value;
+    ret_value = write(omx->m_pipe_out, &id, 1);
+    if (ret_value <= 0) {
+        DEBUG_PRINT_ERROR("post_message to pipe failed : %s", strerror(errno));
+    } else {
+        DEBUG_PRINT_LOW("post_message to pipe done %d",ret_value);
+    }
 }
 
 // omx_cmd_queue destructor
@@ -251,6 +282,7 @@ omx_video::omx_video():
     memset(&m_pCallbacks,0,sizeof(m_pCallbacks));
     async_thread_created = false;
     msg_thread_created = false;
+    msg_thread_stop = false;
 
     mUsesColorConversion = false;
     pthread_mutex_init(&m_lock, NULL);
@@ -275,11 +307,17 @@ omx_video::omx_video():
 omx_video::~omx_video()
 {
     DEBUG_PRINT_HIGH("~omx_video(): Inside Destructor()");
+    if (msg_thread_created) {
+        msg_thread_stop = true;
+        DEBUG_PRINT_HIGH("Signalling close to OMX Msg Thread");
+        post_message(this, OMX_COMPONENT_CLOSE_MSG);
+        DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit");
+        pthread_join(msg_thread_id,NULL);
+    }
     if (m_pipe_in >= 0) close(m_pipe_in);
     if (m_pipe_out >= 0) close(m_pipe_out);
-    DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit");
-    if (msg_thread_created)
-        pthread_join(msg_thread_id,NULL);
+    m_pipe_in = -1;
+    m_pipe_out = -1;
     DEBUG_PRINT_HIGH("omx_video: Waiting on Async Thread exit");
     /*For V4L2 based drivers, pthread_join is done in device_close
      * so no need to do it here*/
@@ -4217,20 +4255,26 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
                 eRet = OMX_ErrorNoMore;
             }
 #else
+            char property_value[PROPERTY_VALUE_MAX] = {0};
+            OMX_VIDEO_AVCLEVELTYPE level = OMX_VIDEO_AVCLevel4;
+            if (property_get("media.msm8956hw", property_value, "0") && atoi(property_value)) {
+                level = OMX_VIDEO_AVCLevel51;
+            }
+
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileBaseline;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
 
             } else if (profileLevelType->nProfileIndex == 1) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileMain;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
             } else if (profileLevelType->nProfileIndex == 2) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileHigh;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
 #ifdef _MSM8226_
             } else if (profileLevelType->nProfileIndex == 3) {
                 profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
 #endif
             } else {
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %d",
@@ -4584,7 +4628,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         handle = (private_handle_t *)media_buffer->meta_handle;
     }
 
-    if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
+    if (media_buffer && media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
         return empty_this_buffer_proxy(hComp, buffer);
     }
 

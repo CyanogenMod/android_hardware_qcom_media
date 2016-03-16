@@ -439,7 +439,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
             }
         }
 
-        if (pthread_create(&msg_thread_id,0, message_thread, this) < 0)
+        if (pthread_create(&msg_thread_id,0, enc_message_thread, this) < 0)
         {
             eRet = OMX_ErrorInsufficientResources;
             msg_thread_created = false;

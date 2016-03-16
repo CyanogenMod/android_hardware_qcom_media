@@ -138,7 +138,7 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 #ifdef _ANDROID_ICS_
 #define MAX_NUM_INPUT_BUFFERS 64
 #endif
-void* message_thread(void *);
+void* enc_message_thread(void *);
 
 // OMX video class
 class omx_video: public qc_omx_component
@@ -344,6 +344,7 @@ class omx_video: public qc_omx_component
         pthread_t async_thread_id;
         bool async_thread_created;
         bool msg_thread_created;
+        volatile bool msg_thread_stop;
 
         OMX_U8 m_nkind[128];
 
@@ -417,7 +418,8 @@ class omx_video: public qc_omx_component
             OMX_COMPONENT_GENERATE_STOP_DONE = 0x10,
             OMX_COMPONENT_GENERATE_HARDWARE_ERROR = 0x11,
             OMX_COMPONENT_GENERATE_LTRUSE_FAILED = 0x12,
-            OMX_COMPONENT_GENERATE_ETB_OPQ = 0x13
+            OMX_COMPONENT_GENERATE_ETB_OPQ = 0x13,
+            OMX_COMPONENT_CLOSE_MSG = 0x14
         };
 
         struct omx_event {
@@ -551,6 +553,10 @@ class omx_video: public qc_omx_component
                                  struct ion_fd_data *fd_data,int flag);
         void free_ion_memory(struct venc_ion *buf_ion_info);
 #endif
+
+        inline bool omx_close_msg_thread(unsigned char id) {
+            return (id == OMX_COMPONENT_CLOSE_MSG);
+        }
 
         //*************************************************************
         //*******************MEMBER VARIABLES *************************

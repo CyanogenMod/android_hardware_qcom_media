@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -107,6 +107,8 @@ char output_extradata_filename [] = "/data/misc/media/extradata";
 #define VC1_STRUCT_B_POS            24
 #define VC1_SEQ_LAYER_SIZE          36
 #define POLL_TIMEOUT 0x7fffffff
+#define WIDTH_4K 4096
+#define HEIGHT_4K 2160
 
 #define MEM_DEVICE "/dev/ion"
 #define MEM_HEAP_ID ION_CP_MM_HEAP_ID
@@ -303,16 +305,33 @@ void* async_message_thread (void *input)
     return NULL;
 }
 
-void* message_thread(void *input)
+void* dec_message_thread(void *input)
 {
     omx_vdec* omx = reinterpret_cast<omx_vdec*>(input);
     unsigned char id;
     int n;
 
+    fd_set readFds;
+    int res = 0;
+    struct timeval tv;
+
     DEBUG_PRINT_HIGH("omx_vdec: message thread start");
     prctl(PR_SET_NAME, (unsigned long)"VideoDecMsgThread", 0, 0, 0);
-    while (1) {
+    while (!omx->message_thread_stop) {
 
+        tv.tv_sec = 2;
+        tv.tv_usec = 0;
+
+        FD_ZERO(&readFds);
+        FD_SET(omx->m_pipe_in, &readFds);
+
+        res = select(omx->m_pipe_in + 1, &readFds, NULL, NULL, &tv);
+        if (res < 0) {
+             DEBUG_PRINT_ERROR("select() ERROR: %s", strerror(errno));
+             continue;
+        } else if (res == 0 /*timeout*/ || omx->message_thread_stop) {
+            continue;
+        }
         n = read(omx->m_pipe_in, &id, 1);
 
         if (0 == n) {
@@ -320,8 +339,12 @@ void* message_thread(void *input)
         }
 
         if (1 == n) {
+            if (omx->omx_close_msg_thread(id)) {
+                break;
+            }
             omx->process_event_cb(omx, id);
         }
+
         if ((n < 0) && (errno != EINTR)) {
             DEBUG_PRINT_LOW("ERROR: read from pipe failed, ret %d errno %d", n, errno);
             break;
@@ -336,7 +359,11 @@ void post_message(omx_vdec *omx, unsigned char id)
     int ret_value;
     DEBUG_PRINT_LOW("omx_vdec: post_message %d pipe out%d", id,omx->m_pipe_out);
     ret_value = write(omx->m_pipe_out, &id, 1);
-    DEBUG_PRINT_LOW("post_message to pipe done %d",ret_value);
+    if (ret_value <= 0) {
+        DEBUG_PRINT_ERROR("post_message to pipe failed : %s", strerror(errno));
+    } else {
+        DEBUG_PRINT_LOW("post_message to pipe done %d",ret_value);
+    }
 }
 
 // omx_cmd_queue destructor
@@ -678,6 +705,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     async_thread_id = 0;
     msg_thread_created = false;
     async_thread_created = false;
+    message_thread_stop = false;
 #ifdef _ANDROID_ICS_
     memset(&native_buffer, 0 ,(sizeof(struct nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
 #endif
@@ -803,13 +831,17 @@ omx_vdec::~omx_vdec()
     m_pmem_info = NULL;
     struct v4l2_decoder_cmd dec;
     DEBUG_PRINT_HIGH("In OMX vdec Destructor");
-    if (m_pipe_in) close(m_pipe_in);
-    if (m_pipe_out) close(m_pipe_out);
+    if (msg_thread_created) {
+        DEBUG_PRINT_HIGH("Signalling close to OMX Msg Thread");
+        message_thread_stop = true;
+        post_message(this, OMX_COMPONENT_CLOSE_MSG);
+        DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
+        pthread_join(msg_thread_id,NULL);
+    }
+    close(m_pipe_in);
+    close(m_pipe_out);
     m_pipe_in = -1;
     m_pipe_out = -1;
-    DEBUG_PRINT_HIGH("Waiting on OMX Msg Thread exit");
-    if (msg_thread_created)
-        pthread_join(msg_thread_id,NULL);
     DEBUG_PRINT_HIGH("Waiting on OMX Async Thread exit");
     dec.cmd = V4L2_DEC_CMD_STOP;
     if (drv_ctx.video_driver_fd >=0 ) {
@@ -2227,10 +2259,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             m_pipe_in = fds[0];
             m_pipe_out = fds[1];
             msg_thread_created = true;
-            r = pthread_create(&msg_thread_id,0,message_thread,this);
+            r = pthread_create(&msg_thread_id,0, dec_message_thread,this);
 
             if (r < 0) {
-                DEBUG_PRINT_ERROR("component_init(): message_thread creation failed");
+                DEBUG_PRINT_ERROR("component_init(): dec_message_thread creation failed");
                 msg_thread_created = false;
                 eRet = OMX_ErrorInsufficientResources;
             }
@@ -3632,27 +3664,20 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            drv_ctx.frame_rate.fps_numerator = (int)
                                                drv_ctx.frame_rate.fps_numerator / drv_ctx.frame_rate.fps_denominator;
                                        drv_ctx.frame_rate.fps_denominator = 1;
-                                       frm_int = drv_ctx.frame_rate.fps_denominator * 1e6 /
-                                           drv_ctx.frame_rate.fps_numerator;
-                                       DEBUG_PRINT_LOW("set_parameter: frm_int(%u) fps(%.2f)",
-                                               (unsigned int)frm_int, drv_ctx.frame_rate.fps_numerator /
-                                               (float)drv_ctx.frame_rate.fps_denominator);
-
-                                       struct v4l2_outputparm oparm;
-                                       /*XXX: we're providing timing info as seconds per frame rather than frames
-                                        * per second.*/
-                                       oparm.timeperframe.numerator = drv_ctx.frame_rate.fps_denominator;
-                                       oparm.timeperframe.denominator = drv_ctx.frame_rate.fps_numerator;
-
-                                       struct v4l2_streamparm sparm;
-                                       sparm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
-                                       sparm.parm.output = oparm;
-                                       if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_PARM, &sparm)) {
-                                           DEBUG_PRINT_ERROR("Unable to convey fps info to driver, performance might be affected");
-                                           eRet = OMX_ErrorHardware;
+                                       eRet = set_frame_rate(drv_ctx.frame_rate.fps_numerator,drv_ctx.frame_rate.fps_denominator);
+                                       if (eRet != OMX_ErrorNone)
                                            break;
-                                       }
-                                       m_perf_control.request_cores(frm_int);
+                                   }
+                                   // If resolution is 4096x2160 (True UHD), then
+                                   // set frame rate to 24fps for best effort decoding.
+                                   if (portDefn->format.video.nFrameWidth * portDefn->format.video.nFrameHeight >= WIDTH_4K * HEIGHT_4K) {
+                                       drv_ctx.frame_rate.fps_numerator = 24;
+                                       drv_ctx.frame_rate.fps_denominator = 1;
+                                       DEBUG_PRINT_HIGH("Setting %lu fps framerate for WxH = %dx%d", drv_ctx.frame_rate.fps_numerator,
+                                             portDefn->format.video.nFrameWidth, portDefn->format.video.nFrameHeight);
+                                       eRet = set_frame_rate(drv_ctx.frame_rate.fps_numerator,drv_ctx.frame_rate.fps_denominator);
+                                       if (eRet != OMX_ErrorNone)
+                                           break;
                                    }
 
                                    if (drv_ctx.video_resolution.frame_height !=
@@ -4167,7 +4192,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 break;
             }
             if (m_disable_dynamic_buf_mode) {
-                DEBUG_PRINT_HIGH("Dynamic buffer mode disabled by setprop");
+                DEBUG_PRINT_HIGH("Dynamic buffer mode is disabled");
                 eRet = OMX_ErrorUnsupportedSetting;
                 break;
             }
@@ -4254,6 +4279,15 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             break;
         }
 
+        case OMX_QTIIndexParamVideoPreferAdaptivePlayback:
+        {
+            DEBUG_PRINT_LOW("set_parameter: OMX_QTIIndexParamVideoPreferAdaptivePlayback");
+            m_disable_dynamic_buf_mode = ((QOMX_ENABLETYPE *)paramData)->bEnable;
+            if (m_disable_dynamic_buf_mode) {
+                DEBUG_PRINT_HIGH("Prefer Adaptive Playback is set");
+            }
+            break;
+        }
 #endif
         case OMX_QcomIndexParamVideoCustomBufferSize:
         {
@@ -4749,6 +4783,8 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
 #ifdef ADAPTIVE_PLAYBACK_SUPPORTED
     else if (extn_equals(paramName, "OMX.google.android.index.prepareForAdaptivePlayback")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoAdaptivePlaybackMode;
+    } else if (extn_equals(paramName, OMX_QTI_INDEX_PARAM_VIDEO_PREFER_ADAPTIVE_PLAYBACK)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamVideoPreferAdaptivePlayback;
     }
 #endif
 #ifdef FLEXYUV_SUPPORTED
@@ -6631,11 +6667,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorInvalidState;
     }
 
-    if (!m_out_bEnabled) {
-        DEBUG_PRINT_ERROR("ERROR:FTB incorrect state operation, output port is disabled.");
-        return OMX_ErrorIncorrectStateOperation;
-    }
-
     nPortIndex = buffer - client_buffers.get_il_buf_hdr();
     if (buffer == NULL ||
             (nPortIndex >= drv_ctx.op_buf.actualcount)) {
@@ -6690,7 +6721,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
     DEBUG_PRINT_LOW("FTBProxy: bufhdr = %p, bufhdr->pBuffer = %p",
             bufferAdd, bufferAdd->pBuffer);
     /*Return back the output buffer to client*/
-    if (m_out_bEnabled != OMX_TRUE || output_flush_progress == true) {
+    if (m_out_bEnabled != OMX_TRUE || output_flush_progress == true || in_reconfig) {
         DEBUG_PRINT_LOW("Output Buffers return flush/disable condition");
         buffer->nFilledLen = 0;
         m_cb.FillBufferDone (hComp,m_app_data,buffer);
@@ -9057,11 +9088,14 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
         portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.scan_lines;
     }
 
-    if ((portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) ||
-       (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar)) {
+    if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420Planar) {
+           portDefn->format.video.nStride = drv_ctx.video_resolution.frame_width;
+           portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
+    } else if (portDefn->format.video.eColorFormat == OMX_COLOR_FormatYUV420SemiPlanar) {
            portDefn->format.video.nStride = ALIGN(drv_ctx.video_resolution.frame_width, 16);
            portDefn->format.video.nSliceHeight = drv_ctx.video_resolution.frame_height;
     }
+
     DEBUG_PRINT_HIGH("update_portdef(%u): Width = %u Height = %u Stride = %d "
             "SliceHeight = %u eColorFormat = %d nBufSize %u nBufCnt %u",
             (unsigned int)portDefn->nPortIndex,
@@ -9318,6 +9352,37 @@ void omx_vdec::set_frame_rate(OMX_S64 act_timestamp)
         }
     }
     prev_ts = act_timestamp;
+}
+
+OMX_ERRORTYPE omx_vdec::set_frame_rate(OMX_U64 numerator, OMX_U64 denominator)
+{
+    struct v4l2_outputparm oparm;
+    struct v4l2_streamparm sparm;
+    OMX_ERRORTYPE eRet = OMX_ErrorNone;
+
+    /* Sanity Check*/
+    if (!numerator || !denominator) {
+        DEBUG_PRINT_ERROR("%s: Invalid arguments", __func__);
+        return OMX_ErrorBadParameter;
+    }
+
+    frm_int = denominator * 1e6 / numerator;
+    DEBUG_PRINT_LOW("set_parameter: frm_int(%u) fps(%.2f)",
+            (unsigned int)frm_int, numerator / (float) denominator);
+
+    /*we're providing timing info as seconds per frame rather than frames
+     * per second.*/
+    oparm.timeperframe.numerator = denominator;
+    oparm.timeperframe.denominator = numerator;
+
+    sparm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+    sparm.parm.output = oparm;
+    if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_PARM, &sparm)) {
+        DEBUG_PRINT_ERROR("Unable to convey fps info to driver, performance might be affected");
+        return OMX_ErrorHardware;
+    }
+    m_perf_control.request_cores(frm_int);
+    return eRet;
 }
 
 void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)

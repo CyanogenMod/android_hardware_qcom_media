@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2016, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -479,6 +479,7 @@ class omx_vdec: public qc_omx_component
         bool is_component_secure();
         void buf_ref_add(long fd, OMX_U32 offset);
         void buf_ref_remove(long fd, OMX_U32 offset);
+        volatile bool message_thread_stop;
 
     private:
         // Bit Positions
@@ -544,6 +545,7 @@ class omx_vdec: public qc_omx_component
             OMX_COMPONENT_GENERATE_INFO_FIELD_DROPPED = 0x16,
             OMX_COMPONENT_GENERATE_UNSUPPORTED_SETTING = 0x17,
             OMX_COMPONENT_GENERATE_HARDWARE_OVERLOAD = 0x18,
+            OMX_COMPONENT_CLOSE_MSG = 0x19
         };
 
         enum vc1_profile_type {
@@ -681,6 +683,7 @@ class omx_vdec: public qc_omx_component
         int stream_off(OMX_U32 port);
         void adjust_timestamp(OMX_S64 &act_timestamp);
         void set_frame_rate(OMX_S64 act_timestamp);
+        OMX_ERRORTYPE set_frame_rate(OMX_U64 numerator, OMX_U64 denominator);
         void handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr);
         void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
         void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
@@ -803,7 +806,12 @@ class omx_vdec: public qc_omx_component
         nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
 
+public:
+        inline bool omx_close_msg_thread(unsigned char id) {
+            return (id == OMX_COMPONENT_CLOSE_MSG);
+        }
 
+private:
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
