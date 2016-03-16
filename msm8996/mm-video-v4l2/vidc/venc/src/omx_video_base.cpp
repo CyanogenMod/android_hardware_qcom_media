@@ -2227,6 +2227,8 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
 
 }
 
+#define extn_equals(param, extn) (!strcmp(param, extn))
+
 /* ======================================================================
    FUNCTION
    omx_video::GetExtensionIndex
@@ -2251,94 +2253,81 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         return OMX_ErrorInvalidState;
     }
 #ifdef MAX_RES_1080P
-    if (!strncmp(paramName, "OMX.QCOM.index.param.SliceDeliveryMode",
-            sizeof("OMX.QCOM.index.param.SliceDeliveryMode") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.SliceDeliveryMode")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexEnableSliceDeliveryMode;
         return OMX_ErrorNone;
     }
 #endif
 #ifdef _ANDROID_ICS_
-    if (!strncmp(paramName, "OMX.google.android.index.storeMetaDataInBuffers",
-            sizeof("OMX.google.android.index.storeMetaDataInBuffers") - 1)) {
+    if (extn_equals(paramName, "OMX.google.android.index.storeMetaDataInBuffers")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
         return OMX_ErrorNone;
     }
 #endif
-    if (!strncmp(paramName, "OMX.google.android.index.prependSPSPPSToIDRFrames",
-            sizeof("OMX.google.android.index.prependSPSPPSToIDRFrames") - 1)) {
+    if (extn_equals(paramName, "OMX.google.android.index.prependSPSPPSToIDRFrames")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.HierStructure",
-            sizeof("OMX.QCOM.index.param.video.HierStructure") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.HierStructure")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexHierarchicalStructure;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.LTRCount",
-            sizeof("OMX.QCOM.index.param.video.LTRCount") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.LTRCount")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoLTRCount;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.LTRPeriod",
-            sizeof("OMX.QCOM.index.param.video.LTRPeriod") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.LTRPeriod")) {
         *indexType = (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRPeriod;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.config.video.LTRUse",
-            sizeof("OMX.QCOM.index.config.video.LTRUse") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.config.video.LTRUse")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoLTRUse;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.config.video.LTRMark",
-            sizeof("OMX.QCOM.index.config.video.LTRMark") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.config.video.LTRMark")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoLTRMark;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.config.video.hierplayers",
-            sizeof("OMX.QCOM.index.config.video.hierplayers") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.config.video.hierplayers")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.baselayerid",
-            sizeof("OMX.QCOM.index.param.video.baselayerid") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.baselayerid")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigBaseLayerId;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.config.video.qp",
-            sizeof("OMX.QCOM.index.config.video.qp") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.config.video.qp")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigQp;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.sar",
-            sizeof("OMX.QCOM.index.param.video.sar") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.sar")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVencAspectRatio;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.InputBatch",
-            sizeof("OMX.QCOM.index.param.video.InputBatch") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.InputBatch")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize;
         return OMX_ErrorNone;
     }
-    if (!strncmp(paramName, OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO,
-            sizeof(OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO) - 1)) {
+
+    if (extn_equals(paramName, OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamVideoEnableRoiInfo;
         return OMX_ErrorNone;
     }
-    if (!strncmp(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO,
-            sizeof(OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO) - 1)) {
+    if (extn_equals(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoRoiInfo;
         return OMX_ErrorNone;
     }
+
     return OMX_ErrorNotImplemented;
 }
 
