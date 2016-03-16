@@ -8,6 +8,8 @@ include $(QCOM_MEDIA_ROOT)/libstagefrighthw/Android.mk
 endif
 
 ifneq ($(filter msm8909 msm8916 msm8939,$(TARGET_BOARD_PLATFORM)),)
+ifneq ($(TARGET_SUPPORTS_WEARABLES),true)
+ifeq ($(call is-board-platform-in-list, $(MSM_VIDC_TARGET_LIST)),true)
 include $(QCOM_MEDIA_ROOT)/mm-video-v4l2/Android.mk
 include $(QCOM_MEDIA_ROOT)/libc2dcolorconvert/Android.mk
 
@@ -15,5 +17,7 @@ ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
 include $(QCOM_MEDIA_ROOT)/videopp/Android.mk
 endif
 
+endif
+endif
 endif
 endif

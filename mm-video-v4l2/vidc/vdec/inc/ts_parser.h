@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -47,6 +47,21 @@ extern "C" {
 
 class omx_time_stamp_reorder
 {
+    class auto_lock {
+        public:
+            auto_lock(pthread_mutex_t *lock)
+                : mLock(lock) {
+                    if (mLock)
+                        pthread_mutex_lock(mLock);
+                }
+            ~auto_lock() {
+                if (mLock)
+                    pthread_mutex_unlock(mLock);
+            }
+        private:
+            pthread_mutex_t *mLock;
+    };
+
     public:
         omx_time_stamp_reorder();
         ~omx_time_stamp_reorder();
@@ -86,5 +101,6 @@ class omx_time_stamp_reorder
         }
         bool reorder_ts;
         bool print_debug;
+        pthread_mutex_t m_lock;
 };
 #endif
