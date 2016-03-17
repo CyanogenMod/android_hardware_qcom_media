@@ -2,6 +2,10 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
+ifeq ($(TARGET_USES_ALIGNED_YCBCR420P),true)
+LOCAL_CFLAGS += -DUSE_ALIGNED_YCBCR420P
+endif
+
 LOCAL_SRC_FILES := \
         C2DColorConverter.cpp
 
