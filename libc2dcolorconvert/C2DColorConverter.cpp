@@ -404,7 +404,11 @@ size_t C2DColorConverter::calcStride(ColorConvertFormat format, size_t width)
         case NV12_128m:
             return ALIGN(width, ALIGN128);
         case YCbCr420P:
+#ifdef USE_ALIGNED_YCBCR420P
             return ALIGN(width, ALIGN16);
+#else
+            return width;
+#endif
         case YCrCb420P:
             return ALIGN(width, ALIGN16);
         default:
@@ -418,7 +422,11 @@ size_t C2DColorConverter::calcYSize(ColorConvertFormat format, size_t width, siz
         case YCbCr420SP:
             return (ALIGN(width, ALIGN16) * height);
         case YCbCr420P:
+#ifdef USE_ALIGNED_YCBCR420P
             return ALIGN(width, ALIGN16) * height;
+#else
+            return width * height;
+#endif
         case YCrCb420P:
             return ALIGN(width, ALIGN16) * height;
         case YCbCr420Tile:
@@ -458,8 +466,12 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
             size = ALIGN((alignedw * height) + (ALIGN(width/2, ALIGN32) * (height/2) * 2), ALIGN4K);
             break;
         case YCbCr420P:
+#ifdef USE_ALIGNED_YCBCR420P
             alignedw = ALIGN(width, ALIGN16);
             size = ALIGN((alignedw * height) + (ALIGN(width/2, ALIGN16) * (height/2) * 2), ALIGN4K);
+#else
+            size = ALIGN((width * height * 3 / 2), ALIGN4K);
+#endif
             break;
         case YCrCb420P:
             alignedw = ALIGN(width, ALIGN16);
