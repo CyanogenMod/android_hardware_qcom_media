@@ -3210,7 +3210,8 @@ OMX_ERRORTYPE omx_swvdec::describe_color_format(
 
         case OMX_COLOR_FormatYUV420SemiPlanar:
         {
-            return OMX_ErrorUnsupportedSetting;
+            // do nothing; standard OMX color formats should not be described
+            break;
         }
 
         default:
@@ -4219,8 +4220,6 @@ OMX_ERRORTYPE omx_swvdec::buffer_deallocate_op(
 
     if (ii < m_port_op.def.nBufferCountActual)
     {
-        assert(m_buffer_array_op[ii].buffer_payload.pmem_fd > 0);
-
         if (m_meta_buffer_mode)
         {
             // do nothing; munmap() & FD reset done in FBD or RR
@@ -4375,40 +4374,28 @@ void omx_swvdec::meta_buffer_ref_add(unsigned int index, int fd)
 /**
  * @brief Remove meta buffer reference.
  *
- * @param[in] fd: File descriptor.
+ * @param[in] index: Buffer index.
  */
-void omx_swvdec::meta_buffer_ref_remove(int fd)
+void omx_swvdec::meta_buffer_ref_remove(unsigned int index)
 {
-    unsigned int ii;
-
     pthread_mutex_lock(&m_meta_buffer_array_mutex);
 
-    for (ii = 0; ii < m_port_op.def.nBufferCountActual; ii++)
+    m_meta_buffer_array[index].ref_count--;
+
+    if (m_meta_buffer_array[index].ref_count == 0)
     {
-        if (m_meta_buffer_array[ii].fd == fd)
-        {
-            m_meta_buffer_array[ii].ref_count--;
+        m_meta_buffer_array[index].fd = -1;
 
-            if (m_meta_buffer_array[ii].ref_count == 0)
-            {
-                m_meta_buffer_array[ii].fd = -1;
+        munmap(m_buffer_array_op[index].buffer_payload.bufferaddr,
+               m_buffer_array_op[index].buffer_payload.mmaped_size);
 
-                munmap(m_buffer_array_op[ii].buffer_payload.bufferaddr,
-                       m_buffer_array_op[ii].buffer_payload.mmaped_size);
+        m_buffer_array_op[index].buffer_payload.bufferaddr  = NULL;
+        m_buffer_array_op[index].buffer_payload.offset      = 0;
+        m_buffer_array_op[index].buffer_payload.mmaped_size = 0;
 
-                m_buffer_array_op[ii].buffer_payload.bufferaddr  = NULL;
-                m_buffer_array_op[ii].buffer_payload.offset      = 0;
-                m_buffer_array_op[ii].buffer_payload.mmaped_size = 0;
-
-                m_buffer_array_op[ii].buffer_swvdec.p_buffer = NULL;
-                m_buffer_array_op[ii].buffer_swvdec.size     = 0;
-            }
-
-            break;
-        }
+        m_buffer_array_op[index].buffer_swvdec.p_buffer = NULL;
+        m_buffer_array_op[index].buffer_swvdec.size     = 0;
     }
-
-    assert(ii < m_port_op.def.nBufferCountActual);
 
     pthread_mutex_unlock(&m_meta_buffer_array_mutex);
 }
@@ -4786,8 +4773,7 @@ void omx_swvdec::swvdec_event_handler(SWVDEC_EVENT event, void *p_data)
 
         if (m_meta_buffer_mode)
         {
-            meta_buffer_ref_remove(
-                m_buffer_array_op[index].buffer_payload.pmem_fd);
+            meta_buffer_ref_remove(index);
         }
 
         break;
@@ -4969,17 +4955,12 @@ void omx_swvdec::async_thread_destroy()
  * @param[in] event_id:     Event ID.
  * @param[in] event_param1: Event parameter 1.
  * @param[in] event_param2: Event parameter 2.
- *
- * @retval  true if post event successful
- * @retval false if post event unsuccessful
  */
-bool omx_swvdec::async_post_event(unsigned long event_id,
+void omx_swvdec::async_post_event(unsigned long event_id,
                                   unsigned long event_param1,
                                   unsigned long event_param2)
 {
     OMX_SWVDEC_EVENT_INFO event_info;
-
-    bool retval = true;
 
     event_info.event_id     = event_id;
     event_info.event_param1 = event_param1;
@@ -4991,31 +4972,26 @@ bool omx_swvdec::async_post_event(unsigned long event_id,
     case OMX_SWVDEC_EVENT_ETB:
     case OMX_SWVDEC_EVENT_EBD:
     {
-        retval = m_queue_port_ip.push(&event_info);
+        m_queue_port_ip.push(&event_info);
         break;
     }
 
     case OMX_SWVDEC_EVENT_FTB:
     case OMX_SWVDEC_EVENT_FBD:
     {
-        retval = m_queue_port_op.push(&event_info);
+        m_queue_port_op.push(&event_info);
         break;
     }
 
     default:
     {
-        retval = m_queue_command.push(&event_info);
+        m_queue_command.push(&event_info);
         break;
     }
 
     }
 
-    if (retval == true)
-    {
-        sem_post(&m_async_thread.sem_event);
-    }
-
-    return retval;
+    sem_post(&m_async_thread.sem_event);
 }
 
 /**
@@ -5836,12 +5812,13 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
         if (p_buffer_hdr->nFilledLen &&
             ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) == 0))
         {
-            m_ts_list.push(p_buffer_hdr->nTimeStamp);
+            m_queue_timestamp.push(p_buffer_hdr->nTimeStamp);
         }
 
         assert(p_buffer_swvdec->p_buffer == p_buffer_hdr->pBuffer);
 
         if (m_arbitrary_bytes_mode &&
+            p_buffer_hdr->nFilledLen &&
             ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) == 0))
         {
             unsigned int offset_array[OMX_SWVDEC_MAX_FRAMES_PER_ETB] = {0};
@@ -6037,12 +6014,18 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
 
         if (p_buffer_hdr->nFilledLen)
         {
-            if (m_ts_list.pop(&p_buffer_hdr->nTimeStamp) == false)
+            if (m_queue_timestamp.empty())
             {
-                OMX_SWVDEC_LOG_ERROR("failed to pop timestamp from list");
+                OMX_SWVDEC_LOG_ERROR("timestamp queue empty");
+
+                p_buffer_hdr->nTimeStamp = timestamp_prev;
             }
             else
             {
+                p_buffer_hdr->nTimeStamp = m_queue_timestamp.top();
+
+                m_queue_timestamp.pop();
+
                 timestamp_prev = p_buffer_hdr->nTimeStamp;
             }
 
@@ -6071,14 +6054,16 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
         {
             async_post_event(OMX_SWVDEC_EVENT_EOS, 0, 0);
 
-            m_ts_list.reset();
+            while (m_queue_timestamp.empty() == false)
+            {
+                m_queue_timestamp.pop();
+            }
         }
 
         if (m_meta_buffer_mode &&
             ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_READONLY)) == 0)
         {
-            meta_buffer_ref_remove(
-                m_buffer_array_op[index].buffer_payload.pmem_fd);
+            meta_buffer_ref_remove(index);
         }
 
         OMX_SWVDEC_LOG_CALLBACK(
@@ -6269,7 +6254,10 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_flush_port_op()
 
     if (m_port_reconfig_inprogress == false)
     {
-        m_ts_list.reset();
+        while (m_queue_timestamp.empty() == false)
+        {
+            m_queue_timestamp.pop();
+        }
     }
 
     m_port_op.flush_inprogress = OMX_FALSE;

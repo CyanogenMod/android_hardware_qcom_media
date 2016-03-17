@@ -332,7 +332,7 @@ void* async_message_thread (void *input)
     return NULL;
 }
 
-void* message_thread(void *input)
+void* message_thread_dec(void *input)
 {
     omx_vdec* omx = reinterpret_cast<omx_vdec*>(input);
     unsigned char id;
@@ -2066,6 +2066,12 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         arbitrary_bytes = false;
         role = (OMX_STRING)"OMX.qcom.video.decoder.vp9";
     }
+    else if (!strncmp(role, "OMX.qcom.video.decoder.vp8.secure",
+                OMX_MAX_STRINGNAME_SIZE)) {
+        secure_mode = true;
+        arbitrary_bytes = false;
+        role = (OMX_STRING)"OMX.qcom.video.decoder.vp8";
+    }
 
     drv_ctx.video_driver_fd = open(device_name, O_RDWR);
 
@@ -2482,10 +2488,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
             m_pipe_in = fds[0];
             m_pipe_out = fds[1];
             msg_thread_created = true;
-            r = pthread_create(&msg_thread_id,0,message_thread,this);
+            r = pthread_create(&msg_thread_id,0,message_thread_dec,this);
 
             if (r < 0) {
-                DEBUG_PRINT_ERROR("component_init(): message_thread creation failed");
+                DEBUG_PRINT_ERROR("component_init(): message_thread_dec creation failed");
                 msg_thread_created = false;
                 eRet = OMX_ErrorInsufficientResources;
             }

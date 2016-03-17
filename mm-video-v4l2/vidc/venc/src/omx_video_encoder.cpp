@@ -565,7 +565,7 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
             }
         }
         msg_thread_created = true;
-        r = pthread_create(&msg_thread_id,0, message_thread, this);
+        r = pthread_create(&msg_thread_id,0, message_thread_enc, this);
         if (r < 0) {
             eRet = OMX_ErrorInsufficientResources;
             msg_thread_created = false;

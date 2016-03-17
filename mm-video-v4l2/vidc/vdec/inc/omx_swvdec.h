@@ -39,6 +39,8 @@
 #ifndef _OMX_SWVDEC_H_
 #define _OMX_SWVDEC_H_
 
+//#undef NDEBUG // uncomment to enable assertions
+
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -54,7 +56,7 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2016-02-06T12:15:40+0530"
+#define OMX_SWVDEC_VERSION_DATE "2016-02-24T14:00:31+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
@@ -302,7 +304,10 @@ private:
     pthread_mutex_t              m_meta_buffer_array_mutex;
                                             ///< mutex for metabuffer info array
 
-    omx_swvdec_ts_list m_ts_list; ///< timestamp list
+    std::priority_queue <OMX_TICKS,
+                         std::vector<OMX_TICKS>,
+                         std::greater<OMX_TICKS> > m_queue_timestamp;
+                                                   ///< timestamp priority queue
 
     omx_swvdec_diag m_diag; ///< diagnostics class variable
 
@@ -361,7 +366,7 @@ private:
     OMX_ERRORTYPE meta_buffer_array_allocate();
     void          meta_buffer_array_deallocate();
     void          meta_buffer_ref_add(unsigned int index, int fd);
-    void          meta_buffer_ref_remove(int fd);
+    void          meta_buffer_ref_remove(unsigned int index);
 
     OMX_BOOL port_ip_populated();
     OMX_BOOL port_op_populated();
@@ -416,7 +421,7 @@ private:
 
     static void   async_thread(void *p_cmp);
 
-    bool          async_post_event(unsigned long event_id,
+    void          async_post_event(unsigned long event_id,
                                    unsigned long event_param1,
                                    unsigned long event_param2);
 

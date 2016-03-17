@@ -1138,8 +1138,8 @@ private:
                 OMX_COLOR_FORMATTYPE formatsDefault[] = {
                     [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed,
                     [1] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
-                    [2] = OMX_COLOR_FormatYUV420Planar,
-                    [3] = OMX_COLOR_FormatYUV420SemiPlanar,
+                    [2] = OMX_COLOR_FormatYUV420SemiPlanar,
+                    [3] = OMX_COLOR_FormatYUV420Planar,
                     [4] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
                 };
                 format = (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?
@@ -1147,8 +1147,8 @@ private:
             } else {
                 OMX_COLOR_FORMATTYPE formatsDefault[] = {
                     [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
-                    [1] = OMX_COLOR_FormatYUV420Planar,
-                    [2] = OMX_COLOR_FormatYUV420SemiPlanar,
+                    [1] = OMX_COLOR_FormatYUV420SemiPlanar,
+                    [2] = OMX_COLOR_FormatYUV420Planar,
                     [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
                 };
                 format = (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?
