@@ -123,7 +123,7 @@ extern "C" {
 #define EXTRADATA_IDX(__num_planes) ((__num_planes) ? (__num_planes) - 1 : 0)
 #define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
 
-#define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA | OMX_FRAMEPACK_EXTRADATA)
+#define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA | OMX_FRAMEPACK_EXTRADATA | OMX_OUTPUTCROP_EXTRADATA)
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
 #ifndef ION_FLAG_CP_BITSTREAM
@@ -196,12 +196,32 @@ void* async_message_thread (void *input)
                 vdec_msg.msgdata.output_frame.time_stamp= ((uint64_t)v4l2_buf.timestamp.tv_sec * (uint64_t)1000000) +
                     (uint64_t)v4l2_buf.timestamp.tv_usec;
                 if (vdec_msg.msgdata.output_frame.len) {
-                    vdec_msg.msgdata.output_frame.framesize.left = plane[0].reserved[2];
-                    vdec_msg.msgdata.output_frame.framesize.top = plane[0].reserved[3];
-                    vdec_msg.msgdata.output_frame.framesize.right = plane[0].reserved[4];
-                    vdec_msg.msgdata.output_frame.framesize.bottom = plane[0].reserved[5];
-                    vdec_msg.msgdata.output_frame.picsize.frame_width = plane[0].reserved[6];
-                    vdec_msg.msgdata.output_frame.picsize.frame_height = plane[0].reserved[7];
+                    OMX_BUFFERHEADERTYPE* omxhdr = NULL;
+                    struct v4l2_buffer *v4l2_buf_ptr = NULL;
+
+                    v4l2_buf_ptr = (v4l2_buffer*)vdec_msg.msgdata.output_frame.client_data;
+                    omxhdr = omx->get_omx_output_buffer_header(v4l2_buf_ptr->index);
+
+                    DEBUG_PRINT_LOW("Processing extradata");
+                    omx->handle_extradata(omxhdr);
+
+                    if (omx->m_extradata_info.output_crop_updated) {
+                        DEBUG_PRINT_LOW("Read FBD crop from output extra data");
+                        vdec_msg.msgdata.output_frame.framesize.left = omx->m_extradata_info.output_crop_rect.nLeft;
+                        vdec_msg.msgdata.output_frame.framesize.top = omx->m_extradata_info.output_crop_rect.nTop;
+                        vdec_msg.msgdata.output_frame.framesize.right = omx->m_extradata_info.output_crop_rect.nWidth;
+                        vdec_msg.msgdata.output_frame.framesize.bottom = omx->m_extradata_info.output_crop_rect.nHeight;
+                        vdec_msg.msgdata.output_frame.picsize.frame_width = omx->m_extradata_info.output_width;
+                        vdec_msg.msgdata.output_frame.picsize.frame_height = omx->m_extradata_info.output_height;
+                    } else {
+                        DEBUG_PRINT_LOW("Read FBD crop from v4l2 reserved fields");
+                        vdec_msg.msgdata.output_frame.framesize.left = plane[0].reserved[2];
+                        vdec_msg.msgdata.output_frame.framesize.top = plane[0].reserved[3];
+                        vdec_msg.msgdata.output_frame.framesize.right = plane[0].reserved[4];
+                        vdec_msg.msgdata.output_frame.framesize.bottom = plane[0].reserved[5];
+                        vdec_msg.msgdata.output_frame.picsize.frame_width = plane[0].reserved[6];
+                        vdec_msg.msgdata.output_frame.picsize.frame_height = plane[0].reserved[7];
+                    }
                 }
                 if (omx->async_message_process(input,&vdec_msg) < 0) {
                     DEBUG_PRINT_HIGH("async_message_thread Exited");
@@ -789,6 +809,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     is_q6_platform = false;
     m_perf_control.send_hint_to_mpctl(true);
     m_input_pass_buffer_fd = false;
+    memset(&m_extradata_info, 0, sizeof(m_extradata_info));
 }
 
 static const int event_type[] = {
@@ -2462,12 +2483,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 #endif
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
-        if ((strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp8",
-                    OMX_MAX_STRINGNAME_SIZE) &&
-                strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.vp9",
-                        OMX_MAX_STRINGNAME_SIZE)) &&
-                (eRet == OMX_ErrorNone))
-                enable_extradata(DEFAULT_EXTRADATA, true, true);
+        enable_extradata(DEFAULT_EXTRADATA, true, true);
 #endif
         eRet = get_buffer_req(&drv_ctx.ip_buf);
         DEBUG_PRINT_HIGH("Input Buffer Size =%u",(unsigned int)drv_ctx.ip_buf.buffer_size);
@@ -7935,11 +7951,6 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         }
     }
 
-    if (!output_flush_progress && (buffer->nFilledLen > 0)) {
-        DEBUG_PRINT_LOW("Processing extradata");
-        handle_extradata(buffer);
-    }
-
 #ifdef OUTPUT_EXTRADATA_LOG
     if (outputExtradataFile) {
         int buf_index = buffer - m_out_mem_ptr;
@@ -10023,6 +10034,11 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
     }
 }
 
+OMX_BUFFERHEADERTYPE* omx_vdec::get_omx_output_buffer_header(int index)
+{
+    return m_out_mem_ptr + index;
+}
+
 void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 {
     OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL;
@@ -10033,6 +10049,12 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     OMX_U32 num_MB_in_frame;
     OMX_U32 recovery_sei_flags = 1;
     int enable = 0;
+
+
+    m_extradata_info.output_crop_updated = OMX_FALSE;
+
+    if (output_flush_progress)
+        return;
 
     int buf_index = p_buf_hdr - m_out_mem_ptr;
     if (buf_index >= drv_ctx.extradata_info.count) {
@@ -10173,6 +10195,18 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                              p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info.par_width = aspect_ratio_payload->aspect_width;
                             ((struct vdec_output_frameinfo *)
                              p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info.par_height = aspect_ratio_payload->aspect_height;
+                        }
+                    } else if (etype && *etype == MSM_VIDC_EXTRADATA_OUTPUT_CROP) {
+                        struct msm_vidc_output_crop_payload *output_crop_payload;
+                        output_crop_payload = (struct msm_vidc_output_crop_payload *)(++etype);
+                        if (output_crop_payload) {
+                            m_extradata_info.output_crop_rect.nLeft = output_crop_payload->left;
+                            m_extradata_info.output_crop_rect.nTop = output_crop_payload->top;
+                            m_extradata_info.output_crop_rect.nWidth = output_crop_payload->display_width;
+                            m_extradata_info.output_crop_rect.nHeight = output_crop_payload->display_height;
+                            m_extradata_info.output_width = output_crop_payload->width;
+                            m_extradata_info.output_height = output_crop_payload->height;
+                            m_extradata_info.output_crop_updated = OMX_TRUE;
                         }
                     }
                     break;
@@ -10422,6 +10456,14 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
                 DEBUG_PRINT_HIGH("Failed to set QP extradata");
             }
             client_extradata |= OMX_QP_EXTRADATA;
+        }
+        if (requested_extradata & OMX_OUTPUTCROP_EXTRADATA) {
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+            control.value = V4L2_MPEG_VIDC_EXTRADATA_OUTPUT_CROP;
+            DEBUG_PRINT_LOW("Enable output crop extra data");
+            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                DEBUG_PRINT_HIGH("Failed to set output crop extradata");
+            }
         }
     }
     ret = get_buffer_req(&drv_ctx.op_buf);
