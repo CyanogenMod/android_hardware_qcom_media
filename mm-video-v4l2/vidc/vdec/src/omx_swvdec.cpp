@@ -81,6 +81,7 @@ omx_swvdec::omx_swvdec():
     m_swvdec_created(false),
     m_omx_video_codingtype(OMX_VIDEO_CodingUnused),
     m_omx_color_formattype(OMX_COLOR_FormatUnused),
+    m_sync_frame_decoding_mode(false),
     m_android_native_buffers(false),
     m_meta_buffer_mode_disabled(false),
     m_meta_buffer_mode(false),
@@ -204,8 +205,6 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
 
         m_swvdec_codec         = SWVDEC_CODEC_MPEG4;
         m_omx_video_codingtype = ((OMX_VIDEO_CODINGTYPE) QOMX_VIDEO_CodingDivx);
-
-        m_arbitrary_bytes_mode = true;
     }
     else
     {
@@ -1056,19 +1055,15 @@ OMX_ERRORTYPE omx_swvdec::set_parameter(OMX_HANDLETYPE cmp_handle,
         case OMX_QcomIndexParamVideoDivx:
         {
             OMX_SWVDEC_LOG_API("OMX_QcomIndexParamVideoDivx");
-            OMX_SWVDEC_LOG_ERROR("OMX_QcomIndexParamVideoDivx unsupported");
 
-            retval = OMX_ErrorUnsupportedIndex;
             break;
         }
 
         case OMX_QcomIndexParamVideoSyncFrameDecodingMode:
         {
             OMX_SWVDEC_LOG_API("OMX_QcomIndexParamVideoSyncFrameDecodingMode");
-            OMX_SWVDEC_LOG_ERROR("OMX_QcomIndexParamVideoSyncFrameDecodingMode "
-                                 "unsupported");
 
-            retval = OMX_ErrorUnsupportedIndex;
+            m_sync_frame_decoding_mode = true;
             break;
         }
 
@@ -1091,6 +1086,10 @@ OMX_ERRORTYPE omx_swvdec::set_parameter(OMX_HANDLETYPE cmp_handle,
 
             case QOMX_VIDEO_DECODE_ORDER:
             {
+                OMX_SWVDEC_LOG_API(
+                    "OMX_QcomIndexParamVideoDecoderPictureOrder, "
+                    "QOMX_VIDEO_DECODE_ORDER");
+
                 OMX_SWVDEC_LOG_ERROR(
                     "OMX_QcomIndexParamVideoDecoderPictureOrder, "
                     "QOMX_VIDEO_DECODE_ORDER; unsupported");
@@ -2057,6 +2056,12 @@ OMX_ERRORTYPE omx_swvdec::empty_this_buffer(OMX_HANDLETYPE        cmp_handle,
 
         retval = OMX_ErrorBadParameter;
         goto empty_this_buffer_exit;
+    }
+
+    if (m_sync_frame_decoding_mode &&
+        ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) == 0))
+    {
+        p_buffer_hdr->nFlags |= OMX_BUFFERFLAG_EOS;
     }
 
     OMX_SWVDEC_LOG_API("%p: buffer %p, flags 0x%08x, filled length %d, "
@@ -3250,9 +3255,10 @@ OMX_ERRORTYPE omx_swvdec::set_port_definition_qcom(
 
         case OMX_QCOM_FramePacking_Arbitrary:
         {
-            OMX_SWVDEC_LOG_ERROR("OMX_QCOM_FramePacking_Arbitrary unsupported");
+            OMX_SWVDEC_LOG_HIGH("OMX_QCOM_FramePacking_Arbitrary");
 
-            retval = OMX_ErrorUnsupportedSetting;
+            m_arbitrary_bytes_mode = true;
+
             break;
         }
 
@@ -3490,6 +3496,11 @@ OMX_ERRORTYPE omx_swvdec::get_buffer_requirements_swvdec(
         {
             retval = retval_swvdec2omx(retval_swvdec);
             goto get_buffer_requirements_swvdec_exit;
+        }
+
+        if (m_sync_frame_decoding_mode)
+        {
+            p_buffer_req->mincount = 1;
         }
 
         m_port_op.def.nBufferSize        = p_buffer_req->size;
@@ -3808,7 +3819,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_ip_info_array()
         OMX_SWVDEC_LOG_ERROR("buffer info array already allocated");
 
         retval = OMX_ErrorInsufficientResources;
-        goto buffer_allocate_ip_hdr_exit;
+        goto buffer_allocate_ip_info_array_exit;
     }
 
     OMX_SWVDEC_LOG_HIGH("allocating buffer info array, %d element%s",
@@ -3829,7 +3840,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_ip_info_array()
                              m_port_ip.def.nBufferCountActual);
 
         retval = OMX_ErrorInsufficientResources;
-        goto buffer_allocate_ip_hdr_exit;
+        goto buffer_allocate_ip_info_array_exit;
     }
 
     for (ii = 0; ii < m_port_ip.def.nBufferCountActual; ii++)
@@ -3844,14 +3855,14 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_ip_info_array()
         m_buffer_array_ip[ii].buffer_swvdec.p_client_data =
             (void *) ((unsigned long) ii);
 
-        p_buffer_hdr->nSize              = sizeof(OMX_BUFFERHEADERTYPE);
-        p_buffer_hdr->nVersion.nVersion  = OMX_SPEC_VERSION;
-        p_buffer_hdr->nOutputPortIndex   = OMX_CORE_PORT_INDEX_IP;
-        p_buffer_hdr->pOutputPortPrivate =
+        p_buffer_hdr->nSize             = sizeof(OMX_BUFFERHEADERTYPE);
+        p_buffer_hdr->nVersion.nVersion = OMX_SPEC_VERSION;
+        p_buffer_hdr->nInputPortIndex   = OMX_CORE_PORT_INDEX_IP;
+        p_buffer_hdr->pInputPortPrivate =
             (void *) &(m_buffer_array_ip[ii].buffer_payload);
     }
 
-buffer_allocate_ip_hdr_exit:
+buffer_allocate_ip_info_array_exit:
     return retval;
 }
 
@@ -3871,7 +3882,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_op_info_array()
         OMX_SWVDEC_LOG_ERROR("buffer info array already allocated");
 
         retval = OMX_ErrorInsufficientResources;
-        goto buffer_allocate_op_hdr_exit;
+        goto buffer_allocate_op_info_array_exit;
     }
 
     OMX_SWVDEC_LOG_HIGH("allocating buffer info array, %d element%s",
@@ -3892,7 +3903,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_op_info_array()
                              m_port_op.def.nBufferCountActual);
 
         retval = OMX_ErrorInsufficientResources;
-        goto buffer_allocate_op_hdr_exit;
+        goto buffer_allocate_op_info_array_exit;
     }
 
     for (ii = 0; ii < m_port_op.def.nBufferCountActual; ii++)
@@ -3914,7 +3925,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_op_info_array()
             (void *) &(m_buffer_array_op[ii].buffer_payload);
     }
 
-buffer_allocate_op_hdr_exit:
+buffer_allocate_op_info_array_exit:
     return retval;
 }
 
@@ -5825,8 +5836,9 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
 
             unsigned int num_frame_headers = 1;
 
-            if (m_omx_video_codingtype ==
-                ((OMX_VIDEO_CODINGTYPE) QOMX_VIDEO_CodingDivx))
+            if ((m_omx_video_codingtype ==
+                 ((OMX_VIDEO_CODINGTYPE) QOMX_VIDEO_CodingDivx)) ||
+                (m_omx_video_codingtype == OMX_VIDEO_CodingMPEG4))
             {
                 num_frame_headers = split_buffer_mpeg4(offset_array,
                                                        p_buffer_hdr);
@@ -6014,19 +6026,31 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
 
         if (p_buffer_hdr->nFilledLen)
         {
-            if (m_queue_timestamp.empty())
+            if (m_sync_frame_decoding_mode)
             {
-                OMX_SWVDEC_LOG_ERROR("timestamp queue empty");
+                OMX_SWVDEC_LOG_LOW("sync frame decoding mode; "
+                                   "setting timestamp to zero");
 
-                p_buffer_hdr->nTimeStamp = timestamp_prev;
+                p_buffer_hdr->nTimeStamp = 0;
             }
             else
             {
-                p_buffer_hdr->nTimeStamp = m_queue_timestamp.top();
+                if (m_queue_timestamp.empty())
+                {
+                    OMX_SWVDEC_LOG_ERROR("timestamp queue empty; "
+                                         "re-using previous timestamp %lld",
+                                         timestamp_prev);
 
-                m_queue_timestamp.pop();
+                    p_buffer_hdr->nTimeStamp = timestamp_prev;
+                }
+                else
+                {
+                    p_buffer_hdr->nTimeStamp = m_queue_timestamp.top();
 
-                timestamp_prev = p_buffer_hdr->nTimeStamp;
+                    m_queue_timestamp.pop();
+
+                    timestamp_prev = p_buffer_hdr->nTimeStamp;
+                }
             }
 
             if (m_meta_buffer_mode)
@@ -6047,12 +6071,18 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
         }
         else
         {
-            p_buffer_hdr->nTimeStamp = timestamp_prev;
+            OMX_SWVDEC_LOG_LOW("filled length zero; "
+                               "setting timestamp to zero");
+
+            p_buffer_hdr->nTimeStamp = 0;
         }
 
         if (p_buffer_hdr->nFlags & OMX_BUFFERFLAG_EOS)
         {
             async_post_event(OMX_SWVDEC_EVENT_EOS, 0, 0);
+
+            OMX_SWVDEC_LOG_LOW("flushing %d elements in timestamp queue",
+                               m_queue_timestamp.size());
 
             while (m_queue_timestamp.empty() == false)
             {
@@ -6254,6 +6284,9 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_flush_port_op()
 
     if (m_port_reconfig_inprogress == false)
     {
+        OMX_SWVDEC_LOG_LOW("flushing %d elements in timestamp queue",
+                           m_queue_timestamp.size());
+
         while (m_queue_timestamp.empty() == false)
         {
             m_queue_timestamp.pop();

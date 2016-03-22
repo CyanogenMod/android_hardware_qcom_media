@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -4562,7 +4562,8 @@ bool venc_dev::venc_set_intra_refresh(OMX_VIDEO_INTRAREFRESHTYPE ir_mode, OMX_U3
     int rc;
     struct v4l2_control control_mode,control_mbs;
     control_mode.id = V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_MODE;
-
+    control_mbs.id = V4L2_CID_MPEG_VIDC_VIDEO_CIR_MBS;
+    control_mbs.value = 0;
     // There is no disabled mode.  Disabled mode is indicated by a 0 count.
     if (irMBs == 0 || ir_mode == OMX_VIDEO_IntraRefreshMax) {
         control_mode.value = V4L2_CID_MPEG_VIDC_VIDEO_INTRA_REFRESH_NONE;
