@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -234,6 +234,7 @@ venc_dev::venc_dev(class omx_venc *venc_class):mInputExtradata(venc_class), mOut
     color_format = 0;
     hw_overload = false;
     mBatchSize = 0;
+    deinterlace_enabled = false;
     pthread_mutex_init(&pause_resume_mlock, NULL);
     pthread_cond_init(&pause_resume_cond, NULL);
     memset(&idrperiod, 0, sizeof(idrperiod));
@@ -2396,11 +2397,12 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                     DEBUG_PRINT_ERROR("ERROR: Rotation is not supported with deinterlacing");
                     return false;
                 }
-                DEBUG_PRINT_HIGH("venc_set_config: updating the new Dims");
-                nFrameWidth = m_sVenc_cfg.dvs_width;
-                m_sVenc_cfg.dvs_width  = m_sVenc_cfg.dvs_height;
-                m_sVenc_cfg.dvs_height = nFrameWidth;
-
+                if (config_rotation->nRotation == 90 || config_rotation->nRotation == 270) {
+                    DEBUG_PRINT_HIGH("venc_set_config: updating the new Dims");
+                    nFrameWidth = m_sVenc_cfg.dvs_width;
+                    m_sVenc_cfg.dvs_width  = m_sVenc_cfg.dvs_height;
+                    m_sVenc_cfg.dvs_height = nFrameWidth;
+                }
                 if(venc_set_vpe_rotation(config_rotation->nRotation) == false) {
                     DEBUG_PRINT_ERROR("ERROR: Dimension Change for Rotation failed");
                     return false;
