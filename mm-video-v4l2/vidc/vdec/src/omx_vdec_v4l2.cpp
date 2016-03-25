@@ -11750,7 +11750,7 @@ void omx_vdec::prefetchNewBuffers() {
     uint32_t prefetch_size;
     uint32_t want_size;
     uint32_t have_size;
-    int color_fmt;
+    int color_fmt, rc;
     uint32_t new_calculated_size;
     uint32_t new_buffer_size;
     uint32_t new_buffer_count;
@@ -11791,13 +11791,6 @@ void omx_vdec::prefetchNewBuffers() {
     old_buffer_size = drv_ctx.op_buf.buffer_size;
     old_buffer_count = drv_ctx.op_buf.actualcount;
 
-    /*
-    if (new_buffer_count == old_buffer_count) {
-        prefetch_size = new_buffer_size - old_buffer_size;
-        DEBUG_PRINT_LOW("Got same count!");
-    } else {
-        prefetch_size = (want_size - have_size) / prefetch_count;
-    }*/
     new_buffer_count = old_buffer_count > new_buffer_count ? old_buffer_count : new_buffer_count;
 
     prefetch_count = new_buffer_count;
@@ -11812,12 +11805,18 @@ void omx_vdec::prefetchNewBuffers() {
         int ion_fd = open(MEM_DEVICE, O_RDONLY);
         if (ion_fd < 0) {
             DEBUG_PRINT_ERROR("Ion fd open failed : %d\n", ion_fd);
+            return;
         }
 
         struct ion_custom_data *custom_data = (struct ion_custom_data*) malloc(sizeof(*custom_data));
         struct ion_prefetch_data *prefetch_data = (struct ion_prefetch_data*) malloc(sizeof(*prefetch_data));
-        struct ion_prefetch_regions *regions = (struct ion_prefetch_regions*) malloc(sizeof(*regions) * 1);
+        struct ion_prefetch_regions *regions = (struct ion_prefetch_regions*) malloc(sizeof(*regions));
         size_t *sizes = (size_t*) malloc(sizeof(size_t) * prefetch_count);
+
+        if (custom_data == NULL || prefetch_data == NULL || regions == NULL || sizes == NULL) {
+            DEBUG_PRINT_ERROR("prefetch data allocation failed");
+            goto prefetch_exit;
+        }
 
         for (uint32_t i = 0; i < prefetch_count; i++) {
             sizes[i] = prefetch_size;
@@ -11834,11 +11833,12 @@ void omx_vdec::prefetchNewBuffers() {
         custom_data->cmd = ION_IOC_PREFETCH;
         custom_data->arg = (unsigned long )prefetch_data;
 
-        int rc = ioctl(ion_fd, ION_IOC_CUSTOM, custom_data);
+        rc = ioctl(ion_fd, ION_IOC_CUSTOM, custom_data);
         if (rc) {
             DEBUG_PRINT_ERROR("Custom prefetch ioctl failed rc : %d, errno : %d\n", rc, errno);
         }
 
+prefetch_exit:
         close(ion_fd);
         free(sizes);
         free(regions);
