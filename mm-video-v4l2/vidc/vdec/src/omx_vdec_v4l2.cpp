@@ -9668,10 +9668,22 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
         fmt.fmt.pix_mp.pixelformat = output_capability;
     } else if (1 == portDefn->nPortIndex) {
         unsigned int buf_size = 0;
+        int ret = 0;
         if (!client_buffers.update_buffer_req()) {
             DEBUG_PRINT_ERROR("client_buffers.update_buffer_req Failed");
             return OMX_ErrorHardware;
         }
+
+       memset(&fmt, 0x0, sizeof(struct v4l2_format));
+       fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+       fmt.fmt.pix_mp.pixelformat = capture_capability;
+       ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+       if (ret) {
+           DEBUG_PRINT_ERROR("Get Resolution failed");
+           return OMX_ErrorHardware;
+       }
+       drv_ctx.op_buf.buffer_size = fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
+
         if (!client_buffers.get_buffer_req(buf_size)) {
             DEBUG_PRINT_ERROR("update buffer requirements");
             return OMX_ErrorHardware;
