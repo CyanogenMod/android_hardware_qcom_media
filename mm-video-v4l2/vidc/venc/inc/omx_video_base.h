@@ -644,6 +644,9 @@ class omx_video: public qc_omx_component
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
         QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE m_slowLatencyMode;
+#ifdef SUPPORT_CONFIG_INTRA_REFRESH
+        OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE m_sConfigIntraRefresh;
+#endif
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;

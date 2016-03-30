@@ -54,6 +54,10 @@ ifeq ($(call is-board-platform-in-list, $(MASTER_SIDE_CP_TARGET_LIST)),true)
 libmm-venc-def += -DMASTER_SIDE_CP
 endif
 
+ifeq ($(TARGET_USES_MEDIA_EXTENSIONS),true)
+libmm-venc-def += -DSUPPORT_CONFIG_INTRA_REFRESH
+endif
+
 # Common Includes
 libmm-venc-inc      := $(LOCAL_PATH)/inc
 libmm-venc-inc      += $(TOP)/hardware/qcom/media/mm-video-v4l2/vidc/common/inc
