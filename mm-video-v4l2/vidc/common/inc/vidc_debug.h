@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2013 - 2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -67,5 +67,16 @@ extern int debug_level;
 #define DEBUG_PRINT_LOW printf
 #define DEBUG_PRINT_HIGH printf
 #endif
+
+#define VALIDATE_OMX_PARAM_DATA(ptr, paramType)                                \
+    {                                                                          \
+        if (ptr == NULL) { return OMX_ErrorBadParameter; }                     \
+        paramType *p = reinterpret_cast<paramType *>(ptr);                     \
+        if (p->nSize < sizeof(paramType)) {                                    \
+            ALOGE("Insufficient object size(%u) v/s expected(%zu) for type %s",\
+                    (unsigned int)p->nSize, sizeof(paramType), #paramType);    \
+            return OMX_ErrorBadParameter;                                      \
+        }                                                                      \
+    }                                                                          \
 
 #endif
