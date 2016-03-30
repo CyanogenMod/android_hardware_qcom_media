@@ -219,6 +219,16 @@ struct msm_venc_priority {
     OMX_U32 priority;
 };
 
+struct msm_venc_temporal_layers {
+    enum hier_type hier_mode;
+    OMX_U32 nMaxLayers;
+    OMX_U32 nMaxBLayers;
+    OMX_U32 nPLayers;
+    OMX_U32 nBLayers;
+    OMX_BOOL bIsBitrateRatioValid;
+    OMX_U32 nTemporalLayerBitrateRatio[OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS];
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -288,6 +298,8 @@ class venc_dev
         bool venc_get_performance_level(OMX_U32 *perflevel);
         bool venc_get_vui_timing_info(OMX_U32 *enabled);
         bool venc_get_peak_bitrate(OMX_U32 *peakbitrate);
+        bool venc_get_temporal_layer_caps(OMX_U32 * /*nMaxLayers*/,
+                OMX_U32 * /*nMaxBLayers*/);
         bool venc_get_output_log_flag();
         int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
         int venc_input_log_buffers(OMX_BUFFERHEADERTYPE *buffer, int fd, int plane_offset);
@@ -358,6 +370,7 @@ class venc_dev
         struct msm_venc_vpx_error_resilience vpx_err_resilience;
         struct msm_venc_priority            sess_priority;
         OMX_U32                             operating_rate;
+        msm_venc_temporal_layers            temporal_layers_config;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -400,6 +413,8 @@ class venc_dev
         bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
         bool venc_set_session_priority(OMX_U32 priority);
         bool venc_set_operatingrate(OMX_U32 rate);
+        OMX_ERRORTYPE venc_set_temporal_layers(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pTemporalParams);
+        OMX_ERRORTYPE venc_set_temporal_layers_internal();
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();

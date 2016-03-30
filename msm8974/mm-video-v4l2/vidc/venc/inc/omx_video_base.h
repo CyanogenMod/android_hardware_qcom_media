@@ -240,6 +240,8 @@ class omx_video: public qc_omx_component
         virtual bool dev_get_performance_level(OMX_U32 *) = 0;
         virtual bool dev_get_vui_timing_info(OMX_U32 *) = 0;
         virtual bool dev_get_peak_bitrate(OMX_U32 *) = 0;
+        virtual bool dev_get_temporal_layer_caps(OMX_U32 * /*nMaxLayers*/,
+                OMX_U32 * /*nMaxBLayers*/) = 0;
 #ifdef _ANDROID_ICS_
         void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif
@@ -616,6 +618,8 @@ class omx_video: public qc_omx_component
         OMX_VIDEO_VP8REFERENCEFRAMETYPE m_sConfigVp8ReferenceFrame;
         QOMX_VIDEO_HIERARCHICALLAYERS m_sHierLayers;
         QOMX_EXTNINDEX_VIDEO_INITIALQP m_sParamInitqp;
+        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE m_sParamTemporalLayers;
+        OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE m_sConfigTemporalLayers;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
         OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE m_sConfigIntraRefresh;
