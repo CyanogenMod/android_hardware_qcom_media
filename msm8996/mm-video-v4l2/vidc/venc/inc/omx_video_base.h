@@ -635,6 +635,7 @@ class omx_video: public qc_omx_component
         PrependSPSPPSToIDRFramesParams m_sPrependSPSPPS;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
+        OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE m_sConfigIntraRefresh;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;
