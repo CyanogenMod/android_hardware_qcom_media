@@ -6426,9 +6426,20 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
             return OMX_ErrorBadParameter;
         }
 
-        //Store private handle from GraphicBuffer
-        native_buffer[nPortIndex].privatehandle = handle;
-        native_buffer[nPortIndex].nativehandle = handle;
+        //Fill outputbuffer with buffer details, this will be sent to f/w during VIDIOC_QBUF
+        nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
+        if (nPortIndex < drv_ctx.op_buf.actualcount &&
+            nPortIndex < MAX_NUM_INPUT_OUTPUT_BUFFERS) {
+            drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd = handle->fd;
+            drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr = (OMX_U8*) buffer;
+
+            //Store private handle from GraphicBuffer
+            native_buffer[nPortIndex].privatehandle = handle;
+            native_buffer[nPortIndex].nativehandle = handle;
+        } else {
+            DEBUG_PRINT_ERROR("[FTB]Invalid native_buffer index: %d", nPortIndex);
+            return OMX_ErrorBadParameter;
+        }
 
         //buffer->nAllocLen will be sizeof(struct VideoDecoderOutputMetaData). Overwrite
         //this with a more sane size so that we don't compensate in rest of code
@@ -7345,8 +7356,14 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
                 }
 
                 //Clear graphic buffer handles in dynamic mode
-                native_buffer[nPortIndex].privatehandle = NULL;
-                native_buffer[nPortIndex].nativehandle = NULL;
+                if (nPortIndex < drv_ctx.op_buf.actualcount &&
+                    nPortIndex < MAX_NUM_INPUT_OUTPUT_BUFFERS) {
+                    native_buffer[nPortIndex].privatehandle = NULL;
+                    native_buffer[nPortIndex].nativehandle = NULL;
+                } else {
+                    DEBUG_PRINT_ERROR("[FBD]Invalid native_buffer index: %d", nPortIndex);
+                    return OMX_ErrorBadParameter;
+                }
             }
             m_cb.FillBufferDone (hComp,m_app_data,il_buffer);
         } else {
@@ -7365,7 +7382,9 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         private_handle_t *private_handle = NULL;
         dim.sliceWidth = framesize.nWidth;
         dim.sliceHeight = framesize.nHeight;
-        if (native_buffer[buf_index].privatehandle)
+        if (buf_index < drv_ctx.op_buf.actualcount &&
+            buf_index < MAX_NUM_INPUT_OUTPUT_BUFFERS &&
+            native_buffer[buf_index].privatehandle)
             private_handle = native_buffer[buf_index].privatehandle;
         if (private_handle) {
             DEBUG_PRINT_LOW("set metadata: update buf-geometry with stride %d slice %d",
