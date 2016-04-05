@@ -471,6 +471,7 @@ class omx_vdec: public qc_omx_component
         bool async_thread_force_stop;
         volatile bool message_thread_stop;
         struct extradata_info m_extradata_info;
+        int m_progressive;
 
     private:
         // Bit Positions

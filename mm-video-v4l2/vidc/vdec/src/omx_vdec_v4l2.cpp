@@ -256,16 +256,14 @@ void* async_message_thread (void *input)
                 vdec_msg.msgdata.output_frame.picsize.frame_height = ptr[0];
                 vdec_msg.msgdata.output_frame.picsize.frame_width = ptr[1];
                 DEBUG_PRINT_HIGH("VIDC Port Reconfig received insufficient");
-                if (omx->async_message_process(input,&vdec_msg) < 0) {
-                    DEBUG_PRINT_HIGH("async_message_thread Exited");
-                    break;
+                if(ptr[2] & V4L2_EVENT_BITDEPTH_FLAG) {
+                    omx->dpb_bit_depth = ptr[3];
+                    DEBUG_PRINT_HIGH("VIDC Port Reconfig Bitdepth change - %d", ptr[3]);
                 }
-            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_BITDEPTH_CHANGED_INSUFFICIENT ) {
-                struct vdec_msginfo vdec_msg;
-                vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
-                vdec_msg.status_code=VDEC_S_SUCCESS;
-                omx->dpb_bit_depth = dqevent.u.data[0];
-                DEBUG_PRINT_HIGH("VIDC Port Reconfig Bitdepth change - %d", dqevent.u.data[0]);
+                if(ptr[2] & V4L2_EVENT_PICSTRUCT_FLAG) {
+                    omx->m_progressive = ptr[4];
+                    DEBUG_PRINT_HIGH("VIDC Port Reconfig PicStruct change - %d", ptr[4]);
+                }
                 if (omx->async_message_process(input,&vdec_msg) < 0) {
                     DEBUG_PRINT_HIGH("async_message_thread Exited");
                     break;
@@ -996,14 +994,9 @@ OMX_ERRORTYPE omx_vdec::decide_dpb_buffer_mode(bool force_split_mode)
 
     bool cpu_access = capture_capability != V4L2_PIX_FMT_NV12_UBWC;
 
-    bool is_res_above_1080p = (drv_ctx.video_resolution.frame_width > 1920 &&
-            drv_ctx.video_resolution.frame_height > 1088) ||
-            (drv_ctx.video_resolution.frame_width > 1088 &&
-             drv_ctx.video_resolution.frame_height > 1920);
-
     if (cpu_access) {
         if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_8) {
-            if ((m_force_compressed_for_dpb || is_res_above_1080p) &&
+            if ((m_force_compressed_for_dpb || m_progressive) &&
                 !force_split_mode) {
                 //split DPB-OPB
                 //DPB -> UBWC , OPB -> Linear
@@ -2317,6 +2310,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         }
 
         dpb_bit_depth = MSM_VIDC_BIT_DEPTH_8;
+        m_progressive = MSM_VIDC_PIC_STRUCT_PROGRESSIVE;
 
         if (m_disable_ubwc_mode) {
             capture_capability = V4L2_PIX_FMT_NV12;
