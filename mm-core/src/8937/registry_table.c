@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2014-15, The Linux Foundation. All rights reserved.
+Copyright (c) 2014-16, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -94,6 +94,19 @@ omx_core_cb_type core[] =
   },
   {
     "OMX.qcom.video.decoder.hevc",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxVdec.so",
+    {
+      "video_decoder.hevc"
+    }
+  },
+  {
+    "OMX.qcom.video.decoder.hevc.secure",
     NULL,   // Create instance function
     // Unique instance handle
     {

@@ -39,6 +39,8 @@
 #ifndef _OMX_SWVDEC_H_
 #define _OMX_SWVDEC_H_
 
+//#undef NDEBUG // uncomment to enable assertions
+
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -54,7 +56,7 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2016-02-17T15:40:01+0530"
+#define OMX_SWVDEC_VERSION_DATE "2016-03-24T23:08:16+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
@@ -282,6 +284,7 @@ private:
 
     OMX_PRIORITYMGMTTYPE m_prio_mgmt; ///< priority management
 
+    bool m_sync_frame_decoding_mode; ///< sync frame decoding mode enabled?
     bool m_android_native_buffers;   ///< android native buffers enabled?
 
     bool m_meta_buffer_mode_disabled; ///< meta buffer mode disabled?
@@ -364,7 +367,7 @@ private:
     OMX_ERRORTYPE meta_buffer_array_allocate();
     void          meta_buffer_array_deallocate();
     void          meta_buffer_ref_add(unsigned int index, int fd);
-    void          meta_buffer_ref_remove(int fd);
+    void          meta_buffer_ref_remove(unsigned int index);
 
     OMX_BOOL port_ip_populated();
     OMX_BOOL port_op_populated();
@@ -376,6 +379,7 @@ private:
                               OMX_U32                     size,
                               OMX_U32                     alignment);
     void ion_memory_free(struct vdec_ion *p_ion_buf_info);
+    void ion_flush_op(unsigned int index);
 
     // component callback functions
 

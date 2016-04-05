@@ -65,11 +65,16 @@ void omx_swvdec_log_init()
         omx_swvdec_loglevel = atoi(property_value);
 
         if (omx_swvdec_loglevel > 3)
+        {
             omx_swvdec_loglevel = 3;
-        if (omx_swvdec_loglevel < 0)
-            omx_swvdec_loglevel = 0;
+        }
 
-        OMX_SWVDEC_LOG_LOW(
+        if (omx_swvdec_loglevel < 0)
+        {
+            omx_swvdec_loglevel = 0;
+        }
+
+        OMX_SWVDEC_LOG_HIGH(
             "omx_swvdec.log.level: %d; %s",
             omx_swvdec_loglevel,
             (omx_swvdec_loglevel == 3) ? "error, high, & low logs" :
