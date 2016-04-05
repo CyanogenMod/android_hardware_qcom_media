@@ -5626,6 +5626,7 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
         rate_ctrl.rcmode = control.value;
     }
 
+#ifdef _VQZIP_
     if (eControlRate == OMX_Video_ControlRateVariable && (supported_rc_modes & RC_VBR_CFR)
         && m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264) {
         /* Enable VQZIP SEI by default for camcorder RC modes */
@@ -5637,6 +5638,7 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
             DEBUG_PRINT_HIGH("Non-Fatal: Request to set VQZIP failed");
         }
     }
+#endif
 
     return status;
 }
