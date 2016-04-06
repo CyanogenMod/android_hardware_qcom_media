@@ -33,6 +33,10 @@ LOCAL_SHARED_LIBRARIES :=       \
         libdl                   \
         libui                   \
 
+LOCAL_COPY_HEADERS_TO         := qcom/media
+LOCAL_COPY_HEADERS            := QComOMXMetadata.h \
+                                 QComOMXPlugin.h
+
 LOCAL_MODULE := libstagefrighthw
 
 include $(BUILD_SHARED_LIBRARY)
