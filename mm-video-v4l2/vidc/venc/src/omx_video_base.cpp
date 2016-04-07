@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -2200,7 +2200,6 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
             *bufferHdr = (m_out_mem_ptr + i );
             (*bufferHdr)->pBuffer = (OMX_U8 *)buffer;
             (*bufferHdr)->pAppPrivate = appData;
-            BITMASK_SET(&m_out_bm_count,i);
 
             if (!m_use_output_pmem) {
 #ifdef USE_ION
@@ -2272,6 +2271,8 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
                 DEBUG_PRINT_ERROR("ERROR: dev_use_buf Failed for o/p buf");
                 return OMX_ErrorInsufficientResources;
             }
+
+            BITMASK_SET(&m_out_bm_count,i);
         } else {
             DEBUG_PRINT_ERROR("ERROR: All o/p Buffers have been Used, invalid use_buf call for "
                     "index = %u", i);
@@ -2918,9 +2919,10 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         // check if the buffer is valid
         nPortIndex = buffer - ((!mUseProxyColorFormat)?m_inp_mem_ptr:meta_buffer_hdr);
 
-        DEBUG_PRINT_LOW("free_buffer on i/p port - Port idx %d, actual cnt %d \n",
-                nPortIndex, m_sInPortDef.nBufferCountActual);
-        if (nPortIndex < m_sInPortDef.nBufferCountActual) {
+        DEBUG_PRINT_LOW("free_buffer on i/p port - Port idx %u, actual cnt %u",
+                nPortIndex, (unsigned int)m_sInPortDef.nBufferCountActual);
+        if (nPortIndex < m_sInPortDef.nBufferCountActual &&
+                BITMASK_PRESENT(&m_inp_bm_count, nPortIndex)) {
             // Clear the bit associated with it.
             BITMASK_CLEAR(&m_inp_bm_count,nPortIndex);
             free_input_buffer (buffer);
@@ -2968,9 +2970,10 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         // check if the buffer is valid
         nPortIndex = buffer - (OMX_BUFFERHEADERTYPE*)m_out_mem_ptr;
 
-        DEBUG_PRINT_LOW("free_buffer on o/p port - Port idx %d, actual cnt %d \n",
-                nPortIndex, m_sOutPortDef.nBufferCountActual);
-        if (nPortIndex < m_sOutPortDef.nBufferCountActual) {
+        DEBUG_PRINT_LOW("free_buffer on o/p port - Port idx %u, actual cnt %u",
+                nPortIndex, (unsigned int)m_sOutPortDef.nBufferCountActual);
+        if (nPortIndex < m_sOutPortDef.nBufferCountActual &&
+                BITMASK_PRESENT(&m_out_bm_count, nPortIndex)) {
             // Clear the bit associated with it.
             BITMASK_CLEAR(&m_out_bm_count,nPortIndex);
             m_sOutPortDef.bPopulated = OMX_FALSE;
