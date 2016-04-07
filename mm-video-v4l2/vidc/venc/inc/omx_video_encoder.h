@@ -59,9 +59,8 @@ class omx_venc: public omx_video
         //OMX strucutres
         OMX_U32 m_nVenc_format;
         class venc_dev *handle;
-        int dev_handle_output_extradata(void *);
-        int dev_handle_input_extradata(void *, int);
-        void dev_set_extradata_cookie(void *);
+        int dev_handle_output_extradata(void *, int);
+        int dev_handle_input_extradata(void *, int, int);
         int dev_set_format(int);
     private:
         OMX_U32 dev_stop(void);
@@ -75,6 +74,7 @@ class omx_venc: public omx_video
         bool dev_free_buf( void *,unsigned);
         bool dev_empty_buf(void *, void *,unsigned,unsigned);
         bool dev_fill_buf(void *, void *,unsigned,unsigned);
+        bool dev_buffer_ready_to_queue(OMX_BUFFERHEADERTYPE *buffer);
         bool dev_get_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
         bool dev_set_buf_req(OMX_U32 *,OMX_U32 *,OMX_U32 *,OMX_U32);
         bool update_profile_level();

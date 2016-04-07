@@ -458,6 +458,8 @@ class omx_vdec: public qc_omx_component
         OMX_ERRORTYPE decide_dpb_buffer_mode(bool force_split_mode);
         void request_perf_level(enum vidc_perf_level perf_level);
         int dpb_bit_depth;
+        bool async_thread_force_stop;
+        volatile bool message_thread_stop;
 
     private:
         // Bit Positions
@@ -778,12 +780,6 @@ class omx_vdec: public qc_omx_component
         nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
 
-public:
-        inline bool omx_close_msg_thread(unsigned char id) {
-            return (id == OMX_COMPONENT_CLOSE_MSG);
-        }
-
-private:
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
@@ -981,12 +977,15 @@ private:
 
         bool m_input_pass_buffer_fd;
 
+        OMX_U32 operating_frame_rate;
+        bool high_fps;
+
         OMX_U32 m_smoothstreaming_width;
         OMX_U32 m_smoothstreaming_height;
         OMX_ERRORTYPE enable_smoothstreaming();
         OMX_ERRORTYPE enable_adaptive_playback(unsigned long width, unsigned long height);
         bool is_thulium_v1;
-        static bool m_disable_ubwc_mode;
+        bool m_disable_ubwc_mode;
         OMX_U32 m_downscalar_width;
         OMX_U32 m_downscalar_height;
         int decide_downscalar();
@@ -995,6 +994,7 @@ private:
 
         unsigned int m_fill_output_msg;
         bool client_set_fps;
+        unsigned int stereo_output_mode;
         class allocate_color_convert_buf
         {
             public:
@@ -1130,16 +1130,16 @@ private:
                 formatsNonSurfaceMode[index] : OMX_COLOR_FormatMax;
         }
 
-        static OMX_COLOR_FORMATTYPE getPreferredColorFormatDefaultMode(OMX_U32 index) {
+        OMX_COLOR_FORMATTYPE getPreferredColorFormatDefaultMode(OMX_U32 index) {
             //for surface mode (normal playback), advertise native/accelerated formats first
             OMX_COLOR_FORMATTYPE format = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
 
-            if (!omx_vdec::m_disable_ubwc_mode) {
+            if (!m_disable_ubwc_mode) {
                 OMX_COLOR_FORMATTYPE formatsDefault[] = {
                     [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed,
                     [1] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
-                    [2] = OMX_COLOR_FormatYUV420SemiPlanar,
-                    [3] = OMX_COLOR_FormatYUV420Planar,
+                    [2] = OMX_COLOR_FormatYUV420Planar,
+                    [3] = OMX_COLOR_FormatYUV420SemiPlanar,
                     [4] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
                 };
                 format = (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?
@@ -1147,8 +1147,8 @@ private:
             } else {
                 OMX_COLOR_FORMATTYPE formatsDefault[] = {
                     [0] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m,
-                    [1] = OMX_COLOR_FormatYUV420SemiPlanar,
-                    [2] = OMX_COLOR_FormatYUV420Planar,
+                    [1] = OMX_COLOR_FormatYUV420Planar,
+                    [2] = OMX_COLOR_FormatYUV420SemiPlanar,
                     [3] = (OMX_COLOR_FORMATTYPE)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mMultiView,
                 };
                 format = (index < sizeof(formatsDefault) / sizeof(OMX_COLOR_FORMATTYPE)) ?

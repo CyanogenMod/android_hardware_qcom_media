@@ -128,18 +128,34 @@ void* message_thread_enc(void *input)
     unsigned char id;
     int n;
 
+    fd_set readFds;
+    int res = 0;
+    struct timeval tv;
+
     DEBUG_PRINT_HIGH("omx_venc: message thread start");
     prctl(PR_SET_NAME, (unsigned long)"VideoEncMsgThread", 0, 0, 0);
-    while (1) {
+    while (!omx->msg_thread_stop) {
+
+        tv.tv_sec = 2;
+        tv.tv_usec = 0;
+
+        FD_ZERO(&readFds);
+        FD_SET(omx->m_pipe_in, &readFds);
+
+        res = select(omx->m_pipe_in + 1, &readFds, NULL, NULL, &tv);
+        if (res < 0) {
+            DEBUG_PRINT_ERROR("select() ERROR: %s", strerror(errno));
+            continue;
+        } else if (res == 0 /*timeout*/ || omx->msg_thread_stop) {
+            continue;
+        }
+
         n = read(omx->m_pipe_in, &id, 1);
         if (0 == n) {
             break;
         }
 
         if (1 == n) {
-            if (omx->omx_close_msg_thread(id)) {
-                break;
-            }
             omx->process_event_cb(omx, id);
         }
 #ifdef QLE_BUILD
@@ -158,7 +174,13 @@ void* message_thread_enc(void *input)
 void post_message(omx_video *omx, unsigned char id)
 {
     DEBUG_PRINT_LOW("omx_venc: post_message %d", id);
-    write(omx->m_pipe_out, &id, 1);
+    int ret_value;
+    ret_value = write(omx->m_pipe_out, &id, 1);
+    if (ret_value <= 0) {
+        DEBUG_PRINT_ERROR("post_message to pipe failed : %s", strerror(errno));
+    } else {
+        DEBUG_PRINT_LOW("post_message to pipe done %d",ret_value);
+    }
 }
 
 // omx_cmd_queue destructor
@@ -284,9 +306,12 @@ omx_video::omx_video():
     memset(&m_pCallbacks,0,sizeof(m_pCallbacks));
     async_thread_created = false;
     msg_thread_created = false;
+    msg_thread_stop = false;
 
     mUsesColorConversion = false;
     pthread_mutex_init(&m_lock, NULL);
+    pthread_mutex_init(&timestamp.m_lock, NULL);
+    timestamp.is_buffer_pending = false;
     sem_init(&m_cmd_lock,0,0);
     DEBUG_PRINT_LOW("meta_buffer_hdr = %p", meta_buffer_hdr);
 
@@ -315,11 +340,12 @@ omx_video::omx_video():
 omx_video::~omx_video()
 {
     DEBUG_PRINT_HIGH("~omx_video(): Inside Destructor()");
-    DEBUG_PRINT_HIGH("Signalling close to OMX Msg Thread");
-    post_message(this, OMX_COMPONENT_CLOSE_MSG);
-    DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit");
-    if (msg_thread_created)
+    if (msg_thread_created) {
+        msg_thread_stop = true;
+        post_message(this, OMX_COMPONENT_CLOSE_MSG);
+        DEBUG_PRINT_HIGH("omx_video: Waiting on Msg Thread exit");
         pthread_join(msg_thread_id,NULL);
+    }
     close(m_pipe_in);
     close(m_pipe_out);
     m_pipe_in = -1;
@@ -332,6 +358,7 @@ omx_video::~omx_video()
         pthread_join(async_thread_id,NULL);
 #endif
     pthread_mutex_destroy(&m_lock);
+    pthread_mutex_destroy(&timestamp.m_lock);
     sem_destroy(&m_cmd_lock);
     DEBUG_PRINT_HIGH("m_etb_count = %" PRIu64 ", m_fbd_count = %" PRIu64, m_etb_count,
             m_fbd_count);
@@ -1664,6 +1691,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_sParamProfileLevel, sizeof(m_sParamProfileLevel));
                 break;
             }
+        case OMX_QcomIndexConfigH264EntropyCodingCabac:
+            {
+                QOMX_VIDEO_H264ENTROPYCODINGTYPE * pParam = (QOMX_VIDEO_H264ENTROPYCODINGTYPE*)paramData;
+                DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexConfigH264EntropyCodingCabac");
+                memcpy(pParam, &m_sParamEntropy, sizeof(m_sParamEntropy));
+                break;
+            }
             /*Component should support this port definition*/
         case OMX_IndexParamAudioInit:
             {
@@ -2020,6 +2054,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_sSar, sizeof(m_sSar));
                 break;
             }
+        case OMX_QTIIndexParamLowLatencyMode:
+           {
+               QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE * pParam =
+                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE *>(paramData);
+                memcpy(pParam, &m_slowLatencyMode, sizeof(m_slowLatencyMode));
+                break;
+           }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -2135,12 +2176,12 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
-       case OMX_QcomIndexConfigMaxHierPLayers:
+       case OMX_QcomIndexConfigNumHierPLayers:
            {
-               QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS* pParam =
-                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS*>(configData);
-               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigMaxHierPLayers");
-               memcpy(pParam, &m_sMaxHPlayers, sizeof(m_sMaxHPlayers));
+               QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS* pParam =
+                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS*>(configData);
+               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigNumHierPLayers");
+               memcpy(pParam, &m_sHPlayers, sizeof(m_sHPlayers));
                break;
            }
        case OMX_QcomIndexConfigQp:
@@ -2242,7 +2283,7 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
 
     if (!strncmp(paramName, "OMX.QCOM.index.config.video.hierplayers",
             sizeof("OMX.QCOM.index.config.video.hierplayers") - 1)) {
-        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers;
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigNumHierPLayers;
         return OMX_ErrorNone;
     }
 
@@ -2269,16 +2310,31 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize;
         return OMX_ErrorNone;
     }
+
+    if (!strncmp(paramName, "OMX.QTI.index.param.video.LowLatency",
+                sizeof("OMX.QTI.index.param.video.LowLatency") - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamLowLatencyMode;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_SETTIMEDATA,
+            sizeof(OMX_QTI_INDEX_CONFIG_VIDEO_SETTIMEDATA) - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_IndexConfigTimePosition;
+        return OMX_ErrorNone;
+    }
+
     if (!strncmp(paramName, OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO,
             sizeof(OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO) - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamVideoEnableRoiInfo;
         return OMX_ErrorNone;
     }
+
     if (!strncmp(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO,
             sizeof(OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO) - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoRoiInfo;
         return OMX_ErrorNone;
     }
+
     return OMX_ErrorNotImplemented;
 }
 
@@ -3527,7 +3583,6 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     OMX_ERRORTYPE ret1 = OMX_ErrorNone;
     unsigned int nBufferIndex ;
 
-    dev_set_extradata_cookie((void *)buffer);
     DEBUG_PRINT_LOW("ETB: buffer = %p, buffer->pBuffer[%p]", buffer, buffer->pBuffer);
     if (m_state == OMX_StateInvalid) {
         DEBUG_PRINT_ERROR("ERROR: Empty this buffer in Invalid State");
@@ -3720,8 +3775,16 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
                     return OMX_ErrorUndefined;
             }
     }
-    if (m_sExtraData && !dev_handle_input_extradata((void *)buffer, fd))
-            DEBUG_PRINT_ERROR("Failed to parse input extradata\n");
+    if (m_sExtraData && !dev_handle_input_extradata((void *)buffer, nBufIndex,fd)) {
+        DEBUG_PRINT_ERROR("Failed to parse input extradata\n");
+#ifdef _ANDROID_ICS_
+        omx_release_meta_buffer(buffer);
+#endif
+        post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_EBD);
+        /*Generate an async error and move to invalid state*/
+        pending_input_buffers--;
+        return OMX_ErrorBadParameter;
+    }
 #ifdef _MSM8974_
     if (dev_empty_buf(buffer, pmem_data_buf,nBufIndex,fd) != true)
 #else
@@ -4240,7 +4303,7 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
             }
         }
         if (buffer->nFlags & OMX_BUFFERFLAG_EXTRADATA) {
-            if (!dev_handle_output_extradata((void *)buffer))
+            if (!dev_handle_output_extradata((void *)buffer, index))
                 DEBUG_PRINT_ERROR("Failed to parse output extradata");
 
             dev_extradata_log_buffers((char *)(((unsigned long)buffer->pBuffer + buffer->nOffset +
@@ -4815,6 +4878,12 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
         DEBUG_PRINT_ERROR("ERROR: ETBProxyA: Invalid buffer[%p]",buffer);
         return OMX_ErrorBadParameter;
     }
+
+    if (!dev_buffer_ready_to_queue(buffer)) {
+        DEBUG_PRINT_HIGH("Info: ETBProxyA: buffer[%p] is deffered", buffer);
+        return OMX_ErrorNone;
+    }
+
     nBufIndex = buffer - meta_buffer_hdr;
     if (nBufIndex >= m_sInPortDef.nBufferCountActual) {
         DEBUG_PRINT_ERROR("ERROR: ETBProxyA: Invalid bufindex = %u",

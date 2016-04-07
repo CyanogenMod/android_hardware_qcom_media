@@ -2160,21 +2160,30 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
    RETURN(true);
 }
 
-int omx_venc::dev_handle_output_extradata(void *buffer)
+bool omx_venc::dev_buffer_ready_to_queue(OMX_BUFFERHEADERTYPE *buffer)
 {
    ENTER_FUNC();
 
    (void)buffer;
-
    RETURN(true);
 }
-
-int omx_venc::dev_handle_input_extradata(void *buffer, int fd)
+int omx_venc::dev_handle_output_extradata(void *buffer, int fd)
 {
    ENTER_FUNC();
 
    (void)buffer;
    (void)fd;
+
+   RETURN(true);
+}
+
+int omx_venc::dev_handle_input_extradata(void *buffer, int fd, int index)
+{
+   ENTER_FUNC();
+
+   (void)buffer;
+   (void)fd;
+   (void)index;
 
    RETURN(true);
 }
