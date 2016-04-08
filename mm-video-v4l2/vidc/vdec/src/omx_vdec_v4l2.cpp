@@ -9685,6 +9685,8 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
            return OMX_ErrorHardware;
        }
        drv_ctx.op_buf.buffer_size = fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
+       drv_ctx.op_buf.buffer_size += drv_ctx.extradata_info.buffer_size;
+       drv_ctx.op_buf.buffer_size = (drv_ctx.op_buf.buffer_size + drv_ctx.op_buf.alignment - 1)&(~(drv_ctx.op_buf.alignment - 1));
 
         if (!client_buffers.get_buffer_req(buf_size)) {
             DEBUG_PRINT_ERROR("update buffer requirements");
