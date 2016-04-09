@@ -173,6 +173,68 @@ typedef struct OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE {
     OMX_U32 nRefreshPeriod;
 } OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE;
 
+/** Maximum number of temporal layers supported by AVC/HEVC */
+#define OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS 8
+
+/**
+ * Android specific param for configuration of temporal layering
+ *
+ *  nSize                      : Size of the structure in bytes
+ *  nVersion                   : OMX specification version information
+ *  nPortIndex                 : Port that this structure applies to
+ *  nTemporalLayerCountMax     : Max number of temporal coding layers supported
+ *                               by the encoder
+ *  nTemporalBLayerCountMax    : Max number of layers that can contain B frames
+ *                               (0 to nTemporalLayerCountMax)
+ *  nTemporalPLayerCountActual : Number of temporal layers to be coded with non-B frames,
+ *                               starting from and including the base-layer.
+ *                               (1 to nTemporalLayerCountMax - nTemporalBLayerCountActual)
+ *  nTemporalBLayerCountActual : Number of temporal layers to be coded with B frames,
+ *                               starting after non-B layers.
+ *                               (0 to nTemporalBLayerCountMax)
+ *  bTemporalLayerBitrateRatioSpecified : Flag to indicate if layer-wise bitrate
+ *                               distribution is specified.
+ *  nTemporalLayerBitrateRatio : Bitrate ratio (100 based) per layer. Honored if
+ *                               bTemporalLayerBitrateRatioSpecified is set.
+ *                               i.e for 4 layers with desired distribution (25% 25% 25% 25%),
+ *                               BitrateRatio = {25, 50, 75, 100, 100, 100, 100, 100}
+*/
+typedef struct OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nTemporalLayerCountMax;
+    OMX_U32 nTemporalBLayerCountMax;
+    OMX_U32 nTemporalPLayerCountActual;
+    OMX_U32 nTemporalBLayerCountActual;
+    OMX_BOOL bTemporalLayerBitrateRatioSpecified;
+    OMX_U32 nTemporalLayerBitrateRatio[OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS];
+} OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE;
+
+/**
+ * Android specific config for changing the temporal-layer count or
+ * bitrate-distribution at run-time
+ *
+ *  nSize                      : Size of the structure in bytes
+ *  nVersion                   : OMX specification version information
+ *  nPortIndex                 : Port that this structure applies to
+ *  nTemporalPLayerCountActual : Number of temporal layers to be coded with non-B frames,
+ *  nTemporalBLayerCountActual : Number of temporal layers to be coded with B frames,
+ *  bTemporalLayerBitrateRatioSpecified : Flag to indicate if layer-wise bitrate
+ *                               distribution is specified.
+ *  nTemporalLayerBitrateRatio : Bitrate ratio (100 based) per layer. Honored if
+ *                               bTemporalLayerBitrateRatioSpecified is set.
+ */
+typedef struct OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nTemporalPLayerCountActual;
+    OMX_U32 nTemporalBLayerCountActual;
+    OMX_BOOL bTemporalLayerBitrateRatioSpecified;
+    OMX_U32 nTemporalLayerBitrateRatio[OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS];
+} OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE;
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

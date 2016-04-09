@@ -262,6 +262,8 @@ class omx_video: public qc_omx_component
         virtual bool dev_get_peak_bitrate(OMX_U32 *) = 0;
         virtual bool dev_get_batch_size(OMX_U32 *) = 0;
         virtual bool dev_buffer_ready_to_queue(OMX_BUFFERHEADERTYPE *buffer) = 0;
+        virtual bool dev_get_temporal_layer_caps(OMX_U32 * /*nMaxLayers*/,
+                OMX_U32 * /*nMaxBLayers*/) = 0;
 #ifdef _ANDROID_ICS_
         void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif
@@ -667,6 +669,8 @@ class omx_video: public qc_omx_component
 #endif
         OMX_QTI_VIDEO_CONFIG_BLURINFO       m_blurInfo;
         DescribeColorAspectsParams m_sConfigColorAspects;
+        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE m_sParamTemporalLayers;
+        OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE m_sConfigTemporalLayers;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;
