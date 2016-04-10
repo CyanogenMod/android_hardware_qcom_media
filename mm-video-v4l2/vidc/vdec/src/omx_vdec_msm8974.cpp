@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -2784,6 +2784,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
     }
     switch ((unsigned long)paramIndex) {
         case OMX_IndexParamPortDefinition: {
+                               VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_PORTDEFINITIONTYPE);
                                OMX_PARAM_PORTDEFINITIONTYPE *portDefn =
                                    (OMX_PARAM_PORTDEFINITIONTYPE *) paramData;
                                DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamPortDefinition");
@@ -2793,6 +2794,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                break;
                            }
         case OMX_IndexParamVideoInit: {
+                              VALIDATE_OMX_PARAM_DATA(paramData, OMX_PORT_PARAM_TYPE);
                               OMX_PORT_PARAM_TYPE *portParamType =
                                   (OMX_PORT_PARAM_TYPE *) paramData;
                               DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoInit");
@@ -2804,12 +2806,13 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                               break;
                           }
         case OMX_IndexParamVideoPortFormat: {
+                                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_PORTFORMATTYPE);
                                 OMX_VIDEO_PARAM_PORTFORMATTYPE *portFmt =
                                     (OMX_VIDEO_PARAM_PORTFORMATTYPE *)paramData;
                                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoPortFormat");
 
                                 portFmt->nVersion.nVersion = OMX_SPEC_VERSION;
-                                portFmt->nSize             = sizeof(portFmt);
+                                portFmt->nSize             = sizeof(OMX_VIDEO_PARAM_PORTFORMATTYPE);
 
                                 if (0 == portFmt->nPortIndex) {
                                     if (0 == portFmt->nIndex) {
@@ -2839,17 +2842,19 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             }
                             /*Component should support this port definition*/
         case OMX_IndexParamAudioInit: {
+                              VALIDATE_OMX_PARAM_DATA(paramData, OMX_PORT_PARAM_TYPE);
                               OMX_PORT_PARAM_TYPE *audioPortParamType =
                                   (OMX_PORT_PARAM_TYPE *) paramData;
                               DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamAudioInit");
                               audioPortParamType->nVersion.nVersion = OMX_SPEC_VERSION;
-                              audioPortParamType->nSize = sizeof(audioPortParamType);
+                              audioPortParamType->nSize = sizeof(OMX_PORT_PARAM_TYPE);
                               audioPortParamType->nPorts           = 0;
                               audioPortParamType->nStartPortNumber = 0;
                               break;
                           }
                           /*Component should support this port definition*/
         case OMX_IndexParamImageInit: {
+                              VALIDATE_OMX_PARAM_DATA(paramData, OMX_PORT_PARAM_TYPE);
                               OMX_PORT_PARAM_TYPE *imagePortParamType =
                                   (OMX_PORT_PARAM_TYPE *) paramData;
                               DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamImageInit");
@@ -2868,6 +2873,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                               break;
                           }
         case OMX_IndexParamStandardComponentRole: {
+                                  VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_COMPONENTROLETYPE);
                                   OMX_PARAM_COMPONENTROLETYPE *comp_role;
                                   comp_role = (OMX_PARAM_COMPONENTROLETYPE *) paramData;
                                   comp_role->nVersion.nVersion = OMX_SPEC_VERSION;
@@ -2881,7 +2887,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                               }
                               /* Added for parameter test */
         case OMX_IndexParamPriorityMgmt: {
-
+                             VALIDATE_OMX_PARAM_DATA(paramData, OMX_PRIORITYMGMTTYPE);
                              OMX_PRIORITYMGMTTYPE *priorityMgmType =
                                  (OMX_PRIORITYMGMTTYPE *) paramData;
                              DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamPriorityMgmt");
@@ -2892,6 +2898,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                          }
                          /* Added for parameter test */
         case OMX_IndexParamCompBufferSupplier: {
+                                   VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_BUFFERSUPPLIERTYPE);
                                    OMX_PARAM_BUFFERSUPPLIERTYPE *bufferSupplierType =
                                        (OMX_PARAM_BUFFERSUPPLIERTYPE*) paramData;
                                    DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamCompBufferSupplier");
@@ -2934,6 +2941,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                break;
                            }
         case OMX_IndexParamVideoProfileLevelQuerySupported: {
+                                        VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_PROFILELEVELTYPE);
                                         DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported %08x", paramIndex);
                                         OMX_VIDEO_PARAM_PROFILELEVELTYPE *profileLevelType =
                                             (OMX_VIDEO_PARAM_PROFILELEVELTYPE *)paramData;
@@ -2942,6 +2950,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                     }
 #if defined (_ANDROID_HONEYCOMB_) || defined (_ANDROID_ICS_)
         case OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage: {
+                                        VALIDATE_OMX_PARAM_DATA(paramData, GetAndroidNativeBufferUsageParams);
                                         DEBUG_PRINT_LOW("get_parameter: OMX_GoogleAndroidIndexGetAndroidNativeBufferUsage");
                                         GetAndroidNativeBufferUsageParams* nativeBuffersUsage = (GetAndroidNativeBufferUsageParams *) paramData;
                                         if (nativeBuffersUsage->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
@@ -3068,6 +3077,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
     }
     switch ((unsigned long)paramIndex) {
         case OMX_IndexParamPortDefinition: {
+                               VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_PORTDEFINITIONTYPE);
                                OMX_PARAM_PORTDEFINITIONTYPE *portDefn;
                                portDefn = (OMX_PARAM_PORTDEFINITIONTYPE *) paramData;
                                //TODO: Check if any allocate buffer/use buffer/useNativeBuffer has
@@ -3251,6 +3261,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                            }
                            break;
         case OMX_IndexParamVideoPortFormat: {
+                                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_PORTFORMATTYPE);
                                 OMX_VIDEO_PARAM_PORTFORMATTYPE *portFmt =
                                     (OMX_VIDEO_PARAM_PORTFORMATTYPE *)paramData;
                                 int ret=0;
@@ -3296,6 +3307,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             break;
 
         case OMX_QcomIndexPortDefn: {
+                            VALIDATE_OMX_PARAM_DATA(paramData, OMX_QCOM_PARAM_PORTDEFINITIONTYPE);
                             OMX_QCOM_PARAM_PORTDEFINITIONTYPE *portFmt =
                                 (OMX_QCOM_PARAM_PORTDEFINITIONTYPE *) paramData;
                             DEBUG_PRINT_LOW("set_parameter: OMX_IndexQcomParamPortDefinitionType %u",
@@ -3335,6 +3347,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         break;
 
         case OMX_IndexParamStandardComponentRole: {
+                                  VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_COMPONENTROLETYPE);
                                   OMX_PARAM_COMPONENTROLETYPE *comp_role;
                                   comp_role = (OMX_PARAM_COMPONENTROLETYPE *) paramData;
                                   DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamStandardComponentRole %s",
@@ -3425,6 +3438,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                               }
 
         case OMX_IndexParamPriorityMgmt: {
+                             VALIDATE_OMX_PARAM_DATA(paramData, OMX_PRIORITYMGMTTYPE);
                              if (m_state != OMX_StateLoaded) {
                                  DEBUG_PRINT_ERROR("Set Parameter called in Invalid State");
                                  return OMX_ErrorIncorrectStateOperation;
@@ -3443,6 +3457,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                          }
 
         case OMX_IndexParamCompBufferSupplier: {
+                                   VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_BUFFERSUPPLIERTYPE);
                                    OMX_PARAM_BUFFERSUPPLIERTYPE *bufferSupplierType = (OMX_PARAM_BUFFERSUPPLIERTYPE*) paramData;
                                    DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamCompBufferSupplier %d",
                                            bufferSupplierType->eBufferSupplier);
@@ -3482,6 +3497,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                break;
                            }
         case OMX_QcomIndexParamVideoDecoderPictureOrder: {
+                                     VALIDATE_OMX_PARAM_DATA(paramData, QOMX_VIDEO_DECODER_PICTURE_ORDER);
                                      QOMX_VIDEO_DECODER_PICTURE_ORDER *pictureOrder =
                                          (QOMX_VIDEO_DECODER_PICTURE_ORDER *)paramData;
                                      struct v4l2_control control;
@@ -3507,38 +3523,47 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                      break;
                                  }
         case OMX_QcomIndexParamConcealMBMapExtraData:
+                                     VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                      eRet = enable_extradata(VDEC_EXTRADATA_MB_ERROR_MAP, false,
                                              ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                  break;
         case OMX_QcomIndexParamFrameInfoExtraData:
+                                       VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                        eRet = enable_extradata(OMX_FRAMEINFO_EXTRADATA, false,
                                                ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                    break;
         case OMX_ExtraDataFrameDimension:
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_FRAMEDIMENSION_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamInterlaceExtraData:
+                                   VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                    eRet = enable_extradata(OMX_INTERLACE_EXTRADATA, false,
                                            ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamH264TimeInfo:
+                                   VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                    eRet = enable_extradata(OMX_TIMEINFO_EXTRADATA, false,
                                            ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamVideoFramePackingExtradata:
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_FRAMEPACK_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamVideoQPExtraData:
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_QP_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamVideoInputBitsInfoExtraData:
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_BITSINFO_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexEnableExtnUserData:
+                                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                 eRet = enable_extradata(OMX_EXTNUSER_EXTRADATA, false,
                                     ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
@@ -3547,6 +3572,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                           }
                           break;
         case OMX_QcomIndexPlatformPvt: {
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_INDEXEXTRADATATYPE);
                                DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexPlatformPvt OP Port");
                                OMX_QCOM_PLATFORMPRIVATE_EXTN* entryType = (OMX_QCOM_PLATFORMPRIVATE_EXTN *) paramData;
                                if (entryType->type != OMX_QCOM_PLATFORM_PRIVATE_PMEM) {
@@ -3597,6 +3623,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    break;
 
         case OMX_QcomIndexParamIndexExtraDataType: {
+                                       VALIDATE_OMX_PARAM_DATA(paramData, QOMX_INDEXEXTRADATATYPE);
                                        QOMX_INDEXEXTRADATATYPE *extradataIndexType = (QOMX_INDEXEXTRADATATYPE *) paramData;
                                        if ((extradataIndexType->nIndex == OMX_IndexParamPortDefinition) &&
                                                (extradataIndexType->bEnabled == OMX_TRUE) &&
@@ -3620,6 +3647,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    * state. This is ANDROID architecture which is not in sync
                                    * with openmax standard. */
         case OMX_GoogleAndroidIndexEnableAndroidNativeBuffers: {
+                                           VALIDATE_OMX_PARAM_DATA(paramData, EnableAndroidNativeBuffersParams);
                                            EnableAndroidNativeBuffersParams* enableNativeBuffers = (EnableAndroidNativeBuffersParams *) paramData;
                                            if (enableNativeBuffers) {
                                                m_enable_android_native_buffers = enableNativeBuffers->enable;
@@ -3627,11 +3655,13 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                        }
                                        break;
         case OMX_GoogleAndroidIndexUseAndroidNativeBuffer: {
+                                       VALIDATE_OMX_PARAM_DATA(paramData, UseAndroidNativeBufferParams);
                                        eRet = use_android_native_buffer(hComp, paramData);
                                    }
                                    break;
 #endif
         case OMX_QcomIndexParamEnableTimeStampReorder: {
+                                       VALIDATE_OMX_PARAM_DATA(paramData, QOMX_INDEXTIMESTAMPREORDER);
                                        QOMX_INDEXTIMESTAMPREORDER *reorder = (QOMX_INDEXTIMESTAMPREORDER *)paramData;
                                        if (drv_ctx.picture_order == (vdec_output_order)QOMX_VIDEO_DISPLAY_ORDER) {
                                            if (reorder->bEnable == OMX_TRUE) {
@@ -3648,6 +3678,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    }
                                    break;
         case OMX_IndexParamVideoProfileLevelCurrent: {
+                                     VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_PROFILELEVELTYPE);
                                      OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam =
                                          (OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
                                      if (pParam) {
@@ -3659,6 +3690,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                  }
         case OMX_QcomIndexParamVideoMetaBufferMode:
         {
+            VALIDATE_OMX_PARAM_DATA(paramData, StoreMetaDataInBuffersParams);
             StoreMetaDataInBuffersParams *metabuffer =
                 (StoreMetaDataInBuffersParams *)paramData;
             if (!metabuffer) {
@@ -3701,6 +3733,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
         }
         case OMX_QcomIndexParamVideoDownScalar:
         {
+            VALIDATE_OMX_PARAM_DATA(paramData, QOMX_INDEXDOWNSCALAR);
             QOMX_INDEXDOWNSCALAR* pParam = (QOMX_INDEXDOWNSCALAR*)paramData;
             struct v4l2_control control;
             int rc;
@@ -3729,6 +3762,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #ifdef ADAPTIVE_PLAYBACK_SUPPORTED
         case OMX_QcomIndexParamVideoAdaptivePlaybackMode:
         {
+            VALIDATE_OMX_PARAM_DATA(paramData, PrepareForAdaptivePlaybackParams);
             DEBUG_PRINT_LOW("set_parameter: OMX_GoogleAndroidIndexPrepareForAdaptivePlayback");
             PrepareForAdaptivePlaybackParams* pParams =
                     (PrepareForAdaptivePlaybackParams *) paramData;
@@ -3822,6 +3856,7 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
 
     switch ((unsigned long)configIndex) {
         case OMX_QcomIndexConfigInterlaced: {
+                                 VALIDATE_OMX_PARAM_DATA(configData, OMX_QCOM_CONFIG_INTERLACETYPE);
                                 OMX_QCOM_CONFIG_INTERLACETYPE *configFmt =
                                     (OMX_QCOM_CONFIG_INTERLACETYPE *) configData;
                                 if (configFmt->nPortIndex == 1) {
@@ -3847,6 +3882,7 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                                 break;
                             }
         case OMX_QcomIndexQueryNumberOfVideoDecInstance: {
+                                     VALIDATE_OMX_PARAM_DATA(configData, QOMX_VIDEO_QUERY_DECODER_INSTANCES);
                                      QOMX_VIDEO_QUERY_DECODER_INSTANCES *decoderinstances =
                                          (QOMX_VIDEO_QUERY_DECODER_INSTANCES*)configData;
                                      decoderinstances->nNumOfInstances = 16;
@@ -3855,6 +3891,7 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                                  }
         case OMX_QcomIndexConfigVideoFramePackingArrangement: {
                                           if (drv_ctx.decoder_format == VDEC_CODECTYPE_H264) {
+                                               VALIDATE_OMX_PARAM_DATA(configData, OMX_QCOM_FRAME_PACK_ARRANGEMENT);
                                               OMX_QCOM_FRAME_PACK_ARRANGEMENT *configFmt =
                                                   (OMX_QCOM_FRAME_PACK_ARRANGEMENT *) configData;
                                               memcpy(configFmt, &m_frame_pack_arrangement,
@@ -3865,6 +3902,7 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                                           break;
                                       }
         case OMX_IndexConfigCommonOutputCrop: {
+                                  VALIDATE_OMX_PARAM_DATA(configData, OMX_CONFIG_RECTTYPE);
                                   OMX_CONFIG_RECTTYPE *rect = (OMX_CONFIG_RECTTYPE *) configData;
                                   memcpy(rect, &rectangle, sizeof(OMX_CONFIG_RECTTYPE));
                                   break;
@@ -8256,7 +8294,7 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
     }
     DEBUG_PRINT_LOW("omx_vdec::update_portdef");
     portDefn->nVersion.nVersion = OMX_SPEC_VERSION;
-    portDefn->nSize = sizeof(portDefn);
+    portDefn->nSize = sizeof(OMX_PARAM_PORTDEFINITIONTYPE);
     portDefn->eDomain    = OMX_PortDomainVideo;
     if (drv_ctx.frame_rate.fps_denominator > 0)
         portDefn->format.video.xFramerate = (drv_ctx.frame_rate.fps_numerator /
