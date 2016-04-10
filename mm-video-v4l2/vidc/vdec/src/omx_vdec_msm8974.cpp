@@ -2869,8 +2869,12 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition OP port\n");
                                    m_display_id = portDefn->format.video.pNativeWindow;
                                    unsigned int buffer_size;
-                                   if (!client_buffers.get_buffer_req(buffer_size)) {
-                                       DEBUG_PRINT_ERROR("\n Error in getting buffer requirements");
+                                   if (portDefn->nBufferCountActual > MAX_NUM_INPUT_OUTPUT_BUFFERS) {
+                                       DEBUG_PRINT_ERROR("Requested o/p buf count (%u) exceeds limit (%u)",
+                                               portDefn->nBufferCountActual, MAX_NUM_INPUT_OUTPUT_BUFFERS);
+                                       eRet = OMX_ErrorBadParameter;
+                                   } else if (!client_buffers.get_buffer_req(buffer_size)) {
+                                       DEBUG_PRINT_ERROR("Error in getting buffer requirements");
                                        eRet = OMX_ErrorBadParameter;
                                    } else {
                                        if ( portDefn->nBufferCountActual >= drv_ctx.op_buf.mincount &&
@@ -2946,6 +2950,19 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                                eRet = get_buffer_req(&drv_ctx.op_buf);
                                        }
                                    }
+                                   if (portDefn->nBufferCountActual > MAX_NUM_INPUT_OUTPUT_BUFFERS) {
+                                       DEBUG_PRINT_ERROR("Requested i/p buf count (%u) exceeds limit (%u)",
+                                               portDefn->nBufferCountActual, MAX_NUM_INPUT_OUTPUT_BUFFERS);
+                                       eRet = OMX_ErrorBadParameter;
+                                       break;
+                                   }
+                                   // Buffer count can change only when port is disabled
+                                   if (!release_input_done()) {
+                                       DEBUG_PRINT_ERROR("Cannot change i/p buffer count since all buffers are not freed yet !");
+                                       eRet = OMX_ErrorInvalidState;
+                                       break;
+                                   }
+
                                    if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
                                            || portDefn->nBufferSize != drv_ctx.ip_buf.buffer_size) {
                                        port_format_changed = true;
@@ -4972,8 +4989,9 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
         else
             nPortIndex = buffer - m_inp_heap_ptr;
 
-        DEBUG_PRINT_LOW("free_buffer on i/p port - Port idx %d \n", nPortIndex);
-        if (nPortIndex < drv_ctx.ip_buf.actualcount) {
+        DEBUG_PRINT_LOW("free_buffer on i/p port - Port idx %d", nPortIndex);
+        if (nPortIndex < drv_ctx.ip_buf.actualcount &&
+                BITMASK_PRESENT(&m_inp_bm_count, nPortIndex)) {
             // Clear the bit associated with it.
             BITMASK_CLEAR(&m_inp_bm_count,nPortIndex);
             BITMASK_CLEAR(&m_heap_inp_bm_count,nPortIndex);
@@ -5015,8 +5033,9 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     } else if (port == OMX_CORE_OUTPUT_PORT_INDEX) {
         // check if the buffer is valid
         nPortIndex = buffer - client_buffers.get_il_buf_hdr();
-        if (nPortIndex < drv_ctx.op_buf.actualcount) {
-            DEBUG_PRINT_LOW("free_buffer on o/p port - Port idx %d \n", nPortIndex);
+        if (nPortIndex < drv_ctx.op_buf.actualcount &&
+                BITMASK_PRESENT(&m_out_bm_count, nPortIndex)) {
+            DEBUG_PRINT_LOW("free_buffer on o/p port - Port idx %d", nPortIndex);
             // Clear the bit associated with it.
             BITMASK_CLEAR(&m_out_bm_count,nPortIndex);
             m_out_bPopulated = OMX_FALSE;
@@ -5675,7 +5694,14 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     if (m_out_mem_ptr) {
         DEBUG_PRINT_LOW("Freeing the Output Memory\n");
         for (i = 0; i < drv_ctx.op_buf.actualcount; i++ ) {
-            free_output_buffer (&m_out_mem_ptr[i]);
+            if (BITMASK_PRESENT(&m_out_bm_count, i)) {
+                BITMASK_CLEAR(&m_out_bm_count, i);
+                client_buffers.free_output_buffer (&m_out_mem_ptr[i]);
+            }
+
+            if (release_output_done()) {
+                break;
+            }
         }
 #ifdef _ANDROID_ICS_
         memset(&native_buffer, 0, (sizeof(nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
@@ -5686,11 +5712,19 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     if (m_inp_mem_ptr || m_inp_heap_ptr) {
         DEBUG_PRINT_LOW("Freeing the Input Memory\n");
         for (i = 0; i<drv_ctx.ip_buf.actualcount; i++ ) {
-            if (m_inp_mem_ptr)
-                free_input_buffer (i,&m_inp_mem_ptr[i]);
-            else
-                free_input_buffer (i,NULL);
-        }
+
+            if (BITMASK_PRESENT(&m_inp_bm_count, i)) {
+                BITMASK_CLEAR(&m_inp_bm_count, i);
+                if (m_inp_mem_ptr)
+                    free_input_buffer (i,&m_inp_mem_ptr[i]);
+                else
+                    free_input_buffer (i,NULL);
+            }
+
+            if (release_input_done()) {
+                break;
+            }
+       }
     }
     free_input_buffer_header();
     free_output_buffer_header();
@@ -6077,7 +6111,7 @@ bool omx_vdec::release_output_done(void)
     bool bRet = false;
     unsigned i=0,j=0;
 
-    DEBUG_PRINT_LOW("\n Value of m_out_mem_ptr %p",m_inp_mem_ptr);
+    DEBUG_PRINT_LOW("Value of m_out_mem_ptr %p",m_out_mem_ptr);
     if (m_out_mem_ptr) {
         for (; j < drv_ctx.op_buf.actualcount ; j++) {
             if (BITMASK_PRESENT(&m_out_bm_count,j)) {
