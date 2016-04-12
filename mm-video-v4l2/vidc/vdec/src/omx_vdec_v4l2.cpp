@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1638,6 +1638,10 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                         if (pThis->m_debug.out_uvmeta_file) {
                                             fclose(pThis->m_debug.out_uvmeta_file);
                                             pThis->m_debug.out_uvmeta_file = NULL;
+                                        }
+
+                                        if (pThis->secure_mode && pThis->m_cb.EventHandler && pThis->in_reconfig) {
+                                            pThis->prefetchNewBuffers();
                                         }
 
                                         if (pThis->m_cb.EventHandler) {
@@ -7132,6 +7136,7 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         }
         DEBUG_PRINT_LOW("%s: m_is_display_session = %d", __func__, m_is_display_session);
 
+        drv_ctx.op_buf.buffer_size = handle->size;
     }
 
 
@@ -7266,8 +7271,8 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer_proxy(
     }
     buf.m.planes = plane;
     buf.length = drv_ctx.num_planes;
-    DEBUG_PRINT_LOW("SENDING FTB TO F/W - fd[0] = %d fd[1] = %d offset[1] = %d",
-             plane[0].reserved[0],plane[extra_idx].reserved[0], plane[extra_idx].reserved[1]);
+    DEBUG_PRINT_LOW("SENDING FTB TO F/W - fd[0] = %d fd[1] = %d offset[1] = %d in_flush = %d",
+             plane[0].reserved[0],plane[extra_idx].reserved[0], plane[extra_idx].reserved[1], output_flush_progress);
 
     rc = ioctl(drv_ctx.video_driver_fd, VIDIOC_QBUF, &buf);
     if (rc) {
@@ -8300,6 +8305,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                     }
 
                     if (omxhdr && (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DROP_FRAME) &&
+                            !omx->output_flush_progress &&
                             !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) &&
                             !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS)) {
                         unsigned int index = v4l2_buf_ptr->index;
@@ -8331,6 +8337,8 @@ int omx_vdec::async_message_process (void *context, void* message)
                             return -1;
                         }
 
+                         DEBUG_PRINT_LOW("SENDING FTB TO F/W from async_message_process - fd[0] = %d fd[1] = %d offset[1] = %d in_flush = %d",
+                               plane[0].reserved[0],plane[extra_idx].reserved[0], plane[extra_idx].reserved[1], omx->output_flush_progress);
                         if(ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_QBUF, v4l2_buf_ptr)) {
                             DEBUG_PRINT_ERROR("Failed to queue buffer back to driver: %d, %d, %d", v4l2_buf_ptr->length, v4l2_buf_ptr->m.planes[0].reserved[0], v4l2_buf_ptr->m.planes[1].reserved[0]);
                             return -1;
@@ -11733,5 +11741,109 @@ OMX_ERRORTYPE omx_vdec::describeColorFormat(OMX_PTR pParam) {
     }
     return OMX_ErrorNone;
 #endif //FLEXYUV_SUPPORTED
+}
+
+void omx_vdec::prefetchNewBuffers() {
+
+    struct v4l2_decoder_cmd dec;
+    uint32_t prefetch_count;
+    uint32_t prefetch_size;
+    uint32_t want_size;
+    uint32_t have_size;
+    int color_fmt, rc;
+    uint32_t new_calculated_size;
+    uint32_t new_buffer_size;
+    uint32_t new_buffer_count;
+    uint32_t old_buffer_size;
+    uint32_t old_buffer_count;
+
+    memset((void *)&dec, 0 , sizeof(dec));
+    DEBUG_PRINT_LOW("Old size : %d, count : %d, width : %u, height : %u\n",
+            drv_ctx.op_buf.buffer_size, drv_ctx.op_buf.actualcount,
+            drv_ctx.video_resolution.frame_width,
+            drv_ctx.video_resolution.frame_height);
+    dec.cmd = V4L2_DEC_QCOM_CMD_RECONFIG_HINT;
+    if (ioctl(drv_ctx.video_driver_fd, VIDIOC_DECODER_CMD, &dec)) {
+        DEBUG_PRINT_ERROR("Buffer info cmd failed : %d\n", errno);
+    } else {
+        DEBUG_PRINT_LOW("From driver, new size is %d, count is %d\n",
+                dec.raw.data[0], dec.raw.data[1]);
+    }
+
+    switch ((int)drv_ctx.output_format) {
+    case VDEC_YUV_FORMAT_NV12:
+        color_fmt = COLOR_FMT_NV12;
+        break;
+    case VDEC_YUV_FORMAT_NV12_UBWC:
+        color_fmt = COLOR_FMT_NV12_UBWC;
+        break;
+    default:
+        color_fmt = -1;
+        DEBUG_PRINT_HIGH("Color format : %x not supported for secure memory prefetching\n", drv_ctx.output_format);
+        return;
+    }
+
+    new_calculated_size = VENUS_BUFFER_SIZE(color_fmt, m_reconfig_width, m_reconfig_height);
+    DEBUG_PRINT_LOW("New calculated size for width : %d, height : %d, is %d\n",
+            m_reconfig_width, m_reconfig_height, new_calculated_size);
+    new_buffer_size = (dec.raw.data[0] > new_calculated_size) ? dec.raw.data[0] : new_calculated_size;
+    new_buffer_count = dec.raw.data[1];
+    old_buffer_size = drv_ctx.op_buf.buffer_size;
+    old_buffer_count = drv_ctx.op_buf.actualcount;
+
+    new_buffer_count = old_buffer_count > new_buffer_count ? old_buffer_count : new_buffer_count;
+
+    prefetch_count = new_buffer_count;
+    prefetch_size = new_buffer_size - old_buffer_size;
+    want_size = new_buffer_size * new_buffer_count;
+    have_size = old_buffer_size * old_buffer_count;
+
+    if (want_size > have_size) {
+        DEBUG_PRINT_LOW("Want: %d, have : %d\n", want_size, have_size);
+        DEBUG_PRINT_LOW("prefetch_count: %d, prefetch_size : %d\n", prefetch_count, prefetch_size);
+
+        int ion_fd = open(MEM_DEVICE, O_RDONLY);
+        if (ion_fd < 0) {
+            DEBUG_PRINT_ERROR("Ion fd open failed : %d\n", ion_fd);
+            return;
+        }
+
+        struct ion_custom_data *custom_data = (struct ion_custom_data*) malloc(sizeof(*custom_data));
+        struct ion_prefetch_data *prefetch_data = (struct ion_prefetch_data*) malloc(sizeof(*prefetch_data));
+        struct ion_prefetch_regions *regions = (struct ion_prefetch_regions*) malloc(sizeof(*regions));
+        size_t *sizes = (size_t*) malloc(sizeof(size_t) * prefetch_count);
+
+        if (custom_data == NULL || prefetch_data == NULL || regions == NULL || sizes == NULL) {
+            DEBUG_PRINT_ERROR("prefetch data allocation failed");
+            goto prefetch_exit;
+        }
+
+        for (uint32_t i = 0; i < prefetch_count; i++) {
+            sizes[i] = prefetch_size;
+        }
+
+        regions[0].nr_sizes = prefetch_count;
+        regions[0].sizes = sizes;
+        regions[0].vmid = ION_FLAG_CP_PIXEL;
+
+        prefetch_data->nr_regions = 1;
+        prefetch_data->regions = regions;
+        prefetch_data->heap_id = ION_HEAP(ION_SECURE_HEAP_ID);
+
+        custom_data->cmd = ION_IOC_PREFETCH;
+        custom_data->arg = (unsigned long )prefetch_data;
+
+        rc = ioctl(ion_fd, ION_IOC_CUSTOM, custom_data);
+        if (rc) {
+            DEBUG_PRINT_ERROR("Custom prefetch ioctl failed rc : %d, errno : %d\n", rc, errno);
+        }
+
+prefetch_exit:
+        close(ion_fd);
+        free(sizes);
+        free(regions);
+        free(prefetch_data);
+        free(custom_data);
+    }
 }
 
