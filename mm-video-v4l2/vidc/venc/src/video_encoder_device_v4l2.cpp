@@ -4708,6 +4708,7 @@ bool venc_dev::venc_set_inloop_filter(OMX_VIDEO_AVCLOOPFILTERTYPE loopfilter)
     int rc;
     struct v4l2_control control;
     control.id=V4L2_CID_MPEG_VIDEO_H264_LOOP_FILTER_MODE;
+    control.value=0;
 
     if (loopfilter == OMX_VIDEO_AVCLoopFilterEnable) {
         control.value=V4L2_MPEG_VIDEO_H264_LOOP_FILTER_MODE_ENABLED;
