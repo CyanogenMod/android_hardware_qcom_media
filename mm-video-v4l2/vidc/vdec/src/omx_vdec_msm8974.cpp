@@ -2800,7 +2800,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                               DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoInit");
 
                               portParamType->nVersion.nVersion = OMX_SPEC_VERSION;
-                              portParamType->nSize = sizeof(portParamType);
+                              portParamType->nSize = sizeof(OMX_PORT_PARAM_TYPE);
                               portParamType->nPorts           = 2;
                               portParamType->nStartPortNumber = 0;
                               break;
@@ -2859,7 +2859,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                   (OMX_PORT_PARAM_TYPE *) paramData;
                               DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamImageInit");
                               imagePortParamType->nVersion.nVersion = OMX_SPEC_VERSION;
-                              imagePortParamType->nSize = sizeof(imagePortParamType);
+                              imagePortParamType->nSize = sizeof(OMX_PORT_PARAM_TYPE);
                               imagePortParamType->nPorts           = 0;
                               imagePortParamType->nStartPortNumber = 0;
                               break;
@@ -2877,7 +2877,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                   OMX_PARAM_COMPONENTROLETYPE *comp_role;
                                   comp_role = (OMX_PARAM_COMPONENTROLETYPE *) paramData;
                                   comp_role->nVersion.nVersion = OMX_SPEC_VERSION;
-                                  comp_role->nSize = sizeof(*comp_role);
+                                  comp_role->nSize = sizeof(OMX_PARAM_COMPONENTROLETYPE);
 
                                   DEBUG_PRINT_LOW("Getparameter: OMX_IndexParamStandardComponentRole %d",
                                           paramIndex);
@@ -2892,7 +2892,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                  (OMX_PRIORITYMGMTTYPE *) paramData;
                              DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamPriorityMgmt");
                              priorityMgmType->nVersion.nVersion = OMX_SPEC_VERSION;
-                             priorityMgmType->nSize = sizeof(priorityMgmType);
+                             priorityMgmType->nSize = sizeof(OMX_PRIORITYMGMTTYPE);
 
                              break;
                          }
@@ -2903,7 +2903,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                        (OMX_PARAM_BUFFERSUPPLIERTYPE*) paramData;
                                    DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamCompBufferSupplier");
 
-                                   bufferSupplierType->nSize = sizeof(bufferSupplierType);
+                                   bufferSupplierType->nSize = sizeof(OMX_PARAM_BUFFERSUPPLIERTYPE);
                                    bufferSupplierType->nVersion.nVersion = OMX_SPEC_VERSION;
                                    if (0 == bufferSupplierType->nPortIndex)
                                        bufferSupplierType->nPortIndex = OMX_BufferSupplyUnspecified;
@@ -3572,7 +3572,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                           }
                           break;
         case OMX_QcomIndexPlatformPvt: {
-                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_INDEXEXTRADATATYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, OMX_QCOM_PLATFORMPRIVATE_EXTN);
                                DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexPlatformPvt OP Port");
                                OMX_QCOM_PLATFORMPRIVATE_EXTN* entryType = (OMX_QCOM_PLATFORMPRIVATE_EXTN *) paramData;
                                if (entryType->type != OMX_QCOM_PLATFORM_PRIVATE_PMEM) {
