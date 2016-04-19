@@ -434,6 +434,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QTIIndexParamVQZIPSEIType = 0x7F000053,
 
     OMX_QcomIndexParamPictureOrderCountType = 0x7F000054,
+
+    /* OMX.google.android.index.allocateNativeHandle */
+    OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005D,
 };
 
 /**

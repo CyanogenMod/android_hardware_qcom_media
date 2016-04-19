@@ -48,6 +48,10 @@ ifeq ($(TARGET_NO_ADAPTIVE_PLAYBACK),true)
 libOmxVdec-def += -DNO_ADAPTIVE_PLAYBACK
 endif
 
+ifeq ($(TARGET_USES_MEDIA_EXTENSIONS),true)
+libOmxVdec-def += -DALLOCATE_OUTPUT_NATIVEHANDLE
+endif
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------
