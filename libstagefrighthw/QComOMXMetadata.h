@@ -23,6 +23,16 @@
 
 namespace android {
 
+#ifdef USE_NATIVE_HANDLE_SOURCE
+    typedef struct encoder_nativehandle_buffer_type {
+        MetadataBufferType buffer_type;
+        union {
+            buffer_handle_t meta_handle;
+            uint64_t padding;
+        };
+    } encoder_nativehandle_buffer_type;
+#endif
+
     /*typedef enum {
         kMetadataBufferTypeCameraSource  = 0,
         kMetadataBufferTypeGrallocSource = 1,
