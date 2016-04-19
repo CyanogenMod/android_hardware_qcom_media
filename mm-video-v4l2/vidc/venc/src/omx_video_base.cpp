@@ -1450,7 +1450,9 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     memcpy(portDefn, &m_sInPortDef, sizeof(m_sInPortDef));
 #ifdef _ANDROID_ICS_
                     if (meta_mode_enable) {
-                        portDefn->nBufferSize = sizeof(encoder_media_buffer_type);
+                        // request size of largest metadata (happens to be NativeHandleSource) since
+                        // we do not know the exact metadata-type yet
+                        portDefn->nBufferSize = sizeof(LEGACY_CAM_METADATA_TYPE);
                     }
                     if (mUseProxyColorFormat) {
                         portDefn->format.video.eColorFormat =
@@ -2656,7 +2658,10 @@ OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
         OMX_U32              bytes)
 {
     unsigned index = 0;
-    if (!bufferHdr || bytes < sizeof(encoder_media_buffer_type)) {
+    // In meta-mode alloc-length is not known conclusively
+     // Allow allocation for atleast gralloc metadata handles
+     //  and check for size in ETB
+     if (!bufferHdr || bytes < sizeof(VideoGrallocMetadata)) {
         DEBUG_PRINT_ERROR("wrong params allocate_input_meta_buffer Hdr %p len %lu",
                 bufferHdr,bytes);
         return OMX_ErrorBadParameter;
@@ -3370,7 +3375,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
     int push_cnt = 0;
     unsigned nBufIndex = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
-    encoder_media_buffer_type *media_buffer = NULL;
+    LEGACY_CAM_METADATA_TYPE *media_buffer = NULL;
 
 #ifdef _MSM8974_
     int fd = 0;
@@ -3390,13 +3395,18 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
             DEBUG_PRINT_ERROR("ERROR: ETBProxy: Invalid meta-bufIndex = %u", nBufIndex);
             return OMX_ErrorBadParameter;
         }
-        media_buffer = (encoder_media_buffer_type *)meta_buffer_hdr[nBufIndex].pBuffer;
-        if (media_buffer) {
-            if (media_buffer->buffer_type != kMetadataBufferTypeCameraSource &&
+        media_buffer = (LEGACY_CAM_METADATA_TYPE *)meta_buffer_hdr[nBufIndex].pBuffer;
+        if ((media_buffer->buffer_type == LEGACY_CAM_SOURCE)
+                && buffer->nAllocLen != sizeof(LEGACY_CAM_METADATA_TYPE)) {
+            DEBUG_PRINT_ERROR("Invalid metadata size expected(%u) v/s recieved(%zu)",
+                    buffer->nAllocLen, sizeof(LEGACY_CAM_METADATA_TYPE));
+            met_error = true;
+        } else if (media_buffer) {
+            if (media_buffer->buffer_type != LEGACY_CAM_SOURCE &&
                     media_buffer->buffer_type != kMetadataBufferTypeGrallocSource) {
                 met_error = true;
             } else {
-                if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
+                if (media_buffer->buffer_type == LEGACY_CAM_SOURCE) {
                     if (media_buffer->meta_handle == NULL)
                         met_error = true;
                     else if ((media_buffer->meta_handle->numFds != 1 &&
@@ -3439,7 +3449,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
             DEBUG_PRINT_ERROR("%s: invalid media_buffer",__FUNCTION__);
             return OMX_ErrorBadParameter;
         }
-        if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
+        if (media_buffer->buffer_type == LEGACY_CAM_SOURCE) {
             Input_pmem_info.buffer = media_buffer;
             Input_pmem_info.fd = media_buffer->meta_handle->data[0];
 #ifdef _MSM8974_
@@ -3451,7 +3461,8 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         
                     Input_pmem_info.fd, Input_pmem_info.offset,
                     Input_pmem_info.size);
         } else {
-            private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
+            VideoGrallocMetadata *media_buffer = (VideoGrallocMetadata *)meta_buffer_hdr[nBufIndex].pBuffer;
+            private_handle_t *handle = (private_handle_t *)media_buffer->pHandle;
             Input_pmem_info.buffer = media_buffer;
             Input_pmem_info.fd = handle->fd;
 #ifdef _MSM8974_
@@ -4359,7 +4370,7 @@ void omx_video::free_ion_memory(struct venc_ion *buf_ion_info)
 void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
 {
     if (buffer && meta_mode_enable) {
-        encoder_media_buffer_type *media_ptr;
+        LEGACY_CAM_METADATA_TYPE *media_ptr;
         struct pmem Input_pmem;
         unsigned int index_pmem = 0;
         bool meta_error = false;
@@ -4371,9 +4382,9 @@ void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
                 DEBUG_PRINT_ERROR("omx_release_meta_buffer dev free failed");
             }
         } else {
-            media_ptr = (encoder_media_buffer_type *) buffer->pBuffer;
+            media_ptr = (LEGACY_CAM_METADATA_TYPE *) buffer->pBuffer;
             if (media_ptr && media_ptr->meta_handle) {
-                if (media_ptr->buffer_type == kMetadataBufferTypeCameraSource &&
+                if (media_ptr->buffer_type == LEGACY_CAM_SOURCE &&
                         media_ptr->meta_handle->numFds == 1 &&
                         media_ptr->meta_handle->numInts >= 2) {
                     Input_pmem.fd = media_ptr->meta_handle->data[0];
@@ -4384,7 +4395,8 @@ void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
                             Input_pmem.offset,
                             Input_pmem.size);
                 } else if (media_ptr->buffer_type == kMetadataBufferTypeGrallocSource) {
-                    private_handle_t *handle = (private_handle_t *)media_ptr->meta_handle;
+                    VideoGrallocMetadata *media_ptr = (VideoGrallocMetadata *)buffer->pBuffer;
+                    private_handle_t *handle = (private_handle_t *)media_ptr->pHandle;
                     Input_pmem.buffer = media_ptr;
                     Input_pmem.fd = handle->fd;
                     Input_pmem.offset = 0;
@@ -4537,7 +4549,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
 {
     unsigned nBufIndex = 0;
     OMX_ERRORTYPE ret = OMX_ErrorNone;
-    encoder_media_buffer_type *media_buffer;
+    VideoGrallocMetadata *media_buffer; // This method primarily assumes gralloc-metadata
     private_handle_t *handle = NULL;
     DEBUG_PRINT_LOW("ETBProxyOpaque: buffer[%p]", buffer);
 
@@ -4551,22 +4563,30 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
                 nBufIndex);
         return OMX_ErrorBadParameter;
     }
-    media_buffer = (encoder_media_buffer_type *)buffer->pBuffer;
-    if (!media_buffer && !(buffer->nFlags & OMX_BUFFERFLAG_EOS)) {
-        DEBUG_PRINT_ERROR("NULL pointer is passed as media buffer");
-        m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
+
+    media_buffer = (VideoGrallocMetadata *)buffer->pBuffer;
+    if ((media_buffer->eType == LEGACY_CAM_SOURCE)
+            && buffer->nAllocLen != sizeof(LEGACY_CAM_METADATA_TYPE)) {
+        DEBUG_PRINT_ERROR("Invalid metadata size expected(%u) v/s recieved(%zu)",
+                buffer->nAllocLen, sizeof(LEGACY_CAM_METADATA_TYPE));
         return OMX_ErrorBadParameter;
-    } else if ((!media_buffer->meta_handle)  &&
+    }
+
+    if (media_buffer && media_buffer->eType == LEGACY_CAM_SOURCE) {
+        return empty_this_buffer_proxy(hComp, buffer);
+    }
+
+    if ((!media_buffer || !media_buffer->pHandle || media_buffer->eType != kMetadataBufferTypeGrallocSource) &&
             !(buffer->nFlags & OMX_BUFFERFLAG_EOS)) {
         DEBUG_PRINT_ERROR("Incorrect Buffer queued media buffer = %p",
             media_buffer);
         m_pCallbacks.EmptyBufferDone(hComp, m_app_data, buffer);
         return OMX_ErrorBadParameter;
     } else if (media_buffer) {
-        handle = (private_handle_t *)media_buffer->meta_handle;
+        handle = (private_handle_t *)media_buffer->pHandle;
     }
 
-    if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
+    if (media_buffer->eType == kMetadataBufferTypeCameraSource) {
         return empty_this_buffer_proxy(hComp, buffer);
     }
 
@@ -4765,7 +4785,7 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
     while (psource_frame != NULL && pdest_frame != NULL &&
             ret == OMX_ErrorNone) {
         struct pmem Input_pmem_info;
-        encoder_media_buffer_type *media_buffer;
+        LEGACY_CAM_METADATA_TYPE *media_buffer;
         index = pdest_frame - m_inp_mem_ptr;
         if (index >= m_sInPortDef.nBufferCountActual) {
             DEBUG_PRINT_ERROR("Output buffer index is wrong %u act count %lu",
@@ -4780,9 +4800,9 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
         if (psource_frame->nFilledLen == 0 && (psource_frame->nFlags & OMX_BUFFERFLAG_EOS)) {
             return push_empty_eos_buffer(hComp, psource_frame);
         }
-        media_buffer = (encoder_media_buffer_type *)psource_frame->pBuffer;
+        media_buffer = (LEGACY_CAM_METADATA_TYPE *)psource_frame->pBuffer;
         /*Will enable to verify camcorder in current TIPS can be removed*/
-        if (media_buffer->buffer_type == kMetadataBufferTypeCameraSource) {
+        if (media_buffer->buffer_type == LEGACY_CAM_SOURCE) {
             Input_pmem_info.buffer = media_buffer;
             Input_pmem_info.fd = media_buffer->meta_handle->data[0];
             Input_pmem_info.offset = media_buffer->meta_handle->data[1];
@@ -4792,7 +4812,8 @@ OMX_ERRORTYPE omx_video::push_input_buffer(OMX_HANDLETYPE hComp)
                     Input_pmem_info.size);
             ret = queue_meta_buffer(hComp,Input_pmem_info);
         } else {
-            private_handle_t *handle = (private_handle_t *)media_buffer->meta_handle;
+            VideoGrallocMetadata *media_buffer = (VideoGrallocMetadata *)psource_frame->pBuffer;
+            private_handle_t *handle = (private_handle_t *)media_buffer->pHandle;
             Input_pmem_info.buffer = media_buffer;
             Input_pmem_info.fd = handle->fd;
             Input_pmem_info.offset = 0;
