@@ -568,6 +568,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Set Low Latency Mode */
     OMX_QTIIndexParamLowLatencyMode = 0x7F000058,
+
+    /* OMX.google.android.index.allocateNativeHandle */
+    OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005D,
 };
 
 /**
