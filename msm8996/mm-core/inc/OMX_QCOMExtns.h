@@ -550,6 +550,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Force OPB to UnCompressed mode */
     OMX_QTIIndexParamForceUnCompressedForOPB = 0x7F00005A,
+
+    /*"OMX.google.android.index.allocateNativeHandle"*/
+    OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005B,
 };
 
 /**
