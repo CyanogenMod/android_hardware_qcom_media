@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -110,5 +110,16 @@ private:
   OMX_S32 parse_ltrinfo(OMX_BUFFERHEADERTYPE *pBufHdr,
      OMX_OTHER_EXTRADATATYPE *pExtra);
 };
+
+#define VALIDATE_OMX_PARAM_DATA(ptr, paramType)                                \
+    {                                                                          \
+        if (ptr == NULL) { return OMX_ErrorBadParameter; }                     \
+        paramType *p = reinterpret_cast<paramType *>(ptr);                     \
+        if (p->nSize < sizeof(paramType)) {                                    \
+            ALOGE("Insufficient object size(%u) v/s expected(%zu) for type %s",\
+                    (unsigned int)p->nSize, sizeof(paramType), #paramType);    \
+            return OMX_ErrorBadParameter;                                      \
+        }                                                                      \
+    }
 
 #endif

@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009-2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2009-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1026,6 +1026,8 @@ typedef struct QOMX_VIDEO_QUERY_DECODER_INSTANCES {
 } QOMX_VIDEO_QUERY_DECODER_INSTANCES;
 
 typedef struct QOMX_ENABLETYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
     OMX_BOOL bEnable;
 } QOMX_ENABLETYPE;
 
