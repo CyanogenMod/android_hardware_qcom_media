@@ -34,6 +34,10 @@ ifeq ($(PLATFORM_SDK_VERSION), 18)  #JB_MR2
 LOCAL_CFLAGS += -DANDROID_JELLYBEAN_MR2=1
 endif
 
+ifeq ($(TARGET_USES_MEDIA_EXTENSIONS),true)
+LOCAL_CFLAGS += -DUSE_NATIVE_HANDLE_SOURCE
+endif
+
 LOCAL_C_INCLUDES:= \
         frameworks/native/include/media/openmax \
         $(TARGET_OUT_HEADERS)/mm-core/omxcore/ \

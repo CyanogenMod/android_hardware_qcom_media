@@ -3089,7 +3089,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
     struct v4l2_plane plane[VIDEO_MAX_PLANES];
     int rc = 0, extra_idx;
     struct OMX_BUFFERHEADERTYPE *bufhdr;
-    encoder_media_buffer_type * meta_buf = NULL;
+    LEGACY_CAM_METADATA_TYPE * meta_buf = NULL;
     temp_buffer = (struct pmem *)buffer;
 
     memset (&buf, 0, sizeof(buf));
@@ -3124,7 +3124,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
         // ---------------------------------------------------------------------------------------
         if (metadatamode) {
             plane[0].m.userptr = (unsigned long)bufhdr->pBuffer;
-            meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
+            meta_buf = (LEGACY_CAM_METADATA_TYPE *)bufhdr->pBuffer;
 
             if (!meta_buf) {
                 //empty EOS buffer
@@ -3138,7 +3138,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                 }
             } else if (!color_format) {
 
-                if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
+                if (meta_buf->buffer_type == LEGACY_CAM_SOURCE) {
                     native_handle_t *hnd = (native_handle_t*)meta_buf->meta_handle;
                     if (!hnd) {
                         DEBUG_PRINT_ERROR("ERROR: venc_etb: handle is NULL");
@@ -3196,7 +3196,8 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x format 0x%x",
                             fd, plane[0].bytesused, plane[0].length, buf.flags, m_sVenc_cfg.inputformat);
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
-                    private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
+                    VideoGrallocMetadata *meta_buf = (VideoGrallocMetadata *)bufhdr->pBuffer;
+                    private_handle_t *handle = (private_handle_t *)meta_buf->pHandle;
                     if (!streaming[OUTPUT_PORT]) {
                         struct v4l2_format fmt;
                         memset(&fmt, 0, sizeof(fmt));
@@ -3333,7 +3334,7 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
     struct v4l2_plane plane;
     int rc = 0;
     struct v4l2_control control;
-    encoder_media_buffer_type * meta_buf = NULL;
+    LEGACY_CAM_METADATA_TYPE * meta_buf = NULL;
     native_handle_t *hnd = NULL;
 
     if (bufhdr == NULL) {
@@ -3344,10 +3345,10 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
     bool status = true;
     if (metadatamode) {
         plane.m.userptr = (unsigned long)bufhdr->pBuffer;
-        meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
+        meta_buf = (LEGACY_CAM_METADATA_TYPE *)bufhdr->pBuffer;
 
         if (!color_format) {
-            if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource) {
+            if (meta_buf->buffer_type == LEGACY_CAM_SOURCE) {
                 hnd = (native_handle_t*)meta_buf->meta_handle;
                 if (!hnd) {
                     DEBUG_PRINT_ERROR("venc_empty_batch: invalid handle !");
