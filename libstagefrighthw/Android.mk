@@ -22,6 +22,10 @@ LOCAL_SRC_FILES := \
 
 LOCAL_CFLAGS := $(PV_CFLAGS_MINUS_VISIBILITY)
 
+ifeq ($(TARGET_USES_MEDIA_EXTENSIONS),true)
+LOCAL_CFLAGS += -DUSE_NATIVE_HANDLE_SOURCE
+endif
+
 LOCAL_C_INCLUDES:= \
         frameworks/native/include/media/openmax \
         frameworks/native/include/media/hardware
