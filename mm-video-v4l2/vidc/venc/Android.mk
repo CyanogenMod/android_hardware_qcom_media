@@ -45,6 +45,10 @@ ifeq ($(TARGET_USES_ION),true)
 libmm-venc-def += -DUSE_ION
 endif
 
+ifeq ($(TARGET_USES_MEDIA_EXTENSIONS),true)
+libmm-venc-def += -DUSE_NATIVE_HANDLE_SOURCE
+endif
+
 # Common Includes
 libmm-venc-inc      := $(LOCAL_PATH)/inc
 libmm-venc-inc      += $(call project-path-for,qcom-media)/mm-video-v4l2/vidc/common/inc
