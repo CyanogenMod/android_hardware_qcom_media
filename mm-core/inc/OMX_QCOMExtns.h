@@ -536,6 +536,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /* Set Prefer-adaptive playback*/
     /* "OMX.QTI.index.param.video.PreferAdaptivePlayback" */
     OMX_QTIIndexParamVideoPreferAdaptivePlayback = 0x7F000055,
+
+    /* OMX.google.android.index.allocateNativeHandle */
+    OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005D,
 };
 
 /**
