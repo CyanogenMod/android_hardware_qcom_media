@@ -1706,6 +1706,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexConfigH264EntropyCodingCabac:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_VIDEO_H264ENTROPYCODINGTYPE);
                 QOMX_VIDEO_H264ENTROPYCODINGTYPE * pParam = (QOMX_VIDEO_H264ENTROPYCODINGTYPE*)paramData;
                 DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexConfigH264EntropyCodingCabac");
                 memcpy(pParam, &m_sParamEntropy, sizeof(m_sParamEntropy));
@@ -2092,6 +2093,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QTIIndexParamLowLatencyMode:
            {
+               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE);
                QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE * pParam =
                    reinterpret_cast<QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE *>(paramData);
                 memcpy(pParam, &m_slowLatencyMode, sizeof(m_slowLatencyMode));
