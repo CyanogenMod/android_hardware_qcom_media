@@ -38,6 +38,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef USE_ION
 #include <linux/msm_ion.h>
 #endif
+#include <math.h>
 #include <media/msm_media_info.h>
 #include <cutils/properties.h>
 #include <media/hardware/HardwareAPI.h>
@@ -2658,8 +2659,9 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 DEBUG_PRINT_LOW("OMX_IndexConfigAndroidIntraRefresh : num frames = %d", intra_refresh->nRefreshPeriod);
 
                 if (intra_refresh->nPortIndex == (OMX_U32) PORT_INDEX_OUT) {
-                    OMX_U32 num_mbs_per_frame = (ALIGN(m_sVenc_cfg.dvs_height, 16)/16) * (ALIGN(m_sVenc_cfg.dvs_width, 16)/16);
-                    OMX_U32 num_intra_refresh_mbs = num_mbs_per_frame / intra_refresh->nRefreshPeriod;
+                    OMX_U32 mb_size = m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC ? 32 : 16;
+                    OMX_U32 num_mbs_per_frame = (ALIGN(m_sVenc_cfg.dvs_height, mb_size)/mb_size) * (ALIGN(m_sVenc_cfg.dvs_width, mb_size)/mb_size);
+                    OMX_U32 num_intra_refresh_mbs = ceil(num_mbs_per_frame / intra_refresh->nRefreshPeriod);
 
                     if (venc_set_intra_refresh(OMX_VIDEO_IntraRefreshRandom, num_intra_refresh_mbs) == false) {
                         DEBUG_PRINT_ERROR("ERROR: Setting Intra refresh failed");
