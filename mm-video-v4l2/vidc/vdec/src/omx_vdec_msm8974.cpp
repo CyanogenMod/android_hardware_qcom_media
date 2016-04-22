@@ -3368,10 +3368,22 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                        break;
                                    }
 
-                                   if (!client_buffers.get_buffer_req(buffer_size)) {
+                                   if (portDefn->nBufferCountActual > MAX_NUM_INPUT_OUTPUT_BUFFERS) {
+                                       DEBUG_PRINT_ERROR("Requested o/p buf count (%u) exceeds limit (%u)",
+                                               portDefn->nBufferCountActual, MAX_NUM_INPUT_OUTPUT_BUFFERS);
+                                       eRet = OMX_ErrorBadParameter;
+                                   } else if (!client_buffers.get_buffer_req(buffer_size)) {
                                        DEBUG_PRINT_ERROR("Error in getting buffer requirements");
                                        eRet = OMX_ErrorBadParameter;
                                    } else if (!port_format_changed) {
+
+                                       // Buffer count can change only when port is disabled
+                                       if (!release_output_done()) {
+                                           DEBUG_PRINT_ERROR("Cannot change o/p buffer count since all buffers are not freed yet !");
+                                           eRet = OMX_ErrorInvalidState;
+                                           break;
+                                       }
+
                                        if ( portDefn->nBufferCountActual >= drv_ctx.op_buf.mincount &&
                                                portDefn->nBufferSize >=  drv_ctx.op_buf.buffer_size ) {
                                            drv_ctx.op_buf.actualcount = portDefn->nBufferCountActual;
@@ -3480,6 +3492,19 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                        eRet = OMX_ErrorBadParameter;
                                        break;
                                    }
+                                   if (portDefn->nBufferCountActual > MAX_NUM_INPUT_OUTPUT_BUFFERS) {
+                                       DEBUG_PRINT_ERROR("Requested i/p buf count (%u) exceeds limit (%u)",
+                                               portDefn->nBufferCountActual, MAX_NUM_INPUT_OUTPUT_BUFFERS);
+                                       eRet = OMX_ErrorBadParameter;
+                                       break;
+                                   }
+                                   // Buffer count can change only when port is disabled
+                                   if (!release_input_done()) {
+                                       DEBUG_PRINT_ERROR("Cannot change i/p buffer count since all buffers are not freed yet !");
+                                       eRet = OMX_ErrorInvalidState;
+                                       break;
+                                   }
+
                                    if (portDefn->nBufferCountActual >= drv_ctx.ip_buf.mincount
                                            || portDefn->nBufferSize != drv_ctx.ip_buf.buffer_size) {
                                        port_format_changed = true;
@@ -4239,110 +4264,7 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 
     DEBUG_PRINT_LOW("Set Config Called");
 
-    if (configIndex == (OMX_INDEXTYPE)OMX_IndexVendorVideoExtraData) {
-        OMX_VENDOR_EXTRADATATYPE *config = (OMX_VENDOR_EXTRADATATYPE *) configData;
-        DEBUG_PRINT_LOW("Index OMX_IndexVendorVideoExtraData called");
-        if (!strcmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc") ||
-            !strcmp(drv_ctx.kind, "OMX.qcom.video.decoder.mvc")) {
-            DEBUG_PRINT_LOW("Index OMX_IndexVendorVideoExtraData AVC");
-            OMX_U32 extra_size;
-            // Parsing done here for the AVC atom is definitely not generic
-            // Currently this piece of code is working, but certainly
-            // not tested with all .mp4 files.
-            // Incase of failure, we might need to revisit this
-            // for a generic piece of code.
-
-            // Retrieve size of NAL length field
-            // byte #4 contains the size of NAL lenght field
-            nal_length = (config->pData[4] & 0x03) + 1;
-
-            extra_size = 0;
-            if (nal_length > 2) {
-                /* Presently we assume that only one SPS and one PPS in AvC1 Atom */
-                extra_size = (nal_length - 2) * 2;
-            }
-
-            // SPS starts from byte #6
-            OMX_U8 *pSrcBuf = (OMX_U8 *) (&config->pData[6]);
-            OMX_U8 *pDestBuf;
-            m_vendor_config.nPortIndex = config->nPortIndex;
-
-            // minus 6 --> SPS starts from byte #6
-            // minus 1 --> picture param set byte to be ignored from avcatom
-            m_vendor_config.nDataSize = config->nDataSize - 6 - 1 + extra_size;
-            m_vendor_config.pData = (OMX_U8 *) malloc(m_vendor_config.nDataSize);
-            OMX_U32 len;
-            OMX_U8 index = 0;
-            // case where SPS+PPS is sent as part of set_config
-            pDestBuf = m_vendor_config.pData;
-
-            DEBUG_PRINT_LOW("Rxd SPS+PPS nPortIndex[%u] len[%u] data[%p]",
-                    (unsigned int)m_vendor_config.nPortIndex,
-                    (unsigned int)m_vendor_config.nDataSize,
-                    m_vendor_config.pData);
-            while (index < 2) {
-                uint8 *psize;
-                len = *pSrcBuf;
-                len = len << 8;
-                len |= *(pSrcBuf + 1);
-                psize = (uint8 *) & len;
-                memcpy(pDestBuf + nal_length, pSrcBuf + 2,len);
-                for (unsigned int i = 0; i < nal_length; i++) {
-                    pDestBuf[i] = psize[nal_length - 1 - i];
-                }
-                //memcpy(pDestBuf,pSrcBuf,(len+2));
-                pDestBuf += len + nal_length;
-                pSrcBuf += len + 2;
-                index++;
-                pSrcBuf++;   // skip picture param set
-                len = 0;
-            }
-        } else if (!strcmp(drv_ctx.kind, "OMX.qcom.video.decoder.mpeg4") ||
-                !strcmp(drv_ctx.kind, "OMX.qcom.video.decoder.mpeg2")) {
-            m_vendor_config.nPortIndex = config->nPortIndex;
-            m_vendor_config.nDataSize = config->nDataSize;
-            m_vendor_config.pData = (OMX_U8 *) malloc((config->nDataSize));
-            memcpy(m_vendor_config.pData, config->pData,config->nDataSize);
-        } else if (!strcmp(drv_ctx.kind, "OMX.qcom.video.decoder.vc1")) {
-            if (m_vendor_config.pData) {
-                free(m_vendor_config.pData);
-                m_vendor_config.pData = NULL;
-                m_vendor_config.nDataSize = 0;
-            }
-
-            if (((*((OMX_U32 *) config->pData)) &
-                        VC1_SP_MP_START_CODE_MASK) ==
-                    VC1_SP_MP_START_CODE) {
-                DEBUG_PRINT_LOW("set_config - VC1 simple/main profile");
-                m_vendor_config.nPortIndex = config->nPortIndex;
-                m_vendor_config.nDataSize = config->nDataSize;
-                m_vendor_config.pData =
-                    (OMX_U8 *) malloc(config->nDataSize);
-                memcpy(m_vendor_config.pData, config->pData,
-                        config->nDataSize);
-                m_vc1_profile = VC1_SP_MP_RCV;
-            } else if (*((OMX_U32 *) config->pData) == VC1_AP_SEQ_START_CODE) {
-                DEBUG_PRINT_LOW("set_config - VC1 Advance profile");
-                m_vendor_config.nPortIndex = config->nPortIndex;
-                m_vendor_config.nDataSize = config->nDataSize;
-                m_vendor_config.pData =
-                    (OMX_U8 *) malloc((config->nDataSize));
-                memcpy(m_vendor_config.pData, config->pData,
-                        config->nDataSize);
-                m_vc1_profile = VC1_AP;
-            } else if ((config->nDataSize == VC1_STRUCT_C_LEN)) {
-                DEBUG_PRINT_LOW("set_config - VC1 Simple/Main profile struct C only");
-                m_vendor_config.nPortIndex = config->nPortIndex;
-                m_vendor_config.nDataSize  = config->nDataSize;
-                m_vendor_config.pData = (OMX_U8*)malloc(config->nDataSize);
-                memcpy(m_vendor_config.pData,config->pData,config->nDataSize);
-                m_vc1_profile = VC1_SP_MP_RCV;
-            } else {
-                DEBUG_PRINT_LOW("set_config - Error: Unknown VC1 profile");
-            }
-        }
-        return ret;
-    } else if (configIndex == OMX_IndexConfigVideoNalSize) {
+    if (configIndex == OMX_IndexConfigVideoNalSize) {
         struct v4l2_control temp;
         temp.id = V4L2_CID_MPEG_VIDC_VIDEO_STREAM_FORMAT;
 
@@ -5948,7 +5870,8 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             nPortIndex = buffer - m_inp_heap_ptr;
 
         DEBUG_PRINT_LOW("free_buffer on i/p port - Port idx %d", nPortIndex);
-        if (nPortIndex < drv_ctx.ip_buf.actualcount) {
+        if (nPortIndex < drv_ctx.ip_buf.actualcount &&
+                BITMASK_PRESENT(&m_inp_bm_count, nPortIndex)) {
             // Clear the bit associated with it.
             BITMASK_CLEAR(&m_inp_bm_count,nPortIndex);
             BITMASK_CLEAR(&m_heap_inp_bm_count,nPortIndex);
@@ -5990,7 +5913,8 @@ OMX_ERRORTYPE  omx_vdec::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     } else if (port == OMX_CORE_OUTPUT_PORT_INDEX) {
         // check if the buffer is valid
         nPortIndex = buffer - client_buffers.get_il_buf_hdr();
-        if (nPortIndex < drv_ctx.op_buf.actualcount) {
+        if (nPortIndex < drv_ctx.op_buf.actualcount &&
+                BITMASK_PRESENT(&m_out_bm_count, nPortIndex)) {
             DEBUG_PRINT_LOW("free_buffer on o/p port - Port idx %d", nPortIndex);
             // Clear the bit associated with it.
             BITMASK_CLEAR(&m_out_bm_count,nPortIndex);
@@ -6660,7 +6584,14 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     if (m_out_mem_ptr) {
         DEBUG_PRINT_LOW("Freeing the Output Memory");
         for (i = 0; i < drv_ctx.op_buf.actualcount; i++ ) {
-            free_output_buffer (&m_out_mem_ptr[i]);
+            if (BITMASK_PRESENT(&m_out_bm_count, i)) {
+                BITMASK_CLEAR(&m_out_bm_count, i);
+                client_buffers.free_output_buffer (&m_out_mem_ptr[i]);
+            }
+
+            if (release_output_done()) {
+                break;
+            }
         }
 #ifdef _ANDROID_ICS_
         memset(&native_buffer, 0, (sizeof(nativebuffer) * MAX_NUM_INPUT_OUTPUT_BUFFERS));
@@ -6671,11 +6602,19 @@ OMX_ERRORTYPE  omx_vdec::component_deinit(OMX_IN OMX_HANDLETYPE hComp)
     if (m_inp_mem_ptr || m_inp_heap_ptr) {
         DEBUG_PRINT_LOW("Freeing the Input Memory");
         for (i = 0; i<drv_ctx.ip_buf.actualcount; i++ ) {
-            if (m_inp_mem_ptr)
-                free_input_buffer (i,&m_inp_mem_ptr[i]);
-            else
-                free_input_buffer (i,NULL);
-        }
+
+            if (BITMASK_PRESENT(&m_inp_bm_count, i)) {
+                BITMASK_CLEAR(&m_inp_bm_count, i);
+                if (m_inp_mem_ptr)
+                    free_input_buffer (i,&m_inp_mem_ptr[i]);
+                else
+                    free_input_buffer (i,NULL);
+            }
+
+            if (release_input_done()) {
+                break;
+            }
+       }
     }
     free_input_buffer_header();
     free_output_buffer_header();
@@ -7077,7 +7016,7 @@ bool omx_vdec::release_output_done(void)
     bool bRet = false;
     unsigned i=0,j=0;
 
-    DEBUG_PRINT_LOW("Value of m_out_mem_ptr %p",m_inp_mem_ptr);
+    DEBUG_PRINT_LOW("Value of m_out_mem_ptr %p", m_out_mem_ptr);
     if (m_out_mem_ptr) {
         for (; j < drv_ctx.op_buf.actualcount ; j++) {
             if (BITMASK_PRESENT(&m_out_bm_count,j)) {
