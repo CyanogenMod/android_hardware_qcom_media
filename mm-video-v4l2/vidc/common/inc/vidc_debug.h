@@ -31,6 +31,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef _ANDROID_
 #include <cstdio>
+#include <pthread.h>
 
 enum {
    PRIO_ERROR=0x1,
@@ -63,5 +64,18 @@ extern int debug_level;
 #define DEBUG_PRINT_LOW printf
 #define DEBUG_PRINT_HIGH printf
 #endif
+
+class auto_lock {
+    public:
+        auto_lock(pthread_mutex_t &lock)
+            : mLock(lock) {
+                pthread_mutex_lock(&mLock);
+            }
+        ~auto_lock() {
+            pthread_mutex_unlock(&mLock);
+        }
+    private:
+        pthread_mutex_t &mLock;
+};
 
 #endif
