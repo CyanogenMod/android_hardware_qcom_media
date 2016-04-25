@@ -692,6 +692,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_vendor_config.pData = NULL;
     pthread_mutex_init(&m_lock, NULL);
     pthread_mutex_init(&c_lock, NULL);
+    pthread_mutex_init(&buf_lock, NULL);
     sem_init(&m_cmd_lock,0,0);
     sem_init(&m_safe_flush, 0, 0);
     streaming[CAPTURE_PORT] =
@@ -822,6 +823,7 @@ omx_vdec::~omx_vdec()
     close(drv_ctx.video_driver_fd);
     pthread_mutex_destroy(&m_lock);
     pthread_mutex_destroy(&c_lock);
+    pthread_mutex_destroy(&buf_lock);
     sem_destroy(&m_cmd_lock);
     if (perf_flag) {
         DEBUG_PRINT_HIGH("--> TOTAL PROCESSING TIME");
@@ -5312,6 +5314,9 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
     index = bufferHdr - m_inp_mem_ptr;
     DEBUG_PRINT_LOW("Free Input Buffer index = %d",index);
 
+    auto_lock l(buf_lock);
+    bufferHdr->pInputPortPrivate = NULL;
+
     if (index < drv_ctx.ip_buf.actualcount && drv_ctx.ptr_inputbuffer) {
         DEBUG_PRINT_LOW("Free Input Buffer index = %d",index);
         if (drv_ctx.ptr_inputbuffer[index].pmem_fd > 0) {
@@ -6260,7 +6265,9 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     OMX_ERRORTYPE ret1 = OMX_ErrorNone;
     unsigned int nBufferIndex = drv_ctx.ip_buf.actualcount;
 
-    if (m_state == OMX_StateInvalid) {
+    if (m_state != OMX_StateExecuting &&
+            m_state != OMX_StatePause &&
+            m_state != OMX_StateIdle) {
         DEBUG_PRINT_ERROR("Empty this buffer in Invalid State");
         return OMX_ErrorInvalidState;
     }
@@ -6385,9 +6392,10 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorNone;
     }
 
+    auto_lock l(buf_lock);
     temp_buffer = (struct vdec_bufferpayload *)buffer->pInputPortPrivate;
 
-    if ((temp_buffer -  drv_ctx.ptr_inputbuffer) > (int)drv_ctx.ip_buf.actualcount) {
+    if (!temp_buffer || (temp_buffer -  drv_ctx.ptr_inputbuffer) > (int)drv_ctx.ip_buf.actualcount) {
         return OMX_ErrorBadParameter;
     }
     /* If its first frame, H264 codec and reject is true, then parse the nal
@@ -6413,7 +6421,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
     /*for use buffer we need to memcpy the data*/
     temp_buffer->buffer_len = buffer->nFilledLen;
 
-    if (input_use_buffer) {
+    if (input_use_buffer && temp_buffer->bufferaddr) {
         if (buffer->nFilledLen <= temp_buffer->buffer_len) {
             if (arbitrary_bytes) {
                 memcpy (temp_buffer->bufferaddr, (buffer->pBuffer + buffer->nOffset),buffer->nFilledLen);
@@ -6581,6 +6589,18 @@ if (buffer->nFlags & QOMX_VIDEO_BUFFERFLAG_EOSEQ) {
 OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         OMX_IN OMX_BUFFERHEADERTYPE* buffer)
 {
+    if (m_state != OMX_StateExecuting &&
+            m_state != OMX_StatePause &&
+            m_state != OMX_StateIdle) {
+        DEBUG_PRINT_ERROR("FTB in Invalid State");
+        return OMX_ErrorInvalidState;
+    }
+
+    if (!m_out_bEnabled) {
+        DEBUG_PRINT_ERROR("ERROR:FTB incorrect state operation, output port is disabled.");
+        return OMX_ErrorIncorrectStateOperation;
+    }
+
     unsigned nPortIndex = 0;
     if (dynamic_buf_mode) {
         private_handle_t *handle = NULL;
@@ -6623,12 +6643,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         }
         DEBUG_PRINT_LOW("%s: m_is_display_session = %d", __func__, m_is_display_session);
 
-    }
-
-
-    if (m_state == OMX_StateInvalid) {
-        DEBUG_PRINT_ERROR("FTB in Invalid State");
-        return OMX_ErrorInvalidState;
     }
 
     if (!m_out_bEnabled) {
