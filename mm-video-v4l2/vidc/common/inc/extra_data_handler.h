@@ -122,4 +122,17 @@ private:
         }                                                                      \
     }
 
+class auto_lock {
+    public:
+        auto_lock(pthread_mutex_t &lock)
+            : mLock(lock) {
+                pthread_mutex_lock(&mLock);
+            }
+        ~auto_lock() {
+            pthread_mutex_unlock(&mLock);
+        }
+    private:
+        pthread_mutex_t &mLock;
+};
+
 #endif
