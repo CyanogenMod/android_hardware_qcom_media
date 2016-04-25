@@ -791,6 +791,21 @@ class omx_vdec: public qc_omx_component
         nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
 
+        class auto_lock {
+            public:
+                auto_lock(pthread_mutex_t *lock)
+                    : mLock(lock) {
+                        if (mLock)
+                            pthread_mutex_lock(mLock);
+                    }
+                ~auto_lock() {
+                    if (mLock)
+                        pthread_mutex_unlock(mLock);
+                }
+            private:
+                pthread_mutex_t *mLock;
+        };
+
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
