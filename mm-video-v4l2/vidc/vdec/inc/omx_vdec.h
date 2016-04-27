@@ -1117,6 +1117,59 @@ class omx_vdec: public qc_omx_component
 
         static OMX_ERRORTYPE describeColorFormat(OMX_PTR params);
 
+        class client_extradata_info {
+            private:
+                int fd;
+                OMX_U32 total_size;
+                OMX_U32 size;
+                void *vaddr;
+            public:
+                client_extradata_info() {
+                    fd = -1;
+                    size = 0;
+                    total_size = 0;
+                    vaddr = NULL;
+                }
+
+                void reset() {
+                    if (vaddr) {
+                        munmap(vaddr, total_size);
+                        vaddr = NULL;
+                    }
+                    if (fd != -1) {
+                        close(fd);
+                        fd = -1;
+                    }
+                }
+
+                ~client_extradata_info() {
+                    reset();
+                }
+
+                bool set_extradata_info(int fd, OMX_U32 total_size, OMX_U32 size) {
+                    reset();
+                    this->fd = fd;
+                    this->size = size;
+                    this->total_size = total_size;
+                    vaddr = (OMX_U8*)mmap(0, total_size,
+                            PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+                    if (vaddr == MAP_FAILED) {
+                        vaddr = NULL;
+                        reset();
+                        return false;
+                    }
+                    return true;
+                }
+
+                OMX_U8 *getBase() const {
+                    return (OMX_U8 *)vaddr;
+                }
+
+                OMX_U32 getSize() const {
+                    return size;
+                }
+        };
+        client_extradata_info m_client_extradata_info;
 };
 
 #ifdef _MSM8974_
