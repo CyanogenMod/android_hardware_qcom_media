@@ -56,7 +56,7 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2016-04-15T11:57:15+0530"
+#define OMX_SWVDEC_VERSION_DATE "2016-04-28T10:31:10+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
