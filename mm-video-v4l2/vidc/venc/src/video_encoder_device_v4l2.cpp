@@ -1065,7 +1065,7 @@ int venc_dev::venc_input_log_buffers(OMX_BUFFERHEADERTYPE *pbuffer, int fd, int 
                 break;
             default:
                 color_format = COLOR_FMT_NV12;
-                DEBUG_PRINT_LOW("Default format NV12 is set for logging [%d]", inputformat);
+                DEBUG_PRINT_LOW("Default format NV12 is set for logging [%lu]", inputformat);
                 break;
         }
 
@@ -2349,7 +2349,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 struct v4l2_control control;
                 if (m_sVenc_cfg.codectype != V4L2_PIX_FMT_H264 &&
                         m_sVenc_cfg.codectype != V4L2_PIX_FMT_HEVC) {
-                    DEBUG_PRINT_ERROR("OMX_QTIIndexParamVideoEnableRoiInfo is not supported for %d codec", m_sVenc_cfg.codectype);
+                    DEBUG_PRINT_ERROR("OMX_QTIIndexParamVideoEnableRoiInfo is not supported for %lu codec", m_sVenc_cfg.codectype);
                     return OMX_ErrorUnsupportedSetting;
                 }
                 control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
@@ -2803,7 +2803,7 @@ bool venc_dev::venc_set_vqzip_defaults()
     case OMX_CORE_4KDCI_WIDTH * OMX_CORE_4KDCI_HEIGHT:
         break;
     default:
-        DEBUG_PRINT_ERROR("VQZIP is not supported for this resoultion : %d X %d",
+        DEBUG_PRINT_ERROR("VQZIP is not supported for this resoultion : %lu X %lu",
             m_sVenc_cfg.input_width, m_sVenc_cfg.input_height);
         return false;
     }
@@ -3105,7 +3105,7 @@ if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
         }
 
 
-        DEBUG_PRINT_LOW("Registering [%d] fd=%d size=%d userptr=%p", index,
+        DEBUG_PRINT_LOW("Registering [%d] fd=%d size=%d userptr=%lu", index,
                 pmem_tmp->fd, plane[0].length, plane[0].m.userptr);
         rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
 
@@ -3375,7 +3375,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         }
 
                         if (!venc_set_color_format(color_format)) {
-                            DEBUG_PRINT_ERROR("Failed setting color format in Camerasource %x", m_sVenc_cfg.inputformat);
+                            DEBUG_PRINT_ERROR("Failed setting color format in Camerasource %lx", m_sVenc_cfg.inputformat);
                             return false;
                         }
 
@@ -3402,7 +3402,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         plane[0].length = hnd->data[2];
                         plane[0].bytesused = hnd->data[2];
                     }
-                    DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x format 0x%x",
+                    DEBUG_PRINT_LOW("venc_empty_buf: camera buf: fd = %d filled %d of %d flag 0x%x format 0x%lx",
                             fd, plane[0].bytesused, plane[0].length, buf.flags, m_sVenc_cfg.inputformat);
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
                     VideoGrallocMetadata *meta_buf = (VideoGrallocMetadata *)bufhdr->pBuffer;
@@ -3433,7 +3433,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
                         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
-                            DEBUG_PRINT_ERROR("Failed setting color format in Grallocsource %x", m_sVenc_cfg.inputformat);
+                            DEBUG_PRINT_ERROR("Failed setting color format in Grallocsource %lx", m_sVenc_cfg.inputformat);
                             return false;
                         }
                         if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
@@ -3447,7 +3447,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                     plane[0].length = handle->size;
                     plane[0].bytesused = handle->size;
                     DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
-                                ": filled %d of %d format 0x%x", fd, plane[0].bytesused, plane[0].length, m_sVenc_cfg.inputformat);
+                                ": filled %d of %d format 0x%lx", fd, plane[0].bytesused, plane[0].length, m_sVenc_cfg.inputformat);
                 }
             } else {
                 plane[0].m.userptr = (unsigned long) bufhdr->pBuffer;
@@ -3625,7 +3625,7 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
             // timestamp differences from camera are in nano-seconds
             bufTimeStamp = bufhdr->nTimeStamp + BatchInfo::getTimeStampAt(hnd, i) / 1000;
 
-            DEBUG_PRINT_LOW(" Q Batch [%d of %d] : buf=%x fd=%d len=%d TS=%lld",
+            DEBUG_PRINT_LOW(" Q Batch [%d of %d] : buf=%p fd=%d len=%d TS=%lld",
                 i, numBufs, bufhdr, plane.reserved[0], plane.length, bufTimeStamp);
             buf.timestamp.tv_sec = bufTimeStamp / 1000000;
             buf.timestamp.tv_usec = (bufTimeStamp % 1000000);
@@ -4595,7 +4595,7 @@ bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
         (property_get("vidc.enc.disable_bframes", property_value, "0") && atoi(property_value))) {
         intra_period.num_pframes = intra_period.num_pframes + intra_period.num_bframes;
         intra_period.num_bframes = 0;
-        DEBUG_PRINT_LOW("Warning: Disabling B frames for UHD recording pFrames = %d bFrames = %d",
+        DEBUG_PRINT_LOW("Warning: Disabling B frames for UHD recording pFrames = %lu bFrames = %lu",
                          intra_period.num_pframes, intra_period.num_bframes);
     }
 
@@ -5364,7 +5364,7 @@ bool venc_dev::venc_set_hybrid_hierp(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hhp)
             return false;
         }
     } else {
-        DEBUG_PRINT_ERROR("Failed : Unsupported codec for Hybrid Hier P : %d", m_sVenc_cfg.codectype);
+        DEBUG_PRINT_ERROR("Failed : Unsupported codec for Hybrid Hier P : %lu", m_sVenc_cfg.codectype);
         return false;
     }
 
@@ -6759,7 +6759,7 @@ int venc_dev::venc_dev_vqzip::fill_stats_data(void* pBuf, void* extraData)
         DEBUG_PRINT_ERROR("Invalid data passed to stats function");
     }
     result = mVQZIPComputeStats(mVQZIPHandle, (void* )pBuf, &pConfig, pStats);
-    return (result < 0);
+    return result;
 }
 
 void venc_dev::venc_dev_vqzip::deinit()
