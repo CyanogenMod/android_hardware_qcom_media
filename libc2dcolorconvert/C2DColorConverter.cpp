@@ -530,7 +530,7 @@ size_t C2DColorConverter::calcSize(ColorConvertFormat format, size_t width, size
             size_t lumaSize = ALIGN(alignedw * height, ALIGN2K);
             size_t chromaSize = ALIGN((alignedw * height)/2, ALIGN2K);
             size = ALIGN(lumaSize + chromaSize, ALIGN4K);
-            ALOGV("NV12_2k, width = %d, height = %d, size = %d", width, height, size);
+            ALOGV("NV12_2k, width = %zu, height = %zu, size = %d", width, height, size);
             }
             break;
         case NV12_128m:
@@ -556,11 +556,11 @@ void * C2DColorConverter::getMappedGPUAddr(int bufFD, void *bufPtr, size_t bufLe
     status = mC2DMapAddr(bufFD, bufPtr, bufLen, 0, KGSL_USER_MEM_TYPE_ION,
             &gpuaddr);
     if (status != C2D_STATUS_OK) {
-        ALOGE("c2dMapAddr failed: status %d fd %d ptr %p len %d flags %d\n",
+        ALOGE("c2dMapAddr failed: status %d fd %d ptr %p len %zu flags %d\n",
                 status, bufFD, bufPtr, bufLen, KGSL_USER_MEM_TYPE_ION);
         return NULL;
     }
-    ALOGV("c2d mapping created: gpuaddr %p fd %d ptr %p len %d\n",
+    ALOGV("c2d mapping created: gpuaddr %p fd %d ptr %p len %zu\n",
             gpuaddr, bufFD, bufPtr, bufLen);
 
     return gpuaddr;
