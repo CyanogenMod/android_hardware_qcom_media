@@ -2224,9 +2224,9 @@ OMX_ERRORTYPE omx_swvdec::fill_this_buffer(OMX_HANDLETYPE        cmp_handle,
             p_buffer_swvdec->p_client_data = (void *) ((unsigned long) ii);
         }
 
-        pthread_mutex_unlock(&m_meta_buffer_array_mutex);
-
         meta_buffer_ref_add(ii, p_buffer_payload->pmem_fd);
+
+        pthread_mutex_unlock(&m_meta_buffer_array_mutex);
     }
 
     OMX_SWVDEC_LOG_LOW("%p: buffer %p",
@@ -4364,16 +4364,12 @@ void omx_swvdec::meta_buffer_array_deallocate()
  */
 void omx_swvdec::meta_buffer_ref_add(unsigned int index, int fd)
 {
-    pthread_mutex_lock(&m_meta_buffer_array_mutex);
-
     if (m_meta_buffer_array[index].ref_count == 0)
     {
         m_meta_buffer_array[index].fd = fd;
     }
 
     m_meta_buffer_array[index].ref_count++;
-
-    pthread_mutex_unlock(&m_meta_buffer_array_mutex);
 }
 
 /**
