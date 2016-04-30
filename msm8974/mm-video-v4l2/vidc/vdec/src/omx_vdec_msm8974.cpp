@@ -4460,7 +4460,7 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     return OMX_ErrorNotImplemented;
 }
 
-#define extn_equals(param, extn) (!strncmp(param, extn, strlen(extn)))
+#define extn_equals(param, extn) (!strcmp(param, extn))
 
 /* ======================================================================
    FUNCTION

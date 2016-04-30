@@ -2051,6 +2051,8 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
 
 }
 
+#define extn_equals(param, extn) (!strcmp(param, extn))
+
 /* ======================================================================
    FUNCTION
    omx_video::GetExtensionIndex
@@ -2075,21 +2077,18 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         return OMX_ErrorInvalidState;
     }
 #ifdef MAX_RES_1080P
-    if (!strncmp(paramName, "OMX.QCOM.index.param.SliceDeliveryMode",
-                sizeof("OMX.QCOM.index.param.SliceDeliveryMode") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.SliceDeliveryMode")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexEnableSliceDeliveryMode;
         return OMX_ErrorNone;
     }
 #endif
 #ifdef _ANDROID_ICS_
-    if (!strncmp(paramName, "OMX.google.android.index.storeMetaDataInBuffers",
-            sizeof("OMX.google.android.index.storeMetaDataInBuffers") - 1)) {
+    if (extn_equals(paramName, "OMX.google.android.index.storeMetaDataInBuffers")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
         return OMX_ErrorNone;
     }
 #endif
-    if (!strncmp(paramName, "OMX.google.android.index.prependSPSPPSToIDRFrames",
-            sizeof("OMX.google.android.index.prependSPSPPSToIDRFrames") - 1)) {
+    if (extn_equals(paramName, "OMX.google.android.index.prependSPSPPSToIDRFrames")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR;
         return OMX_ErrorNone;
     }
