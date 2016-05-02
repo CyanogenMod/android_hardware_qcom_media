@@ -995,8 +995,19 @@ OMX_ERRORTYPE omx_vdec::decide_dpb_buffer_mode(bool force_split_mode)
 
     if (cpu_access) {
         if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_8) {
-            if ((m_force_compressed_for_dpb || m_progressive) &&
+            if ((m_force_compressed_for_dpb || (m_progressive && (eCompressionFormat != OMX_VIDEO_CodingVP9))) &&
                 !force_split_mode) {
+            /* Disabled split mode for VP9. In split mode the DPB buffers are part of the internal
+             * scratch buffers and the driver does not does the reference buffer management for
+             * scratch buffers. In case of VP9 with spatial scalability, when a sequence changed
+             * event is received with the new resolution, and when a flush is sent by the driver, it
+             * releases all the references of internal scratch buffers. However as per the VP9
+             * spatial scalability, even after the flush, the buffers which have not yet received
+             * release reference event should not be unmapped and freed. Currently in driver,
+             * reference buffer management of the internal scratch buffer is not implemented
+             * and hence the DPB buffers get unmapped. For other codecs it does not matter
+             * as with the new SPS/PPS, the DPB is flushed.
+             */
                 //split DPB-OPB
                 //DPB -> UBWC , OPB -> Linear
                 eRet = set_dpb(true, V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_UBWC);
