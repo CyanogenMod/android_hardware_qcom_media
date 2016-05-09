@@ -56,7 +56,7 @@ enum {
 
     kkeyAacFormatAdif        = 'adif',  // bool (int32_t)
     kKeyInterlace            = 'intL',  // bool (int32_t)
-    kkeyAacFormatLtp         = 'ltp',
+    kkeyAacFormatLtp         = 'ltp ',
 
 
     //DTS subtype
