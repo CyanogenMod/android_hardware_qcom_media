@@ -512,6 +512,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
     switch ((int)paramIndex) {
         case OMX_IndexParamPortDefinition:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_PORTDEFINITIONTYPE);
                 OMX_PARAM_PORTDEFINITIONTYPE *portDefn;
                 portDefn = (OMX_PARAM_PORTDEFINITIONTYPE *) paramData;
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPortDefinition H= %d, W = %d",
@@ -610,6 +611,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         case OMX_IndexParamVideoPortFormat:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_PORTFORMATTYPE);
                 OMX_VIDEO_PARAM_PORTFORMATTYPE *portFmt =
                     (OMX_VIDEO_PARAM_PORTFORMATTYPE *)paramData;
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoPortFormat %d",
@@ -653,6 +655,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             break;
         case OMX_IndexParamVideoInit:
             { //TODO, do we need this index set param
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_PORT_PARAM_TYPE);
                 OMX_PORT_PARAM_TYPE* pParam = (OMX_PORT_PARAM_TYPE*)(paramData);
                 DEBUG_PRINT_LOW("Set OMX_IndexParamVideoInit called");
                 break;
@@ -660,6 +663,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         case OMX_IndexParamVideoBitrate:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_BITRATETYPE);
                 OMX_VIDEO_PARAM_BITRATETYPE* pParam = (OMX_VIDEO_PARAM_BITRATETYPE*)paramData;
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoBitrate");
                 if (handle->venc_set_param(paramData,OMX_IndexParamVideoBitrate) != true) {
@@ -676,6 +680,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_IndexParamVideoMpeg4:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_MPEG4TYPE);
                 OMX_VIDEO_PARAM_MPEG4TYPE* pParam = (OMX_VIDEO_PARAM_MPEG4TYPE*)paramData;
                 OMX_VIDEO_PARAM_MPEG4TYPE mp4_param;
                 memcpy(&mp4_param, pParam, sizeof(struct OMX_VIDEO_PARAM_MPEG4TYPE));
@@ -720,6 +725,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_IndexParamVideoAvc:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_AVCTYPE);
                 OMX_VIDEO_PARAM_AVCTYPE* pParam = (OMX_VIDEO_PARAM_AVCTYPE*)paramData;
                 OMX_VIDEO_PARAM_AVCTYPE avc_param;
                 memcpy(&avc_param, pParam, sizeof( struct OMX_VIDEO_PARAM_AVCTYPE));
@@ -766,6 +772,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case (OMX_INDEXTYPE)OMX_IndexParamVideoVp8:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_VP8TYPE);
                 OMX_VIDEO_PARAM_VP8TYPE* pParam = (OMX_VIDEO_PARAM_VP8TYPE*)paramData;
                 OMX_VIDEO_PARAM_VP8TYPE vp8_param;
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoVp8");
@@ -782,6 +789,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_IndexParamVideoProfileLevelCurrent:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_PROFILELEVELTYPE);
                 OMX_VIDEO_PARAM_PROFILELEVELTYPE* pParam = (OMX_VIDEO_PARAM_PROFILELEVELTYPE*)paramData;
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoProfileLevelCurrent");
                 if (handle->venc_set_param(pParam,OMX_IndexParamVideoProfileLevelCurrent) != true) {
@@ -828,6 +836,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_IndexParamStandardComponentRole:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_COMPONENTROLETYPE);
                 OMX_PARAM_COMPONENTROLETYPE *comp_role;
                 comp_role = (OMX_PARAM_COMPONENTROLETYPE *) paramData;
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamStandardComponentRole %s",
@@ -889,6 +898,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         case OMX_IndexParamPriorityMgmt:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_PRIORITYMGMTTYPE);
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamPriorityMgmt");
                 if (m_state != OMX_StateLoaded) {
                     DEBUG_PRINT_ERROR("ERROR: Set Parameter called in Invalid State");
@@ -909,6 +919,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         case OMX_IndexParamCompBufferSupplier:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_BUFFERSUPPLIERTYPE);
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamCompBufferSupplier");
                 OMX_PARAM_BUFFERSUPPLIERTYPE *bufferSupplierType = (OMX_PARAM_BUFFERSUPPLIERTYPE*) paramData;
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamCompBufferSupplier %d",
@@ -925,6 +936,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_IndexParamVideoQuantization:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_QUANTIZATIONTYPE);
                 DEBUG_PRINT_LOW("set_parameter: OMX_IndexParamVideoQuantization");
                 OMX_VIDEO_PARAM_QUANTIZATIONTYPE *session_qp = (OMX_VIDEO_PARAM_QUANTIZATIONTYPE*) paramData;
                 if (session_qp->nPortIndex == PORT_INDEX_OUT) {
@@ -943,6 +955,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         case OMX_QcomIndexParamVideoQPRange:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QCOM_VIDEO_PARAM_QPRANGETYPE);
                 DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexParamVideoQPRange");
                 OMX_QCOM_VIDEO_PARAM_QPRANGETYPE *qp_range = (OMX_QCOM_VIDEO_PARAM_QPRANGETYPE*) paramData;
                 if (qp_range->nPortIndex == PORT_INDEX_OUT) {
@@ -961,6 +974,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         case OMX_QcomIndexPortDefn:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QCOM_PARAM_PORTDEFINITIONTYPE);
                 OMX_QCOM_PARAM_PORTDEFINITIONTYPE* pParam =
                     (OMX_QCOM_PARAM_PORTDEFINITIONTYPE*)paramData;
                 DEBUG_PRINT_LOW("set_parameter: OMX_QcomIndexPortDefn");
@@ -987,6 +1001,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         case OMX_IndexParamVideoErrorCorrection:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE);
                 DEBUG_PRINT_LOW("OMX_IndexParamVideoErrorCorrection");
                 OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* pParam =
                     (OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE*)paramData;
@@ -999,6 +1014,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_IndexParamVideoIntraRefresh:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_INTRAREFRESHTYPE);
                 DEBUG_PRINT_LOW("set_param:OMX_IndexParamVideoIntraRefresh");
                 OMX_VIDEO_PARAM_INTRAREFRESHTYPE* pParam =
                     (OMX_VIDEO_PARAM_INTRAREFRESHTYPE*)paramData;
@@ -1012,6 +1028,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #ifdef _ANDROID_ICS_
         case OMX_QcomIndexParamVideoMetaBufferMode:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, StoreMetaDataInBuffersParams);
                 StoreMetaDataInBuffersParams *pParam =
                     (StoreMetaDataInBuffersParams*)paramData;
                 DEBUG_PRINT_HIGH("set_parameter:OMX_QcomIndexParamVideoMetaBufferMode: "
@@ -1058,6 +1075,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #if !defined(MAX_RES_720P) || defined(_MSM8974_)
         case OMX_QcomIndexParamIndexExtraDataType:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_INDEXEXTRADATATYPE);
                 DEBUG_PRINT_HIGH("set_parameter: OMX_QcomIndexParamIndexExtraDataType");
                 QOMX_INDEXEXTRADATATYPE *pParam = (QOMX_INDEXEXTRADATATYPE *)paramData;
                 OMX_U32 mask = 0;
@@ -1136,6 +1154,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case QOMX_IndexParamVideoLTRMode:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_VIDEO_PARAM_LTRMODE_TYPE);
                 QOMX_VIDEO_PARAM_LTRMODE_TYPE* pParam =
                     (QOMX_VIDEO_PARAM_LTRMODE_TYPE*)paramData;
                 if (!handle->venc_set_param(paramData, (OMX_INDEXTYPE)QOMX_IndexParamVideoLTRMode)) {
@@ -1147,6 +1166,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case QOMX_IndexParamVideoLTRCount:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_VIDEO_PARAM_LTRCOUNT_TYPE);
                 QOMX_VIDEO_PARAM_LTRCOUNT_TYPE* pParam =
                     (QOMX_VIDEO_PARAM_LTRCOUNT_TYPE*)paramData;
                 if (!handle->venc_set_param(paramData, (OMX_INDEXTYPE)QOMX_IndexParamVideoLTRCount)) {
@@ -1159,6 +1179,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #endif
         case OMX_QcomIndexParamVideoMaxAllowedBitrateCheck:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_EXTNINDEX_PARAMTYPE);
                 QOMX_EXTNINDEX_PARAMTYPE* pParam =
                     (QOMX_EXTNINDEX_PARAMTYPE*)paramData;
                 if (pParam->nPortIndex == PORT_INDEX_OUT) {
@@ -1176,6 +1197,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #ifdef MAX_RES_1080P
         case OMX_QcomIndexEnableSliceDeliveryMode:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_EXTNINDEX_PARAMTYPE);
                 QOMX_EXTNINDEX_PARAMTYPE* pParam =
                     (QOMX_EXTNINDEX_PARAMTYPE*)paramData;
                 if (pParam->nPortIndex == PORT_INDEX_OUT) {
@@ -1194,6 +1216,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #endif
         case OMX_QcomIndexEnableH263PlusPType:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_EXTNINDEX_PARAMTYPE);
                 QOMX_EXTNINDEX_PARAMTYPE* pParam =
                     (QOMX_EXTNINDEX_PARAMTYPE*)paramData;
                 DEBUG_PRINT_LOW("OMX_QcomIndexEnableH263PlusPType");
@@ -1212,6 +1235,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamSequenceHeaderWithIDR:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, PrependSPSPPSToIDRFramesParams);
                 if(!handle->venc_set_param(paramData,
                             (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR)) {
                     DEBUG_PRINT_ERROR("%s: %s",
@@ -1223,6 +1247,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamH264AUDelimiter:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QCOM_VIDEO_CONFIG_H264_AUD);
                 if(!handle->venc_set_param(paramData,
                             (OMX_INDEXTYPE)OMX_QcomIndexParamH264AUDelimiter)) {
                     DEBUG_PRINT_ERROR("%s: %s",
@@ -1234,6 +1259,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
        case OMX_QcomIndexHierarchicalStructure:
            {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_VIDEO_HIERARCHICALLAYERS);
                 QOMX_VIDEO_HIERARCHICALLAYERS* pParam =
                     (QOMX_VIDEO_HIERARCHICALLAYERS*)paramData;
                 DEBUG_PRINT_LOW("OMX_QcomIndexHierarchicalStructure");
@@ -1255,6 +1281,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
            }
         case OMX_QcomIndexParamPerfLevel:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QCOM_VIDEO_PARAM_PERF_LEVEL);
                 if (!handle->venc_set_param(paramData,
                             (OMX_INDEXTYPE) OMX_QcomIndexParamPerfLevel)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting performance level");
@@ -1264,6 +1291,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamH264VUITimingInfo:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QCOM_VIDEO_PARAM_VUI_TIMING_INFO);
                 if (!handle->venc_set_param(paramData,
                             (OMX_INDEXTYPE) OMX_QcomIndexParamH264VUITimingInfo)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting VUI timing info");
@@ -1273,6 +1301,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamPeakBitrate:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QCOM_VIDEO_PARAM_PEAK_BITRATE);
                 if (!handle->venc_set_param(paramData,
                             (OMX_INDEXTYPE) OMX_QcomIndexParamPeakBitrate)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting peak bitrate");
@@ -1282,6 +1311,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case QOMX_IndexParamVideoInitialQp:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_EXTNINDEX_VIDEO_INITIALQP);
                 if(!handle->venc_set_param(paramData,
                             (OMX_INDEXTYPE)QOMX_IndexParamVideoInitialQp)) {
                     DEBUG_PRINT_ERROR("%s: %s",
@@ -1380,6 +1410,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     switch ((int)configIndex) {
         case OMX_IndexConfigVideoBitrate:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_BITRATETYPE);
                 OMX_VIDEO_CONFIG_BITRATETYPE* pParam =
                     reinterpret_cast<OMX_VIDEO_CONFIG_BITRATETYPE*>(configData);
                 DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoBitrate (%lu)", pParam->nEncodeBitrate);
@@ -1401,6 +1432,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
         case OMX_IndexConfigVideoFramerate:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_CONFIG_FRAMERATETYPE);
                 OMX_CONFIG_FRAMERATETYPE* pParam =
                     reinterpret_cast<OMX_CONFIG_FRAMERATETYPE*>(configData);
                 DEBUG_PRINT_HIGH("set_config(): OMX_IndexConfigVideoFramerate (0x%lx)", pParam->xEncodeFramerate);
@@ -1423,6 +1455,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
         case QOMX_IndexConfigVideoIntraperiod:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, QOMX_VIDEO_INTRAPERIODTYPE);
                 QOMX_VIDEO_INTRAPERIODTYPE* pParam =
                     reinterpret_cast<QOMX_VIDEO_INTRAPERIODTYPE*>(configData);
 
@@ -1475,6 +1508,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 
         case OMX_IndexConfigVideoIntraVOPRefresh:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_CONFIG_INTRAREFRESHVOPTYPE);
                 OMX_CONFIG_INTRAREFRESHVOPTYPE* pParam =
                     reinterpret_cast<OMX_CONFIG_INTRAREFRESHVOPTYPE*>(configData);
 
@@ -1496,6 +1530,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
         case OMX_IndexConfigCommonRotate:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_CONFIG_ROTATIONTYPE);
                 OMX_CONFIG_ROTATIONTYPE *pParam =
                     reinterpret_cast<OMX_CONFIG_ROTATIONTYPE*>(configData);
                 OMX_S32 nRotation;
@@ -1547,6 +1582,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             {
                 DEBUG_PRINT_HIGH("set_config(): OMX_QcomIndexConfigVideoFramePackingArrangement");
                 if (m_sOutPortFormat.eCompressionFormat == OMX_VIDEO_CodingAVC) {
+                    VALIDATE_OMX_PARAM_DATA(configData, OMX_QCOM_FRAME_PACK_ARRANGEMENT);
                     OMX_QCOM_FRAME_PACK_ARRANGEMENT *configFmt =
                         (OMX_QCOM_FRAME_PACK_ARRANGEMENT *) configData;
                     extra_data_handle.set_frame_pack_data(configFmt);
@@ -1557,6 +1593,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
         case QOMX_IndexConfigVideoLTRPeriod:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE);
                 QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE*)configData;
                 if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRPeriod)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting LTR period failed");
@@ -1568,6 +1605,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 
        case OMX_IndexConfigVideoVp8ReferenceFrame:
            {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_VP8REFERENCEFRAMETYPE);
                OMX_VIDEO_VP8REFERENCEFRAMETYPE* pParam = (OMX_VIDEO_VP8REFERENCEFRAMETYPE*) configData;
                if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE) OMX_IndexConfigVideoVp8ReferenceFrame)) {
                    DEBUG_PRINT_ERROR("ERROR: Setting VP8 reference frame");
@@ -1579,6 +1617,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 
        case QOMX_IndexConfigVideoLTRUse:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, QOMX_VIDEO_CONFIG_LTRUSE_TYPE);
                 QOMX_VIDEO_CONFIG_LTRUSE_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRUSE_TYPE*)configData;
                 if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRUse)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting LTR use failed");
@@ -1589,6 +1628,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
         case QOMX_IndexConfigVideoLTRMark:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, QOMX_VIDEO_CONFIG_LTRMARK_TYPE);
                 QOMX_VIDEO_CONFIG_LTRMARK_TYPE* pParam = (QOMX_VIDEO_CONFIG_LTRMARK_TYPE*)configData;
                 if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRMark)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting LTR mark failed");
@@ -1598,6 +1638,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
         case OMX_IndexConfigVideoAVCIntraPeriod:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_AVCINTRAPERIOD);
                 OMX_VIDEO_CONFIG_AVCINTRAPERIOD *pParam = (OMX_VIDEO_CONFIG_AVCINTRAPERIOD*) configData;
                 DEBUG_PRINT_LOW("set_config: OMX_IndexConfigVideoAVCIntraPeriod");
                 if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_IndexConfigVideoAVCIntraPeriod)) {
@@ -1609,6 +1650,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
         case OMX_IndexConfigCommonDeinterlace:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_DEINTERLACE);
                 OMX_VIDEO_CONFIG_DEINTERLACE *pParam = (OMX_VIDEO_CONFIG_DEINTERLACE*) configData;
                 DEBUG_PRINT_LOW("set_config: OMX_IndexConfigCommonDeinterlace");
                 if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_IndexConfigCommonDeinterlace)) {
