@@ -910,6 +910,7 @@ class omx_vdec: public qc_omx_component
         OMX_U32 m_fps_received;
         float   m_fps_prev;
         bool m_drc_enable;
+        bool m_dfrc_enable;
 
         struct vdec_allocatorproperty op_buf_rcnfg;
         bool in_reconfig;
