@@ -625,6 +625,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_fps_received(0),
     m_fps_prev(0),
     m_drc_enable(0),
+    m_dfrc_enable(false),
     in_reconfig(false),
     m_display_id(NULL),
     client_extradata(0),
@@ -726,6 +727,13 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     if (atoi(property_value)) {
         m_drc_enable = true;
         DEBUG_PRINT_HIGH("DRC enabled");
+    }
+
+    property_value[0] = '\0';
+    property_get("media.dfrc_enable", property_value, "0");
+    if (atoi(property_value)) {
+        m_dfrc_enable = true;
+        DEBUG_PRINT_HIGH("DFRC enabled");
     }
 
 #ifdef _UBWC_
@@ -8130,6 +8138,17 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             DEBUG_PRINT_LOW("stereo_output_mode = %d",stereo_output_mode);
             setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
                                S3D_FORMAT, (void*)&stereo_output_mode);
+
+            if (m_dfrc_enable) {
+                FrameRateControl_t dfrc_ctrl;
+                dfrc_ctrl.enable = 1;
+                dfrc_ctrl.timestamp = buffer->nTimeStamp;
+                dfrc_ctrl.counter = proc_frms;
+                DEBUG_PRINT_LOW("Set metadata: update buf-timestamp %lld, frame_cnt=%d",
+                                buffer->nTimeStamp, proc_frms);
+                setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                             SET_FRC_INFO, (void*)&dfrc_ctrl);
+            }
         }
 
         if (il_buffer) {
