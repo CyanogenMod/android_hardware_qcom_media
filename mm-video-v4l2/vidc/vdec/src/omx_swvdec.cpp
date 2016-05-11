@@ -2058,12 +2058,6 @@ OMX_ERRORTYPE omx_swvdec::empty_this_buffer(OMX_HANDLETYPE        cmp_handle,
         goto empty_this_buffer_exit;
     }
 
-    if (m_sync_frame_decoding_mode &&
-        ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) == 0))
-    {
-        p_buffer_hdr->nFlags |= OMX_BUFFERFLAG_EOS;
-    }
-
     OMX_SWVDEC_LOG_API("%p: buffer %p, flags 0x%08x, filled length %d, "
                        "timestamp %lld",
                        p_buffer_hdr,
@@ -2230,9 +2224,9 @@ OMX_ERRORTYPE omx_swvdec::fill_this_buffer(OMX_HANDLETYPE        cmp_handle,
             p_buffer_swvdec->p_client_data = (void *) ((unsigned long) ii);
         }
 
-        pthread_mutex_unlock(&m_meta_buffer_array_mutex);
-
         meta_buffer_ref_add(ii, p_buffer_payload->pmem_fd);
+
+        pthread_mutex_unlock(&m_meta_buffer_array_mutex);
     }
 
     OMX_SWVDEC_LOG_LOW("%p: buffer %p",
@@ -4370,16 +4364,12 @@ void omx_swvdec::meta_buffer_array_deallocate()
  */
 void omx_swvdec::meta_buffer_ref_add(unsigned int index, int fd)
 {
-    pthread_mutex_lock(&m_meta_buffer_array_mutex);
-
     if (m_meta_buffer_array[index].ref_count == 0)
     {
         m_meta_buffer_array[index].fd = fd;
     }
 
     m_meta_buffer_array[index].ref_count++;
-
-    pthread_mutex_unlock(&m_meta_buffer_array_mutex);
 }
 
 /**
@@ -4704,71 +4694,23 @@ void omx_swvdec::ion_flush_op(unsigned int index)
 {
     if (index < m_port_op.def.nBufferCountActual)
     {
-        int fd = -EINVAL;
-        int rc = -EINVAL;
-
         struct vdec_bufferpayload *p_buffer_payload =
             &m_buffer_array_op[index].buffer_payload;
 
-        struct ion_fd_data     fd_data;
-        struct ion_flush_data  flush_data;
-        struct ion_custom_data custom_data;
-
-        memset(&fd_data,     0, sizeof(fd_data));
-        memset(&flush_data,  0, sizeof(flush_data));
-        memset(&custom_data, 0, sizeof(custom_data));
-
-        if ((fd = open("/dev/ion", O_RDONLY)) < 0)
+        if(p_buffer_payload)
         {
-            OMX_SWVDEC_LOG_ERROR("failed to open /dev/ion, error %s",
-                                 strerror(errno));
-
-            goto ion_flush_op_exit;
+            if(p_buffer_payload->bufferaddr != NULL)
+            {
+                __builtin___clear_cache(reinterpret_cast<char*>((size_t*)p_buffer_payload->bufferaddr),
+                    reinterpret_cast<char*>((size_t*)p_buffer_payload->bufferaddr +p_buffer_payload->buffer_len));
+            }
         }
-
-        fd_data.fd = p_buffer_payload->pmem_fd;
-
-        rc = ioctl(fd, ION_IOC_IMPORT, &fd_data);
-
-        if (rc)
-        {
-            OMX_SWVDEC_LOG_ERROR("ioctl() for import failed; fd %d",
-                                 fd_data.fd);
-
-            close(fd);
-            goto ion_flush_op_exit;
-        }
-
-        flush_data.handle = fd_data.handle;
-
-        flush_data.fd     = p_buffer_payload->pmem_fd;
-        flush_data.vaddr  = p_buffer_payload->bufferaddr;
-        flush_data.length = p_buffer_payload->buffer_len;
-
-        custom_data.cmd = ION_IOC_CLEAN_CACHES;
-        custom_data.arg = (unsigned long) &flush_data;
-
-        OMX_SWVDEC_LOG_LOW("handle %d, fd %d, vaddr %p, length %d",
-                           flush_data.handle,
-                           flush_data.fd,
-                           flush_data.vaddr,
-                           flush_data.length);
-
-        rc = ioctl(fd, ION_IOC_CUSTOM, &custom_data);
-
-        if (rc < 0)
-        {
-            OMX_SWVDEC_LOG_ERROR("ioctl() for clean cache failed");
-        }
-
-        close(fd);
     }
     else
     {
         OMX_SWVDEC_LOG_ERROR("buffer index '%d' invalid", index);
     }
 
-ion_flush_op_exit:
     return;
 }
 
@@ -5925,29 +5867,54 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
                 assert(0);
             }
 
-            m_buffer_array_ip[index].split_count = num_frame_headers - 1;
-
-            for (unsigned int ii = 0; ii < num_frame_headers; ii++)
+            if(num_frame_headers > 1)
             {
-                p_buffer_swvdec->flags     = p_buffer_hdr->nFlags;
-                p_buffer_swvdec->timestamp = p_buffer_hdr->nTimeStamp;
+                m_buffer_array_ip[index].split_count = num_frame_headers - 1;
 
-                if (ii == 0)
+                for (unsigned int ii = 0; ii < num_frame_headers; ii++)
                 {
-                    p_buffer_swvdec->offset        = 0;
-                    p_buffer_swvdec->filled_length = (offset_array[ii + 1] ?
-                                                      offset_array[ii + 1] :
-                                                      p_buffer_hdr->nFilledLen);
-                }
-                else
-                {
-                    p_buffer_swvdec->offset        = offset_array[ii];
-                    p_buffer_swvdec->filled_length =
-                        p_buffer_hdr->nFilledLen - offset_array[ii];
-                }
+                    p_buffer_swvdec->flags     = p_buffer_hdr->nFlags;
+                    p_buffer_swvdec->timestamp = p_buffer_hdr->nTimeStamp;
 
-                m_diag.dump_ip(p_buffer_swvdec->p_buffer +
-                               p_buffer_swvdec->offset,
+                    if (ii == 0)
+                    {
+                        p_buffer_swvdec->offset        = 0;
+                        p_buffer_swvdec->filled_length = (offset_array[ii + 1] ?
+                                                          offset_array[ii + 1] :
+                                                          p_buffer_hdr->nFilledLen);
+                    }
+                    else
+                    {
+                        p_buffer_swvdec->offset        = offset_array[ii];
+                        p_buffer_swvdec->filled_length =
+                            p_buffer_hdr->nFilledLen - offset_array[ii];
+                    }
+
+                    m_diag.dump_ip(p_buffer_swvdec->p_buffer +
+                                   p_buffer_swvdec->offset,
+                                   p_buffer_swvdec->filled_length);
+
+                    retval_swvdec = swvdec_emptythisbuffer(m_swvdec_handle,
+                                                           p_buffer_swvdec);
+
+                    if (retval_swvdec != SWVDEC_STATUS_SUCCESS)
+                    {
+                        retval = retval_swvdec2omx(retval_swvdec);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                OMX_SWVDEC_LOG_HIGH("No frame detected for Buffer %p, with TS %lld",
+                                    p_buffer_hdr->pBuffer, p_buffer_hdr->nTimeStamp );
+
+                p_buffer_swvdec->flags         = p_buffer_hdr->nFlags;
+                p_buffer_swvdec->offset        = 0;
+                p_buffer_swvdec->timestamp     = p_buffer_hdr->nTimeStamp;
+                p_buffer_swvdec->filled_length = p_buffer_hdr->nFilledLen;
+
+                m_diag.dump_ip(p_buffer_swvdec->p_buffer + p_buffer_swvdec->offset,
                                p_buffer_swvdec->filled_length);
 
                 retval_swvdec = swvdec_emptythisbuffer(m_swvdec_handle,
@@ -5956,7 +5923,6 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
                 if (retval_swvdec != SWVDEC_STATUS_SUCCESS)
                 {
                     retval = retval_swvdec2omx(retval_swvdec);
-                    break;
                 }
             }
         }
@@ -5979,7 +5945,6 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
             }
         }
     }
-
     return retval;
 }
 
