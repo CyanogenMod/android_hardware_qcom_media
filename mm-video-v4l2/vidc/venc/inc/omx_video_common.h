@@ -64,6 +64,10 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OMX_CORE_720P_HEIGHT          720
 #define OMX_CORE_1080P_WIDTH         1920
 #define OMX_CORE_1080P_HEIGHT        1080
+#define OMX_CORE_4KUHD_WIDTH         3840
+#define OMX_CORE_4KUHD_HEIGHT        2160
+#define OMX_CORE_4KDCI_WIDTH         4096
+#define OMX_CORE_4KDCI_HEIGHT        2160
 
 enum PortIndexType {
     PORT_INDEX_IN = 0,
@@ -83,16 +87,13 @@ struct venc_debug_cap {
     bool in_buffer_log;
     bool out_buffer_log;
     bool extradata_log;
-    bool roiqp_log;
     char infile_name[PROPERTY_VALUE_MAX];
     char outfile_name[PROPERTY_VALUE_MAX];
     char extradatafile_name[PROPERTY_VALUE_MAX];
-    char roiqpfile_name[PROPERTY_VALUE_MAX];
     char log_loc[PROPERTY_VALUE_MAX];
     FILE *infile;
     FILE *outfile;
     FILE *extradatafile;
-    FILE *roiqpfile;
 };
 #ifdef USE_ION
 struct venc_ion {
