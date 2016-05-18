@@ -552,6 +552,12 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sMBIStatistics.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sMBIStatistics.eMBIStatisticsType = QOMX_MBI_STATISTICS_MODE_DEFAULT;
 
+    //init remaining structures
+    OMX_INIT_STRUCT(&m_sConfigVp8ReferenceFrame, OMX_VIDEO_VP8REFERENCEFRAMETYPE);
+    OMX_INIT_STRUCT(&m_sConfigLTRPeriod, QOMX_VIDEO_CONFIG_LTRPERIOD_TYPE);
+    OMX_INIT_STRUCT(&m_sConfigLTRUse, QOMX_VIDEO_CONFIG_LTRUSE_TYPE);
+    OMX_INIT_STRUCT(&m_sConfigAVCIDRPeriod, OMX_VIDEO_CONFIG_AVCINTRAPERIOD);
+
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
 
