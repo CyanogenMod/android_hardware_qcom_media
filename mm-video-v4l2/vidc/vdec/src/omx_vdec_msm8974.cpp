@@ -612,6 +612,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     pthread_mutex_init(&m_lock, NULL);
     pthread_mutex_init(&c_lock, NULL);
     pthread_mutex_init(&e_lock, NULL);
+    pthread_mutex_init(&buf_lock, NULL);
     sem_init(&m_cmd_lock,0,0);
     streaming[CAPTURE_PORT] =
         streaming[OUTPUT_PORT] = false;
@@ -731,6 +732,7 @@ omx_vdec::~omx_vdec()
     pthread_mutex_destroy(&m_lock);
     pthread_mutex_destroy(&c_lock);
     pthread_mutex_destroy(&e_lock);
+    pthread_mutex_destroy(&buf_lock);
     sem_destroy(&m_cmd_lock);
     if (perf_flag) {
         DEBUG_PRINT_HIGH("--> TOTAL PROCESSING TIME");
@@ -3767,7 +3769,7 @@ OMX_ERRORTYPE  omx_vdec::component_tunnel_request(OMX_IN OMX_HANDLETYPE         
 OMX_ERRORTYPE omx_vdec::allocate_extradata()
 {
 #ifdef USE_ION
-    auto_lock extradata_lock(&e_lock);
+    auto_lock extradata_lock(e_lock);
     if (drv_ctx.extradata_info.buffer_size) {
         if (drv_ctx.extradata_info.ion.ion_alloc_data.handle) {
             munmap((void *)drv_ctx.extradata_info.uaddr, drv_ctx.extradata_info.size);
@@ -3802,7 +3804,7 @@ OMX_ERRORTYPE omx_vdec::allocate_extradata()
 void omx_vdec::free_extradata()
 {
 #ifdef USE_ION
-    auto_lock extradata_lock(&e_lock);
+    auto_lock extradata_lock(e_lock);
     if (drv_ctx.extradata_info.uaddr) {
         munmap((void *)drv_ctx.extradata_info.uaddr, drv_ctx.extradata_info.size);
         close(drv_ctx.extradata_info.ion.fd_ion_data.fd);
@@ -4222,6 +4224,9 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
 
     index = bufferHdr - m_inp_mem_ptr;
     DEBUG_PRINT_LOW("\n Free Input Buffer index = %d",index);
+
+    auto_lock l(buf_lock);
+    bufferHdr->pInputPortPrivate = NULL;
 
     if (index < drv_ctx.ip_buf.actualcount && drv_ctx.ptr_inputbuffer) {
         DEBUG_PRINT_LOW("\n Free Input Buffer index = %d",index);
@@ -5136,8 +5141,10 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer(OMX_IN OMX_HANDLETYPE         hComp,
     OMX_ERRORTYPE ret1 = OMX_ErrorNone;
     unsigned int nBufferIndex = drv_ctx.ip_buf.actualcount;
 
-    if (m_state == OMX_StateInvalid) {
-        DEBUG_PRINT_ERROR("Empty this buffer in Invalid State\n");
+    if (m_state != OMX_StateExecuting &&
+            m_state != OMX_StatePause &&
+            m_state != OMX_StateIdle) {
+        DEBUG_PRINT_ERROR("Empty this buffer in Invalid State");
         return OMX_ErrorInvalidState;
     }
 
@@ -5294,6 +5301,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
         return OMX_ErrorNone;
     }
 
+    auto_lock l(buf_lock);
     temp_buffer = (struct vdec_bufferpayload *)buffer->pInputPortPrivate;
 
     if ((temp_buffer -  drv_ctx.ptr_inputbuffer) > drv_ctx.ip_buf.actualcount) {
@@ -5322,7 +5330,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
     /*for use buffer we need to memcpy the data*/
     temp_buffer->buffer_len = buffer->nFilledLen;
 
-    if (input_use_buffer) {
+    if (input_use_buffer && temp_buffer->bufferaddr) {
         if (buffer->nFilledLen <= temp_buffer->buffer_len) {
             if (arbitrary_bytes) {
                 memcpy (temp_buffer->bufferaddr, (buffer->pBuffer + buffer->nOffset),buffer->nFilledLen);
@@ -5502,6 +5510,18 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE         h
 OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         OMX_IN OMX_BUFFERHEADERTYPE* buffer)
 {
+    if (m_state != OMX_StateExecuting &&
+            m_state != OMX_StatePause &&
+            m_state != OMX_StateIdle) {
+        DEBUG_PRINT_ERROR("FTB in Invalid State");
+        return OMX_ErrorInvalidState;
+    }
+
+    if (!m_out_bEnabled) {
+        DEBUG_PRINT_ERROR("ERROR:FTB incorrect state operation, output port is disabled.");
+        return OMX_ErrorIncorrectStateOperation;
+    }
+
     if (dynamic_buf_mode) {
         private_handle_t *handle = NULL;
         struct VideoDecoderOutputMetaData *meta;
@@ -5522,17 +5542,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
         drv_ctx.ptr_outputbuffer[nPortIndex].pmem_fd = handle->fd;
         drv_ctx.ptr_outputbuffer[nPortIndex].bufferaddr = (OMX_U8*) buffer;
-    }
-
-
-    if (m_state == OMX_StateInvalid) {
-        DEBUG_PRINT_ERROR("FTB in Invalid State\n");
-        return OMX_ErrorInvalidState;
-    }
-
-    if (!m_out_bEnabled) {
-        DEBUG_PRINT_ERROR("\nERROR:FTB incorrect state operation, output port is disabled.");
-        return OMX_ErrorIncorrectStateOperation;
     }
 
     if (buffer == NULL ||
@@ -7937,7 +7946,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr) +
         p_buf_hdr->nOffset;
 
-    auto_lock extradata_lock(&e_lock);
+    auto_lock extradata_lock(e_lock);
 
     if (!drv_ctx.extradata_info.uaddr) {
         return;
