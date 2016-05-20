@@ -9716,11 +9716,6 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
     } else if (1 == portDefn->nPortIndex) {
         unsigned int buf_size = 0;
         int ret = 0;
-        if (!client_buffers.update_buffer_req()) {
-            DEBUG_PRINT_ERROR("client_buffers.update_buffer_req Failed");
-            return OMX_ErrorHardware;
-        }
-
        memset(&fmt, 0x0, sizeof(struct v4l2_format));
        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
        fmt.fmt.pix_mp.pixelformat = capture_capability;
@@ -9732,6 +9727,10 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
        drv_ctx.op_buf.buffer_size = fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
        drv_ctx.op_buf.buffer_size += drv_ctx.extradata_info.buffer_size;
        drv_ctx.op_buf.buffer_size = (drv_ctx.op_buf.buffer_size + drv_ctx.op_buf.alignment - 1)&(~(drv_ctx.op_buf.alignment - 1));
+       if (!client_buffers.update_buffer_req()) {
+           DEBUG_PRINT_ERROR("client_buffers.update_buffer_req Failed");
+           return OMX_ErrorHardware;
+       }
 
         if (!client_buffers.get_buffer_req(buf_size)) {
             DEBUG_PRINT_ERROR("update buffer requirements");
