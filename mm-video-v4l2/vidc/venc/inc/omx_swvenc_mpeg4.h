@@ -76,8 +76,9 @@ class omx_venc: public omx_video
         bool m_stopped;
         bool format_set;
 
-        int dev_handle_output_extradata(void *);
-        int dev_handle_input_extradata(void *, int);
+        int dev_handle_output_extradata(void *, int);
+        int dev_handle_input_extradata(void *, int, int);
+        bool dev_buffer_ready_to_queue(OMX_BUFFERHEADERTYPE *buffer);
         void dev_set_extradata_cookie(void *);
         int dev_set_format(int);
 

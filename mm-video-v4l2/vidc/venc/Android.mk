@@ -39,6 +39,7 @@ endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm8996)
 libmm-venc-def += -D_UBWC_
+libmm-venc-def += -D_VQZIP_
 endif
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_FLAG_MSM8226)),true)
@@ -55,6 +56,10 @@ endif
 
 ifeq ($(call is-board-platform-in-list, $(MASTER_SIDE_CP_TARGET_LIST)),true)
 libmm-venc-def += -DMASTER_SIDE_CP
+endif
+
+ifeq ($(TARGET_USES_MEDIA_EXTENSIONS),true)
+libmm-venc-def += -DSUPPORT_CONFIG_INTRA_REFRESH
 endif
 
 # Common Includes

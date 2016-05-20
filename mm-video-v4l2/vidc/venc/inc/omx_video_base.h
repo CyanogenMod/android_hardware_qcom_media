@@ -136,9 +136,9 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
         & BITMASK_FLAG(mIndex))
 #define BITMASK_ABSENT(mArray,mIndex) (((mArray)[BITMASK_OFFSET(mIndex)] \
             & BITMASK_FLAG(mIndex)) == 0x0)
-#ifdef _ANDROID_ICS_
+
 #define MAX_NUM_INPUT_BUFFERS 64
-#endif
+#define MAX_NUM_OUTPUT_BUFFERS 64
 
 #ifdef USE_NATIVE_HANDLE_SOURCE
 #define LEGACY_CAM_SOURCE kMetadataBufferTypeNativeHandleSource
@@ -156,6 +156,7 @@ enum omx_venc_extradata_types {
     VENC_EXTRADATA_FRAMEDIMENSION = 0x1000000,
     VENC_EXTRADATA_YUV_STATS = 0x800,
     VENC_EXTRADATA_VQZIP = 0x02000000,
+    VENC_EXTRADATA_ROI = 0x04000000,
 };
 
 // OMX video class
@@ -242,9 +243,8 @@ class omx_video: public qc_omx_component
         virtual bool dev_loaded_start_done(void) = 0;
         virtual bool dev_loaded_stop_done(void) = 0;
         virtual bool is_secure_session(void) = 0;
-        virtual int dev_handle_output_extradata(void*) = 0;
-        virtual int dev_handle_input_extradata(void*, int) = 0;
-        virtual void dev_set_extradata_cookie(void*) = 0;
+        virtual int dev_handle_output_extradata(void*, int) = 0;
+        virtual int dev_handle_input_extradata(void*, int, int) = 0;
         virtual int dev_set_format(int) = 0;
         virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
         virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
@@ -253,6 +253,7 @@ class omx_video: public qc_omx_component
         virtual bool dev_get_vqzip_sei_info(OMX_U32 *) = 0;
         virtual bool dev_get_peak_bitrate(OMX_U32 *) = 0;
         virtual bool dev_get_batch_size(OMX_U32 *) = 0;
+        virtual bool dev_buffer_ready_to_queue(OMX_BUFFERHEADERTYPE *buffer) = 0;
 #ifdef _ANDROID_ICS_
         void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif
@@ -364,6 +365,7 @@ class omx_video: public qc_omx_component
         pthread_t async_thread_id;
         bool async_thread_created;
         bool msg_thread_created;
+        volatile bool msg_thread_stop;
 
         OMX_U8 m_nkind[128];
 
@@ -576,10 +578,6 @@ class omx_video: public qc_omx_component
         void free_ion_memory(struct venc_ion *buf_ion_info);
 #endif
 
-        inline bool omx_close_msg_thread(unsigned char id) {
-            return (id == OMX_COMPONENT_CLOSE_MSG);
-        }
-
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
@@ -638,14 +636,25 @@ class omx_video: public qc_omx_component
         QOMX_VIDEO_HIERARCHICALLAYERS m_sHierLayers;
         OMX_QOMX_VIDEO_MBI_STATISTICS m_sMBIStatistics;
         QOMX_EXTNINDEX_VIDEO_INITIALQP m_sParamInitqp;
-        QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS m_sMaxHPlayers;
+        QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS m_sHPlayers;
         OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID m_sBaseLayerID;
         OMX_SKYPE_VIDEO_PARAM_DRIVERVER m_sDriverVer;
         OMX_SKYPE_VIDEO_CONFIG_QP m_sConfigQP;
         QOMX_EXTNINDEX_VIDEO_VENC_SAR m_sSar;
+        QOMX_VIDEO_H264ENTROPYCODINGTYPE m_sParamEntropy;
         PrependSPSPPSToIDRFramesParams m_sPrependSPSPPS;
+        struct timestamp_info {
+            OMX_U64 m_TimeStamp;
+            bool is_buffer_pending;
+            OMX_BUFFERHEADERTYPE *pending_buffer;
+            pthread_mutex_t m_lock;
+        } timestamp;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
+        QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE m_slowLatencyMode;
+#ifdef SUPPORT_CONFIG_INTRA_REFRESH
+        OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE m_sConfigIntraRefresh;
+#endif
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;
