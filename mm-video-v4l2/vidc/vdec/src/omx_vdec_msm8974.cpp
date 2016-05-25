@@ -127,7 +127,7 @@ extern "C" {
 #define EXTRADATA_IDX(__num_planes) (__num_planes  - 1)
 #define ALIGN(x, to_align) ((((unsigned) x) + (to_align - 1)) & ~(to_align - 1))
 
-#define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA | OMX_FRAMEPACK_EXTRADATA)
+#define DEFAULT_EXTRADATA (OMX_INTERLACE_EXTRADATA | OMX_FRAMEPACK_EXTRADATA | OMX_DISPLAY_INFO_EXTRADATA)
 #define DEFAULT_CONCEAL_COLOR "32784" //0x8010, black by default
 
 #define DOWNSCALAR_WIDTH 2560
@@ -9613,9 +9613,23 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                 case MSM_VIDC_EXTRADATA_MPEG2_SEQDISP:
                     struct msm_vidc_mpeg2_seqdisp_payload *seqdisp_payload;
                     seqdisp_payload = (struct msm_vidc_mpeg2_seqdisp_payload *)(void *)data->data;
-                    if (seqdisp_payload) {
+                    if (seqdisp_payload && m_enable_android_native_buffers &&
+                            seqdisp_payload->color_descp) {
+                        ColorSpace_t color_space = ITU_R_601_FR;
+
+                        switch (seqdisp_payload->color_primaries) {
+                            case MSM_VIDC_BT709_5:
+                                color_space = ITU_R_709;
+                                break;
+                            default:
+                                color_space = ITU_R_601_FR;
+                                break;
+                        }
+
                         m_disp_hor_size = seqdisp_payload->disp_width;
                         m_disp_vert_size = seqdisp_payload->disp_height;
+                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                                UPDATE_COLOR_SPACE, (void*)&color_space);
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_S3D_FRAME_PACKING:
@@ -9666,6 +9680,83 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     if (client_extradata & OMX_EXTNUSER_EXTRADATA) {
                         append_user_extradata(p_extra, data);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                    }
+                    break;
+                case MSM_VIDC_EXTRADATA_VUI_DISPLAY_INFO:
+                    struct msm_vidc_vui_display_info_payload *display_info_payload;
+                    display_info_payload = (struct msm_vidc_vui_display_info_payload*)(void *)data->data;
+
+                    if (m_enable_android_native_buffers &&
+                            display_info_payload->video_signal_present_flag &&
+                            display_info_payload->color_description_present_flag) {
+                        ColorSpace_t color_space = ITU_R_601_FR;
+
+                        switch (display_info_payload->color_primaries) {
+                            case MSM_VIDC_BT709_5:
+                                color_space = ITU_R_709;
+                                break;
+                            case MSM_VIDC_BT601_6_525:
+                            case MSM_VIDC_BT601_6_625:
+                                color_space = display_info_payload->video_full_range_flag ?
+                                    ITU_R_601_FR : ITU_R_601;
+                                break;
+                            default:
+                                break;
+                        }
+                        DEBUG_PRINT_LOW("Color Space = %d", color_space);
+                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                               UPDATE_COLOR_SPACE, (void*)&color_space);
+                    }
+                    break;
+                case MSM_VIDC_EXTRADATA_VC1_SEQDISP:
+                    struct msm_vidc_vc1_seqdisp_payload *vc1_seq_disp_payload;
+                    vc1_seq_disp_payload = (struct msm_vidc_vc1_seqdisp_payload*)(void *)data->data;
+
+                    if (m_enable_android_native_buffers &&
+                            vc1_seq_disp_payload->color_primaries) {
+                        ColorSpace_t color_space = ITU_R_601_FR;
+
+                        switch (vc1_seq_disp_payload->color_primaries) {
+                            case MSM_VIDC_BT709_5:
+                                color_space = ITU_R_709;
+                                break;
+                            default:
+                                color_space = ITU_R_601_FR;
+                                break;
+                        }
+                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                               UPDATE_COLOR_SPACE, (void*)&color_space);
+                    }
+                    break;
+                case MSM_VIDC_EXTRADATA_VPX_COLORSPACE_INFO:
+                    struct msm_vidc_vpx_colorspace_payload *vpx_color_space_payload;
+                    vpx_color_space_payload = (struct msm_vidc_vpx_colorspace_payload*)(void *)data->data;
+
+                    if (m_enable_android_native_buffers) {
+                        ColorSpace_t color_space = ITU_R_601_FR;
+                        if (output_capability == V4L2_PIX_FMT_VP8) {
+                            if (vpx_color_space_payload->color_space == 0) {
+                                color_space = ITU_R_601;
+                            } else {
+                                DEBUG_PRINT_ERROR("Unsupported Color space for VP8");
+                                break;
+                            }
+                        } else if (output_capability == V4L2_PIX_FMT_VP9) {
+                            if (vpx_color_space_payload->color_space == 1) {
+                                color_space = ITU_R_601;
+                            } else if (vpx_color_space_payload->color_space == 2) {
+                                color_space = ITU_R_709;
+                            } else {
+                                DEBUG_PRINT_ERROR("Unsupported Color space for VP9");
+                                break;
+                            }
+                        } else {
+                            DEBUG_PRINT_ERROR("Unrecognized Extradata");
+                            break;
+                        }
+
+                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                                UPDATE_COLOR_SPACE, (void*)&color_space);
                     }
                     break;
                 default:
@@ -9811,6 +9902,33 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
             control.value = V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA;
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
                 DEBUG_PRINT_HIGH("Failed to set stream userdata extradata");
+            }
+        }
+        if (requested_extradata & OMX_DISPLAY_INFO_EXTRADATA) {
+            control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
+            switch(output_capability) {
+                case V4L2_PIX_FMT_H264:
+                case V4L2_PIX_FMT_HEVC:
+                    control.value =  V4L2_MPEG_VIDC_EXTRADATA_VUI_DISPLAY;
+                    break;
+                case CODEC_TYPE_MPEG2:
+                    control.value =  V4L2_MPEG_VIDC_EXTRADATA_MPEG2_SEQDISP;
+                    break;
+                case V4L2_PIX_FMT_VP8:
+                case V4L2_PIX_FMT_VP9:
+                    control.value = V4L2_MPEG_VIDC_EXTRADATA_VPX_COLORSPACE;
+                    break;
+                case V4L2_PIX_FMT_VC1_ANNEX_G:
+                case V4L2_PIX_FMT_VC1_ANNEX_L:
+                    control.value = V4L2_MPEG_VIDC_EXTRADATA_VC1_SEQDISP;
+                    break;
+                default:
+                    DEBUG_PRINT_HIGH("Don't support Disp info for this codec : %s", drv_ctx.kind);
+                    return ret;
+            }
+
+            if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
+                DEBUG_PRINT_HIGH("Failed to set Display info extradata");
             }
         }
     }
