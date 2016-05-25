@@ -114,6 +114,8 @@ private:
 };
 
 C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t dstWidth, size_t dstHeight, ColorConvertFormat srcFormat, ColorConvertFormat dstFormat, int32_t flags, size_t srcStride)
+    : mC2DLibHandle(NULL),
+      mAdrenoUtilsHandle(NULL)
 {
      mError = 0;
      if (NV12_UBWC == dstFormat) {
@@ -146,7 +148,7 @@ C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t d
          return;
      }
 
-     mAdrenoUtilsHandle =  dlopen("libadreno_utils.so", RTLD_NOW);
+     mAdrenoUtilsHandle = dlopen("libadreno_utils.so", RTLD_NOW);
      if (!mAdrenoUtilsHandle) {
          ALOGE("FATAL ERROR: could not dlopen libadreno_utils.so: %s", dlerror());
          mError = -1;
@@ -192,28 +194,29 @@ C2DColorConverter::C2DColorConverter(size_t srcWidth, size_t srcHeight, size_t d
 
 C2DColorConverter::~C2DColorConverter()
 {
-    if (mError) {
-        if (mC2DLibHandle) {
-            dlclose(mC2DLibHandle);
+    if (!mError && mC2DLibHandle) {
+
+        mC2DDestroySurface(mDstSurface);
+        mC2DDestroySurface(mSrcSurface);
+        if (isYUVSurface(mSrcFormat)) {
+            delete ((C2D_YUV_SURFACE_DEF *)mSrcSurfaceDef);
+        } else {
+            delete ((C2D_RGB_SURFACE_DEF *)mSrcSurfaceDef);
         }
-        return;
+
+        if (isYUVSurface(mDstFormat)) {
+            delete ((C2D_YUV_SURFACE_DEF *)mDstSurfaceDef);
+        } else {
+            delete ((C2D_RGB_SURFACE_DEF *)mDstSurfaceDef);
+        }
     }
 
-    mC2DDestroySurface(mDstSurface);
-    mC2DDestroySurface(mSrcSurface);
-    if (isYUVSurface(mSrcFormat)) {
-        delete ((C2D_YUV_SURFACE_DEF *)mSrcSurfaceDef);
-    } else {
-        delete ((C2D_RGB_SURFACE_DEF *)mSrcSurfaceDef);
+    if (mC2DLibHandle) {
+        dlclose(mC2DLibHandle);
     }
-
-    if (isYUVSurface(mDstFormat)) {
-        delete ((C2D_YUV_SURFACE_DEF *)mDstSurfaceDef);
-    } else {
-        delete ((C2D_RGB_SURFACE_DEF *)mDstSurfaceDef);
+    if (mAdrenoUtilsHandle) {
+        dlclose(mAdrenoUtilsHandle);
     }
-
-    dlclose(mC2DLibHandle);
 }
 
 int C2DColorConverter::convertC2D(int srcFd, void *srcBase, void * srcData, int dstFd, void *dstBase, void * dstData)
