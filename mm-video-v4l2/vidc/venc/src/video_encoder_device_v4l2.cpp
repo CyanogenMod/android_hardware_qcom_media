@@ -255,6 +255,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&ltrinfo, 0, sizeof(ltrinfo));
     sess_priority.priority = 1;
     operating_rate = 0;
+    memset(&color_space, 0x0, sizeof(color_space));
 
     char property_value[PROPERTY_VALUE_MAX] = {0};
     property_get("vidc.enc.log.in", property_value, "0");
@@ -266,6 +267,13 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     property_get("vidc.enc.log.extradata", property_value, "0");
     m_debug.extradata_log = atoi(property_value);
 
+    property_get("persist.vidc.enc.csc.enable", property_value, "0");
+    if(!(strncmp(property_value, "1", PROPERTY_VALUE_MAX)) ||
+            !(strncmp(property_value, "true", PROPERTY_VALUE_MAX))) {
+        is_csc_enabled = 1;
+    } else {
+        is_csc_enabled = 0;
+    }
     snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
              "%s", BUFFER_LOG_LOC);
 }
@@ -987,6 +995,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
     fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
     fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
     fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
+    fmt.fmt.pix_mp.colorspace = V4L2_COLORSPACE_470_SYSTEM_BG;
 
     ret = ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt);
     m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
@@ -1200,6 +1209,7 @@ bool venc_dev::venc_get_buf_req(OMX_U32 *min_buff_count,
         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
         fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
+        fmt.fmt.pix_mp.colorspace = V4L2_COLORSPACE_470_SYSTEM_BG;
         ret = ioctl(m_nDriver_fd, VIDIOC_G_FMT, &fmt);
         m_sInput_buff_property.datasize=fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
         bufreq.memory = V4L2_MEMORY_USERPTR;
@@ -1326,6 +1336,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                         fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
                         fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
                         fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12;
+                        fmt.fmt.pix_mp.colorspace = V4L2_COLORSPACE_470_SYSTEM_BG;
 
                         if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
                             DEBUG_PRINT_ERROR("VIDIOC_S_FMT OUTPUT_MPLANE Failed");
@@ -2307,6 +2318,9 @@ void venc_dev::venc_config_print()
             m_sVenc_cfg.dvs_width, m_sVenc_cfg.dvs_height,
             m_sVenc_cfg.fps_num/m_sVenc_cfg.fps_den);
 
+    DEBUG_PRINT_HIGH("ENC_CONFIG: Color Space: Primaries = %u, Range = %u, Transfer Chars = %u, Matrix Coeffs = %u",
+            color_space.primaries, color_space.range, color_space.transfer_chars, color_space.matrix_coeffs);
+
     DEBUG_PRINT_HIGH("ENC_CONFIG: Bitrate: %ld, RC: %ld, P - Frames : %ld, B - Frames = %ld",
             bitrate.target_bitrate, rate_ctrl.rcmode, intra_period.num_pframes, intra_period.num_bframes);
 
@@ -2631,6 +2645,40 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                 }
             } else if (!color_format) {
                 if (meta_buf->buffer_type == LEGACY_CAM_SOURCE) {
+                    if (!streaming[OUTPUT_PORT] && !(m_sVenc_cfg.inputformat == V4L2_PIX_FMT_RGB32)) {
+                        int usage = 0;
+                        struct v4l2_format fmt;
+
+                        if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 3) {
+                            usage = meta_buf->meta_handle->data[3];
+                        }
+                        memset(&fmt, 0, sizeof(fmt));
+                        if (usage & private_handle_t::PRIV_FLAGS_ITU_R_709 ||
+                                usage & private_handle_t::PRIV_FLAGS_ITU_R_601) {
+                            DEBUG_PRINT_ERROR("Camera buffer color format is not 601_FR.");
+                            DEBUG_PRINT_ERROR(" This leads to unknown color space");
+                        }
+                        if (usage & private_handle_t::PRIV_FLAGS_ITU_R_601_FR) {
+                            if (is_csc_enabled) {
+                                buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
+                                fmt.fmt.pix_mp.colorspace = V4L2_COLORSPACE_REC709;
+                                venc_set_colorspace(MSM_VIDC_BT709_5, 1,
+                                        MSM_VIDC_TRANSFER_BT709_5, MSM_VIDC_MATRIX_BT_709_5);
+                            } else {
+                                venc_set_colorspace(MSM_VIDC_BT601_6_525, 1,
+                                        MSM_VIDC_TRANSFER_601_6_525, MSM_VIDC_MATRIX_601_6_525);
+                                fmt.fmt.pix_mp.colorspace = V4L2_COLORSPACE_470_SYSTEM_BG;
+                            }
+                        }
+                        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+                        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+                        fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
+                        fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+
+                        if (usage & private_handle_t::PRIV_FLAGS_ITU_R_709) {
+                            buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
+                        }
+                    }
                     if (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 3 &&
                         meta_buf->meta_handle->data[3] & private_handle_t::PRIV_FLAGS_ITU_R_709)
                         buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
@@ -2644,6 +2692,44 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
                     VideoGrallocMetadata *meta_buf = (VideoGrallocMetadata *)bufhdr->pBuffer;
                     private_handle_t *handle = (private_handle_t *)meta_buf->pHandle;
+                    if (!streaming[OUTPUT_PORT]) {
+                        struct v4l2_format fmt;
+                        int color_space = 0;
+
+                        memset(&fmt, 0, sizeof(fmt));
+
+                        fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+                        if (handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE) {
+                                m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+                        } else if (handle->format == HAL_PIXEL_FORMAT_RGBA_8888) {
+                                m_sVenc_cfg.inputformat = V4L2_PIX_FMT_RGB32;
+                        } else if (  handle->format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
+                            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+                        }
+                        if (handle->flags & private_handle_t::PRIV_FLAGS_ITU_R_709) {
+                            buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
+                            color_space = V4L2_COLORSPACE_REC709;
+                            venc_set_colorspace(MSM_VIDC_BT709_5, 1,
+                                    MSM_VIDC_TRANSFER_BT709_5, MSM_VIDC_MATRIX_BT_709_5);
+                        } else if (handle->flags & private_handle_t::PRIV_FLAGS_ITU_R_601_FR){
+                            venc_set_colorspace(MSM_VIDC_BT601_6_525, 1,
+                                    MSM_VIDC_TRANSFER_601_6_525, MSM_VIDC_MATRIX_601_6_525);
+                            color_space = V4L2_COLORSPACE_470_SYSTEM_BG;
+                        }
+                        fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
+                        fmt.fmt.pix_mp.colorspace = static_cast<decltype(fmt.fmt.pix_mp.colorspace)>(color_space);
+                        fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
+                        fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
+                        if (ioctl(m_nDriver_fd, VIDIOC_S_FMT, &fmt)) {
+                            DEBUG_PRINT_ERROR("Failed setting color format in Grallocsource %lx", m_sVenc_cfg.inputformat);
+                            return false;
+                        }
+                        /*if(ioctl(m_nDriver_fd,VIDIOC_REQBUFS, &bufreq)) {
+                            DEBUG_PRINT_ERROR("VIDIOC_REQBUFS OUTPUT_MPLANE Failed");
+                            return false;
+                        }*/
+                    }
+
                     fd = handle->fd;
                     plane.data_offset = 0;
                     plane.length = handle->size;
@@ -2965,6 +3051,78 @@ bool venc_dev::venc_enable_initial_qp(QOMX_EXTNINDEX_VIDEO_INITIALQP* initqp)
                     controls.controls[1].id, controls.controls[1].value,
                     controls.controls[2].id, controls.controls[2].value,
                     controls.controls[3].id, controls.controls[3].value);
+    return true;
+}
+
+bool venc_dev::venc_set_colorspace(OMX_U32 primaries, OMX_U32 range,
+    OMX_U32 transfer_chars, OMX_U32 matrix_coeffs)
+{
+    int rc;
+    struct v4l2_control control;
+
+    DEBUG_PRINT_LOW("Setting color space : Primaries = %d, Range = %d, Trans = %d, Matrix = %d",
+        primaries, range, transfer_chars, matrix_coeffs);
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_COLOR_SPACE;
+    control.value = primaries;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d", control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set control : V4L2_CID_MPEG_VIDC_VIDEO_COLOR_SPACE");
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
+
+    color_space.primaries = control.value;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_FULL_RANGE;
+    control.value = range;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d", control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set control : V4L2_CID_MPEG_VIDC_VIDEO_FULL_RANGE");
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
+
+    color_space.range = control.value;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_TRANSFER_CHARS;
+    control.value = transfer_chars;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d", control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set control : V4L2_CID_MPEG_VIDC_VIDEO_TRANSFER_CHARS");
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
+
+    color_space.transfer_chars = control.value;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_MATRIX_COEFFS;
+    control.value = matrix_coeffs;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set control for id=%d, val=%d", control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set control : V4L2_CID_MPEG_VIDC_VIDEO_MATRIX_COEFFS");
+        return false;
+    }
+
+    DEBUG_PRINT_LOW("Success IOCTL set control for id=%d, value=%d", control.id, control.value);
+
+    color_space.matrix_coeffs = control.value;
+
     return true;
 }
 
@@ -3969,21 +4127,32 @@ bool venc_dev::venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 confi
 bool venc_dev::venc_set_color_format(OMX_COLOR_FORMATTYPE color_format)
 {
     struct v4l2_format fmt;
+    int color_space = 0;
     DEBUG_PRINT_LOW("venc_set_color_format: color_format = %u ", color_format);
 
-    if ((int)color_format == (int)OMX_COLOR_FormatYUV420SemiPlanar ||
-            (int)color_format == (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
-        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
-    } else if ((int)color_format == (int)QOMX_COLOR_FormatYVU420SemiPlanar) {
-        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV21;
-    } else {
-        DEBUG_PRINT_HIGH("WARNING: Unsupported Color format [%d]", color_format);
-        m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
-        DEBUG_PRINT_HIGH("Default color format YUV420SemiPlanar is set");
+    switch ((int)color_format) {
+        case OMX_COLOR_FormatYUV420SemiPlanar:
+        case QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m:
+            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+            color_space = V4L2_COLORSPACE_470_SYSTEM_BG;
+            break;
+        case QOMX_COLOR_FormatYVU420SemiPlanar:
+            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV21;
+            color_space = V4L2_COLORSPACE_470_SYSTEM_BG;
+            break;
+        case QOMX_COLOR_Format32bitRGBA8888:
+            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_RGB32;
+            break;
+        default:
+            DEBUG_PRINT_HIGH("WARNING: Unsupported Color format [%d]", color_format);
+            m_sVenc_cfg.inputformat = V4L2_PIX_FMT_NV12;
+            color_space = V4L2_COLORSPACE_470_SYSTEM_BG;
+            break;
     }
 
     fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
     fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
+    fmt.fmt.pix_mp.colorspace = color_space;
     fmt.fmt.pix_mp.height = m_sVenc_cfg.input_height;
     fmt.fmt.pix_mp.width = m_sVenc_cfg.input_width;
 
