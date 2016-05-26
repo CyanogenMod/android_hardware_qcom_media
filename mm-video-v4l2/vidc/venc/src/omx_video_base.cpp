@@ -3050,6 +3050,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                 //This should only be used for passing reference to source type and
                 //secure handle fd struct native_handle_t*
                 native_handle_t *handle = native_handle_create(1, 3); //fd, offset, size, alloc length
+                (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
                 if (!handle) {
                     DEBUG_PRINT_ERROR("ERROR: native handle creation failed");
                     return OMX_ErrorInsufficientResources;
