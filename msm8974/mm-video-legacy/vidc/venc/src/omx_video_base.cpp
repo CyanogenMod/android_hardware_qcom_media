@@ -2648,7 +2648,7 @@ OMX_ERRORTYPE omx_video::allocate_input_meta_buffer(
   *bufferHdr = &meta_buffer_hdr[index];
   memset(&meta_buffer_hdr[index], 0, sizeof(meta_buffer_hdr[index]));
   meta_buffer_hdr[index].nSize = sizeof(meta_buffer_hdr[index]);
-  meta_buffer_hdr[index].nAllocLen = bytes;
+  meta_buffer_hdr[index].nAllocLen = sizeof(meta_buffers[index]);
   meta_buffer_hdr[index].nVersion.nVersion = OMX_SPEC_VERSION;
   meta_buffer_hdr[index].nInputPortIndex = PORT_INDEX_IN;
   meta_buffer_hdr[index].pBuffer = (OMX_U8*)&meta_buffers[index];
@@ -2873,7 +2873,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
         bufHdr->nSize              = sizeof(OMX_BUFFERHEADERTYPE);
         bufHdr->nVersion.nVersion  = OMX_SPEC_VERSION;
         // Set the values when we determine the right HxW param
-        bufHdr->nAllocLen          = bytes;
+        bufHdr->nAllocLen          = m_sOutPortDef.nBufferSize;
         bufHdr->nFilledLen         = 0;
         bufHdr->pAppPrivate        = appData;
         bufHdr->nOutputPortIndex   = PORT_INDEX_OUT;
