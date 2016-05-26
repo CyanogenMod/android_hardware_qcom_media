@@ -2668,6 +2668,21 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 break;
             }
 #endif
+        case OMX_QTIIndexConfigVideoBlurResolution:
+        {
+             OMX_QTI_VIDEO_CONFIG_BLURINFO *blur = (OMX_QTI_VIDEO_CONFIG_BLURINFO *)configData;
+             if (blur->nPortIndex == (OMX_U32)PORT_INDEX_IN) {
+                 DEBUG_PRINT_LOW("Set_config: blur resolution: %d", blur->eTargetResol);
+                 if(!venc_set_blur_resolution(blur)) {
+                    DEBUG_PRINT_ERROR("Failed to set Blur Resolution");
+                    return false;
+                 }
+             } else {
+                  DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_QTIIndexConfigVideoBlurResolution");
+                  return false;
+             }
+             break;
+        }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -5985,6 +6000,58 @@ bool venc_dev::venc_set_operatingrate(OMX_U32 rate) {
     operating_rate = rate;
     DEBUG_PRINT_LOW("Operating Rate Set = %d fps",  rate >> 16);
     return true;
+}
+
+bool venc_dev::venc_set_blur_resolution(OMX_QTI_VIDEO_CONFIG_BLURINFO *blurInfo)
+{
+    struct v4l2_ext_control ctrl[2];
+    struct v4l2_ext_controls controls;
+
+    int blur_width = 0, blur_height = 0;
+
+    switch (blurInfo->eTargetResol) {
+        case BLUR_RESOL_DISABLED:
+            blur_width = 0;
+            blur_height = 0;
+            break;
+        case BLUR_RESOL_240:
+            blur_width = 426;
+            blur_height = 240;
+            break;
+        case BLUR_RESOL_480:
+            blur_width = 854;
+            blur_height = 480;
+            break;
+        case BLUR_RESOL_720:
+            blur_width = 1280;
+            blur_height = 720;
+            break;
+        case BLUR_RESOL_1080:
+            blur_width = 1920;
+            blur_height = 1080;
+            break;
+        default:
+            DEBUG_PRINT_ERROR("Blur resolution not recognized");
+            return false;
+    }
+
+    ctrl[0].id = V4L2_CID_MPEG_VIDC_VIDEO_BLUR_WIDTH;
+    ctrl[0].value = blur_width;
+
+    ctrl[1].id = V4L2_CID_MPEG_VIDC_VIDEO_BLUR_HEIGHT;
+    ctrl[1].value = blur_height;
+
+    controls.count = 2;
+    controls.ctrl_class = V4L2_CTRL_CLASS_MPEG;
+    controls.controls = ctrl;
+
+    if(ioctl(m_nDriver_fd, VIDIOC_S_EXT_CTRLS, &controls)) {
+        DEBUG_PRINT_ERROR("Failed to set blur resoltion");
+        return false;
+    }
+    DEBUG_PRINT_LOW("Blur resolution set = %d x %d", blur_width, blur_height);
+    return true;
+
 }
 
 bool venc_dev::venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel)
