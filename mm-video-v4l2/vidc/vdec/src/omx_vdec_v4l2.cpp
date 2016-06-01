@@ -195,34 +195,7 @@ void* async_message_thread (void *input)
                 vdec_msg.msgdata.output_frame.bufferaddr=(void*)plane[0].m.userptr;
                 vdec_msg.msgdata.output_frame.time_stamp= ((uint64_t)v4l2_buf.timestamp.tv_sec * (uint64_t)1000000) +
                     (uint64_t)v4l2_buf.timestamp.tv_usec;
-                if (vdec_msg.msgdata.output_frame.len) {
-                    OMX_BUFFERHEADERTYPE* omxhdr = NULL;
-                    struct v4l2_buffer *v4l2_buf_ptr = NULL;
 
-                    v4l2_buf_ptr = (v4l2_buffer*)vdec_msg.msgdata.output_frame.client_data;
-                    omxhdr = omx->get_omx_output_buffer_header(v4l2_buf_ptr->index);
-
-                    DEBUG_PRINT_LOW("Processing extradata");
-                    omx->handle_extradata(omxhdr);
-
-                    if (omx->m_extradata_info.output_crop_updated) {
-                        DEBUG_PRINT_LOW("Read FBD crop from output extra data");
-                        vdec_msg.msgdata.output_frame.framesize.left = omx->m_extradata_info.output_crop_rect.nLeft;
-                        vdec_msg.msgdata.output_frame.framesize.top = omx->m_extradata_info.output_crop_rect.nTop;
-                        vdec_msg.msgdata.output_frame.framesize.right = omx->m_extradata_info.output_crop_rect.nWidth;
-                        vdec_msg.msgdata.output_frame.framesize.bottom = omx->m_extradata_info.output_crop_rect.nHeight;
-                        vdec_msg.msgdata.output_frame.picsize.frame_width = omx->m_extradata_info.output_width;
-                        vdec_msg.msgdata.output_frame.picsize.frame_height = omx->m_extradata_info.output_height;
-                    } else {
-                        DEBUG_PRINT_LOW("Read FBD crop from v4l2 reserved fields");
-                        vdec_msg.msgdata.output_frame.framesize.left = plane[0].reserved[2];
-                        vdec_msg.msgdata.output_frame.framesize.top = plane[0].reserved[3];
-                        vdec_msg.msgdata.output_frame.framesize.right = plane[0].reserved[4];
-                        vdec_msg.msgdata.output_frame.framesize.bottom = plane[0].reserved[5];
-                        vdec_msg.msgdata.output_frame.picsize.frame_width = plane[0].reserved[6];
-                        vdec_msg.msgdata.output_frame.picsize.frame_height = plane[0].reserved[7];
-                    }
-                }
                 if (omx->async_message_process(input,&vdec_msg) < 0) {
                     DEBUG_PRINT_HIGH("async_message_thread Exited");
                     break;
@@ -8230,6 +8203,7 @@ int omx_vdec::async_message_process (void *context, void* message)
     struct vdec_msginfo *vdec_msg = NULL;
     OMX_BUFFERHEADERTYPE* omxhdr = NULL;
     struct v4l2_buffer *v4l2_buf_ptr = NULL;
+    struct v4l2_plane *plane = NULL;
     struct vdec_output_frameinfo *output_respbuf = NULL;
     int rc=1;
     if (context == NULL || message == NULL) {
@@ -8342,200 +8316,221 @@ int omx_vdec::async_message_process (void *context, void* message)
         case VDEC_MSG_RESP_OUTPUT_BUFFER_DONE:
 
            v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.output_frame.client_data;
-
+           plane = v4l2_buf_ptr->m.planes;
            if (v4l2_buf_ptr == NULL || omx->m_out_mem_ptr == NULL ||
                v4l2_buf_ptr->index >= omx->drv_ctx.op_buf.actualcount) {
                omxhdr = NULL;
                vdec_msg->status_code = VDEC_S_EFATAL;
                break;
            }
-
            omxhdr = omx->m_out_mem_ptr + v4l2_buf_ptr->index;
 
-            DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x) FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
-                    omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
-                    vdec_msg->msgdata.output_frame.pic_type, v4l2_buf_ptr->flags,
-                    (unsigned int)vdec_msg->msgdata.output_frame.len,
-                    vdec_msg->msgdata.output_frame.framesize.left,
-                    vdec_msg->msgdata.output_frame.framesize.top,
-                    vdec_msg->msgdata.output_frame.framesize.right,
-                    vdec_msg->msgdata.output_frame.framesize.bottom);
+           if (omxhdr && omxhdr->pOutputPortPrivate &&
+                   ((omxhdr - omx->m_out_mem_ptr) < (int)omx->drv_ctx.op_buf.actualcount) &&
+                   (((struct vdec_output_frameinfo *)omxhdr->pOutputPortPrivate
+                     - omx->drv_ctx.ptr_respbuffer) < (int)omx->drv_ctx.op_buf.actualcount)) {
 
-            if (omxhdr && omxhdr->pOutputPortPrivate &&
-                    ((omxhdr - omx->m_out_mem_ptr) < (int)omx->drv_ctx.op_buf.actualcount) &&
-                    (((struct vdec_output_frameinfo *)omxhdr->pOutputPortPrivate
-                      - omx->drv_ctx.ptr_respbuffer) < (int)omx->drv_ctx.op_buf.actualcount)) {
+               if (vdec_msg->msgdata.output_frame.len <=  omxhdr->nAllocLen) {
+                   omxhdr->nFilledLen = vdec_msg->msgdata.output_frame.len;
+                   omxhdr->nOffset = vdec_msg->msgdata.output_frame.offset;
+                   omxhdr->nTimeStamp = vdec_msg->msgdata.output_frame.time_stamp;
+                   omxhdr->nFlags = 0;
 
-                if (vdec_msg->msgdata.output_frame.len <=  omxhdr->nAllocLen) {
-                    omxhdr->nFilledLen = vdec_msg->msgdata.output_frame.len;
-                    omxhdr->nOffset = vdec_msg->msgdata.output_frame.offset;
-                    omxhdr->nTimeStamp = vdec_msg->msgdata.output_frame.time_stamp;
-                    omxhdr->nFlags = 0;
-
-                    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS) {
+                   if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS) {
                         omxhdr->nFlags |= OMX_BUFFERFLAG_EOS;
                         //rc = -1;
-                    }
-                    if (omxhdr->nFilledLen) {
-                        omxhdr->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
-                    }
-                    if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_KEYFRAME || v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_IDRFRAME) {
-                        omxhdr->nFlags |= OMX_BUFFERFLAG_SYNCFRAME;
-                    } else {
-                        omxhdr->nFlags &= ~OMX_BUFFERFLAG_SYNCFRAME;
-                    }
-                    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOSEQ) {
-                        omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
-                    }
-                    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) {
-                        omxhdr->nFlags |= OMX_BUFFERFLAG_DECODEONLY;
-                    }
+                   }
+                   if (omxhdr->nFilledLen) {
+                       omxhdr->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
+                   }
+                   if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_KEYFRAME || v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_IDRFRAME) {
+                       omxhdr->nFlags |= OMX_BUFFERFLAG_SYNCFRAME;
+                   } else {
+                       omxhdr->nFlags &= ~OMX_BUFFERFLAG_SYNCFRAME;
+                   }
+                   if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOSEQ) {
+                       omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_EOSEQ;
+                   }
+                   if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) {
+                       omxhdr->nFlags |= OMX_BUFFERFLAG_DECODEONLY;
+                   }
+                   if (v4l2_buf_ptr->flags & V4L2_MSM_BUF_FLAG_MBAFF) {
+                       omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_MBAFF;
+                   }
+                   if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_READONLY) {
+                        omxhdr->nFlags |= OMX_BUFFERFLAG_READONLY;
+                        DEBUG_PRINT_LOW("F_B_D: READONLY BUFFER - REFERENCE WITH F/W fd = %d",
+                                   omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].pmem_fd);
+                   }
 
-                    if (v4l2_buf_ptr->flags & V4L2_MSM_BUF_FLAG_MBAFF) {
-                        omxhdr->nFlags |= QOMX_VIDEO_BUFFERFLAG_MBAFF;
-                    }
-
-                    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_READONLY) {
-                         omxhdr->nFlags |= OMX_BUFFERFLAG_READONLY;
-                         DEBUG_PRINT_LOW("F_B_D: READONLY BUFFER - REFERENCE WITH F/W fd = %d",
-                                    omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].pmem_fd);
-                    }
-
-                    if (omxhdr && (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DROP_FRAME) &&
-                            !omx->output_flush_progress &&
-                            !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) &&
-                            !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS)) {
-                        unsigned int index = v4l2_buf_ptr->index;
-                        unsigned int extra_idx = EXTRADATA_IDX(omx->drv_ctx.num_planes);
-                        struct v4l2_plane *plane = v4l2_buf_ptr->m.planes;
-                        omx->time_stamp_dts.remove_time_stamp(
-                                omxhdr->nTimeStamp,
-                                (omx->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
-                                ?true:false);
-                        plane[0].bytesused = 0;
-                        plane[0].m.userptr =
-                            (unsigned long)omx->drv_ctx.ptr_outputbuffer[index].bufferaddr -
-                            (unsigned long)omx->drv_ctx.ptr_outputbuffer[index].offset;
-                        plane[0].reserved[0] = omx->drv_ctx.ptr_outputbuffer[index].pmem_fd;
-                        plane[0].reserved[1] = omx->drv_ctx.ptr_outputbuffer[index].offset;
-                        plane[0].data_offset = 0;
-                        v4l2_buf_ptr->flags = 0x0;
-                        if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
-                            plane[extra_idx].bytesused = 0;
-                            plane[extra_idx].length = omx->drv_ctx.extradata_info.buffer_size;
-                            plane[extra_idx].m.userptr = (long unsigned int) (omx->drv_ctx.extradata_info.uaddr + index * omx->drv_ctx.extradata_info.buffer_size);
+                   if (omxhdr && (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DROP_FRAME) &&
+                           !omx->output_flush_progress &&
+                           !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_DECODEONLY) &&
+                           !(v4l2_buf_ptr->flags & V4L2_QCOM_BUF_FLAG_EOS)) {
+                       unsigned int index = v4l2_buf_ptr->index;
+                       unsigned int extra_idx = EXTRADATA_IDX(omx->drv_ctx.num_planes);
+                       omx->time_stamp_dts.remove_time_stamp(
+                               omxhdr->nTimeStamp,
+                               (omx->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
+                               ?true:false);
+                       plane[0].bytesused = 0;
+                       plane[0].m.userptr =
+                           (unsigned long)omx->drv_ctx.ptr_outputbuffer[index].bufferaddr -
+                           (unsigned long)omx->drv_ctx.ptr_outputbuffer[index].offset;
+                       plane[0].reserved[0] = omx->drv_ctx.ptr_outputbuffer[index].pmem_fd;
+                       plane[0].reserved[1] = omx->drv_ctx.ptr_outputbuffer[index].offset;
+                       plane[0].data_offset = 0;
+                       v4l2_buf_ptr->flags = 0x0;
+                       if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
+                           plane[extra_idx].bytesused = 0;
+                           plane[extra_idx].length = omx->drv_ctx.extradata_info.buffer_size;
+                           plane[extra_idx].m.userptr = (long unsigned int) (omx->drv_ctx.extradata_info.uaddr + index * omx->drv_ctx.extradata_info.buffer_size);
 #ifdef USE_ION
-                            plane[extra_idx].reserved[0] = omx->drv_ctx.extradata_info.ion.fd_ion_data.fd;
+                           plane[extra_idx].reserved[0] = omx->drv_ctx.extradata_info.ion.fd_ion_data.fd;
 #endif
-                            plane[extra_idx].reserved[1] = v4l2_buf_ptr->index * omx->drv_ctx.extradata_info.buffer_size;
-                            plane[extra_idx].data_offset = 0;
-                        } else if (extra_idx >= VIDEO_MAX_PLANES) {
-                            DEBUG_PRINT_ERROR("Extradata index higher than expected: %u", extra_idx);
-                            return -1;
-                        }
+                           plane[extra_idx].reserved[1] = v4l2_buf_ptr->index * omx->drv_ctx.extradata_info.buffer_size;
+                           plane[extra_idx].data_offset = 0;
+                       } else if (extra_idx >= VIDEO_MAX_PLANES) {
+                           DEBUG_PRINT_ERROR("Extradata index higher than expected: %u", extra_idx);
+                           return -1;
+                       }
 
-                         DEBUG_PRINT_LOW("SENDING FTB TO F/W from async_message_process - fd[0] = %d fd[1] = %d offset[1] = %d in_flush = %d",
+                       DEBUG_PRINT_LOW("SENDING FTB TO F/W from async_message_process - fd[0] = %d fd[1] = %d offset[1] = %d in_flush = %d",
                                plane[0].reserved[0],plane[extra_idx].reserved[0], plane[extra_idx].reserved[1], omx->output_flush_progress);
-                        if(ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_QBUF, v4l2_buf_ptr)) {
+                       if(ioctl(omx->drv_ctx.video_driver_fd, VIDIOC_QBUF, v4l2_buf_ptr)) {
                             DEBUG_PRINT_ERROR("Failed to queue buffer back to driver: %d, %d, %d", v4l2_buf_ptr->length, v4l2_buf_ptr->m.planes[0].reserved[0], v4l2_buf_ptr->m.planes[1].reserved[0]);
                             return -1;
-                        }
-                        break;
-                    }
-                    if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT) {
-                        omxhdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
-                    }
-                    vdec_msg->msgdata.output_frame.bufferaddr =
-                        omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
+                       }
+                       break;
+                   }
+                   if (v4l2_buf_ptr->flags & V4L2_QCOM_BUF_DATA_CORRUPT) {
+                       omxhdr->nFlags |= OMX_BUFFERFLAG_DATACORRUPT;
+                   }
 
-                    /* Post event if resolution OR crop changed */
-                    /* filled length will be changed if resolution changed */
-                    /* Crop parameters can be changed even without resolution change */
-                    if (omxhdr->nFilledLen
-                        && ((omx->prev_n_filled_len != omxhdr->nFilledLen)
-                        || (omx->drv_ctx.frame_size.left != vdec_msg->msgdata.output_frame.framesize.left)
-                        || (omx->drv_ctx.frame_size.top != vdec_msg->msgdata.output_frame.framesize.top)
-                        || (omx->drv_ctx.frame_size.right != vdec_msg->msgdata.output_frame.framesize.right)
-                        || (omx->drv_ctx.frame_size.bottom != vdec_msg->msgdata.output_frame.framesize.bottom)
-                        || (omx->drv_ctx.video_resolution.frame_width != vdec_msg->msgdata.output_frame.picsize.frame_width)
-                        || (omx->drv_ctx.video_resolution.frame_height != vdec_msg->msgdata.output_frame.picsize.frame_height) )) {
+                   output_respbuf = (struct vdec_output_frameinfo *)\
+                            omxhdr->pOutputPortPrivate;
+                   if (!output_respbuf) {
+                     DEBUG_PRINT_ERROR("async_message_process: invalid output buf received");
+                     return -1;
+                   }
+                   output_respbuf->len = vdec_msg->msgdata.output_frame.len;
+                   output_respbuf->offset = vdec_msg->msgdata.output_frame.offset;
 
-                        DEBUG_PRINT_HIGH("Paramters Changed From: Len: %u, WxH: %dx%d, L: %u, T: %u, R: %u, B: %u --> Len: %u, WxH: %dx%d, L: %u, T: %u, R: %u, B: %u",
-                                omx->prev_n_filled_len,
-                                omx->drv_ctx.video_resolution.frame_width,
-                                omx->drv_ctx.video_resolution.frame_height,
-                                omx->drv_ctx.frame_size.left, omx->drv_ctx.frame_size.top,
-                                omx->drv_ctx.frame_size.right, omx->drv_ctx.frame_size.bottom,
-                                omxhdr->nFilledLen, vdec_msg->msgdata.output_frame.picsize.frame_width,
-                                vdec_msg->msgdata.output_frame.picsize.frame_height,
-                                vdec_msg->msgdata.output_frame.framesize.left,
-                                vdec_msg->msgdata.output_frame.framesize.top,
-                                vdec_msg->msgdata.output_frame.framesize.right,
-                                vdec_msg->msgdata.output_frame.framesize.bottom);
+                   if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_KEYFRAME) {
+                       output_respbuf->pic_type = PICTURE_TYPE_I;
+                   }
+                   if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_PFRAME) {
+                       output_respbuf->pic_type = PICTURE_TYPE_P;
+                   }
+                   if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_BFRAME) {
+                       output_respbuf->pic_type = PICTURE_TYPE_B;
+                   }
 
-                        omx->drv_ctx.video_resolution.frame_width =
-                                vdec_msg->msgdata.output_frame.picsize.frame_width;
-                        omx->drv_ctx.video_resolution.frame_height =
-                                vdec_msg->msgdata.output_frame.picsize.frame_height;
-                        if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
-                            omx->drv_ctx.video_resolution.stride =
-                                VENUS_Y_STRIDE(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_width);
-                            omx->drv_ctx.video_resolution.scan_lines =
-                                VENUS_Y_SCANLINES(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_height);
-                        } else if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12_UBWC) {
-                            omx->drv_ctx.video_resolution.stride =
-                                VENUS_Y_STRIDE(COLOR_FMT_NV12_UBWC, omx->drv_ctx.video_resolution.frame_width);
-                            omx->drv_ctx.video_resolution.scan_lines =
-                                VENUS_Y_SCANLINES(COLOR_FMT_NV12_UBWC, omx->drv_ctx.video_resolution.frame_height);
-                        }
+                   if (vdec_msg->msgdata.output_frame.len) {
+                       DEBUG_PRINT_LOW("Processing extradata");
+                       omx->handle_extradata(omxhdr);
 
-                        memcpy(&omx->drv_ctx.frame_size,
-                                &vdec_msg->msgdata.output_frame.framesize,
-                                sizeof(struct vdec_framesize));
+                       if (omx->m_extradata_info.output_crop_updated) {
+                           DEBUG_PRINT_LOW("Read FBD crop from output extra data");
+                           vdec_msg->msgdata.output_frame.framesize.left = omx->m_extradata_info.output_crop_rect.nLeft;
+                           vdec_msg->msgdata.output_frame.framesize.top = omx->m_extradata_info.output_crop_rect.nTop;
+                           vdec_msg->msgdata.output_frame.framesize.right = omx->m_extradata_info.output_crop_rect.nWidth;
+                           vdec_msg->msgdata.output_frame.framesize.bottom = omx->m_extradata_info.output_crop_rect.nHeight;
+                           vdec_msg->msgdata.output_frame.picsize.frame_width = omx->m_extradata_info.output_width;
+                           vdec_msg->msgdata.output_frame.picsize.frame_height = omx->m_extradata_info.output_height;
+                       } else {
+                           DEBUG_PRINT_LOW("Read FBD crop from v4l2 reserved fields");
+                           vdec_msg->msgdata.output_frame.framesize.left = plane[0].reserved[2];
+                           vdec_msg->msgdata.output_frame.framesize.top = plane[0].reserved[3];
+                           vdec_msg->msgdata.output_frame.framesize.right = plane[0].reserved[4];
+                           vdec_msg->msgdata.output_frame.framesize.bottom = plane[0].reserved[5];
+                           vdec_msg->msgdata.output_frame.picsize.frame_width = plane[0].reserved[6];
+                           vdec_msg->msgdata.output_frame.picsize.frame_height = plane[0].reserved[7];
+                       }
+                   }
 
-                        omx->post_event(OMX_CORE_OUTPUT_PORT_INDEX,
+                   vdec_msg->msgdata.output_frame.bufferaddr =
+                       omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
+
+                   memcpy(&omx->drv_ctx.frame_size,
+                           &vdec_msg->msgdata.output_frame.framesize,
+                           sizeof(struct vdec_framesize));
+
+                   DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x) FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
+                           omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
+                           vdec_msg->msgdata.output_frame.pic_type, v4l2_buf_ptr->flags,
+                           (unsigned int)vdec_msg->msgdata.output_frame.len,
+                           vdec_msg->msgdata.output_frame.framesize.left,
+                           vdec_msg->msgdata.output_frame.framesize.top,
+                           vdec_msg->msgdata.output_frame.framesize.right,
+                           vdec_msg->msgdata.output_frame.framesize.bottom);
+
+                   /* Post event if resolution OR crop changed */
+                   /* filled length will be changed if resolution changed */
+                   /* Crop parameters can be changed even without resolution change */
+                   if (omxhdr->nFilledLen
+                       && ((omx->prev_n_filled_len != omxhdr->nFilledLen)
+                       || (omx->drv_ctx.frame_size.left != vdec_msg->msgdata.output_frame.framesize.left)
+                       || (omx->drv_ctx.frame_size.top != vdec_msg->msgdata.output_frame.framesize.top)
+                       || (omx->drv_ctx.frame_size.right != vdec_msg->msgdata.output_frame.framesize.right)
+                       || (omx->drv_ctx.frame_size.bottom != vdec_msg->msgdata.output_frame.framesize.bottom)
+                       || (omx->drv_ctx.video_resolution.frame_width != vdec_msg->msgdata.output_frame.picsize.frame_width)
+                       || (omx->drv_ctx.video_resolution.frame_height != vdec_msg->msgdata.output_frame.picsize.frame_height) )) {
+
+                       DEBUG_PRINT_HIGH("Parameters Changed From: Len: %u, WxH: %dx%d, L: %u, T: %u, R: %u, B: %u --> Len: %u, WxH: %dx%d, L: %u, T: %u, R: %u, B: %u",
+                               omx->prev_n_filled_len,
+                               omx->drv_ctx.video_resolution.frame_width,
+                               omx->drv_ctx.video_resolution.frame_height,
+                               omx->drv_ctx.frame_size.left, omx->drv_ctx.frame_size.top,
+                               omx->drv_ctx.frame_size.right, omx->drv_ctx.frame_size.bottom,
+                               omxhdr->nFilledLen, vdec_msg->msgdata.output_frame.picsize.frame_width,
+                               vdec_msg->msgdata.output_frame.picsize.frame_height,
+                               vdec_msg->msgdata.output_frame.framesize.left,
+                               vdec_msg->msgdata.output_frame.framesize.top,
+                               vdec_msg->msgdata.output_frame.framesize.right,
+                               vdec_msg->msgdata.output_frame.framesize.bottom);
+
+                       omx->drv_ctx.video_resolution.frame_width =
+                               vdec_msg->msgdata.output_frame.picsize.frame_width;
+                       omx->drv_ctx.video_resolution.frame_height =
+                               vdec_msg->msgdata.output_frame.picsize.frame_height;
+                       if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12) {
+                           omx->drv_ctx.video_resolution.stride =
+                               VENUS_Y_STRIDE(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_width);
+                           omx->drv_ctx.video_resolution.scan_lines =
+                               VENUS_Y_SCANLINES(COLOR_FMT_NV12, omx->drv_ctx.video_resolution.frame_height);
+                       } else if (omx->drv_ctx.output_format == VDEC_YUV_FORMAT_NV12_UBWC) {
+                           omx->drv_ctx.video_resolution.stride =
+                               VENUS_Y_STRIDE(COLOR_FMT_NV12_UBWC, omx->drv_ctx.video_resolution.frame_width);
+                           omx->drv_ctx.video_resolution.scan_lines =
+                               VENUS_Y_SCANLINES(COLOR_FMT_NV12_UBWC, omx->drv_ctx.video_resolution.frame_height);
+                       }
+
+                       omx->post_event(OMX_CORE_OUTPUT_PORT_INDEX,
                                 OMX_IndexConfigCommonOutputCrop,
                                 OMX_COMPONENT_GENERATE_PORT_RECONFIG);
-                    }
+                   }
 
-                    if (omxhdr->nFilledLen)
-                        omx->prev_n_filled_len = omxhdr->nFilledLen;
+                   if (omxhdr->nFilledLen)
+                       omx->prev_n_filled_len = omxhdr->nFilledLen;
 
-                    output_respbuf = (struct vdec_output_frameinfo *)\
-                             omxhdr->pOutputPortPrivate;
-                    if (!output_respbuf) {
-                      DEBUG_PRINT_ERROR("async_message_process: invalid output buf received");
-                      return -1;
-                    }
-                    output_respbuf->len = vdec_msg->msgdata.output_frame.len;
-                    output_respbuf->offset = vdec_msg->msgdata.output_frame.offset;
-
-                    if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_KEYFRAME) {
-                        output_respbuf->pic_type = PICTURE_TYPE_I;
-                    }
-                    if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_PFRAME) {
-                        output_respbuf->pic_type = PICTURE_TYPE_P;
-                    }
-                    if (v4l2_buf_ptr->flags & V4L2_BUF_FLAG_BFRAME) {
-                        output_respbuf->pic_type = PICTURE_TYPE_B;
-                    }
-                    if (omxhdr && omxhdr->nFilledLen && !omx->high_fps) {
+                   if (omxhdr && omxhdr->nFilledLen && !omx->high_fps) {
                         omx->request_perf_level(VIDC_NOMINAL);
-                    }
-                    if (omx->output_use_buffer && omxhdr->pBuffer &&
-                        vdec_msg->msgdata.output_frame.bufferaddr)
-                        memcpy ( omxhdr->pBuffer, (void *)
-                                ((unsigned long)vdec_msg->msgdata.output_frame.bufferaddr +
-                                 (unsigned long)vdec_msg->msgdata.output_frame.offset),
-                                vdec_msg->msgdata.output_frame.len);
-                } else {
-                    DEBUG_PRINT_ERROR("Invalid filled length = %u, buffer size = %u, prev_length = %u",
-                            (unsigned int)vdec_msg->msgdata.output_frame.len,
-                            omxhdr->nAllocLen, omx->prev_n_filled_len);
-                    omxhdr->nFilledLen = 0;
-                }
+                   }
+                   if (omx->output_use_buffer && omxhdr->pBuffer &&
+                       vdec_msg->msgdata.output_frame.bufferaddr)
+                       memcpy ( omxhdr->pBuffer, (void *)
+                               ((unsigned long)vdec_msg->msgdata.output_frame.bufferaddr +
+                                (unsigned long)vdec_msg->msgdata.output_frame.offset),
+                               vdec_msg->msgdata.output_frame.len);
+               } else {
+                   DEBUG_PRINT_ERROR("Invalid filled length = %u, buffer size = %u, prev_length = %u",
+                           (unsigned int)vdec_msg->msgdata.output_frame.len,
+                           omxhdr->nAllocLen, omx->prev_n_filled_len);
+                   omxhdr->nFilledLen = 0;
+               }
 
-                omx->post_event ((unsigned long)omxhdr, vdec_msg->status_code,
+               omx->post_event ((unsigned long)omxhdr, vdec_msg->status_code,
                         OMX_COMPONENT_GENERATE_FBD);
 
             } else if (vdec_msg->msgdata.output_frame.flags & OMX_BUFFERFLAG_EOS) {
