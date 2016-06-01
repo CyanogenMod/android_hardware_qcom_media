@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2015, Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1700,6 +1700,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexConfigH264EntropyCodingCabac:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_VIDEO_H264ENTROPYCODINGTYPE);
                 QOMX_VIDEO_H264ENTROPYCODINGTYPE * pParam = (QOMX_VIDEO_H264ENTROPYCODINGTYPE*)paramData;
                 DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexConfigH264EntropyCodingCabac");
                 memcpy(pParam, &m_sParamEntropy, sizeof(m_sParamEntropy));
@@ -1976,6 +1977,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
          case OMX_QcomIndexParamMBIStatisticsMode:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QOMX_VIDEO_MBI_STATISTICS);
                 OMX_QOMX_VIDEO_MBI_STATISTICS* mbi_mode = (OMX_QOMX_VIDEO_MBI_STATISTICS*) paramData;
                 DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamMBIStatisticsMode");
                 memcpy(mbi_mode, &m_sMBIStatistics, sizeof(m_sMBIStatistics));
@@ -2013,6 +2015,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QTIIndexParamVQZIPSEIType:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE);
                 OMX_U32 enabled;
                 OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE *pParam =
                     reinterpret_cast<OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE*>(paramData);
@@ -2050,6 +2053,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
          case OMX_QcomIndexParamBatchSize:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_U32TYPE);
                 OMX_PARAM_U32TYPE* batch =
                     reinterpret_cast<OMX_PARAM_U32TYPE *>(paramData);
 
@@ -2066,6 +2070,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamSequenceHeaderWithIDR:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, PrependSPSPPSToIDRFramesParams);
                 PrependSPSPPSToIDRFramesParams * pParam =
                     reinterpret_cast<PrependSPSPPSToIDRFramesParams *>(paramData);
                 DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamSequenceHeaderWithIDR");
@@ -2074,6 +2079,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamVencAspectRatio:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_EXTNINDEX_VIDEO_VENC_SAR);
                QOMX_EXTNINDEX_VIDEO_VENC_SAR * pParam =
                    reinterpret_cast<QOMX_EXTNINDEX_VIDEO_VENC_SAR *>(paramData);
                 memcpy(pParam, &m_sSar, sizeof(m_sSar));
@@ -2081,6 +2087,7 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QTIIndexParamLowLatencyMode:
            {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE);
                QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE * pParam =
                    reinterpret_cast<QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE *>(paramData);
                 memcpy(pParam, &m_slowLatencyMode, sizeof(m_slowLatencyMode));
@@ -2211,6 +2218,7 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
        case OMX_QcomIndexConfigNumHierPLayers:
            {
+               VALIDATE_OMX_PARAM_DATA(configData, QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS);
                QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS* pParam =
                    reinterpret_cast<QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS*>(configData);
                DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigNumHierPLayers");
@@ -2219,6 +2227,7 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
            }
        case OMX_QcomIndexConfigQp:
            {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_SKYPE_VIDEO_CONFIG_QP);
                OMX_SKYPE_VIDEO_CONFIG_QP* pParam =
                    reinterpret_cast<OMX_SKYPE_VIDEO_CONFIG_QP*>(configData);
                DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigQp");
@@ -2227,6 +2236,7 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
            }
        case OMX_QcomIndexConfigBaseLayerId:
            {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID);
                OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID* pParam =
                    reinterpret_cast<OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID*>(configData);
                DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigBaseLayerId");
@@ -3324,6 +3334,10 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                 //secure handle fd struct native_handle_t*
                 m_pOutput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
                 native_handle_t *handle = native_handle_create(1, 0);
+                if (!handle) {
+                    DEBUG_PRINT_ERROR("ERROR: native handle creation failed");
+                    return OMX_ErrorInsufficientResources;
+                }
                 handle->data[0] = m_pOutput_pmem[i].fd;
                 char *data = (char*) m_pOutput_pmem[i].buffer;
                 OMX_U32 type = 1;

@@ -136,8 +136,10 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
         & BITMASK_FLAG(mIndex))
 #define BITMASK_ABSENT(mArray,mIndex) (((mArray)[BITMASK_OFFSET(mIndex)] \
             & BITMASK_FLAG(mIndex)) == 0x0)
+
 #define MAX_NUM_INPUT_BUFFERS 64
 #define MAX_NUM_OUTPUT_BUFFERS 64
+
 void* message_thread(void *);
 
 enum omx_venc_extradata_types {

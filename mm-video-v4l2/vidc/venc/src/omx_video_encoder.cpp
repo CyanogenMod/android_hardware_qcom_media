@@ -714,6 +714,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     DEBUG_PRINT_LOW("o/p actual cnt requested = %u", (unsigned int)portDefn->nBufferCountActual);
                     DEBUG_PRINT_LOW("o/p min cnt requested = %u", (unsigned int)portDefn->nBufferCountMin);
                     DEBUG_PRINT_LOW("o/p buffersize requested = %u", (unsigned int)portDefn->nBufferSize);
+
                     if (portDefn->nBufferCountActual > MAX_NUM_OUTPUT_BUFFERS) {
                         DEBUG_PRINT_ERROR("ERROR: (Out_PORT) actual count (%u) exceeds max(%u)",
                                 (unsigned int)portDefn->nBufferCountActual, (unsigned int)MAX_NUM_OUTPUT_BUFFERS);
@@ -1469,6 +1470,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamMBIStatisticsMode:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QOMX_VIDEO_MBI_STATISTICS);
                 if(!handle->venc_set_param(paramData,
                             (OMX_INDEXTYPE)OMX_QcomIndexParamMBIStatisticsMode)) {
                     DEBUG_PRINT_ERROR("%s: %s",
@@ -1564,6 +1566,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamBatchSize:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_PARAM_U32TYPE);
                 if(!handle->venc_set_param(paramData,
                          (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize)) {
                    DEBUG_PRINT_ERROR("Attempting to set batch size failed");
@@ -1573,6 +1576,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexConfigH264EntropyCodingCabac:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_VIDEO_H264ENTROPYCODINGTYPE);
                 if(!handle->venc_set_param(paramData,
                          (OMX_INDEXTYPE)OMX_QcomIndexConfigH264EntropyCodingCabac)) {
                    DEBUG_PRINT_ERROR("Attempting to set Entropy failed");
@@ -1582,6 +1586,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QTIIndexParamVQZIPSEIType:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_QTI_VIDEO_PARAM_VQZIP_SEI_TYPE);
                 if (!handle->venc_set_param(paramData,
                             (OMX_INDEXTYPE) OMX_QTIIndexParamVQZIPSEIType)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting VQZIP SEI type");
@@ -1592,6 +1597,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QcomIndexParamVencAspectRatio:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_EXTNINDEX_VIDEO_VENC_SAR);
                 if (!handle->venc_set_param(paramData,
                         (OMX_INDEXTYPE)OMX_QcomIndexParamVencAspectRatio)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexParamVencAspectRatio failed");
@@ -1612,6 +1618,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
             }
         case OMX_QTIIndexParamVideoEnableRoiInfo:
             {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE);
                 if (!handle->venc_set_param(paramData,
                             (OMX_INDEXTYPE)OMX_QTIIndexParamVideoEnableRoiInfo)) {
                     DEBUG_PRINT_ERROR("ERROR: Setting OMX_QTIIndexParamVideoEnableRoiInfo failed");
@@ -1979,6 +1986,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
         case OMX_QcomIndexConfigNumHierPLayers:
         {
+            VALIDATE_OMX_PARAM_DATA(configData, QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS);
             QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS* pParam =
                 (QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS*)configData;
             if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigNumHierPLayers)) {
@@ -1990,6 +1998,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
         }
         case OMX_QcomIndexConfigBaseLayerId:
         {
+            VALIDATE_OMX_PARAM_DATA(configData, OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID);
             OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID* pParam =
                 (OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID*) configData;
             if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigBaseLayerId)) {
@@ -2001,6 +2010,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
         }
         case OMX_QcomIndexConfigQp:
         {
+            VALIDATE_OMX_PARAM_DATA(configData, OMX_SKYPE_VIDEO_CONFIG_QP);
             OMX_SKYPE_VIDEO_CONFIG_QP* pParam =
                 (OMX_SKYPE_VIDEO_CONFIG_QP*) configData;
             if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigQp)) {
@@ -2031,6 +2041,7 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
             }
         case OMX_QTIIndexConfigVideoRoiInfo:
             {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_QTI_VIDEO_CONFIG_ROIINFO);
                 if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoRoiInfo)) {
                     DEBUG_PRINT_ERROR("Failed to set OMX_QTIIndexConfigVideoRoiInfo");
                     return OMX_ErrorUnsupportedSetting;
