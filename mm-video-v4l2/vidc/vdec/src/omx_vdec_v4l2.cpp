@@ -255,16 +255,14 @@ void* async_message_thread (void *input)
                 vdec_msg.msgdata.output_frame.picsize.frame_height = ptr[0];
                 vdec_msg.msgdata.output_frame.picsize.frame_width = ptr[1];
                 DEBUG_PRINT_HIGH("VIDC Port Reconfig received insufficient");
-                if (omx->async_message_process(input,&vdec_msg) < 0) {
-                    DEBUG_PRINT_HIGH("async_message_thread Exited");
-                    break;
+                if(ptr[2] & V4L2_EVENT_BITDEPTH_FLAG) {
+                    omx->dpb_bit_depth = ptr[3];
+                    DEBUG_PRINT_HIGH("VIDC Port Reconfig Bitdepth change - %d", ptr[3]);
                 }
-            } else if (dqevent.type == V4L2_EVENT_MSM_VIDC_PORT_SETTINGS_BITDEPTH_CHANGED_INSUFFICIENT ) {
-                struct vdec_msginfo vdec_msg;
-                vdec_msg.msgcode=VDEC_MSG_EVT_CONFIG_CHANGED;
-                vdec_msg.status_code=VDEC_S_SUCCESS;
-                omx->dpb_bit_depth = dqevent.u.data[0];
-                DEBUG_PRINT_HIGH("VIDC Port Reconfig Bitdepth change - %d", dqevent.u.data[0]);
+                if(ptr[2] & V4L2_EVENT_PICSTRUCT_FLAG) {
+                    omx->m_progressive = ptr[4];
+                    DEBUG_PRINT_HIGH("VIDC Port Reconfig PicStruct change - %d", ptr[4]);
+                }
                 if (omx->async_message_process(input,&vdec_msg) < 0) {
                     DEBUG_PRINT_HIGH("async_message_thread Exited");
                     break;
@@ -995,15 +993,21 @@ OMX_ERRORTYPE omx_vdec::decide_dpb_buffer_mode(bool force_split_mode)
 
     bool cpu_access = capture_capability != V4L2_PIX_FMT_NV12_UBWC;
 
-    bool is_res_above_1080p = (drv_ctx.video_resolution.frame_width > 1920 &&
-            drv_ctx.video_resolution.frame_height > 1088) ||
-            (drv_ctx.video_resolution.frame_height > 1088 &&
-             drv_ctx.video_resolution.frame_width > 1920);
-
     if (cpu_access) {
         if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_8) {
-            if ((m_force_compressed_for_dpb || is_res_above_1080p) &&
+            if ((m_force_compressed_for_dpb || (m_progressive && (eCompressionFormat != OMX_VIDEO_CodingVP9))) &&
                 !force_split_mode) {
+            /* Disabled split mode for VP9. In split mode the DPB buffers are part of the internal
+             * scratch buffers and the driver does not does the reference buffer management for
+             * scratch buffers. In case of VP9 with spatial scalability, when a sequence changed
+             * event is received with the new resolution, and when a flush is sent by the driver, it
+             * releases all the references of internal scratch buffers. However as per the VP9
+             * spatial scalability, even after the flush, the buffers which have not yet received
+             * release reference event should not be unmapped and freed. Currently in driver,
+             * reference buffer management of the internal scratch buffer is not implemented
+             * and hence the DPB buffers get unmapped. For other codecs it does not matter
+             * as with the new SPS/PPS, the DPB is flushed.
+             */
                 //split DPB-OPB
                 //DPB -> UBWC , OPB -> Linear
                 eRet = set_dpb(true, V4L2_MPEG_VIDC_VIDEO_DPB_COLOR_FMT_UBWC);
@@ -2315,6 +2319,7 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
         }
 
         dpb_bit_depth = MSM_VIDC_BIT_DEPTH_8;
+        m_progressive = MSM_VIDC_PIC_STRUCT_PROGRESSIVE;
 
         if (m_disable_ubwc_mode) {
             capture_capability = V4L2_PIX_FMT_NV12;
@@ -9711,11 +9716,6 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
     } else if (1 == portDefn->nPortIndex) {
         unsigned int buf_size = 0;
         int ret = 0;
-        if (!client_buffers.update_buffer_req()) {
-            DEBUG_PRINT_ERROR("client_buffers.update_buffer_req Failed");
-            return OMX_ErrorHardware;
-        }
-
        memset(&fmt, 0x0, sizeof(struct v4l2_format));
        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
        fmt.fmt.pix_mp.pixelformat = capture_capability;
@@ -9727,6 +9727,10 @@ OMX_ERRORTYPE omx_vdec::update_portdef(OMX_PARAM_PORTDEFINITIONTYPE *portDefn)
        drv_ctx.op_buf.buffer_size = fmt.fmt.pix_mp.plane_fmt[0].sizeimage;
        drv_ctx.op_buf.buffer_size += drv_ctx.extradata_info.buffer_size;
        drv_ctx.op_buf.buffer_size = (drv_ctx.op_buf.buffer_size + drv_ctx.op_buf.alignment - 1)&(~(drv_ctx.op_buf.alignment - 1));
+       if (!client_buffers.update_buffer_req()) {
+           DEBUG_PRINT_ERROR("client_buffers.update_buffer_req Failed");
+           return OMX_ErrorHardware;
+       }
 
         if (!client_buffers.get_buffer_req(buf_size)) {
             DEBUG_PRINT_ERROR("update buffer requirements");
