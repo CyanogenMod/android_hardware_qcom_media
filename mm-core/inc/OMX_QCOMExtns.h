@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2009-2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2009-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -1553,6 +1553,8 @@ typedef struct QOMX_VIDEO_QUERY_DECODER_INSTANCES {
 } QOMX_VIDEO_QUERY_DECODER_INSTANCES;
 
 typedef struct QOMX_ENABLETYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
     OMX_BOOL bEnable;
 } QOMX_ENABLETYPE;
 
@@ -1666,6 +1668,8 @@ typedef enum QOMX_VIDEO_PICTURETYPE {
 
 
 typedef struct QOMX_RECTTYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
     OMX_S32 nLeft;
     OMX_S32 nTop;
     OMX_U32 nWidth;
@@ -1775,6 +1779,7 @@ typedef struct QOMX_VIDEO_H264ENTROPYCODINGTYPE {
 
 
 /* VIDEO POSTPROCESSING CTRLS AND ENUMS */
+/* MUST KEEP SAME AS IN vpp.h */
 #define QOMX_VPP_HQV_CUSTOMPAYLOAD_SZ 256
 #define VPP_HQV_CONTROL_GLOBAL_START (VPP_HQV_CONTROL_CUST + 1)
 
@@ -1800,6 +1805,14 @@ typedef enum QOMX_VPP_HQV_HUE_MODE {
     VPP_HQV_HUE_MODE_ON,
     VPP_HQV_HUE_MODE_MAX,
 } QOMX_VPP_HQV_HUE_MODE;
+
+typedef enum QOMX_VPP_SPLIT_DIRECTION {
+    VPP_HQV_SPLIT_LEFT_TO_RIGHT,
+    VPP_HQV_SPLIT_RIGHT_TO_LEFT,
+    VPP_HQV_SPLIT_TOP_TO_BOTTOM,
+    VPP_HQV_SPLIT_BOTTOM_TO_TOP,
+    VPP_HQV_SPLIT_MAX,
+} QOMX_VPP_SPLIT_DIRECTION;
 
 typedef enum QOMX_VPP_HQV_FRC_MODE {
    VPP_HQV_FRC_MODE_OFF,
@@ -1837,13 +1850,17 @@ typedef struct QOMX_VPP_HQVCTRL_CUSTOM {
 
 typedef struct QOMX_VPP_HQVCTRL_GLOBAL_DEMO {
     OMX_U32 process_percent;
+    QOMX_VPP_SPLIT_DIRECTION process_direction;
 } QOMX_VPP_HQVCTRL_GLOBAL_DEMO;
 
 typedef struct QOMX_VPP_HQVCTRL_FRC {
     QOMX_VPP_HQV_FRC_MODE mode;
 } QOMX_VPP_HQVCTRL_FRC;
 
+/* VIDEO POSTPROCESSING OMX CTRLS */
 typedef struct QOMX_VPP_HQVCONTROL {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
     QOMX_VPP_HQV_MODE mode;
     QOMX_VPP_HQVCONTROLTYPE ctrl_type;
     union {
@@ -1858,6 +1875,8 @@ typedef struct QOMX_VPP_HQVCONTROL {
 
 /* STRUCTURE TO TURN VPP ON */
 typedef struct QOMX_VPP_ENABLE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
     OMX_BOOL enable_vpp;
 } QOMX_VPP_ENABLE;
 
