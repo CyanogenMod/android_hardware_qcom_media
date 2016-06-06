@@ -41,27 +41,27 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 omx_core_cb_type core[] =
 {
   {
-    "OMX.ittiam.video.decoder.mpeg4",
+    "OMX.qti.video.decoder.mpeg4sw",
     NULL, // Create instance function
     // Unique instance handle
     {
       NULL
     },
     NULL,   // Shared object library handle
-    "libOmxIttiamVdec.so",
+    "libOmxSwVdec.so",
     {
       "video_decoder.mpeg4"
     }
   },
   {
-    "OMX.ittiam.video.decoder.h263",
+    "OMX.qti.video.decoder.h263sw",
     NULL, // Create instance function
     // Unique instance handle
     {
       NULL
     },
     NULL,   // Shared object library handle
-    "libOmxIttiamVdec.so",
+    "libOmxSwVdec.so",
     {
       "video_decoder.h263"
     }
@@ -80,27 +80,27 @@ omx_core_cb_type core[] =
     }
   },
   {
-    "OMX.ittiam.video.decoder.divx",
+    "OMX.qti.video.decoder.divxsw",
     NULL,   // Create instance function
     // Unique instance handle
     {
       NULL
     },
     NULL,   // Shared object library handle
-    "libOmxIttiamVdec.so",
+    "libOmxSwVdec.so",
     {
       "video_decoder.divx"
     }
   },
   {
-    "OMX.ittiam.video.decoder.divx4",
+    "OMX.qti.video.decoder.divx4sw",
     NULL,   // Create instance function
     // Unique instance handle
     {
       NULL
     },
     NULL,   // Shared object library handle
-    "libOmxIttiamVdec.so",
+    "libOmxSwVdec.so",
     {
       "video_decoder.divx"
     }
