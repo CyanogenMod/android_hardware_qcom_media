@@ -4986,6 +4986,12 @@ OMX_ERRORTYPE  omx_vdec::use_output_buffer(
                 return OMX_ErrorBadParameter;
             }
 
+            if (handle->flags & private_handle_t::PRIV_FLAGS_DISP_CONSUMER) {
+                m_is_display_session = true;
+            } else {
+                m_is_display_session = false;
+            }
+
             if ((OMX_U32)handle->size < drv_ctx.op_buf.buffer_size) {
                 if (secure_mode && secure_scaling_to_non_secure_opb) {
                     DEBUG_PRINT_HIGH("Buffer size expected %u, got %u, but it's ok since we will never map it",
