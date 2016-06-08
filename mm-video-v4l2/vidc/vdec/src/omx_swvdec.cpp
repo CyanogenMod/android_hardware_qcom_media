@@ -40,6 +40,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
+#include <cutils/properties.h>
+
 #include <media/hardware/HardwareAPI.h>
 #include <gralloc_priv.h>
 
@@ -78,8 +80,11 @@ omx_swvdec::omx_swvdec():
     m_omx_color_formattype(OMX_COLOR_FormatUnused),
     m_sync_frame_decoding_mode(false),
     m_android_native_buffers(false),
+    m_meta_buffer_mode_disabled(false),
     m_meta_buffer_mode(false),
+    m_adaptive_playback_mode(false),
     m_port_reconfig_inprogress(false),
+    m_dimensions_update_inprogress(false),
     m_buffer_array_ip(NULL),
     m_buffer_array_op(NULL),
     m_meta_buffer_array(NULL)
@@ -90,6 +95,7 @@ omx_swvdec::omx_swvdec():
     memset(&m_role_name[0],            0, sizeof(m_role_name));
     memset(&m_frame_dimensions,        0, sizeof(m_frame_dimensions));
     memset(&m_frame_attributes,        0, sizeof(m_frame_attributes));
+    memset(&m_frame_dimensions_max,    0, sizeof(m_frame_dimensions_max));
     memset(&m_async_thread,            0, sizeof(m_async_thread));
     memset(&m_port_ip,                 0, sizeof(m_port_ip));
     memset(&m_port_op,                 0, sizeof(m_port_op));
@@ -133,6 +139,21 @@ OMX_ERRORTYPE omx_swvdec::component_init(OMX_STRING cmp_name)
                        OMX_SWVDEC_VERSION_DATE);
 
     omx_swvdec_log_init();
+
+    // set m_meta_buffer_mode_disabled via ADB setprop
+    {
+        char property_value[PROPERTY_VALUE_MAX] = {0};
+
+        if (property_get("omx_swvdec.meta_buffer.disable",
+                         property_value,
+                         NULL))
+        {
+            m_meta_buffer_mode_disabled = (bool) atoi(property_value);
+
+            OMX_SWVDEC_LOG_LOW("omx_swvdec.meta_buffer.disable: %d",
+                               m_meta_buffer_mode_disabled ? 1 : 0);
+        }
+    }
 
     if (m_state != OMX_StateInvalid)
     {
@@ -1053,6 +1074,7 @@ OMX_ERRORTYPE omx_swvdec::set_parameter(OMX_HANDLETYPE cmp_handle,
         case OMX_QcomIndexParamVideoSyncFrameDecodingMode:
         {
             OMX_SWVDEC_LOG_API("OMX_QcomIndexParamVideoSyncFrameDecodingMode");
+
             m_sync_frame_decoding_mode = true;
             break;
         }
@@ -1070,6 +1092,7 @@ OMX_ERRORTYPE omx_swvdec::set_parameter(OMX_HANDLETYPE cmp_handle,
                 OMX_SWVDEC_LOG_API(
                     "OMX_QcomIndexParamVideoDecoderPictureOrder, "
                     "QOMX_VIDEO_DISPLAY_ORDER");
+
                 break;
             }
 
@@ -1093,6 +1116,7 @@ OMX_ERRORTYPE omx_swvdec::set_parameter(OMX_HANDLETYPE cmp_handle,
             }
 
             }
+
             break;
         }
 
@@ -1140,17 +1164,66 @@ OMX_ERRORTYPE omx_swvdec::set_parameter(OMX_HANDLETYPE cmp_handle,
                                "port index %d, %s",
                                p_meta_data->nPortIndex,
                                (p_meta_data->bStoreMetaData ?
-                                "enabled" :
-                                "disabled"));
+                                "enable" :
+                                "disable"));
 
             if (p_meta_data->nPortIndex == OMX_CORE_PORT_INDEX_OP)
             {
-                m_meta_buffer_mode = (bool) p_meta_data->bStoreMetaData;
+                if (p_meta_data->bStoreMetaData && m_meta_buffer_mode_disabled)
+                {
+                    OMX_SWVDEC_LOG_ERROR("meta buffer mode disabled "
+                                         "via ADB setprop: "
+                                         "'omx_swvdec.meta_buffer.disable'");
+
+                    retval = OMX_ErrorBadParameter;
+                }
+                else
+                {
+                    m_meta_buffer_mode = (bool) p_meta_data->bStoreMetaData;
+                }
             }
             else
             {
                 OMX_SWVDEC_LOG_ERROR("port index '%d' invalid",
                                      p_meta_data->nPortIndex);
+
+                retval = OMX_ErrorBadPortIndex;
+            }
+
+            break;
+        }
+
+        case OMX_QcomIndexParamVideoAdaptivePlaybackMode:
+        {
+            PrepareForAdaptivePlaybackParams *p_adaptive_playback_params =
+                (PrepareForAdaptivePlaybackParams *) p_param_data;
+
+            OMX_SWVDEC_LOG_API("OMX_QcomIndexParamVideoAdaptivePlaybackMode, "
+                               "port index %d, %s, max dimensions: %d x %d",
+                               p_adaptive_playback_params->nPortIndex,
+                               (p_adaptive_playback_params->bEnable ?
+                                "enable" :
+                                "disable"),
+                               p_adaptive_playback_params->nMaxFrameWidth,
+                               p_adaptive_playback_params->nMaxFrameHeight);
+
+            if (p_adaptive_playback_params->nPortIndex ==
+                OMX_CORE_PORT_INDEX_OP)
+            {
+                if (p_adaptive_playback_params->bEnable)
+                {
+                    m_adaptive_playback_mode = true;
+
+                    retval =
+                        set_adaptive_playback(
+                            p_adaptive_playback_params->nMaxFrameWidth,
+                            p_adaptive_playback_params->nMaxFrameHeight);
+                }
+            }
+            else
+            {
+                OMX_SWVDEC_LOG_ERROR("port index '%d' invalid",
+                                     p_adaptive_playback_params->nPortIndex);
 
                 retval = OMX_ErrorBadPortIndex;
             }
@@ -1226,10 +1299,21 @@ OMX_ERRORTYPE omx_swvdec::get_config(OMX_HANDLETYPE cmp_handle,
 
         if (p_recttype->nPortIndex == OMX_CORE_PORT_INDEX_OP)
         {
-            p_recttype->nLeft   = 0;
-            p_recttype->nTop    = 0;
-            p_recttype->nWidth  = m_frame_dimensions.width;
-            p_recttype->nHeight = m_frame_dimensions.height;
+            if (m_dimensions_update_inprogress)
+            {
+                // query updated dimensions from SwVdec core
+                retval = get_frame_dimensions_swvdec();
+
+                m_dimensions_update_inprogress = false;
+            }
+
+            if (retval == OMX_ErrorNone)
+            {
+                p_recttype->nLeft   = 0;
+                p_recttype->nTop    = 0;
+                p_recttype->nWidth  = m_frame_dimensions.width;
+                p_recttype->nHeight = m_frame_dimensions.height;
+            }
         }
         else
         {
@@ -1446,6 +1530,13 @@ OMX_ERRORTYPE omx_swvdec::get_extension_index(OMX_HANDLETYPE cmp_handle,
                       OMX_MAX_STRINGNAME_SIZE))
     {
         *p_index_type = (OMX_INDEXTYPE) OMX_QcomIndexFlexibleYUVDescription;
+    }
+    else if (!strncmp(param_name,
+                      "OMX.google.android.index.prepareForAdaptivePlayback",
+                      OMX_MAX_STRINGNAME_SIZE))
+    {
+        *p_index_type =
+            (OMX_INDEXTYPE) OMX_QcomIndexParamVideoAdaptivePlaybackMode;
     }
     else
     {
@@ -2585,6 +2676,43 @@ OMX_ERRORTYPE omx_swvdec::set_frame_attributes(
 }
 
 /**
+ * @brief Set maximum adaptive playback frame dimensions for OMX component &
+ *        SwVdec core.
+ *
+ * @param[in] width:  Max adaptive playback frame width.
+ * @param[in] height: Max adaptive playback frame height.
+ *
+ * @retval OMX_ERRORTYPE
+ */
+OMX_ERRORTYPE omx_swvdec::set_adaptive_playback(unsigned int max_width,
+                                                unsigned int max_height)
+{
+    OMX_ERRORTYPE retval;
+
+    m_frame_dimensions_max.width  = max_width;
+    m_frame_dimensions_max.height = max_height;
+
+    OMX_SWVDEC_LOG_HIGH("%d x %d",
+                        m_frame_dimensions_max.width,
+                        m_frame_dimensions_max.height);
+
+    retval = set_adaptive_playback_swvdec();
+
+    if (retval == OMX_ErrorNone)
+    {
+        retval = set_frame_dimensions(max_width, max_height);
+    }
+
+    if (retval == OMX_ErrorNone)
+    {
+        retval = set_frame_attributes(m_omx_color_formattype);
+    }
+
+set_adaptive_playback_exit:
+    return retval;
+}
+
+/**
  * @brief Get video port format for input or output port.
  *
  * @param[in,out] p_port_format: Pointer to video port format type.
@@ -2887,20 +3015,42 @@ OMX_ERRORTYPE omx_swvdec::set_port_definition(
                             p_port_def->format.video.nFrameWidth,
                             p_port_def->format.video.nFrameHeight);
 
-        retval = set_frame_dimensions(p_port_def->format.video.nFrameWidth,
-                                      p_port_def->format.video.nFrameHeight);
+        /**
+         * Update frame dimensions & attributes if:
+         *
+         * 1. not in adaptive playback mode
+         *    OR
+         * 2. new frame dimensions greater than adaptive playback mode's
+         *    max frame dimensions
+         */
 
-        if (retval != OMX_ErrorNone)
-            goto set_port_definition_exit;
+        if ((m_adaptive_playback_mode == false) ||
+            (p_port_def->format.video.nFrameWidth >
+             m_frame_dimensions_max.width) ||
+            (p_port_def->format.video.nFrameHeight >
+             m_frame_dimensions_max.height))
+        {
+            OMX_SWVDEC_LOG_HIGH("updating frame dimensions & attributes");
 
-        retval = set_frame_attributes(m_omx_color_formattype);
+            retval = set_frame_dimensions(p_port_def->format.video.nFrameWidth,
+                                          p_port_def->format.video.nFrameHeight);
 
-        if (retval != OMX_ErrorNone)
-            goto set_port_definition_exit;
+            if (retval != OMX_ErrorNone)
+                goto set_port_definition_exit;
 
-        // nBufferSize updated based on (possibly new) frame attributes
+            retval = set_frame_attributes(m_omx_color_formattype);
 
-        m_port_op.def.nBufferSize = m_frame_attributes.size;
+            if (retval != OMX_ErrorNone)
+                goto set_port_definition_exit;
+
+            // nBufferSize updated based on (possibly new) frame attributes
+
+            m_port_op.def.nBufferSize = m_frame_attributes.size;
+        }
+        else
+        {
+            OMX_SWVDEC_LOG_HIGH("not updating frame dimensions & attributes");
+        }
     }
     else
     {
@@ -3158,6 +3308,7 @@ OMX_ERRORTYPE omx_swvdec::set_port_definition_qcom(
         {
             OMX_SWVDEC_LOG_HIGH(
                 "OMX_QCOM_FramePacking_OnlyOneCompleteFrame");
+
             break;
         }
 
@@ -3240,6 +3391,31 @@ OMX_ERRORTYPE omx_swvdec::set_frame_attributes_swvdec()
     p_frame_attributes->stride    = m_frame_attributes.stride;
     p_frame_attributes->scanlines = m_frame_attributes.scanlines;
     p_frame_attributes->size      = m_frame_attributes.size;
+
+    if ((retval_swvdec = swvdec_setproperty(m_swvdec_handle, &property)) !=
+        SWVDEC_STATUS_SUCCESS)
+    {
+        retval = retval_swvdec2omx(retval_swvdec);
+    }
+
+    return retval;
+}
+
+/**
+ * @brief Set maximum adaptive playback frame dimensions for SwVdec core.
+ */
+OMX_ERRORTYPE omx_swvdec::set_adaptive_playback_swvdec()
+{
+    OMX_ERRORTYPE retval = OMX_ErrorNone;
+
+    SWVDEC_PROPERTY property;
+
+    SWVDEC_STATUS retval_swvdec;
+
+    property.id = SWVDEC_PROPERTY_ID_ADAPTIVE_PLAYBACK;
+
+    property.info.frame_dimensions.width  = m_frame_dimensions_max.width;
+    property.info.frame_dimensions.height = m_frame_dimensions_max.height;
 
     if ((retval_swvdec = swvdec_setproperty(m_swvdec_handle, &property)) !=
         SWVDEC_STATUS_SUCCESS)
@@ -3343,7 +3519,7 @@ OMX_ERRORTYPE omx_swvdec::get_buffer_requirements_swvdec(
         m_port_ip.def.nBufferSize        = p_buffer_req->size;
         m_port_ip.def.nBufferCountMin    = p_buffer_req->mincount;
         m_port_ip.def.nBufferCountActual = MAX(p_buffer_req->mincount,
-                                               OMX_SWVDEC_IP_BUFFER_COUNT);
+                                               OMX_SWVDEC_IP_BUFFER_COUNT_MIN);
         m_port_ip.def.nBufferAlignment   = p_buffer_req->alignment;
 
         OMX_SWVDEC_LOG_HIGH("ip port: %d bytes x %d, %d-byte aligned",
@@ -3372,7 +3548,8 @@ OMX_ERRORTYPE omx_swvdec::get_buffer_requirements_swvdec(
 
         m_port_op.def.nBufferSize        = p_buffer_req->size;
         m_port_op.def.nBufferCountMin    = p_buffer_req->mincount;
-        m_port_op.def.nBufferCountActual = p_buffer_req->mincount;
+        m_port_op.def.nBufferCountActual = MAX(p_buffer_req->mincount,
+                                               m_port_op.def.nBufferCountActual);
         m_port_op.def.nBufferAlignment   = p_buffer_req->alignment;
 
         OMX_SWVDEC_LOG_HIGH("op port: %d bytes x %d, %d-byte aligned",
@@ -4118,14 +4295,18 @@ OMX_ERRORTYPE omx_swvdec::buffer_deallocate_op(
         {
             munmap(m_buffer_array_op[ii].buffer_payload.bufferaddr,
                    m_buffer_array_op[ii].buffer_payload.mmaped_size);
+
             m_buffer_array_op[ii].buffer_payload.pmem_fd = -1;
         }
         else if (m_sync_frame_decoding_mode)
         {
             munmap(m_buffer_array_op[ii].buffer_payload.bufferaddr,
                    m_buffer_array_op[ii].buffer_payload.mmaped_size);
+
             close(m_buffer_array_op[ii].buffer_payload.pmem_fd);
+
             m_buffer_array_op[ii].buffer_payload.pmem_fd = -1;
+
             ion_memory_free(&m_buffer_array_op[ii].ion_info);
         }
         else
@@ -4148,6 +4329,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_deallocate_op(
         if (ii == m_port_op.def.nBufferCountActual)
         {
             buffer_deallocate_op_info_array();
+
             m_port_op.unpopulated = OMX_TRUE;
 
             if (m_meta_buffer_mode)
@@ -4175,6 +4357,7 @@ void omx_swvdec::buffer_deallocate_ip_info_array()
     assert(m_buffer_array_ip != NULL);
 
     free(m_buffer_array_ip);
+
     m_buffer_array_ip = NULL;
 }
 
@@ -4186,6 +4369,7 @@ void omx_swvdec::buffer_deallocate_op_info_array()
     assert(m_buffer_array_op != NULL);
 
     free(m_buffer_array_op);
+
     m_buffer_array_op = NULL;
 }
 
@@ -4643,6 +4827,12 @@ void omx_swvdec::swvdec_event_handler(SWVDEC_EVENT event, void *p_data)
         break;
     }
 
+    case SWVDEC_EVENT_DIMENSIONS_UPDATED:
+    {
+        async_post_event(OMX_SWVDEC_EVENT_DIMENSIONS_UPDATED, 0, 0);
+        break;
+    }
+
     case SWVDEC_EVENT_FATAL_ERROR:
     default:
     {
@@ -5012,6 +5202,12 @@ void omx_swvdec::async_process_event(void *p_cmp)
     case OMX_SWVDEC_EVENT_PORT_RECONFIG:
     {
         retval = p_omx_swvdec->async_process_event_port_reconfig();
+        break;
+    }
+
+    case OMX_SWVDEC_EVENT_DIMENSIONS_UPDATED:
+    {
+        retval = p_omx_swvdec->async_process_event_dimensions_updated();
         break;
     }
 
@@ -6035,7 +6231,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_port_reconfig()
 
     if (m_port_reconfig_inprogress)
     {
-        OMX_SWVDEC_LOG_ERROR("port reconfiguration in progress");
+        OMX_SWVDEC_LOG_ERROR("port reconfiguration already in progress");
 
         retval = OMX_ErrorIncorrectStateOperation;
     }
@@ -6052,6 +6248,41 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_port_reconfig()
                                 OMX_EventPortSettingsChanged,
                                 OMX_CORE_PORT_INDEX_OP,
                                 0,
+                                NULL);
+    }
+
+    return retval;
+}
+
+/**
+ * @brief Process dimensions updated event.
+ *
+ * @retval OMX_ERRORTYPE
+ */
+OMX_ERRORTYPE omx_swvdec::async_process_event_dimensions_updated()
+{
+    OMX_ERRORTYPE retval = OMX_ErrorNone;
+
+    if (m_dimensions_update_inprogress)
+    {
+        OMX_SWVDEC_LOG_ERROR("dimensions update already in progress");
+
+        retval = OMX_ErrorIncorrectStateOperation;
+    }
+    else
+    {
+        m_dimensions_update_inprogress = true;
+
+        OMX_SWVDEC_LOG_CALLBACK("EventHandler(): "
+                                "OMX_EventPortSettingsChanged, port index %d, "
+                                "OMX_IndexConfigCommonOutputCrop",
+                                OMX_CORE_PORT_INDEX_OP);
+
+        m_callback.EventHandler(&m_cmp,
+                                m_app_data,
+                                OMX_EventPortSettingsChanged,
+                                OMX_CORE_PORT_INDEX_OP,
+                                OMX_IndexConfigCommonOutputCrop,
                                 NULL);
     }
 
