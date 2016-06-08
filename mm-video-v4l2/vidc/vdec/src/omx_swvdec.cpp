@@ -2058,12 +2058,6 @@ OMX_ERRORTYPE omx_swvdec::empty_this_buffer(OMX_HANDLETYPE        cmp_handle,
         goto empty_this_buffer_exit;
     }
 
-    if (m_sync_frame_decoding_mode &&
-        ((p_buffer_hdr->nFlags & OMX_BUFFERFLAG_CODECCONFIG) == 0))
-    {
-        p_buffer_hdr->nFlags |= OMX_BUFFERFLAG_EOS;
-    }
-
     OMX_SWVDEC_LOG_API("%p: buffer %p, flags 0x%08x, filled length %d, "
                        "timestamp %lld",
                        p_buffer_hdr,
@@ -5877,29 +5871,54 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
                 assert(0);
             }
 
-            m_buffer_array_ip[index].split_count = num_frame_headers - 1;
-
-            for (unsigned int ii = 0; ii < num_frame_headers; ii++)
+            if(num_frame_headers > 1)
             {
-                p_buffer_swvdec->flags     = p_buffer_hdr->nFlags;
-                p_buffer_swvdec->timestamp = p_buffer_hdr->nTimeStamp;
+                m_buffer_array_ip[index].split_count = num_frame_headers - 1;
 
-                if (ii == 0)
+                for (unsigned int ii = 0; ii < num_frame_headers; ii++)
                 {
-                    p_buffer_swvdec->offset        = 0;
-                    p_buffer_swvdec->filled_length = (offset_array[ii + 1] ?
-                                                      offset_array[ii + 1] :
-                                                      p_buffer_hdr->nFilledLen);
-                }
-                else
-                {
-                    p_buffer_swvdec->offset        = offset_array[ii];
-                    p_buffer_swvdec->filled_length =
-                        p_buffer_hdr->nFilledLen - offset_array[ii];
-                }
+                    p_buffer_swvdec->flags     = p_buffer_hdr->nFlags;
+                    p_buffer_swvdec->timestamp = p_buffer_hdr->nTimeStamp;
 
-                m_diag.dump_ip(p_buffer_swvdec->p_buffer +
-                               p_buffer_swvdec->offset,
+                    if (ii == 0)
+                    {
+                        p_buffer_swvdec->offset        = 0;
+                        p_buffer_swvdec->filled_length = (offset_array[ii + 1] ?
+                                                          offset_array[ii + 1] :
+                                                          p_buffer_hdr->nFilledLen);
+                    }
+                    else
+                    {
+                        p_buffer_swvdec->offset        = offset_array[ii];
+                        p_buffer_swvdec->filled_length =
+                            p_buffer_hdr->nFilledLen - offset_array[ii];
+                    }
+
+                    m_diag.dump_ip(p_buffer_swvdec->p_buffer +
+                                   p_buffer_swvdec->offset,
+                                   p_buffer_swvdec->filled_length);
+
+                    retval_swvdec = swvdec_emptythisbuffer(m_swvdec_handle,
+                                                           p_buffer_swvdec);
+
+                    if (retval_swvdec != SWVDEC_STATUS_SUCCESS)
+                    {
+                        retval = retval_swvdec2omx(retval_swvdec);
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                OMX_SWVDEC_LOG_HIGH("No frame detected for Buffer %p, with TS %lld",
+                                    p_buffer_hdr->pBuffer, p_buffer_hdr->nTimeStamp );
+
+                p_buffer_swvdec->flags         = p_buffer_hdr->nFlags;
+                p_buffer_swvdec->offset        = 0;
+                p_buffer_swvdec->timestamp     = p_buffer_hdr->nTimeStamp;
+                p_buffer_swvdec->filled_length = p_buffer_hdr->nFilledLen;
+
+                m_diag.dump_ip(p_buffer_swvdec->p_buffer + p_buffer_swvdec->offset,
                                p_buffer_swvdec->filled_length);
 
                 retval_swvdec = swvdec_emptythisbuffer(m_swvdec_handle,
@@ -5908,7 +5927,6 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
                 if (retval_swvdec != SWVDEC_STATUS_SUCCESS)
                 {
                     retval = retval_swvdec2omx(retval_swvdec);
-                    break;
                 }
             }
         }
@@ -5931,7 +5949,6 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_etb(
             }
         }
     }
-
     return retval;
 }
 
