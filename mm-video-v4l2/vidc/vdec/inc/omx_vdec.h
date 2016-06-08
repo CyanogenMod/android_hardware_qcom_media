@@ -703,7 +703,7 @@ class omx_vdec: public qc_omx_component
         void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
 #ifdef _MSM8974_
         void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                OMX_U32 interlaced_format_type, bool is_mbaff);
+                OMX_U32 interlaced_format_type);
         OMX_ERRORTYPE enable_extradata(OMX_U32 requested_extradata, bool is_internal,
                 bool enable = true);
         void append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
