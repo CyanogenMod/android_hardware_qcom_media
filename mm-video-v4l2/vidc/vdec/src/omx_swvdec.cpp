@@ -4704,71 +4704,23 @@ void omx_swvdec::ion_flush_op(unsigned int index)
 {
     if (index < m_port_op.def.nBufferCountActual)
     {
-        int fd = -EINVAL;
-        int rc = -EINVAL;
-
         struct vdec_bufferpayload *p_buffer_payload =
             &m_buffer_array_op[index].buffer_payload;
 
-        struct ion_fd_data     fd_data;
-        struct ion_flush_data  flush_data;
-        struct ion_custom_data custom_data;
-
-        memset(&fd_data,     0, sizeof(fd_data));
-        memset(&flush_data,  0, sizeof(flush_data));
-        memset(&custom_data, 0, sizeof(custom_data));
-
-        if ((fd = open("/dev/ion", O_RDONLY)) < 0)
+        if(p_buffer_payload)
         {
-            OMX_SWVDEC_LOG_ERROR("failed to open /dev/ion, error %s",
-                                 strerror(errno));
-
-            goto ion_flush_op_exit;
+            if(p_buffer_payload->bufferaddr != NULL)
+            {
+                __builtin___clear_cache(reinterpret_cast<char*>((size_t*)p_buffer_payload->bufferaddr),
+                    reinterpret_cast<char*>((size_t*)p_buffer_payload->bufferaddr +p_buffer_payload->buffer_len));
+            }
         }
-
-        fd_data.fd = p_buffer_payload->pmem_fd;
-
-        rc = ioctl(fd, ION_IOC_IMPORT, &fd_data);
-
-        if (rc)
-        {
-            OMX_SWVDEC_LOG_ERROR("ioctl() for import failed; fd %d",
-                                 fd_data.fd);
-
-            close(fd);
-            goto ion_flush_op_exit;
-        }
-
-        flush_data.handle = fd_data.handle;
-
-        flush_data.fd     = p_buffer_payload->pmem_fd;
-        flush_data.vaddr  = p_buffer_payload->bufferaddr;
-        flush_data.length = p_buffer_payload->buffer_len;
-
-        custom_data.cmd = ION_IOC_CLEAN_CACHES;
-        custom_data.arg = (unsigned long) &flush_data;
-
-        OMX_SWVDEC_LOG_LOW("handle %d, fd %d, vaddr %p, length %d",
-                           flush_data.handle,
-                           flush_data.fd,
-                           flush_data.vaddr,
-                           flush_data.length);
-
-        rc = ioctl(fd, ION_IOC_CUSTOM, &custom_data);
-
-        if (rc < 0)
-        {
-            OMX_SWVDEC_LOG_ERROR("ioctl() for clean cache failed");
-        }
-
-        close(fd);
     }
     else
     {
         OMX_SWVDEC_LOG_ERROR("buffer index '%d' invalid", index);
     }
 
-ion_flush_op_exit:
     return;
 }
 
