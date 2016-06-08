@@ -1,7 +1,7 @@
 /**
  * @copyright
  *
- *   Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *   Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions are met:
@@ -39,6 +39,7 @@
 #ifndef _OMX_SWVDEC_UTILS_H_
 #define _OMX_SWVDEC_UTILS_H_
 
+#include <queue>
 #include <pthread.h>
 
 #include <cutils/log.h>
@@ -92,8 +93,6 @@ void omx_swvdec_log_init();
             ALOGI("<<< %s(): " string, __FUNCTION__, ##__VA_ARGS__); \
     } while (0)
 
-#define OMX_SWVDEC_QUEUE_ELEMENTS 100 ///< number of elements in queue
-
 /// OMX SwVdec event information structure
 typedef struct {
     unsigned long event_id;     ///< event ID
@@ -108,44 +107,12 @@ public:
     omx_swvdec_queue();
     ~omx_swvdec_queue();
 
-    bool push(OMX_SWVDEC_EVENT_INFO *p_event_info);
+    void push(OMX_SWVDEC_EVENT_INFO *p_event_info);
     bool pop(OMX_SWVDEC_EVENT_INFO *p_event_info);
 
 private:
-    OMX_SWVDEC_EVENT_INFO m_queue[OMX_SWVDEC_QUEUE_ELEMENTS];
-                                          ///< event queue
-    unsigned int          m_count_total;  ///< count of total elements
-    unsigned int          m_count_filled; ///< count of filled elements
-    unsigned int          m_index_write;  ///< queue index for writing
-    unsigned int          m_index_read;   ///< queue index for reading
-    pthread_mutex_t       m_mutex;        ///< mutex for queue access
-};
-
-#define OMX_SWVDEC_TS_LIST_ELEMENTS 100
-                                       ///< number of elements in timestamp list
-
-/// OMX SwVdec timestamp element structure.
-typedef struct {
-    bool      filled;    ///< element filled?
-    long long timestamp; ///< timestamp
-} OMX_SWVDEC_TS_ELEMENT;
-
-/// OMX SwVdec timestamp list class
-class omx_swvdec_ts_list
-{
-public:
-    omx_swvdec_ts_list();
-    ~omx_swvdec_ts_list();
-
-    void reset();
-    bool push(long long timestamp);
-    bool pop(long long *p_timestamp);
-
-private:
-    OMX_SWVDEC_TS_ELEMENT m_list[OMX_SWVDEC_TS_LIST_ELEMENTS];
-                                          ///< list of timestamp elements
-    int                   m_count_filled; ///< count of filled elements
-    pthread_mutex_t       m_mutex;        ///< mutex for list access
+    std::queue<OMX_SWVDEC_EVENT_INFO> m_queue; ///< queue
+    pthread_mutex_t                   m_mutex; ///< mutex
 };
 
 #define DIAG_FILE_PATH "/data/misc/media" ///< file path
