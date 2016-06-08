@@ -54,7 +54,7 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2015-11-09T18:33:31+0530"
+#define OMX_SWVDEC_VERSION_DATE "2015-11-23T10:35:08+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
@@ -62,15 +62,6 @@ using namespace android;
 
 // @todo Make this macro default and store in a variable?
 #define OMX_SWVDEC_IP_BUFFER_COUNT 5 ///< OMX SwVdec input buffer count
-
-/// frame rate structure
-typedef struct {
-    unsigned int fps_numerator;   ///< fps numerator
-    unsigned int fps_denominator; ///< fps denominator
-} FRAME_RATE;
-
-#define DEFAULT_FPS_NUMERATOR   30 ///< default fps numerator
-#define DEFAULT_FPS_DENOMINATOR  1 ///< default fps denominator
 
 /// frame dimensions structure
 typedef struct {
@@ -132,11 +123,6 @@ typedef struct {
 
 #define DEFAULT_FRAME_WIDTH  1920 ///< default frame width
 #define DEFAULT_FRAME_HEIGHT 1088 ///< default frame height
-
-#define DEFAULT_ALIGNMENT_STRIDE      128 ///< default stride alignment
-#define DEFAULT_ALIGNMENT_SCANLINES_Y  32 ///< default  Y scanlines alignment
-#define DEFAULT_ALIGNMENT_SCANLINES_UV 16 ///< default UV scanlines alignment
-#define DEFAULT_ALIGNMENT_SIZE       4096 ///< default size alignment
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y)) ///< maximum
 #define MIN(x, y) (((x) < (y)) ? (x) : (y)) ///< minimum
@@ -276,7 +262,6 @@ private:
     OMX_VIDEO_CODINGTYPE m_omx_video_codingtype; ///< OMX video coding type
     OMX_COLOR_FORMATTYPE m_omx_color_formattype; ///< OMX color format type
 
-    FRAME_RATE       m_frame_rate;       ///< frame rate
     FRAME_DIMENSIONS m_frame_dimensions; ///< frame dimensions
     FRAME_ATTRIBUTES m_frame_attributes; ///< frame attributes
 
@@ -315,10 +300,7 @@ private:
 
     OMX_ERRORTYPE set_frame_dimensions(unsigned int width,
                                        unsigned int height);
-    OMX_ERRORTYPE set_frame_attributes(unsigned int alignment_stride,
-                                       unsigned int alignment_scanlines_y,
-                                       unsigned int alignment_scanlines_uv,
-                                       unsigned int alignment_size);
+    OMX_ERRORTYPE set_frame_attributes(OMX_COLOR_FORMATTYPE color_format);
 
     OMX_ERRORTYPE get_video_port_format(
         OMX_VIDEO_PARAM_PORTFORMATTYPE *p_port_format);

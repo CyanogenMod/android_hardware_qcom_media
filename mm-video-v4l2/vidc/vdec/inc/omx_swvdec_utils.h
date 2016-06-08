@@ -148,8 +148,7 @@ private:
     pthread_mutex_t       m_mutex;        ///< mutex for list access
 };
 
-#define DIAG_FILENAME_IP "/data/misc/media/input.bin"  ///<  input filename
-#define DIAG_FILENAME_OP "/data/misc/media/output.yuv" ///< output filename
+#define DIAG_FILE_PATH "/data/misc/media" ///< file path
 
 /// OMX SwVdec diagnostics class
 class omx_swvdec_diag
@@ -166,7 +165,7 @@ public:
                  unsigned int   scanlines);
 
 private:
-    unsigned int m_dump_ip; ///< dump input bitstream
+    unsigned int m_dump_ip; ///< dump  input bitstream
     unsigned int m_dump_op; ///< dump output YUV
 
     char *m_filename_ip; ///<  input filename string
