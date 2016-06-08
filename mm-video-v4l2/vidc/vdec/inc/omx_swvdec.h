@@ -56,7 +56,7 @@
 using namespace android;
 
 /// OMX SwVdec version date
-#define OMX_SWVDEC_VERSION_DATE "2016-03-11T10:45:01+0530"
+#define OMX_SWVDEC_VERSION_DATE "2016-03-24T23:08:16+0530"
 
 #define OMX_SPEC_VERSION 0x00000101 ///< OMX specification version
 
@@ -379,6 +379,7 @@ private:
                               OMX_U32                     size,
                               OMX_U32                     alignment);
     void ion_memory_free(struct vdec_ion *p_ion_buf_info);
+    void ion_flush_op(unsigned int index);
 
     // component callback functions
 
