@@ -1782,8 +1782,6 @@ typedef enum QOMX_VPP_HQV_FRC_MODE {
 
 
 typedef struct QOMX_VPP_HQVCTRL_CADE {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
     QOMX_VPP_HQV_MODE mode;
     OMX_U32 level;
     OMX_S32 contrast;
@@ -1795,15 +1793,11 @@ typedef struct QOMX_VPP_HQVCTRL_DI {
 } QOMX_VPP_HQVCTRL_DI;
 
 typedef struct QOMX_VPP_HQVCTRL_CNR {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
     QOMX_VPP_HQV_MODE mode;
     OMX_U32 level;
 } QOMX_VPP_HQVCTRL_CNR;
 
 typedef struct QOMX_VPP_HQVCTRL_AIE {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
     QOMX_VPP_HQV_MODE mode;
     QOMX_VPP_HQV_HUE_MODE hue_mode;
     OMX_U32 cade_level;
@@ -1811,16 +1805,12 @@ typedef struct QOMX_VPP_HQVCTRL_AIE {
 } QOMX_VPP_HQVCTRL_AIE;
 
 typedef struct QOMX_VPP_HQVCTRL_CUSTOM {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
     OMX_U32 id;
     OMX_U32 len;
     OMX_U8 data[QOMX_VPP_HQV_CUSTOMPAYLOAD_SZ];
 } QOMX_VPP_HQVCTRL_CUSTOM;
 
 typedef struct QOMX_VPP_HQVCTRL_GLOBAL_DEMO {
-    OMX_U32 nSize;
-    OMX_VERSIONTYPE nVersion;
     OMX_U32 process_percent;
     QOMX_VPP_SPLIT_DIRECTION process_direction;
 } QOMX_VPP_HQVCTRL_GLOBAL_DEMO;
