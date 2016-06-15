@@ -31,7 +31,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef _ANDROID_
 #include <cstdio>
-#include <pthread.h>
 
 enum {
    PRIO_ERROR=0x1,
@@ -65,17 +64,15 @@ extern int debug_level;
 #define DEBUG_PRINT_HIGH printf
 #endif
 
-class auto_lock {
-    public:
-        auto_lock(pthread_mutex_t &lock)
-            : mLock(lock) {
-                pthread_mutex_lock(&mLock);
-            }
-        ~auto_lock() {
-            pthread_mutex_unlock(&mLock);
-        }
-    private:
-        pthread_mutex_t &mLock;
-};
+#define VALIDATE_OMX_PARAM_DATA(ptr, paramType)                                \
+    {                                                                          \
+        if (ptr == NULL) { return OMX_ErrorBadParameter; }                     \
+        paramType *p = reinterpret_cast<paramType *>(ptr);                     \
+        if (p->nSize < sizeof(paramType)) {                                    \
+            ALOGE("Insufficient object size(%u) v/s expected(%zu) for type %s",\
+                    (unsigned int)p->nSize, sizeof(paramType), #paramType);    \
+            return OMX_ErrorBadParameter;                                      \
+        }                                                                      \
+    }                                                                          \
 
 #endif
