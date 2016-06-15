@@ -3409,6 +3409,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 #endif
 
         case OMX_QcomIndexParamVideoDownScalar: {
+                VALIDATE_OMX_PARAM_DATA(paramData, QOMX_INDEXDOWNSCALAR);
                 DEBUG_PRINT_LOW("get_parameter: OMX_QcomIndexParamVideoDownScalar");
                 QOMX_INDEXDOWNSCALAR* pParam = (QOMX_INDEXDOWNSCALAR*)paramData;
                 if (pParam->nPortIndex == OMX_CORE_OUTPUT_PORT_INDEX) {
