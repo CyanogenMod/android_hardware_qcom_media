@@ -617,6 +617,22 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.qti.audio.decoder.dsd",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL,
+      NULL,
+      NULL,
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxDsdDec.so",
+    {
+      "audio_decoder.dsd"
+    }
+  },
+  {
     "OMX.qcom.audio.encoder.aac",
     NULL, // Create instance function
     // Unique instance handle
