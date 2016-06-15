@@ -65,6 +65,17 @@ extern int debug_level;
 #define DEBUG_PRINT_HIGH printf
 #endif
 
+#define VALIDATE_OMX_PARAM_DATA(ptr, paramType)                                \
+    {                                                                          \
+        if (ptr == NULL) { return OMX_ErrorBadParameter; }                     \
+        paramType *p = reinterpret_cast<paramType *>(ptr);                     \
+        if (p->nSize < sizeof(paramType)) {                                    \
+            ALOGE("Insufficient object size(%u) v/s expected(%zu) for type %s",\
+                    (unsigned int)p->nSize, sizeof(paramType), #paramType);    \
+            return OMX_ErrorBadParameter;                                      \
+        }                                                                      \
+    } 
+
 class auto_lock {
     public:
         auto_lock(pthread_mutex_t &lock)
