@@ -2069,19 +2069,6 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_sSar, sizeof(m_sSar));
                 break;
             }
-        case OMX_IndexParamAndroidVideoTemporalLayers:
-            {
-                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE);
-                OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE *pLayerInfo =
-                        reinterpret_cast<OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE*>(paramData);
-                if (!dev_get_temporal_layer_caps(&m_sParamTemporalLayers.nTemporalLayerCountMax,
-                        &m_sParamTemporalLayers.nTemporalBLayerCountMax)) {
-                    DEBUG_PRINT_ERROR("Failed to get temporal layer capabilities");
-                    eRet = OMX_ErrorHardware;
-                }
-                memcpy(pLayerInfo, &m_sParamTemporalLayers, sizeof(m_sParamTemporalLayers));
-                break;
-            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -2205,13 +2192,13 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
-       case OMX_QcomIndexConfigNumHierPLayers:
+       case OMX_QcomIndexConfigMaxHierPLayers:
            {
-                VALIDATE_OMX_PARAM_DATA(configData, QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS);
-               QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS* pParam =
-                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS*>(configData);
-               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigNumHierPLayers");
-               memcpy(pParam, &m_sHPlayers, sizeof(m_sHPlayers));
+                VALIDATE_OMX_PARAM_DATA(configData, QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS);
+               QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS* pParam =
+                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS*>(configData);
+               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigMaxHierPLayers");
+               memcpy(pParam, &m_sMaxHPlayers, sizeof(m_sMaxHPlayers));
                break;
            }
        case OMX_QcomIndexConfigQp:
@@ -2241,16 +2228,6 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                memcpy(pParam, &m_sConfigIntraRefresh, sizeof(m_sConfigIntraRefresh));
                break;
            }
-        case OMX_IndexConfigAndroidVideoTemporalLayers:
-            {
-                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE);
-                OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE *layerConfig =
-                        (OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE *)configData;
-                DEBUG_PRINT_LOW("get_config: OMX_IndexConfigAndroidVideoTemporalLayers");
-                memcpy(configData, &m_sConfigTemporalLayers, sizeof(m_sConfigTemporalLayers));
-                break;
-            }
-
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -2327,7 +2304,7 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     }
 
     if (extn_equals(paramName, "OMX.QCOM.index.config.video.hierplayers")) {
-        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigNumHierPLayers;
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers;
         return OMX_ErrorNone;
     }
 
