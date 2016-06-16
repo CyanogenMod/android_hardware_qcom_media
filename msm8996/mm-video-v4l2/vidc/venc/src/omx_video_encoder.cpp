@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2015, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -543,9 +543,6 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     OMX_INIT_STRUCT(&m_sMBIStatistics, OMX_QOMX_VIDEO_MBI_STATISTICS);
     m_sMBIStatistics.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sMBIStatistics.eMBIStatisticsType = QOMX_MBI_STATISTICS_MODE_DEFAULT;
-
-    OMX_INIT_STRUCT(&m_sParamTemporalLayers, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE);
-    OMX_INIT_STRUCT(&m_sConfigTemporalLayers, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE);
 
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
@@ -1616,25 +1613,6 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 break;
             }
-        case OMX_IndexParamAndroidVideoTemporalLayers:
-            {
-                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE);
-                if (!handle->venc_set_param(paramData,
-                        (OMX_INDEXTYPE)OMX_IndexParamAndroidVideoTemporalLayers)) {
-                    DEBUG_PRINT_ERROR("Failed to configure temporal layers");
-                    return OMX_ErrorUnsupportedSetting;
-                }
-                // save the actual configuration applied
-                memcpy(&m_sParamTemporalLayers, paramData, sizeof(m_sParamTemporalLayers));
-                // keep the config data in sync
-                m_sConfigTemporalLayers.nTemporalBLayerCountActual = m_sParamTemporalLayers.nTemporalBLayerCountActual;
-                m_sConfigTemporalLayers.nTemporalPLayerCountActual = m_sParamTemporalLayers.nTemporalPLayerCountActual;
-                m_sConfigTemporalLayers.bTemporalLayerBitrateRatioSpecified = m_sParamTemporalLayers.bTemporalLayerBitrateRatioSpecified;
-                memcpy(&m_sConfigTemporalLayers.nTemporalLayerBitrateRatio[0],
-                        &m_sParamTemporalLayers.nTemporalLayerBitrateRatio[0],
-                        OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS * sizeof(OMX_U32));
-                break;
-            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -1993,16 +1971,16 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
-        case OMX_QcomIndexConfigNumHierPLayers:
+        case OMX_QcomIndexConfigMaxHierPLayers:
         {
-            VALIDATE_OMX_PARAM_DATA(configData, QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS);
-            QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS* pParam =
-                (QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS*)configData;
-            if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigNumHierPLayers)) {
-                DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigNumHierPLayers failed");
+            VALIDATE_OMX_PARAM_DATA(configData, QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS);
+            QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS* pParam =
+                (QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS*)configData;
+            if (!handle->venc_set_config(pParam, (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers)) {
+                DEBUG_PRINT_ERROR("ERROR: Setting OMX_QcomIndexConfigMaxHierPLayers failed");
                 return OMX_ErrorUnsupportedSetting;
             }
-            memcpy(&m_sHPlayers, pParam, sizeof(m_sHPlayers));
+            memcpy(&m_sMaxHPlayers, pParam, sizeof(m_sMaxHPlayers));
             break;
         }
         case OMX_QcomIndexConfigBaseLayerId:
@@ -2076,12 +2054,6 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                break;
            }
-        case OMX_IndexConfigAndroidVideoTemporalLayers:
-            {
-                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE);
-                DEBUG_PRINT_ERROR("Setting/modifying Temporal layers at run-time is not supported !");
-                return OMX_ErrorUnsupportedSetting;
-            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             break;
@@ -2296,11 +2268,6 @@ bool omx_venc::dev_get_batch_size(OMX_U32 *size)
     DEBUG_PRINT_ERROR("Get batch size is not supported");
     return false;
 #endif
-}
-
-bool omx_venc::dev_get_temporal_layer_caps(OMX_U32 *nMaxLayers,
-        OMX_U32 *nMaxBLayers) {
-    return handle->venc_get_temporal_layer_caps(nMaxLayers, nMaxBLayers);
 }
 
 bool omx_venc::dev_loaded_start()
