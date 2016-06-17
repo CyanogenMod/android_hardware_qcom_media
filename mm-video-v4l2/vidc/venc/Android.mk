@@ -95,6 +95,10 @@ LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_video_encoder.cpp
 LOCAL_SRC_FILES   += src/video_encoder_device_v4l2.cpp
 
+ifneq ($(QCPATH),)
+LOCAL_CFLAGS += -D_VQZIP_
+endif
+
 include $(BUILD_SHARED_LIBRARY)
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_MPEG4)),true)

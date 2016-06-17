@@ -34,7 +34,9 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "OMX_VideoExt.h"
 #include "OMX_QCOMExtns.h"
 #include "qc_omx_component.h"
+#ifdef _VQZIP_
 #include "VQZip.h"
+#endif
 #include "omx_video_common.h"
 #include "omx_video_base.h"
 #include "omx_video_encoder.h"
@@ -353,6 +355,7 @@ class venc_dev
         bool venc_set_bitrate_type(OMX_U32 type);
         int venc_roiqp_log_buffers(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
 
+#ifdef _VQZIP_
         class venc_dev_vqzip
         {
             public:
@@ -375,6 +378,7 @@ class venc_dev
                 vqzip_compute_stats_t mVQZIPComputeStats;
         };
         venc_dev_vqzip vqzip;
+#endif
         struct venc_debug_cap m_debug;
         OMX_U32 m_nDriver_fd;
         int m_poll_efd;
