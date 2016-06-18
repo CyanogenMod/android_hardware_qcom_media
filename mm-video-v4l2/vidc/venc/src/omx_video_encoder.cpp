@@ -295,6 +295,12 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sConfigFrameRotation.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sConfigFrameRotation.nRotation = 0;
 
+    OMX_INIT_STRUCT(&m_sConfigAVCIDRPeriod, OMX_VIDEO_CONFIG_AVCINTRAPERIOD);
+    m_sConfigAVCIDRPeriod.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+
+    OMX_INIT_STRUCT(&m_sPrependSPSPPS, PrependSPSPPSToIDRFramesParams);
+    m_sPrependSPSPPS.bEnable = OMX_FALSE;
+
     OMX_INIT_STRUCT(&m_sSessionQuantization, OMX_VIDEO_PARAM_QUANTIZATIONTYPE);
     m_sSessionQuantization.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sSessionQuantization.nQpI = 9;
