@@ -155,6 +155,7 @@ typedef struct OMX_VIDEO_PARAM_HEVCTYPE {
     OMX_U32 nPortIndex;
     OMX_VIDEO_HEVCPROFILETYPE eProfile;
     OMX_VIDEO_HEVCLEVELTYPE eLevel;
+    OMX_U32 nKeyFrameInterval;
 } OMX_VIDEO_PARAM_HEVCTYPE;
 
 /**
