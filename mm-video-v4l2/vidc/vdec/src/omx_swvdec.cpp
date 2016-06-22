@@ -767,7 +767,8 @@ OMX_ERRORTYPE omx_swvdec::get_parameter(OMX_HANDLETYPE cmp_handle,
 
         default:
         {
-            OMX_SWVDEC_LOG_ERROR("param index '0x%08x' invalid");
+            OMX_SWVDEC_LOG_ERROR("param index '0x%08x' invalid",
+                                 (OMX_QCOM_EXTN_INDEXTYPE) param_index);
 
             retval = OMX_ErrorBadParameter;
             break;
@@ -1101,7 +1102,8 @@ OMX_ERRORTYPE omx_swvdec::set_parameter(OMX_HANDLETYPE cmp_handle,
             default:
             {
                 OMX_SWVDEC_LOG_ERROR(
-                    "OMX_QcomIndexParamVideoDecoderPictureOrder, %d; invalid");
+                    "OMX_QcomIndexParamVideoDecoderPictureOrder, %d; invalid",
+                    p_picture_order->eOutputPictureOrder);
 
                 retval = OMX_ErrorBadParameter;
                 break;
@@ -1225,7 +1227,8 @@ OMX_ERRORTYPE omx_swvdec::set_parameter(OMX_HANDLETYPE cmp_handle,
 
         default:
         {
-            OMX_SWVDEC_LOG_ERROR("param index '0x%08x' invalid");
+            OMX_SWVDEC_LOG_ERROR("param index '0x%08x' invalid",
+                                 (OMX_QCOM_EXTN_INDEXTYPE) param_index);
 
             retval = OMX_ErrorBadParameter;
             break;
@@ -3267,7 +3270,8 @@ OMX_ERRORTYPE omx_swvdec::set_port_definition_qcom(
         default:
         {
             OMX_SWVDEC_LOG_ERROR(
-                "frame packing format '%d' unsupported");
+                "frame packing format '%d' unsupported",
+                p_port_def->nFramePackingFormat);
 
             retval = OMX_ErrorUnsupportedSetting;
             break;
@@ -3827,7 +3831,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_ip_info_array()
     if (m_buffer_array_ip == NULL)
     {
         OMX_SWVDEC_LOG_ERROR("failed to allocate buffer info array; "
-                             "%d element%s, %d bytes requested",
+                             "%d element%s, %zu bytes requested",
                              m_port_ip.def.nBufferCountActual,
                              (m_port_ip.def.nBufferCountActual > 1) ? "s" : "",
                              sizeof(OMX_SWVDEC_BUFFER_INFO) *
@@ -3890,7 +3894,7 @@ OMX_ERRORTYPE omx_swvdec::buffer_allocate_op_info_array()
     if (m_buffer_array_op == NULL)
     {
         OMX_SWVDEC_LOG_ERROR("failed to allocate buffer info array; "
-                             "%d element%s, %d bytes requested",
+                             "%d element%s, %zu bytes requested",
                              m_port_op.def.nBufferCountActual,
                              (m_port_op.def.nBufferCountActual > 1) ? "s" : "",
                              sizeof(OMX_SWVDEC_BUFFER_INFO) *
@@ -4323,7 +4327,7 @@ OMX_ERRORTYPE omx_swvdec::meta_buffer_array_allocate()
     if (m_meta_buffer_array == NULL)
     {
         OMX_SWVDEC_LOG_ERROR("failed to allocate meta_buffer info array; "
-                             "%d element%s, %d bytes requested",
+                             "%d element%s, %zu bytes requested",
                              m_port_op.def.nBufferCountActual,
                              (m_port_op.def.nBufferCountActual > 1) ? "s" : "",
                              sizeof(OMX_SWVDEC_META_BUFFER_INFO) *
@@ -4614,7 +4618,7 @@ int omx_swvdec::ion_memory_alloc_map(struct ion_allocation_data *p_alloc_data,
     p_alloc_data->heap_id_mask = ION_HEAP(ION_IOMMU_HEAP_ID);
     p_alloc_data->flags        = 0;
 
-    OMX_SWVDEC_LOG_LOW("heap_id_mask 0x%08x, len %d, align %d",
+    OMX_SWVDEC_LOG_LOW("heap_id_mask 0x%08x, len %zu, align %zu",
                        p_alloc_data->heap_id_mask,
                        p_alloc_data->len,
                        p_alloc_data->align);
@@ -5674,7 +5678,8 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_cmd_port_disable(
     }
     else
     {
-        OMX_SWVDEC_LOG_ERROR("port index '%d' invalid");
+        OMX_SWVDEC_LOG_ERROR("port index '%d' invalid",
+                             port_index);
 
         retval = OMX_ErrorBadPortIndex;
     }
@@ -5785,7 +5790,8 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_cmd_port_enable(
     }
     else
     {
-        OMX_SWVDEC_LOG_ERROR("port index '%d' invalid");
+        OMX_SWVDEC_LOG_ERROR("port index '%d' invalid",
+                             port_index);
 
         retval = OMX_ErrorBadPortIndex;
     }
@@ -6125,7 +6131,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_fbd(
         {
             async_post_event(OMX_SWVDEC_EVENT_EOS, 0, 0);
 
-            OMX_SWVDEC_LOG_LOW("flushing %d elements in timestamp queue",
+            OMX_SWVDEC_LOG_LOW("flushing %zu elements in timestamp queue",
                                m_queue_timestamp.size());
 
             while (m_queue_timestamp.empty() == false)
@@ -6328,7 +6334,7 @@ OMX_ERRORTYPE omx_swvdec::async_process_event_flush_port_op()
 
     if (m_port_reconfig_inprogress == false)
     {
-        OMX_SWVDEC_LOG_LOW("flushing %d elements in timestamp queue",
+        OMX_SWVDEC_LOG_LOW("flushing %zu elements in timestamp queue",
                            m_queue_timestamp.size());
 
         while (m_queue_timestamp.empty() == false)
