@@ -977,7 +977,7 @@ OMX_ERRORTYPE omx_vdec::decide_dpb_buffer_mode(bool force_split_mode)
     if (cpu_access) {
         if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_8) {
             if ((m_force_compressed_for_dpb || (m_progressive && (eCompressionFormat != OMX_VIDEO_CodingVP9))) &&
-                !force_split_mode) {
+                !force_split_mode && !m_disable_split_mode && !drv_ctx.idr_only_decoding) {
             /* Disabled split mode for VP9. In split mode the DPB buffers are part of the internal
              * scratch buffers and the driver does not does the reference buffer management for
              * scratch buffers. In case of VP9 with spatial scalability, when a sequence changed
@@ -2481,6 +2481,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
         DEBUG_PRINT_LOW("Downscaler configured WxH %dx%d\n",
             m_downscalar_width, m_downscalar_height);
+
+        property_get("vidc.disable.split.mode",property_value,"0");
+        m_disable_split_mode = atoi(property_value);
+        DEBUG_PRINT_HIGH("split mode is %s", m_disable_split_mode ? "disabled" : "enabled");
 #endif
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
