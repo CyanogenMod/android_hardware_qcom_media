@@ -10151,6 +10151,7 @@ OMX_BUFFERHEADERTYPE* omx_vdec::get_omx_output_buffer_header(int index)
 void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 {
     OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL, *p_client_extra = NULL;
+    OMX_U8 *pBuffer = NULL;
     OMX_U32 num_conceal_MB = 0;
     OMX_TICKS time_stamp = 0;
     OMX_U32 frame_rate = 0;
@@ -10175,9 +10176,6 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         return;
     }
 
-    OMX_U8 *pBuffer = (OMX_U8 *)(drv_ctx.ptr_outputbuffer[buf_index].bufferaddr) +
-        p_buf_hdr->nOffset;
-
     if (!drv_ctx.extradata_info.uaddr) {
         DEBUG_PRINT_HIGH("NULL drv_ctx.extradata_info.uaddr");
         return;
@@ -10187,12 +10185,19 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         p_extra = NULL;
         return;
     }
-    if (!secure_mode)
+    if (!secure_mode) {
+        pBuffer = (OMX_U8*)mmap(0, drv_ctx.ptr_outputbuffer[buf_index].buffer_len,
+                    PROT_READ|PROT_WRITE, MAP_SHARED, drv_ctx.ptr_outputbuffer[buf_index].pmem_fd, 0);
+        if (pBuffer == MAP_FAILED) {
+            DEBUG_PRINT_ERROR("handle_extradata output buffer mmap failed - errno: %d", errno);
+            return;
+        }
         p_extra = (OMX_OTHER_EXTRADATATYPE *)
             ((unsigned long)(pBuffer + p_buf_hdr->nOffset + p_buf_hdr->nFilledLen + 3)&(~3));
-    else
+    } else
         p_extra = m_other_extradata;
 
+    AutoUnmap autounmap(pBuffer, drv_ctx.ptr_outputbuffer[buf_index].buffer_len);
     if (m_client_extradata_info.getBase() &&
         m_client_extradata_info.getSize() >= drv_ctx.extradata_info.buffer_size) {
         p_client_extra = (OMX_OTHER_EXTRADATATYPE *) (m_client_extradata_info.getBase() +
