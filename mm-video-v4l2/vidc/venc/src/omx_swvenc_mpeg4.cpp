@@ -1805,11 +1805,11 @@ bool omx_venc::dev_empty_buf
 
     if (meta_mode_enable)
     {
-       encoder_media_buffer_type *meta_buf = NULL;
-       meta_buf = (encoder_media_buffer_type *)bufhdr->pBuffer;
+       LEGACY_CAM_METADATA_TYPE *meta_buf = NULL;
+       meta_buf = (LEGACY_CAM_METADATA_TYPE *)bufhdr->pBuffer;
        if (meta_buf)
        {
-          if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource)
+          if (meta_buf->buffer_type == LEGACY_CAM_SOURCE)
           {
               offset = meta_buf->meta_handle->data[1];
               size = meta_buf->meta_handle->data[2];
@@ -1826,7 +1826,8 @@ bool omx_venc::dev_empty_buf
           }
           else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource)
           {
-              private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
+              VideoGrallocMetadata *meta_buf = (VideoGrallocMetadata *)bufhdr->pBuffer;
+              private_handle_t *handle = (private_handle_t *)meta_buf->pHandle;
               size = handle->size;
           }
        }
@@ -2440,18 +2441,19 @@ SWVENC_STATUS omx_venc::swvenc_empty_buffer_done
 #ifdef _ANDROID_ICS_
         if (meta_mode_enable)
         {
-           encoder_media_buffer_type *meta_buf = NULL;
+           LEGACY_CAM_METADATA_TYPE *meta_buf = NULL;
            unsigned int size = 0;
-           meta_buf = (encoder_media_buffer_type *)omxhdr->pBuffer;
+           meta_buf = (LEGACY_CAM_METADATA_TYPE *)omxhdr->pBuffer;
            if (meta_buf)
            {
-              if (meta_buf->buffer_type == kMetadataBufferTypeCameraSource)
+              if (meta_buf->buffer_type == LEGACY_CAM_SOURCE)
               {
                   size = meta_buf->meta_handle->data[2];
               }
               else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource)
               {
-                  private_handle_t *handle = (private_handle_t *)meta_buf->meta_handle;
+                  VideoGrallocMetadata *meta_buf = (VideoGrallocMetadata *)omxhdr->pBuffer;
+                  private_handle_t *handle = (private_handle_t *)meta_buf->pHandle;
                   size = handle->size;
               }
            }
