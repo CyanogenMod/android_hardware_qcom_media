@@ -623,6 +623,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     rst_prev_ts(true),
     frm_int(0),
     m_fps_received(0),
+    m_fps_prev(0),
     m_drc_enable(0),
     in_reconfig(false),
     m_display_id(NULL),
@@ -8097,14 +8098,14 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         }
 
         // add current framerate to gralloc meta data
-        if (m_enable_android_native_buffers && m_out_mem_ptr) {
+        if (buffer->nFilledLen > 0 && m_enable_android_native_buffers && m_out_mem_ptr) {
             //If valid fps was received, directly send it to display for the 1st fbd.
             //Otherwise, calculate fps using fbd timestamps,
             //  when received 2 fbds, send a coarse fps,
             //  when received 30 fbds, update fps again as it should be
             //  more accurate than the one when only 2 fbds received.
             //For other frames, set value 0 to inform that refresh rate has no update
-            float refresh_rate = 0;
+            float refresh_rate = m_fps_prev;
             if (m_fps_received) {
                 if (1 == proc_frms) {
                     refresh_rate = m_fps_received / (float)(1<<16);
@@ -8117,9 +8118,11 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             if (refresh_rate > 60) {
                 refresh_rate = 60;
             }
+            DEBUG_PRINT_LOW("frc set refresh_rate %f, frame %d", refresh_rate, proc_frms);
             OMX_U32 buf_index = buffer - m_out_mem_ptr;
             setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
                          UPDATE_REFRESH_RATE, (void*)&refresh_rate);
+            m_fps_prev = refresh_rate;
         }
 
         if (buffer->nFilledLen && m_enable_android_native_buffers && m_out_mem_ptr) {
