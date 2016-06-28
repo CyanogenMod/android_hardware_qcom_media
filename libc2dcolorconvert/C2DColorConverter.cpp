@@ -316,6 +316,7 @@ void* C2DColorConverter::getDummySurfaceDef(ColorConvertFormat format, size_t wi
         surfaceDef->plane1 = (void *)0xaaaaaaaa;
         surfaceDef->phys1 = (void *)0xaaaaaaaa;
         surfaceDef->stride1 = calcStride(format, width);
+        surfaceDef->stride2 = calcStride(format, width);
         surfaceDef->phys2 = NULL;
         surfaceDef->plane2 = NULL;
 
