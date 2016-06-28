@@ -625,6 +625,7 @@ class omx_video: public qc_omx_component
         OMX_CONFIG_INTRAREFRESHVOPTYPE m_sConfigIntraRefreshVOP;
         OMX_VIDEO_PARAM_QUANTIZATIONTYPE m_sSessionQuantization;
         OMX_QCOM_VIDEO_PARAM_QPRANGETYPE m_sSessionQPRange;
+        OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE m_sSessionIPBQPRange;
         OMX_VIDEO_PARAM_AVCSLICEFMO m_sAVCSliceFMO;
         QOMX_VIDEO_INTRAPERIODTYPE m_sIntraperiod;
         OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE m_sErrorCorrection;

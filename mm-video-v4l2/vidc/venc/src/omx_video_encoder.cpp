@@ -308,13 +308,21 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sSessionQuantization.nQpB = 2;
 
     OMX_INIT_STRUCT(&m_sSessionQPRange, OMX_QCOM_VIDEO_PARAM_QPRANGETYPE);
+    OMX_INIT_STRUCT(&m_sSessionIPBQPRange, OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE);
     m_sSessionQPRange.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sSessionIPBQPRange.nPortIndex = (OMX_U32)PORT_INDEX_OUT;
     m_sSessionQPRange.minQP = 2;
-    if (codec_type == OMX_VIDEO_CodingAVC)
+    if (codec_type == OMX_VIDEO_CodingAVC) {
         m_sSessionQPRange.maxQP = 51;
-    else
+    } else {
         m_sSessionQPRange.maxQP = 31;
-
+    }
+    m_sSessionIPBQPRange.minIQP =
+                m_sSessionIPBQPRange.minPQP =
+                m_sSessionIPBQPRange.minBQP = m_sSessionQPRange.minQP;
+    m_sSessionIPBQPRange.maxIQP =
+                m_sSessionIPBQPRange.maxPQP =
+                m_sSessionIPBQPRange.maxBQP = m_sSessionQPRange.maxQP;
     OMX_INIT_STRUCT(&m_sAVCSliceFMO, OMX_VIDEO_PARAM_AVCSLICEFMO);
     m_sAVCSliceFMO.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
     m_sAVCSliceFMO.eSliceMode = OMX_VIDEO_SLICEMODE_AVCDefault;
@@ -1155,6 +1163,28 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     m_sSessionQPRange.maxQP= qp_range->maxQP;
                 } else {
                     DEBUG_PRINT_ERROR("ERROR: Unsupported port Index for QP range setting");
+                    eRet = OMX_ErrorBadPortIndex;
+                }
+                break;
+            }
+
+        case OMX_QcomIndexParamVideoIPBQPRange:
+            {
+                DEBUG_PRINT_LOW("set_parameter: OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE");
+                OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE *qp_range = (OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE*) paramData;
+                if (qp_range->nPortIndex == PORT_INDEX_OUT) {
+                    if (handle->venc_set_param(paramData,
+                                (OMX_INDEXTYPE)OMX_QcomIndexParamVideoIPBQPRange) != true) {
+                        return OMX_ErrorUnsupportedSetting;
+                    }
+                    m_sSessionIPBQPRange.minIQP = qp_range->minIQP;
+                    m_sSessionIPBQPRange.maxIQP = qp_range->maxIQP;
+                    m_sSessionIPBQPRange.minPQP = qp_range->minPQP;
+                    m_sSessionIPBQPRange.maxPQP = qp_range->maxPQP;
+                    m_sSessionIPBQPRange.minBQP = qp_range->minBQP;
+                    m_sSessionIPBQPRange.maxBQP = qp_range->maxBQP;
+                } else {
+                    DEBUG_PRINT_ERROR("Unsupported port Index for IPB QP range setting");
                     eRet = OMX_ErrorBadPortIndex;
                 }
                 break;

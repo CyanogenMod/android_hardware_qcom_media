@@ -1800,6 +1800,14 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 break;
             }
 
+        case OMX_QcomIndexParamVideoIPBQPRange:
+            {
+                OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE *qp_range = (OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE*) paramData;
+                DEBUG_PRINT_LOW("get_parameter: OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE");
+                memcpy(qp_range, &m_sSessionIPBQPRange, sizeof(m_sSessionIPBQPRange));
+                break;
+            }
+
         case OMX_IndexParamVideoErrorCorrection:
             {
                 VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE);
