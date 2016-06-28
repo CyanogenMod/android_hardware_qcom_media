@@ -39,6 +39,9 @@ endif
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm8996)
 libmm-venc-def += -D_UBWC_
+ifneq ($(QCPATH),)
+libmm-venc-def += -D_VQZIP_
+endif
 endif
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_FLAG_MSM8226)),true)
