@@ -1799,6 +1799,8 @@ bool omx_venc::dev_empty_buf
     SWVENC_IPBUFFER ipbuffer;
     OMX_BUFFERHEADERTYPE *bufhdr = (OMX_BUFFERHEADERTYPE *)buffer;
     unsigned int size = 0, filled_length, offset = 0;
+    SWVENC_COLOR_FORMAT color_format;
+    SWVENC_PROPERTY prop;
 
     (void)pmem_data_buf;
     (void)index;
@@ -1829,9 +1831,44 @@ bool omx_venc::dev_empty_buf
               VideoGrallocMetadata *meta_buf = (VideoGrallocMetadata *)bufhdr->pBuffer;
               private_handle_t *handle = (private_handle_t *)meta_buf->pHandle;
               size = handle->size;
+              if(!format_set)
+              {
+                format_set = true;
+                DEBUG_PRINT_LOW("color format = 0x%x",handle->format);
+                if (((OMX_COLOR_FORMATTYPE)handle->format) != m_sInPortFormat.eColorFormat)
+                {
+                    if(handle->format == HAL_PIXEL_FORMAT_NV12_ENCODEABLE)
+                    {
+                        m_sInPortFormat.eColorFormat = (OMX_COLOR_FORMATTYPE)
+                            QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
+                        color_format = SWVENC_COLOR_FORMAT_NV12;
+                        m_sInPortDef.format.video.eColorFormat = m_sInPortFormat.eColorFormat;
+                        prop.id = SWVENC_PROPERTY_ID_COLOR_FORMAT;
+                        prop.info.color_format = color_format;
+                        Ret = swvenc_setproperty(m_hSwVenc, &prop);
+                        if (Ret != SWVENC_S_SUCCESS)
+                        {
+                            DEBUG_PRINT_ERROR("%s, swvenc_setproperty failed (%d)",
+                                __FUNCTION__, Ret);
+                            RETURN(OMX_ErrorUnsupportedSetting);
+                        }
+                    }
+                    else
+                    {
+                        DEBUG_PRINT_ERROR("%s: OMX_IndexParamVideoPortFormat 0x%x invalid",
+                                          __FUNCTION__,handle->format);
+                        RETURN(OMX_ErrorBadParameter);
+                    }
+                }
+              }
           }
        }
        ipbuffer.p_buffer = (unsigned char *)mmap(NULL, size, PROT_READ|PROT_WRITE,MAP_SHARED, fd, offset);
+       if (ipbuffer.p_buffer == MAP_FAILED)
+        {
+            DEBUG_PRINT_ERROR("mmap() failed for fd %d of size %d",fd,size);
+            RETURN(OMX_ErrorBadParameter);
+        }
        ipbuffer.size = size;
        ipbuffer.filled_length = size;
     }
