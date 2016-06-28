@@ -479,6 +479,7 @@ class venc_dev
         bool venc_set_lowlatency_mode(OMX_BOOL enable);
         bool venc_set_low_latency(OMX_BOOL enable);
         bool venc_set_roi_qp_info(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
+        bool venc_set_blur_resolution(OMX_QTI_VIDEO_CONFIG_BLURINFO *blurInfo);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();

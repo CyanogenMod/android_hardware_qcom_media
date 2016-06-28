@@ -40,15 +40,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <glib.h>
 #define strlcpy g_strlcpy
 #endif
-/*----------------------------------------------------------------------------
- * Preprocessor Definitions and Constants
- * -------------------------------------------------------------------------*/
-
-#define OMX_SPEC_VERSION 0x00000101
-#define OMX_INIT_STRUCT(_s_, _name_)            \
-    memset((_s_), 0x0, sizeof(_name_));          \
-(_s_)->nSize = sizeof(_name_);               \
-(_s_)->nVersion.nVersion = OMX_SPEC_VERSION
 
 extern int m_pipe;
 static int bframes;
@@ -2095,8 +2086,9 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
 #ifdef SUPPORT_CONFIG_INTRA_REFRESH
        case OMX_IndexConfigAndroidIntraRefresh:
            {
-            OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE* pParam =
-                (OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE*) configData;
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE);
+                OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE* pParam =
+                    (OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE*) configData;
                 if (m_state == OMX_StateLoaded
                         || m_sInPortDef.bEnabled == OMX_FALSE
                         || m_sOutPortDef.bEnabled == OMX_FALSE) {
@@ -2112,6 +2104,18 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                break;
            }
 #endif
+        case OMX_QTIIndexConfigVideoBlurResolution:
+           {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_QTI_VIDEO_CONFIG_BLURINFO);
+                OMX_QTI_VIDEO_CONFIG_BLURINFO* pParam =
+                              (OMX_QTI_VIDEO_CONFIG_BLURINFO*) configData;
+                if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoBlurResolution)) {
+                    DEBUG_PRINT_ERROR("Failed to set OMX_QTIIndexConfigVideoBlurResolution");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                memcpy(&m_blurInfo, pParam, sizeof(m_blurInfo));
+                break;
+           }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             break;

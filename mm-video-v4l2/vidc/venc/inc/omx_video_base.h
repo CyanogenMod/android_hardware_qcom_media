@@ -107,8 +107,11 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 //////////////////////////////////////////////////////////////////////////////
 //                       Module specific globals
 //////////////////////////////////////////////////////////////////////////////
-
-#define OMX_SPEC_VERSION  0x00000101
+#define OMX_SPEC_VERSION 0x00000101
+#define OMX_INIT_STRUCT(_s_, _name_)            \
+    memset((_s_), 0x0, sizeof(_name_));          \
+(_s_)->nSize = sizeof(_name_);               \
+(_s_)->nVersion.nVersion = OMX_SPEC_VERSION
 
 //////////////////////////////////////////////////////////////////////////////
 //               Macros
@@ -655,6 +658,7 @@ class omx_video: public qc_omx_component
 #ifdef SUPPORT_CONFIG_INTRA_REFRESH
         OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE m_sConfigIntraRefresh;
 #endif
+        OMX_QTI_VIDEO_CONFIG_BLURINFO       m_blurInfo;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;

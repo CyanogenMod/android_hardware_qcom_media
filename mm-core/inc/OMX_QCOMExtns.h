@@ -559,6 +559,9 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* OMX.google.android.index.allocateNativeHandle */
     OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005D,
+
+    /* Configure BLUR resolution for encode */
+    OMX_QTIIndexConfigVideoBlurResolution = 0x7F00005E,
 };
 
 /**
@@ -1329,6 +1332,21 @@ typedef struct OMX_QTI_VIDEO_CONFIG_ROIINFO {
     OMX_PTR         pRoiMBInfo;
 } OMX_QTI_VIDEO_CONFIG_ROIINFO;
 
+typedef enum OMX_QTI_VIDEO_BLUR_RESOLUTION {
+    BLUR_RESOL_DISABLED = 0,
+    BLUR_RESOL_240      = 1,
+    BLUR_RESOL_480      = 2,
+    BLUR_RESOL_720      = 3,
+    BLUR_RESOL_1080     = 4,
+} OMX_QTI_VIDEO_BLUR_RESOLUTION;
+
+typedef struct OMX_QTI_VIDEO_CONFIG_BLURINFO {
+    OMX_U32         nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32         nPortIndex;
+    OMX_QTI_VIDEO_BLUR_RESOLUTION eTargetResol;
+} OMX_QTI_VIDEO_CONFIG_BLURINFO;
+
 typedef enum OMX_QCOM_EXTRADATATYPE
 {
     OMX_ExtraDataFrameInfo =               0x7F000001,
@@ -1636,6 +1654,7 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QTI_INDEX_PARAM_VIDEO_FORCE_COMPRESSED_FOR_DPB "OMX.QTI.index.param.video.ForceCompressedForDPB"
 #define OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO "OMX.QTI.index.param.enableRoiInfo"
 #define OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO "OMX.QTI.index.config.RoiInfo"
+#define OMX_QTI_INDEX_CONFIG_VIDEO_BLURINFO "OMX.QTI.index.config.BlurInfo"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,

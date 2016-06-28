@@ -966,6 +966,12 @@ OMX_ERRORTYPE omx_vdec::decide_dpb_buffer_mode(bool force_split_mode)
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
 
+    if (!BITMASK_PRESENT(&m_flags ,OMX_COMPONENT_IDLE_PENDING) &&
+        !BITMASK_PRESENT(&m_flags, OMX_COMPONENT_OUTPUT_ENABLE_PENDING)) {
+        DEBUG_PRINT_LOW("Invalid state to decide on dpb-opb split");
+        return eRet;
+    }
+
     bool cpu_access = capture_capability != V4L2_PIX_FMT_NV12_UBWC;
 
     if (cpu_access) {

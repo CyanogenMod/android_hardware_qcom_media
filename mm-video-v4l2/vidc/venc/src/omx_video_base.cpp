@@ -310,6 +310,9 @@ omx_video::omx_video():
     msg_thread_created = false;
     msg_thread_stop = false;
 
+    OMX_INIT_STRUCT(&m_blurInfo, OMX_QTI_VIDEO_CONFIG_BLURINFO);
+    m_blurInfo.nPortIndex == (OMX_U32)PORT_INDEX_IN;
+
     mUsesColorConversion = false;
     pthread_mutex_init(&m_lock, NULL);
     pthread_mutex_init(&timestamp.m_lock, NULL);
@@ -2239,7 +2242,7 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
            }
        case OMX_QcomIndexConfigBaseLayerId:
            {
-                VALIDATE_OMX_PARAM_DATA(configData, OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID);
+               VALIDATE_OMX_PARAM_DATA(configData, OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID);
                OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID* pParam =
                    reinterpret_cast<OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID*>(configData);
                DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigBaseLayerId");
@@ -2249,6 +2252,7 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
 #ifdef SUPPORT_CONFIG_INTRA_REFRESH
        case OMX_IndexConfigAndroidIntraRefresh:
            {
+               VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE);
                OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE* pParam =
                    reinterpret_cast<OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE*>(configData);
                DEBUG_PRINT_LOW("get_config: OMX_IndexConfigAndroidIntraRefresh");
@@ -2256,6 +2260,15 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                break;
            }
 #endif
+       case OMX_QTIIndexConfigVideoBlurResolution:
+           {
+               VALIDATE_OMX_PARAM_DATA(configData, OMX_QTI_VIDEO_CONFIG_BLURINFO);
+               OMX_QTI_VIDEO_CONFIG_BLURINFO* pParam =
+                   reinterpret_cast<OMX_QTI_VIDEO_CONFIG_BLURINFO*>(configData);
+               DEBUG_PRINT_LOW("get_config: OMX_QTIIndexConfigVideoBlurResolution");
+               memcpy(pParam, &m_blurInfo, sizeof(m_blurInfo));
+               break;
+           }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -2388,6 +2401,12 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     if (!strncmp(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO,
             sizeof(OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO) - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoRoiInfo;
+        return OMX_ErrorNone;
+    }
+
+    if (!strncmp(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_BLURINFO,
+            sizeof(OMX_QTI_INDEX_CONFIG_VIDEO_BLURINFO) - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoBlurResolution;
         return OMX_ErrorNone;
     }
 
