@@ -5649,7 +5649,7 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
     int rc = 0;
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL;
 
-    switch (eControlRate) {
+    switch ((OMX_U32)eControlRate) {
         case OMX_Video_ControlRateDisable:
             control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_OFF;
             break;
@@ -5671,6 +5671,16 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
         case OMX_Video_ControlRateConstant:
             (supported_rc_modes & RC_CBR_CFR) ?
                 control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_CBR_CFR :
+                status = false;
+            break;
+        case QOMX_Video_ControlRateMaxBitrate:
+            (supported_rc_modes & RC_MBR_CFR) ?
+                control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_MBR_CFR:
+                status = false;
+            break;
+        case QOMX_Video_ControlRateMaxBitrateSkipFrames:
+            (supported_rc_modes & RC_MBR_VFR) ?
+                control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_MBR_VFR:
                 status = false;
             break;
         default:

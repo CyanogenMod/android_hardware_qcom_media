@@ -267,8 +267,10 @@ enum rc_modes {
     RC_VBR_CFR = BIT(1),
     RC_CBR_VFR = BIT(2),
     RC_CBR_CFR = BIT(3),
+    RC_MBR_CFR = BIT(4),
+    RC_MBR_VFR = BIT(5),
     RC_ALL = (RC_VBR_VFR | RC_VBR_CFR
-        | RC_CBR_VFR | RC_CBR_CFR)
+        | RC_CBR_VFR | RC_CBR_CFR | RC_MBR_CFR | RC_MBR_VFR)
 };
 
 class venc_dev

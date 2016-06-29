@@ -95,6 +95,14 @@ struct OMX_QCOM_PARAM_MEMMAPENTRYTYPE
  */
 #define QOMX_ErrorLTRUseFailed        (OMX_ErrorVendorStartUnused + 1)
 
+/*
+ * This rate control will be used for low bitrate applications to get better
+ * video quality for a given bitrate.
+ */
+#define QOMX_Video_ControlRateMaxBitrate (OMX_Video_ControlRateVendorStartUnused + 1)
+
+#define QOMX_Video_ControlRateMaxBitrateSkipFrames (OMX_Video_ControlRateVendorStartUnused + 2)
+
 #define QOMX_VIDEO_BUFFERFLAG_BFRAME 0x00100000
 
 #define QOMX_VIDEO_BUFFERFLAG_EOSEQ  0x00200000
