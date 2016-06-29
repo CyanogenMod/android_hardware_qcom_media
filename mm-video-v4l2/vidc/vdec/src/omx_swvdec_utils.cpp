@@ -220,13 +220,13 @@ omx_swvdec_diag::omx_swvdec_diag():
 
         if (m_filename_ip == NULL)
         {
-            OMX_SWVDEC_LOG_ERROR("failed to allocate %d bytes for "
+            OMX_SWVDEC_LOG_ERROR("failed to allocate %zu bytes for "
                                  "input filename string",
                                  (strlen(property_value) + 1) * sizeof(char));
         }
         else
         {
-            strlcpy(m_filename_ip, property_value, strlen(property_value) + 1);
+            strlcpy(m_filename_ip, property_value, strlen(m_filename_ip));
 
             OMX_SWVDEC_LOG_HIGH("omx_swvdec.filename.ip: %s", m_filename_ip);
 
@@ -247,13 +247,13 @@ omx_swvdec_diag::omx_swvdec_diag():
 
         if (m_filename_op == NULL)
         {
-            OMX_SWVDEC_LOG_ERROR("failed to allocate %d bytes for "
+            OMX_SWVDEC_LOG_ERROR("failed to allocate %zu bytes for "
                                  "output filename string",
                                  (strlen(property_value) + 1) * sizeof(char));
         }
         else
         {
-            strlcpy(m_filename_op, property_value, strlen(property_value) + 1);
+            strlcpy(m_filename_op, property_value, strlen(m_filename_op));
 
             OMX_SWVDEC_LOG_HIGH("omx_swvdec.filename.op: %s", m_filename_op);
 
