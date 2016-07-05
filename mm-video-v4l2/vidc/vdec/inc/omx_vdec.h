@@ -999,6 +999,7 @@ class omx_vdec: public qc_omx_component
         OMX_ERRORTYPE enable_adaptive_playback(unsigned long width, unsigned long height);
         bool is_thulium_v1;
         bool m_disable_ubwc_mode;
+        bool m_disable_split_mode;
         OMX_U32 m_downscalar_width;
         OMX_U32 m_downscalar_height;
         int decide_downscalar();
@@ -1019,6 +1020,7 @@ class omx_vdec: public qc_omx_component
                 bool get_color_format(OMX_COLOR_FORMATTYPE &dest_color_format);
                 bool update_buffer_req();
                 bool get_buffer_req(unsigned int &buffer_size);
+                OMX_ERRORTYPE set_buffer_req(OMX_U32 buffer_size, OMX_U32 actual_count);
                 OMX_BUFFERHEADERTYPE* get_il_buf_hdr();
                 OMX_BUFFERHEADERTYPE* get_il_buf_hdr(OMX_BUFFERHEADERTYPE *input_hdr);
                 OMX_BUFFERHEADERTYPE* get_dr_buf_hdr(OMX_BUFFERHEADERTYPE *input_hdr);
@@ -1041,6 +1043,8 @@ class omx_vdec: public qc_omx_component
                 unsigned int allocated_count;
                 unsigned int buffer_size_req;
                 unsigned int buffer_alignment_req;
+                OMX_U32 m_c2d_width;
+                OMX_U32 m_c2d_height;
                 OMX_QCOM_PLATFORM_PRIVATE_LIST      m_platform_list_client[MAX_COUNT];
                 OMX_QCOM_PLATFORM_PRIVATE_ENTRY     m_platform_entry_client[MAX_COUNT];
                 OMX_QCOM_PLATFORM_PRIVATE_PMEM_INFO m_pmem_info_client[MAX_COUNT];

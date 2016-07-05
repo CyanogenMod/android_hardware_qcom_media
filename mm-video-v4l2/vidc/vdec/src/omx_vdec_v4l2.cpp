@@ -977,7 +977,7 @@ OMX_ERRORTYPE omx_vdec::decide_dpb_buffer_mode(bool force_split_mode)
     if (cpu_access) {
         if (dpb_bit_depth == MSM_VIDC_BIT_DEPTH_8) {
             if ((m_force_compressed_for_dpb || (m_progressive && (eCompressionFormat != OMX_VIDEO_CodingVP9))) &&
-                !force_split_mode) {
+                !force_split_mode && !m_disable_split_mode && !drv_ctx.idr_only_decoding) {
             /* Disabled split mode for VP9. In split mode the DPB buffers are part of the internal
              * scratch buffers and the driver does not does the reference buffer management for
              * scratch buffers. In case of VP9 with spatial scalability, when a sequence changed
@@ -2481,6 +2481,10 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
 
         DEBUG_PRINT_LOW("Downscaler configured WxH %dx%d\n",
             m_downscalar_width, m_downscalar_height);
+
+        property_get("vidc.disable.split.mode",property_value,"0");
+        m_disable_split_mode = atoi(property_value);
+        DEBUG_PRINT_HIGH("split mode is %s", m_disable_split_mode ? "disabled" : "enabled");
 #endif
         m_state = OMX_StateLoaded;
 #ifdef DEFAULT_EXTRADATA
@@ -4034,19 +4038,16 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                            break;
                                        }
 
-                                       if ( portDefn->nBufferCountActual >= drv_ctx.op_buf.mincount &&
-                                               portDefn->nBufferSize >=  drv_ctx.op_buf.buffer_size ) {
-                                           drv_ctx.op_buf.actualcount = portDefn->nBufferCountActual;
-                                           drv_ctx.op_buf.buffer_size = portDefn->nBufferSize;
-                                           drv_ctx.extradata_info.count = drv_ctx.op_buf.actualcount;
-                                           drv_ctx.extradata_info.size = drv_ctx.extradata_info.count *
-                                               drv_ctx.extradata_info.buffer_size;
-                                           eRet = set_buffer_req(&drv_ctx.op_buf);
-                                           if (eRet == OMX_ErrorNone)
-                                               m_port_def = *portDefn;
+                                       // route updating of buffer requirements via c2d proxy.
+                                       // Based on whether c2d is enabled, requirements will be handed
+                                       // to the vidc driver appropriately
+                                       eRet = client_buffers.set_buffer_req(portDefn->nBufferSize,
+                                                portDefn->nBufferCountActual);
+                                       if (eRet == OMX_ErrorNone) {
+                                           m_port_def = *portDefn;
                                        } else {
                                            DEBUG_PRINT_ERROR("ERROR: OP Requirements(#%d: %u) Requested(#%u: %u)",
-                                                   drv_ctx.op_buf.mincount, (unsigned int)drv_ctx.op_buf.buffer_size,
+                                                   drv_ctx.op_buf.mincount, (unsigned int)buffer_size,
                                                    (unsigned int)portDefn->nBufferCountActual, (unsigned int)portDefn->nBufferSize);
                                            eRet = OMX_ErrorBadParameter;
                                        }
@@ -11144,6 +11145,8 @@ omx_vdec::allocate_color_convert_buf::allocate_color_convert_buf()
     init_members();
     ColorFormat = OMX_COLOR_FormatMax;
     dest_format = YCbCr420P;
+    m_c2d_width = 0;
+    m_c2d_height = 0;
 }
 
 void omx_vdec::allocate_color_convert_buf::set_vdec_client(void *client)
@@ -11156,6 +11159,7 @@ void omx_vdec::allocate_color_convert_buf::init_members()
     allocated_count = 0;
     buffer_size_req = 0;
     buffer_alignment_req = 0;
+    m_c2d_width = m_c2d_height = 0;
     memset(m_platform_list_client,0,sizeof(m_platform_list_client));
     memset(m_platform_entry_client,0,sizeof(m_platform_entry_client));
     memset(m_pmem_info_client,0,sizeof(m_pmem_info_client));
@@ -11186,6 +11190,20 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
         return status;
     }
     pthread_mutex_lock(&omx->c_lock);
+
+    bool resolution_upgrade = (omx->drv_ctx.video_resolution.frame_height > m_c2d_height ||
+            omx->drv_ctx.video_resolution.frame_width > m_c2d_width);
+    if (resolution_upgrade) {
+        // resolution upgraded ? ensure we are yet to allocate;
+        // failing which, c2d buffers will never be reallocated and bad things will happen
+        if (allocated_count > 0) {
+            DEBUG_PRINT_ERROR("Cannot change C2D buffer requirements with %d active allocations",
+                    allocated_count);
+            status = false;
+            goto fail_update_buf_req;
+        }
+    }
+
     if (omx->drv_ctx.output_format != VDEC_YUV_FORMAT_NV12 &&
             ColorFormat != OMX_COLOR_FormatYUV420Planar) {
         DEBUG_PRINT_ERROR("update_buffer_req: Unsupported color conversion");
@@ -11211,12 +11229,12 @@ bool omx_vdec::allocate_color_convert_buf::update_buffer_req()
             status = false;
             c2d.close();
             buffer_size_req = 0;
+            // TODO: make this fatal. Driver is not supposed to quote size
+            //  smaller than what C2D needs !!
         } else {
             buffer_size_req = destination_size;
-            if (buffer_size_req < omx->drv_ctx.op_buf.buffer_size)
-                buffer_size_req = omx->drv_ctx.op_buf.buffer_size;
-            if (buffer_alignment_req < omx->drv_ctx.op_buf.alignment)
-                buffer_alignment_req = omx->drv_ctx.op_buf.alignment;
+            m_c2d_height = omx->drv_ctx.video_resolution.frame_height;
+            m_c2d_width = omx->drv_ctx.video_resolution.frame_width;
         }
     }
 fail_update_buf_req:
@@ -11367,14 +11385,57 @@ OMX_BUFFERHEADERTYPE* omx_vdec::allocate_color_convert_buf::get_il_buf_hdr()
             goto fail_get_buffer_size;
         }
     }
-    if (buffer_size < omx->drv_ctx.op_buf.buffer_size)
-        buffer_size = omx->drv_ctx.op_buf.buffer_size;
-    if (buffer_alignment_req < omx->drv_ctx.op_buf.alignment)
-        buffer_alignment_req = omx->drv_ctx.op_buf.alignment;
 fail_get_buffer_size:
     pthread_mutex_unlock(&omx->c_lock);
     return status;
 }
+
+OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::set_buffer_req(
+        OMX_U32 buffer_size, OMX_U32 actual_count) {
+    OMX_U32 expectedSize = enabled ? buffer_size_req : omx->drv_ctx.op_buf.buffer_size;
+
+    if (buffer_size < expectedSize) {
+        DEBUG_PRINT_ERROR("OP Requirements: Client size(%u) insufficient v/s requested(%u)",
+                buffer_size, expectedSize);
+        return OMX_ErrorBadParameter;
+    }
+    if (actual_count < omx->drv_ctx.op_buf.actualcount) {
+        DEBUG_PRINT_ERROR("OP Requirements: Client count(%u) insufficient v/s requested(%u)",
+                actual_count, omx->drv_ctx.op_buf.actualcount);
+        return OMX_ErrorBadParameter;
+    }
+
+    bool reqs_updated = false;
+    if (enabled) {
+        // disallow changing buffer size/count while we have active allocated buffers
+        if (allocated_count > 0) {
+            DEBUG_PRINT_ERROR("Cannot change C2D buffer size from %u to %u with %d active allocations",
+                    buffer_size_req, buffer_size, allocated_count);
+            return OMX_ErrorInvalidState;
+        }
+
+        buffer_size_req = buffer_size;
+    } else {
+        if (buffer_size > omx->drv_ctx.op_buf.buffer_size) {
+            omx->drv_ctx.op_buf.buffer_size = buffer_size;
+            reqs_updated = true;
+        }
+    }
+
+    if (actual_count > omx->drv_ctx.op_buf.actualcount) {
+        omx->drv_ctx.op_buf.actualcount = actual_count;
+        reqs_updated = true;
+    }
+
+    if (reqs_updated) {
+        omx->drv_ctx.extradata_info.count = omx->drv_ctx.op_buf.actualcount;
+        omx->drv_ctx.extradata_info.size = omx->drv_ctx.extradata_info.count *
+                omx->drv_ctx.extradata_info.buffer_size;
+        return omx->set_buffer_req(&(omx->drv_ctx.op_buf));
+    }
+    return OMX_ErrorNone;
+}
+
 OMX_ERRORTYPE omx_vdec::allocate_color_convert_buf::free_output_buffer(
         OMX_BUFFERHEADERTYPE *bufhdr)
 {
