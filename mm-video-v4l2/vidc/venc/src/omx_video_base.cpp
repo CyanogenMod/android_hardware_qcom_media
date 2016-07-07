@@ -2872,6 +2872,7 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
             //This should only be used for passing reference to source type and
             //secure handle fd struct native_handle_t*
             m_pInput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
+            (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
         }
 
         (*bufferHdr)->pBuffer           = (OMX_U8 *)m_pInput_pmem[i].buffer;
@@ -3040,6 +3041,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                 //This should only be used for passing reference to source type and
                 //secure handle fd struct native_handle_t*
                 m_pOutput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
+                (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
                 native_handle_t *handle = native_handle_create(1, 0);
                 if(!handle) {
                    DEBUG_PRINT_ERROR("ERROR: Unable to get valid native handle");
