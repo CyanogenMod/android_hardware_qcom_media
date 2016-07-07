@@ -2241,7 +2241,7 @@ int omx_venc::async_message_process (void *context, void* message)
                     omxhdr->nFlags = m_sVenc_msg->buf.flags;
 
                     /*Use buffer case*/
-                    if (omx->output_use_buffer && !omx->m_use_output_pmem) {
+                    if (omx->output_use_buffer && !omx->m_use_output_pmem && !omx->is_secure_session()) {
                         DEBUG_PRINT_LOW("memcpy() for o/p Heap UseBuffer");
                         memcpy(omxhdr->pBuffer,
                                 (m_sVenc_msg->buf.ptrbuffer),
