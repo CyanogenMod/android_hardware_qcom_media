@@ -741,6 +741,8 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     memset (m_hwdevice_name,0,sizeof(m_hwdevice_name));
     memset(m_demux_offsets, 0, ( sizeof(OMX_U32) * 8192) );
     memset(&m_custom_buffersize, 0, sizeof(m_custom_buffersize));
+    memset(&m_client_color_space, 0, sizeof(DescribeColorAspectsParams));
+    memset(&m_internal_color_space, 0, sizeof(DescribeColorAspectsParams));
     m_demux_entries = 0;
     msg_thread_id = 0;
     async_thread_id = 0;
@@ -788,6 +790,11 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     is_q6_platform = false;
     m_perf_control.send_hint_to_mpctl(true);
     m_input_pass_buffer_fd = false;
+    m_client_color_space.nPortIndex = (OMX_U32)OMX_CORE_INPUT_PORT_INDEX;
+    m_client_color_space.sAspects.mRange =  ColorAspects::RangeUnspecified;
+    m_client_color_space.sAspects.mPrimaries = ColorAspects::PrimariesUnspecified;
+    m_client_color_space.sAspects.mMatrixCoeffs = ColorAspects::MatrixUnspecified;
+    m_client_color_space.sAspects.mTransfer = ColorAspects::TransferUnspecified;
 }
 
 static const int event_type[] = {
@@ -1647,6 +1654,8 @@ void omx_vdec::process_event_cb(void *ctxt, unsigned char id)
                                             DEBUG_PRINT_HIGH("Updated Crop Info: L: %u, T: %u, R: %u, B: %u",
                                                     pThis->rectangle.nLeft, pThis->rectangle.nTop,
                                                     pThis->rectangle.nWidth, pThis->rectangle.nHeight);
+                                        } else if (p2 == OMX_QTIIndexConfigDescribeColorAspects) {
+                                            DEBUG_PRINT_HIGH("Rxd PORT_RECONFIG: OMX_QTIIndexConfigDescribeColorAspects");
                                         } else {
                                             DEBUG_PRINT_ERROR("Rxd Invalid PORT_RECONFIG event (%lu)", p2);
                                             break;
@@ -4989,6 +4998,20 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
 
             break;
         }
+        case OMX_QTIIndexConfigDescribeColorAspects:
+        {
+         // VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
+         // FIXME Till Framework fills right size
+            DescribeColorAspectsParams *params = (DescribeColorAspectsParams *)configData;
+            DEBUG_PRINT_HIGH("Get Config : Color Space values : sAspects.mPrimaries  = %d sAspects.mRange = %d"
+               " sAspects.mTransfer %d, sAspects.mMatrixCoeffs = %d", m_internal_color_space.sAspects.mPrimaries,
+               m_internal_color_space.sAspects.mRange, m_internal_color_space.sAspects.mTransfer,
+               m_internal_color_space.sAspects.mMatrixCoeffs);
+            memcpy(params, &m_internal_color_space, sizeof(DescribeColorAspectsParams));
+            // Sync component's client struct and values informed to client
+            memcpy(&m_client_color_space, &m_internal_color_space, sizeof(DescribeColorAspectsParams));
+            break;
+        }
         default: {
                  DEBUG_PRINT_ERROR("get_config: unknown param %d",configIndex);
                  eRet = OMX_ErrorBadParameter;
@@ -5200,6 +5223,18 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                     rate->nU32 >> 16, errno == -EBUSY ? "HW Overload" : strerror(errno));
         }
         return ret;
+
+    } else if ((int)configIndex == (int)OMX_QTIIndexConfigDescribeColorAspects) {
+        VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
+        DescribeColorAspectsParams *params = (DescribeColorAspectsParams *)configData;
+        enable_extradata(OMX_DISPLAY_INFO_EXTRADATA, true, true);
+
+        DEBUG_PRINT_HIGH("Set Config : Color Space values : sAspects.mPrimaries  = %d sAspects.mRange = %d"
+                " sAspects.mTransfer %d, sAspects.mMatrixCoeffs = %d", params->sAspects.mPrimaries,
+                params->sAspects.mRange, params->sAspects.mTransfer,
+                params->sAspects.mMatrixCoeffs);
+        memcpy(&m_client_color_space, params, sizeof(DescribeColorAspectsParams));
+        return ret;
     }
 
     return OMX_ErrorNotImplemented;
@@ -5279,6 +5314,8 @@ OMX_ERRORTYPE  omx_vdec::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamForceCompressedForDPB;
     } else if (extn_equals(paramName, "OMX.QTI.index.param.video.ForceUnCompressedForOPB")) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamForceUnCompressedForOPB;
+    } else if (extn_equals(paramName, "OMX.google.android.index.describeColorAspects")) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigDescribeColorAspects;
     } else {
         DEBUG_PRINT_ERROR("Extension: %s not implemented", paramName);
         return OMX_ErrorNotImplemented;
@@ -9964,6 +10001,260 @@ void omx_vdec::adjust_timestamp(OMX_S64 &act_timestamp)
     }
 }
 
+void omx_vdec::convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
+    OMX_U32 transfer, OMX_U32 matrix, ColorSpace_t *color_space, ColorAspects *aspects)
+{
+    switch (primaries) {
+        case MSM_VIDC_BT709_5:
+            *color_space = ITU_R_709;
+            aspects->mPrimaries = ColorAspects::PrimariesBT709_5;
+            break;
+        case MSM_VIDC_UNSPECIFIED:
+            aspects->mPrimaries = ColorAspects::PrimariesUnspecified;
+            break;
+        case MSM_VIDC_BT470_6_M:
+            aspects->mPrimaries = ColorAspects::PrimariesBT470_6M;
+            break;
+        case MSM_VIDC_BT601_6_625:
+            aspects->mPrimaries = ColorAspects::PrimariesBT601_6_625;
+            *color_space = range ? ITU_R_601_FR : ITU_R_601;
+            break;
+        case MSM_VIDC_BT601_6_525:
+            *color_space = range ? ITU_R_601_FR : ITU_R_601;
+            aspects->mPrimaries = ColorAspects::PrimariesBT601_6_525;
+            break;
+        case MSM_VIDC_GENERIC_FILM:
+            aspects->mPrimaries = ColorAspects::PrimariesGenericFilm;
+            break;
+        case MSM_VIDC_BT2020:
+            aspects->mPrimaries = ColorAspects::PrimariesBT2020;
+            break;
+        default:
+            aspects->mPrimaries = ColorAspects::PrimariesOther;
+            break;
+    }
+
+    aspects->mRange = range ? ColorAspects::RangeFull : ColorAspects::RangeLimited;
+
+    switch (transfer) {
+        case MSM_VIDC_TRANSFER_BT709_5:
+        case MSM_VIDC_TRANSFER_601_6_525: // case MSM_VIDC_TRANSFER_601_6_625:
+            aspects->mTransfer = ColorAspects::TransferSMPTE170M;
+            break;
+        case MSM_VIDC_TRANSFER_UNSPECIFIED:
+            aspects->mTransfer = ColorAspects::TransferUnspecified;
+            break;
+        case MSM_VIDC_TRANSFER_BT_470_6_M:
+            aspects->mTransfer = ColorAspects::TransferGamma22;
+            break;
+        case MSM_VIDC_TRANSFER_BT_470_6_BG:
+            aspects->mTransfer = ColorAspects::TransferGamma28;
+            break;
+        case MSM_VIDC_TRANSFER_SMPTE_240M:
+            aspects->mTransfer = ColorAspects::TransferSMPTE240M;
+            break;
+        case MSM_VIDC_TRANSFER_LINEAR:
+            aspects->mTransfer = ColorAspects::TransferLinear;
+            break;
+        case MSM_VIDC_TRANSFER_IEC_61966:
+            aspects->mTransfer = ColorAspects::TransferXvYCC;
+            break;
+        case MSM_VIDC_TRANSFER_BT_1361:
+            aspects->mTransfer = ColorAspects::TransferBT1361;
+            break;
+        case MSM_VIDC_TRANSFER_SRGB:
+            aspects->mTransfer = ColorAspects::TransferSRGB;
+            break;
+        default:
+            aspects->mTransfer = ColorAspects::TransferOther;
+            break;
+    }
+
+    switch (matrix) {
+        case MSM_VIDC_MATRIX_BT_709_5:
+            aspects->mMatrixCoeffs = ColorAspects::MatrixBT709_5;
+            break;
+        case MSM_VIDC_MATRIX_FCC_47:
+            aspects->mMatrixCoeffs = ColorAspects::MatrixBT470_6M;
+            break;
+        case MSM_VIDC_MATRIX_601_6_625:
+        case MSM_VIDC_MATRIX_601_6_525:
+            aspects->mMatrixCoeffs = ColorAspects::MatrixBT601_6;
+            break;
+        case MSM_VIDC_MATRIX_SMPTE_240M:
+            aspects->mMatrixCoeffs = ColorAspects::MatrixSMPTE240M;
+            break;
+        case MSM_VIDC_MATRIX_BT_2020:
+            aspects->mMatrixCoeffs = ColorAspects::MatrixBT2020;
+            break;
+        case MSM_VIDC_MATRIX_BT_2020_CONST:
+            aspects->mMatrixCoeffs = ColorAspects::MatrixBT2020Constant;
+            break;
+        default:
+            aspects->mMatrixCoeffs = ColorAspects::MatrixOther;
+            break;
+    }
+}
+
+void omx_vdec::handle_color_space_info(void *data, unsigned int buf_index)
+{
+    ColorSpace_t color_space = ITU_R_601_FR;
+    ColorAspects *aspects = &m_internal_color_space.sAspects;
+
+    memcpy(aspects, &m_client_color_space.sAspects, sizeof(ColorAspects));
+    switch(output_capability) {
+        case V4L2_PIX_FMT_MPEG2:
+            {
+                struct msm_vidc_mpeg2_seqdisp_payload *seqdisp_payload;
+                seqdisp_payload = (struct msm_vidc_mpeg2_seqdisp_payload *)data;
+
+                /* Refer MPEG2 Spec @ Rec. ISO/IEC 13818-2, ITU-T Draft Rec. H.262 to
+                 * understand this code */
+
+                if (seqdisp_payload && seqdisp_payload->color_descp) {
+
+                    convert_color_space_info(seqdisp_payload->color_primaries, 1,
+                            seqdisp_payload->transfer_char, seqdisp_payload->matrix_coeffs,
+                            &color_space,aspects);
+                    m_disp_hor_size = seqdisp_payload->disp_width;
+                    m_disp_vert_size = seqdisp_payload->disp_height;
+                }
+            }
+            break;
+        case V4L2_PIX_FMT_H264:
+        case V4L2_PIX_FMT_HEVC:
+            {
+                struct msm_vidc_vui_display_info_payload *display_info_payload;
+                display_info_payload = (struct msm_vidc_vui_display_info_payload*)data;
+
+                /* Refer H264 Spec @ Rec. ITU-T H.264 (02/2014) to understand this code */
+
+                if (display_info_payload->video_signal_present_flag &&
+                        display_info_payload->color_description_present_flag) {
+                    convert_color_space_info(display_info_payload->color_primaries,
+                            display_info_payload->video_full_range_flag,
+                            display_info_payload->transfer_characteristics,
+                            display_info_payload->matrix_coefficients,
+                            &color_space,aspects);
+                }
+            }
+            break;
+        case V4L2_PIX_FMT_VC1_ANNEX_G:
+        case V4L2_PIX_FMT_VC1_ANNEX_L:
+            {
+                struct msm_vidc_vc1_seqdisp_payload *vc1_seq_disp_payload;
+                vc1_seq_disp_payload = (struct msm_vidc_vc1_seqdisp_payload*)data;
+
+                /* Refer VC-1 Spec @ SMPTE Draft Standard for Television Date: 2005-08-23
+                 * SMPTE 421M to understand this code */
+
+                if (m_enable_android_native_buffers &&
+                        vc1_seq_disp_payload->color_primaries) {
+
+                    convert_color_space_info(vc1_seq_disp_payload->color_primaries,
+                            1,
+                            vc1_seq_disp_payload->transfer_char,
+                            vc1_seq_disp_payload->matrix_coeffs,
+                            &color_space,aspects);
+                }
+            }
+            break;
+        case V4L2_PIX_FMT_VP8:
+            {
+                struct msm_vidc_vpx_colorspace_payload *vpx_color_space_payload;
+                vpx_color_space_payload = (struct msm_vidc_vpx_colorspace_payload*)data;
+
+                /* Refer VP8 Spec @ RFC 6386 VP8 Data Format and Decoding Guide November 2011
+                 * to understand this code */
+
+                if (vpx_color_space_payload->color_space == 0) {
+                    color_space = ITU_R_601;
+                } else {
+                    DEBUG_PRINT_ERROR("Unsupported Color space for VP8");
+                    break;
+                }
+            }
+            break;
+        case V4L2_PIX_FMT_VP9:
+            {
+                struct msm_vidc_vpx_colorspace_payload *vpx_color_space_payload;
+                vpx_color_space_payload = (struct msm_vidc_vpx_colorspace_payload*)data;
+
+                /* Refer VP9 Spec @ VP9 Bitstream & Decoding Process Specification - v0.6 31st March 2016
+                 * to understand this code */
+
+                switch(vpx_color_space_payload->color_space) {
+                    case MSM_VIDC_CS_BT_601:
+                        aspects->mMatrixCoeffs = ColorAspects::MatrixBT601_6;
+                        aspects->mTransfer = ColorAspects::TransferSMPTE170M;
+                        aspects->mPrimaries = ColorAspects::PrimariesBT601_6_625;
+                        aspects->mRange = m_client_color_space.sAspects.mRange;
+                        break;
+                    case MSM_VIDC_CS_BT_709:
+                        color_space = ITU_R_709;
+                        aspects->mMatrixCoeffs = ColorAspects::MatrixBT709_5;
+                        aspects->mTransfer = ColorAspects::TransferSMPTE170M;
+                        aspects->mPrimaries =  ColorAspects::PrimariesBT709_5;
+                        aspects->mRange = m_client_color_space.sAspects.mRange;
+                        break;
+                    case MSM_VIDC_CS_SMPTE_170:
+                        aspects->mMatrixCoeffs = ColorAspects::MatrixBT709_5;
+                        aspects->mTransfer = ColorAspects::TransferSMPTE170M;
+                        aspects->mPrimaries = m_client_color_space.sAspects.mPrimaries;
+                        aspects->mRange = m_client_color_space.sAspects.mRange;
+                        break;
+                    case MSM_VIDC_CS_SMPTE_240:
+                        aspects->mMatrixCoeffs = m_client_color_space.sAspects.mMatrixCoeffs;
+                        aspects->mTransfer = ColorAspects::TransferSMPTE240M;
+                        aspects->mPrimaries = m_client_color_space.sAspects.mPrimaries;
+                        aspects->mRange = m_client_color_space.sAspects.mRange;
+                        break;
+                    case MSM_VIDC_CS_BT_2020:
+                        aspects->mMatrixCoeffs = ColorAspects::MatrixBT2020;
+                        aspects->mTransfer = ColorAspects:: TransferSMPTE170M;
+                        aspects->mPrimaries = ColorAspects::PrimariesBT2020;
+                        aspects->mRange = m_client_color_space.sAspects.mRange;
+                        break;
+                    case MSM_VIDC_CS_RESERVED:
+                        aspects->mMatrixCoeffs = ColorAspects::MatrixOther;
+                        aspects->mTransfer = ColorAspects::TransferOther;
+                        aspects->mPrimaries = ColorAspects::PrimariesOther;
+                        aspects->mRange = m_client_color_space.sAspects.mRange;
+                        break;
+                    case MSM_VIDC_CS_RGB:
+                        aspects->mMatrixCoeffs = ColorAspects::MatrixBT709_5;
+                        aspects->mTransfer = ColorAspects::TransferSMPTE170M;
+                        aspects->mPrimaries = ColorAspects::PrimariesOther;
+                        aspects->mRange = m_client_color_space.sAspects.mRange;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    if (m_enable_android_native_buffers)
+        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                UPDATE_COLOR_SPACE, (void*)&color_space);
+    if (m_internal_color_space.sAspects.mPrimaries != m_client_color_space.sAspects.mPrimaries ||
+            m_internal_color_space.sAspects.mTransfer != m_client_color_space.sAspects.mTransfer ||
+            m_internal_color_space.sAspects.mMatrixCoeffs != m_client_color_space.sAspects.mMatrixCoeffs ||
+            m_internal_color_space.sAspects.mRange != m_client_color_space.sAspects.mRange) {
+        DEBUG_PRINT_HIGH("Initiating PORT Reconfig");
+        DEBUG_PRINT_HIGH("Bit stream Color Space values : sAspects.mPrimaries  = %d sAspects.mRange = %d"
+                " sAspects.mTransfer %d, sAspects.mMatrixCoeffs = %d", m_internal_color_space.sAspects.mPrimaries, m_internal_color_space.sAspects.mRange,
+                m_internal_color_space.sAspects.mTransfer, m_internal_color_space.sAspects.mMatrixCoeffs);
+        DEBUG_PRINT_HIGH("Client set Color Space values : sAspects.mPrimaries  = %d sAspects.mRange = %d"
+                " sAspects.mTransfer %d, sAspects.mMatrixCoeffs = %d", m_client_color_space.sAspects.mPrimaries,
+                m_client_color_space.sAspects.mRange, m_client_color_space.sAspects.mTransfer, m_client_color_space.sAspects.mMatrixCoeffs);
+        post_event(OMX_CORE_OUTPUT_PORT_INDEX,
+                OMX_QTIIndexConfigDescribeColorAspects,
+                OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+    }
+}
+
 void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
 {
     OMX_OTHER_EXTRADATATYPE *p_extra = NULL, *p_sei = NULL, *p_vui = NULL;
@@ -10027,7 +10318,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                 return;
             }
 
-            DEBUG_PRINT_LOW("handle_extradata: eType = %d", data->eType);
+            DEBUG_PRINT_LOW("handle_extradata: eType = 0x%x", data->eType);
             switch ((unsigned long)data->eType) {
                 case MSM_VIDC_EXTRADATA_INTERLACE_VIDEO:
                     struct msm_vidc_interlace_payload *payload;
@@ -10138,26 +10429,10 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_MPEG2_SEQDISP:
-                    struct msm_vidc_mpeg2_seqdisp_payload *seqdisp_payload;
-                    seqdisp_payload = (struct msm_vidc_mpeg2_seqdisp_payload *)(void *)data->data;
-                    if (seqdisp_payload && m_enable_android_native_buffers &&
-                            seqdisp_payload->color_descp) {
-                        ColorSpace_t color_space = ITU_R_601_FR;
-
-                        switch (seqdisp_payload->color_primaries) {
-                            case MSM_VIDC_BT709_5:
-                                color_space = ITU_R_709;
-                                break;
-                            default:
-                                color_space = ITU_R_601_FR;
-                                break;
-                        }
-
-                        m_disp_hor_size = seqdisp_payload->disp_width;
-                        m_disp_vert_size = seqdisp_payload->disp_height;
-                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
-                                UPDATE_COLOR_SPACE, (void*)&color_space);
-                    }
+                case MSM_VIDC_EXTRADATA_VUI_DISPLAY_INFO:
+                case MSM_VIDC_EXTRADATA_VC1_SEQDISP:
+                case MSM_VIDC_EXTRADATA_VPX_COLORSPACE_INFO:
+                        handle_color_space_info((void *)data->data, buf_index);
                     break;
                 case MSM_VIDC_EXTRADATA_S3D_FRAME_PACKING:
                     struct msm_vidc_s3d_frame_packing_payload *s3d_frame_packing_payload;
@@ -10196,83 +10471,6 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
                         append_vqzip_extradata(p_extra, vqzip_payload);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
-                    }
-                    break;
-                case MSM_VIDC_EXTRADATA_VUI_DISPLAY_INFO:
-                    struct msm_vidc_vui_display_info_payload *display_info_payload;
-                    display_info_payload = (struct msm_vidc_vui_display_info_payload*)(void *)data->data;
-
-                    if (m_enable_android_native_buffers &&
-                            display_info_payload->video_signal_present_flag &&
-                            display_info_payload->color_description_present_flag) {
-                        ColorSpace_t color_space = ITU_R_601_FR;
-
-                        switch (display_info_payload->color_primaries) {
-                            case MSM_VIDC_BT709_5:
-                                color_space = ITU_R_709;
-                                break;
-                            case MSM_VIDC_BT601_6_525:
-                            case MSM_VIDC_BT601_6_625:
-                                color_space = display_info_payload->video_full_range_flag ?
-                                    ITU_R_601_FR : ITU_R_601;
-                                break;
-                            default:
-                                break;
-                        }
-                        DEBUG_PRINT_LOW("Color Space = %d", color_space);
-                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
-                               UPDATE_COLOR_SPACE, (void*)&color_space);
-                    }
-                    break;
-                case MSM_VIDC_EXTRADATA_VC1_SEQDISP:
-                    struct msm_vidc_vc1_seqdisp_payload *vc1_seq_disp_payload;
-                    vc1_seq_disp_payload = (struct msm_vidc_vc1_seqdisp_payload*)(void *)data->data;
-
-                    if (m_enable_android_native_buffers &&
-                            vc1_seq_disp_payload->color_primaries) {
-                        ColorSpace_t color_space = ITU_R_601_FR;
-
-                        switch (vc1_seq_disp_payload->color_primaries) {
-                            case MSM_VIDC_BT709_5:
-                                color_space = ITU_R_709;
-                                break;
-                            default:
-                                color_space = ITU_R_601_FR;
-                                break;
-                        }
-                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
-                               UPDATE_COLOR_SPACE, (void*)&color_space);
-                    }
-                    break;
-                case MSM_VIDC_EXTRADATA_VPX_COLORSPACE_INFO:
-                    struct msm_vidc_vpx_colorspace_payload *vpx_color_space_payload;
-                    vpx_color_space_payload = (struct msm_vidc_vpx_colorspace_payload*)(void *)data->data;
-
-                    if (m_enable_android_native_buffers) {
-                        ColorSpace_t color_space = ITU_R_601_FR;
-                        if (output_capability == V4L2_PIX_FMT_VP8) {
-                            if (vpx_color_space_payload->color_space == 0) {
-                                color_space = ITU_R_601;
-                            } else {
-                                DEBUG_PRINT_ERROR("Unsupported Color space for VP8");
-                                break;
-                            }
-                        } else if (output_capability == V4L2_PIX_FMT_VP9) {
-                            if (vpx_color_space_payload->color_space == 1) {
-                                color_space = ITU_R_601;
-                            } else if (vpx_color_space_payload->color_space == 2) {
-                                color_space = ITU_R_709;
-                            } else {
-                                DEBUG_PRINT_ERROR("Unsupported Color space for VP9");
-                                break;
-                            }
-                        } else {
-                            DEBUG_PRINT_ERROR("Unrecognized Extradata");
-                            break;
-                        }
-
-                        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
-                                UPDATE_COLOR_SPACE, (void*)&color_space);
                     }
                     break;
                 default:

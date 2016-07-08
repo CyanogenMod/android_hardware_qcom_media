@@ -47,6 +47,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gralloc_priv.h>
 #endif
 
+#include <qdMetaData.h>
+
 #define ALIGN(x, to_align) ((((unsigned long) x) + (to_align - 1)) & ~(to_align - 1))
 #define EXTRADATA_IDX(__num_planes) ((__num_planes) ? (__num_planes) - 1 : 0)
 #define MAXDPB 16
@@ -2620,6 +2622,122 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QTIIndexConfigDescribeColorAspects:
+            {
+                DescribeColorAspectsParams *params = (DescribeColorAspectsParams *)configData;
+                DEBUG_PRINT_LOW("OMX_QTIIndexConfigDescribeColorAspects : sAspects.mPrimaries  = %d sAspects.mRange = %d"
+                    "sAspects.mTransfer %d, sAspects.mMatrixCoeffs = %d", params->sAspects.mPrimaries, params->sAspects.mRange,
+                    params->sAspects.mTransfer, params->sAspects.mMatrixCoeffs);
+                OMX_U32 color_space = MSM_VIDC_BT601_6_525;
+                OMX_U32 full_range = 1;
+                OMX_U32 matrix_coeffs = MSM_VIDC_MATRIX_601_6_525;
+                OMX_U32 transfer_chars = MSM_VIDC_TRANSFER_601_6_525;
+
+                switch((ColorAspects::Primaries)(params->sAspects.mPrimaries)) {
+                    case ColorAspects::PrimariesBT709_5:
+                        color_space = MSM_VIDC_BT709_5;
+                        break;
+                    case ColorAspects::PrimariesUnspecified:
+                        color_space = MSM_VIDC_UNSPECIFIED;
+                        break;
+                    case ColorAspects::PrimariesBT470_6M:
+                        color_space = MSM_VIDC_BT470_6_M;
+                        break;
+                    case ColorAspects::PrimariesBT601_6_625:
+                        color_space = MSM_VIDC_BT601_6_625;
+                        break;
+                    case ColorAspects::PrimariesBT601_6_525:
+                        color_space = MSM_VIDC_BT601_6_525;
+                        break;
+                    case ColorAspects::PrimariesGenericFilm:
+                        color_space = MSM_VIDC_GENERIC_FILM;
+                        break;
+                    case ColorAspects::PrimariesBT2020:
+                        color_space = MSM_VIDC_BT2020;
+                        break;
+                    default:
+                        color_space = MSM_VIDC_BT601_6_525;
+                        params->sAspects.mPrimaries = ColorAspects::PrimariesBT601_6_525;
+                        break;
+                }
+                switch((ColorAspects::Range)params->sAspects.mRange) {
+                    case ColorAspects::RangeFull:
+                        full_range = 1;
+                        break;
+                    case ColorAspects::RangeLimited:
+                        full_range = 0;
+                        break;
+                    default:
+                        break;
+                }
+                switch((ColorAspects::Transfer)params->sAspects.mTransfer) {
+                    case ColorAspects::TransferSMPTE170M:
+                        transfer_chars = MSM_VIDC_TRANSFER_601_6_525;
+                        break;
+                    case ColorAspects::TransferUnspecified:
+                        transfer_chars = MSM_VIDC_TRANSFER_UNSPECIFIED;
+                        break;
+                    case ColorAspects::TransferGamma22:
+                        transfer_chars = MSM_VIDC_TRANSFER_BT_470_6_M;
+                        break;
+                    case ColorAspects::TransferGamma28:
+                        transfer_chars = MSM_VIDC_TRANSFER_BT_470_6_BG;
+                        break;
+                    case ColorAspects::TransferSMPTE240M:
+                        transfer_chars = MSM_VIDC_TRANSFER_SMPTE_240M;
+                        break;
+                    case ColorAspects::TransferLinear:
+                        transfer_chars = MSM_VIDC_TRANSFER_LINEAR;
+                        break;
+                    case ColorAspects::TransferXvYCC:
+                        transfer_chars = MSM_VIDC_TRANSFER_IEC_61966;
+                        break;
+                    case ColorAspects::TransferBT1361:
+                        transfer_chars = MSM_VIDC_TRANSFER_BT_1361;
+                        break;
+                    case ColorAspects::TransferSRGB:
+                        transfer_chars = MSM_VIDC_TRANSFER_SRGB;
+                        break;
+                    default:
+                        params->sAspects.mTransfer = ColorAspects::TransferSMPTE170M;
+                        transfer_chars = MSM_VIDC_TRANSFER_601_6_525;
+                        break;
+                }
+                switch((ColorAspects::MatrixCoeffs)params->sAspects.mMatrixCoeffs) {
+                    case ColorAspects::MatrixUnspecified:
+                        matrix_coeffs = MSM_VIDC_MATRIX_UNSPECIFIED;
+                        break;
+                    case ColorAspects::MatrixBT709_5:
+                        matrix_coeffs = MSM_VIDC_MATRIX_BT_709_5;
+                        break;
+                    case ColorAspects::MatrixBT470_6M:
+                        matrix_coeffs = MSM_VIDC_MATRIX_FCC_47;
+                        break;
+                    case ColorAspects::MatrixBT601_6:
+                        matrix_coeffs = MSM_VIDC_MATRIX_601_6_525;
+                        break;
+                    case ColorAspects::MatrixSMPTE240M:
+                        transfer_chars = MSM_VIDC_MATRIX_SMPTE_240M;
+                        break;
+                    case ColorAspects::MatrixBT2020:
+                        matrix_coeffs = MSM_VIDC_MATRIX_BT_2020;
+                        break;
+                    case ColorAspects::MatrixBT2020Constant:
+                        matrix_coeffs = MSM_VIDC_MATRIX_BT_2020_CONST;
+                        break;
+                    default:
+                        params->sAspects.mMatrixCoeffs = ColorAspects::MatrixBT601_6;
+                        matrix_coeffs = MSM_VIDC_MATRIX_601_6_525;
+                        break;
+                }
+                if (!venc_set_colorspace(color_space, full_range,
+                            transfer_chars, matrix_coeffs)) {
+
+                    DEBUG_PRINT_ERROR("Failed to set operating rate");
+                    return false;
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -3417,10 +3535,23 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                             color_space = V4L2_COLORSPACE_REC709;
                             venc_set_colorspace(MSM_VIDC_BT709_5, 1,
                                     MSM_VIDC_TRANSFER_BT709_5, MSM_VIDC_MATRIX_BT_709_5);
-                        } else if (handle->flags & private_handle_t::PRIV_FLAGS_ITU_R_601_FR){
-                            venc_set_colorspace(MSM_VIDC_BT601_6_525, 1,
-                                    MSM_VIDC_TRANSFER_601_6_525, MSM_VIDC_MATRIX_601_6_525);
-                            color_space = V4L2_COLORSPACE_470_SYSTEM_BG;
+                        } else {
+                            if (is_csc_enabled) {
+                                struct v4l2_control control;
+                                control.id = V4L2_CID_MPEG_VIDC_VIDEO_VPE_CSC;
+                                control.value = V4L2_CID_MPEG_VIDC_VIDEO_VPE_CSC_ENABLE;
+                                if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+                                    DEBUG_PRINT_ERROR("Failed to set VPE CSC for 601_to_709");
+                                }
+                                buf.flags = V4L2_MSM_BUF_FLAG_YUV_601_709_CLAMP;
+                                fmt.fmt.pix_mp.colorspace = V4L2_COLORSPACE_REC709;
+                                venc_set_colorspace(MSM_VIDC_BT709_5, 1,
+                                        MSM_VIDC_TRANSFER_BT709_5, MSM_VIDC_MATRIX_BT_709_5);
+                            } else {
+                                venc_set_colorspace(MSM_VIDC_BT601_6_525, 1,
+                                        MSM_VIDC_TRANSFER_601_6_525, MSM_VIDC_MATRIX_601_6_525);
+                                fmt.fmt.pix_mp.colorspace = V4L2_COLORSPACE_470_SYSTEM_BG;
+                            }
                         }
                         fmt.fmt.pix_mp.pixelformat = m_sVenc_cfg.inputformat;
                         fmt.fmt.pix_mp.colorspace = static_cast<decltype(fmt.fmt.pix_mp.colorspace)>(color_space);

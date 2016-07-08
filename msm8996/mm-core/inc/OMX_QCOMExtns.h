@@ -553,6 +553,18 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /*"OMX.google.android.index.allocateNativeHandle"*/
     OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005B,
+
+    /*"OMX.google.android.index.describeColorAspects"*/
+    OMX_QTIIndexConfigDescribeColorAspects = 0x7F00005E,
+
+    OMX_QTIIndexParamVUIExtraDataExtraData = 0x7F00005F,
+
+    OMX_QTIIndexParamMPEG2SeqDispExtraData = 0x7F000060,
+
+    OMX_QTIIndexParamVC1SeqDispExtraData = 0x7F000061,
+
+    OMX_QTIIndexParamVPXColorSpaceExtraData = 0x7F000062,
+
 };
 
 /**
