@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010 - 2015, The Linux Foundation. All rights reserved.
+Copyright (c) 2010 - 2016, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -194,6 +194,13 @@ class VideoHeap : public MemoryHeapBase
 #define OMX_QP_EXTRADATA        0x00800000
 #define OMX_BITSINFO_EXTRADATA  0x01000000
 #define OMX_VQZIPSEI_EXTRADATA  0x02000000
+
+#define OMX_VUI_DISPLAY_INFO_EXTRADATA  0x08000000
+#define OMX_MPEG2_SEQDISP_INFO_EXTRADATA 0x10000000
+#define OMX_VPX_COLORSPACE_INFO_EXTRADATA  0x20000000
+#define OMX_VC1_SEQDISP_INFO_EXTRADATA  0x40000000
+#define OMX_DISPLAY_INFO_EXTRADATA  0x80000000
+#define DRIVER_EXTRADATA_MASK   0x0000FFFF
 
 #define OMX_INTERLACE_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
             sizeof(OMX_STREAMINTERLACEFORMAT) + 3)&(~3))

@@ -251,6 +251,13 @@ struct msm_venc_temporal_layers {
     OMX_U32 nTemporalLayerBitrateFraction[OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS];
 };
 
+struct msm_venc_color_space {
+    OMX_U32 primaries;
+    OMX_U32 range;
+    OMX_U32 matrix_coeffs;
+    OMX_U32 transfer_chars;
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -431,6 +438,7 @@ class venc_dev
         bool hw_overload;
         bool is_gralloc_source_ubwc;
         bool is_camera_source_ubwc;
+        bool is_csc_enabled;
         OMX_U32 fd_list[64];
         encExtradata mInputExtradata;
         encExtradata mOutputExtradata;
@@ -472,6 +480,7 @@ class venc_dev
         int rc_off_level;
         struct msm_venc_hybrid_hp           hybrid_hp;
         msm_venc_temporal_layers            temporal_layers_config;
+        struct msm_venc_color_space         color_space;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period_config(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -528,6 +537,8 @@ class venc_dev
         bool venc_set_roi_qp_info(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
         OMX_ERRORTYPE venc_set_temporal_layers(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pTemporalParams);
         OMX_ERRORTYPE venc_set_temporal_layers_internal();
+        bool venc_set_colorspace(OMX_U32 primaries, OMX_U32 range, OMX_U32 transfer_chars, OMX_U32 matrix_coeffs);
+
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
         OMX_U32 pmem_allocate(OMX_U32 size, OMX_U32 alignment, OMX_U32 count);
