@@ -80,7 +80,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define SZ_4K                       0x1000
 #define SZ_1M                       0x100000
-#define SECURE_BUFPTR               0xDEADBEEF
 
 typedef struct OMXComponentCapabilityFlagsType {
     ////////////////// OMX COMPONENT CAPABILITY RELATED MEMBERS
@@ -2216,7 +2215,7 @@ OMX_ERRORTYPE  omx_video::use_input_buffer(
             m_pInput_pmem[i].size = m_sInPortDef.nBufferSize;
             m_pInput_pmem[i].offset = 0;
 
-            m_pInput_pmem[i].buffer = (OMX_U8 *)SECURE_BUFPTR;
+            m_pInput_pmem[i].buffer = NULL;
             if(!secure_session) {
                 m_pInput_pmem[i].buffer = (unsigned char *)mmap(
                     NULL,m_pInput_pmem[i].size,PROT_READ|PROT_WRITE,
@@ -2224,6 +2223,7 @@ OMX_ERRORTYPE  omx_video::use_input_buffer(
 
                 if (m_pInput_pmem[i].buffer == MAP_FAILED) {
                     DEBUG_PRINT_ERROR("ERROR: mmap() Failed");
+                    m_pInput_pmem[i].buffer = NULL;
                     close(m_pInput_pmem[i].fd);
 #ifdef USE_ION
                     free_ion_memory(&m_pInput_ion[i]);
@@ -2408,7 +2408,7 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
                 m_pOutput_pmem[i].size = m_sOutPortDef.nBufferSize;
                 m_pOutput_pmem[i].offset = 0;
 
-                m_pOutput_pmem[i].buffer = (OMX_U8 *)SECURE_BUFPTR;
+                m_pOutput_pmem[i].buffer = NULL;
                 if(!secure_session) {
 #ifdef _MSM8974_
                     m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,
@@ -2421,6 +2421,7 @@ OMX_ERRORTYPE  omx_video::use_output_buffer(
 #endif
                     if (m_pOutput_pmem[i].buffer == MAP_FAILED) {
                         DEBUG_PRINT_ERROR("ERROR: mmap() Failed");
+                        m_pOutput_pmem[i].buffer = NULL;
                         close(m_pOutput_pmem[i].fd);
 #ifdef USE_ION
                         free_ion_memory(&m_pOutput_ion[i]);
@@ -2817,13 +2818,14 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
         m_pInput_pmem[i].size = m_sInPortDef.nBufferSize;
         m_pInput_pmem[i].offset = 0;
 
-        m_pInput_pmem[i].buffer = (OMX_U8 *)SECURE_BUFPTR;
+        m_pInput_pmem[i].buffer = NULL;
         if(!secure_session) {
             m_pInput_pmem[i].buffer = (unsigned char *)mmap(NULL,
                 m_pInput_pmem[i].size,PROT_READ|PROT_WRITE,
                 MAP_SHARED,m_pInput_pmem[i].fd,0);
             if (m_pInput_pmem[i].buffer == MAP_FAILED) {
                 DEBUG_PRINT_ERROR("ERROR: mmap FAILED= %d", errno);
+                m_pInput_pmem[i].buffer = NULL;
                 close(m_pInput_pmem[i].fd);
 #ifdef USE_ION
                 free_ion_memory(&m_pInput_ion[i]);
@@ -2834,6 +2836,10 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
             //This should only be used for passing reference to source type and
             //secure handle fd struct native_handle_t*
             m_pInput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
+            if (m_pInput_pmem[i].buffer == NULL) {
+                DEBUG_PRINT_ERROR("%s: failed to allocate native-handle", __func__);
+                return OMX_ErrorInsufficientResources;
+            }
             (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
         }
 
@@ -2979,7 +2985,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
             m_pOutput_pmem[i].size = m_sOutPortDef.nBufferSize;
             m_pOutput_pmem[i].offset = 0;
 
-            m_pOutput_pmem[i].buffer = (OMX_U8 *)SECURE_BUFPTR;
+            m_pOutput_pmem[i].buffer = NULL;
             if(!secure_session) {
 #ifdef _MSM8974_
                 m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,
@@ -2992,6 +2998,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
 #endif
                 if (m_pOutput_pmem[i].buffer == MAP_FAILED) {
                     DEBUG_PRINT_ERROR("ERROR: MMAP_FAILED in o/p alloc buffer");
+                    m_pOutput_pmem[i].buffer = NULL;
                     close (m_pOutput_pmem[i].fd);
 #ifdef USE_ION
                     free_ion_memory(&m_pOutput_ion[i]);
@@ -3003,6 +3010,10 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                 //This should only be used for passing reference to source type and
                 //secure handle fd struct native_handle_t*
                 m_pOutput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
+                if (m_pOutput_pmem[i].buffer == NULL) {
+                    DEBUG_PRINT_ERROR("%s: Failed to allocate native-handle", __func__);
+                    return OMX_ErrorInsufficientResources;
+                }
                 (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
                 native_handle_t *handle = native_handle_create(1, 0);
                 handle->data[0] = m_pOutput_pmem[i].fd;
