@@ -1470,7 +1470,7 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                             "request for inband sps/pps failed.");
                     return OMX_ErrorUnsupportedSetting;
                 }
-                memcpy((void *) &m_sPrependSPSPPS, &paramData, sizeof(m_sPrependSPSPPS));
+                memcpy(&m_sPrependSPSPPS, paramData, sizeof(m_sPrependSPSPPS));
                 break;
             }
         case OMX_QcomIndexParamH264AUDelimiter:
