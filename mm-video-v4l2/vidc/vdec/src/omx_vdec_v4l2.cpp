@@ -9511,12 +9511,31 @@ OMX_ERRORTYPE omx_vdec::get_buffer_req(vdec_allocatorproperty *buffer_prop)
         fmt.type =V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
         fmt.fmt.pix_mp.pixelformat = output_capability;
     } else if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT) {
-        bufreq.type=V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-        fmt.type =V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+        bufreq.type= V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+        fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
         fmt.fmt.pix_mp.pixelformat = capture_capability;
     } else {
         eRet = OMX_ErrorBadParameter;
     }
+
+    if (buffer_prop->buffer_type == VDEC_BUFFER_TYPE_OUTPUT && in_reconfig) {
+        //Do G_FMT here to ensure that capture port resolution is updated using
+        //reconfig wxh as in split mode capture port has default resolution till
+        //reconfig and if not updated, the buffer requirement will not include DCVS
+        //extra buffer count
+        if (eRet==OMX_ErrorNone) {
+            fmt.fmt.pix_mp.height = drv_ctx.video_resolution.frame_height;
+            fmt.fmt.pix_mp.width = drv_ctx.video_resolution.frame_width;
+            ret = ioctl(drv_ctx.video_driver_fd, VIDIOC_G_FMT, &fmt);
+        }
+        if (ret) {
+            DEBUG_PRINT_ERROR("Requesting buffer requirements failed");
+            /*TODO: How to handle this case */
+            eRet = OMX_ErrorInsufficientResources;
+            return eRet;
+        }
+    }
+
     if (eRet==OMX_ErrorNone) {
         ret = ioctl(drv_ctx.video_driver_fd,VIDIOC_REQBUFS, &bufreq);
     }
