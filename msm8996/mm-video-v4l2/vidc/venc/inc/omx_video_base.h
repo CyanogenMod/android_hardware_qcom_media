@@ -638,8 +638,8 @@ class omx_video: public qc_omx_component
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
         OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE m_sConfigIntraRefresh;
-        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE m_sParamTemporalLayers;
-        OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE m_sConfigTemporalLayers;
+        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE m_sParamTemporalLayers;
+        OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE m_sConfigTemporalLayers;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;

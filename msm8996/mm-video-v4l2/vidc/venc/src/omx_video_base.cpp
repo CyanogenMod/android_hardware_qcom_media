@@ -2068,13 +2068,13 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_sSar, sizeof(m_sSar));
                 break;
             }
-        case OMX_IndexParamAndroidVideoTemporalLayers:
+        case OMX_IndexParamAndroidVideoTemporalLayering:
             {
-                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE);
-                OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE *pLayerInfo =
-                        reinterpret_cast<OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE*>(paramData);
-                if (!dev_get_temporal_layer_caps(&m_sParamTemporalLayers.nTemporalLayerCountMax,
-                        &m_sParamTemporalLayers.nTemporalBLayerCountMax)) {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
+                OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pLayerInfo =
+                        reinterpret_cast<OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE*>(paramData);
+                if (!dev_get_temporal_layer_caps(&m_sParamTemporalLayers.nLayerCountMax,
+                        &m_sParamTemporalLayers.nBLayerCountMax)) {
                     DEBUG_PRINT_ERROR("Failed to get temporal layer capabilities");
                     eRet = OMX_ErrorHardware;
                 }
@@ -2240,12 +2240,12 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                memcpy(pParam, &m_sConfigIntraRefresh, sizeof(m_sConfigIntraRefresh));
                break;
            }
-        case OMX_IndexConfigAndroidVideoTemporalLayers:
+        case OMX_IndexParamAndroidVideoTemporalLayering:
             {
-                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE);
-                OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE *layerConfig =
-                        (OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE *)configData;
-                DEBUG_PRINT_LOW("get_config: OMX_IndexConfigAndroidVideoTemporalLayers");
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE);
+                OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *layerConfig =
+                        (OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *)configData;
+                DEBUG_PRINT_LOW("get_config: OMX_IndexConfigAndroidVideoTemporalLayering");
                 memcpy(configData, &m_sConfigTemporalLayers, sizeof(m_sConfigTemporalLayers));
                 break;
             }

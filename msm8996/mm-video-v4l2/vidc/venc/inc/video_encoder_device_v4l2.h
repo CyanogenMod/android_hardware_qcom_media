@@ -525,7 +525,7 @@ class venc_dev
         bool venc_set_operatingrate(OMX_U32 rate);
         bool venc_set_layer_bitrates(OMX_U32 *pLayerBitrates, OMX_U32 numLayers);
         bool venc_set_roi_qp_info(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
-        OMX_ERRORTYPE venc_set_temporal_layers(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE *pTemporalParams);
+        OMX_ERRORTYPE venc_set_temporal_layers(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pTemporalParams);
         OMX_ERRORTYPE venc_set_temporal_layers_internal();
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
