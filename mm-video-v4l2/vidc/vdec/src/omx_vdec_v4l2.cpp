@@ -10107,9 +10107,6 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     OMX_U32 recovery_sei_flags = 1;
     int enable = 0;
 
-
-    m_extradata_info.output_crop_updated = OMX_FALSE;
-
     if (output_flush_progress)
         return;
 
@@ -10150,6 +10147,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
         DEBUG_PRINT_ERROR("Error: out of bound memory access by p_extra");
         return;
     }
+    m_extradata_info.output_crop_updated = OMX_FALSE;
     OMX_OTHER_EXTRADATATYPE *data = (struct OMX_OTHER_EXTRADATATYPE *)p_extradata;
     if (data && p_extra) {
         while ((consumed_len < drv_ctx.extradata_info.buffer_size)
