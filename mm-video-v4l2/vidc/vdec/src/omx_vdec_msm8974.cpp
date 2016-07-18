@@ -7547,7 +7547,7 @@ int omx_vdec::async_message_process (void *context, void* message)
                                 omxhdr->nTimeStamp,
                                 (omx->drv_ctx.interlace != VDEC_InterlaceFrameProgressive)
                                 ?true:false);
-                        omx->post_event ((unsigned long)NULL,(unsigned long)omxhdr,
+                        omx->post_event ((unsigned long)NULL,(unsigned long)omx->client_buffers.get_il_buf_hdr(omxhdr),
                                 OMX_COMPONENT_GENERATE_FTB);
                         break;
                     }
