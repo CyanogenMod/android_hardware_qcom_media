@@ -264,7 +264,7 @@ venc_dev::venc_dev(class omx_venc *venc_class):mInputExtradata(venc_class), mOut
     memset(&ltrinfo, 0, sizeof(ltrinfo));
     memset(&fd_list, 0, sizeof(fd_list));
     memset(&hybrid_hp, 0, sizeof(hybrid_hp));
-    sess_priority.priority = 1;
+    sess_priority.priority = 1; //default to non-realtime
     operating_rate = 0;
     memset(&temporal_layers_config, 0x0, sizeof(temporal_layers_config));
 
@@ -2570,6 +2570,7 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                     DEBUG_PRINT_ERROR("Failed to set priority");
                     return false;
                 }
+                sess_priority.priority = priority->nU32;
                 break;
             }
         case OMX_IndexConfigOperatingRate:
@@ -2801,6 +2802,21 @@ unsigned venc_dev::venc_start(void)
 
     if (vqzip_sei_info.enabled && !venc_set_vqzip_defaults())
         return 1;
+
+    // disable B-frames for realtime high-resolution/fps usecases for power considerations
+    if (intra_period.num_bframes &&
+            sess_priority.priority == 0 /*realtime*/ &&
+            (((m_sVenc_cfg.input_width * m_sVenc_cfg.input_height) > (1920 * 1088)) ||
+            (operating_rate >= 60 << 16))) {
+        intra_period.num_pframes += (intra_period.num_bframes + 1);
+        intra_period.num_bframes = 0;
+        if (venc_set_intra_period(intra_period.num_pframes, intra_period.num_bframes)) {
+            DEBUG_PRINT_INFO("Disabling B frames: res = %lux%lu : operating-rate = %u frames/sec",
+                    m_sVenc_cfg.input_width, m_sVenc_cfg.input_height, operating_rate >> 16);
+        } else {
+            DEBUG_PRINT_ERROR("Failed to disable B frames!");
+        }
+    }
 
     // re-configure the temporal layers as RC-mode and key-frame interval
     // might have changed since the client last configured the layers.
