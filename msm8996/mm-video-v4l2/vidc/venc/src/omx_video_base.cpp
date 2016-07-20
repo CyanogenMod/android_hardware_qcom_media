@@ -2255,6 +2255,10 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                 DescribeColorAspectsParams* pParam =
                     reinterpret_cast<DescribeColorAspectsParams*>(configData);
                 DEBUG_PRINT_LOW("get_config: OMX_QTIIndexConfigDescribeColorAspects");
+                if (pParam->bRequestingDataSpace) {
+                    DEBUG_PRINT_ERROR("Does not handle dataspace request");
+                    return OMX_ErrorUnsupportedSetting;
+                }
                 memcpy(pParam, &m_sConfigColorAspects, sizeof(m_sConfigColorAspects));
                 break;
             }
