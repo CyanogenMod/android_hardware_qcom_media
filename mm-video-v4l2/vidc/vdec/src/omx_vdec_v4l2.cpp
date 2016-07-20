@@ -790,6 +790,13 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_client_color_space.sAspects.mPrimaries = ColorAspects::PrimariesUnspecified;
     m_client_color_space.sAspects.mMatrixCoeffs = ColorAspects::MatrixUnspecified;
     m_client_color_space.sAspects.mTransfer = ColorAspects::TransferUnspecified;
+
+    m_internal_color_space.nPortIndex = (OMX_U32)OMX_CORE_OUTPUT_PORT_INDEX;
+    m_internal_color_space.sAspects.mRange =  ColorAspects::RangeUnspecified;
+    m_internal_color_space.sAspects.mPrimaries = ColorAspects::PrimariesUnspecified;
+    m_internal_color_space.sAspects.mMatrixCoeffs = ColorAspects::MatrixUnspecified;
+    m_internal_color_space.sAspects.mTransfer = ColorAspects::TransferUnspecified;
+    m_internal_color_space.nSize = sizeof(DescribeColorAspectsParams);
 }
 
 static const int event_type[] = {
@@ -5093,16 +5100,24 @@ OMX_ERRORTYPE  omx_vdec::get_config(OMX_IN OMX_HANDLETYPE      hComp,
         }
         case OMX_QTIIndexConfigDescribeColorAspects:
         {
-         // VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
-         // FIXME Till Framework fills right size
+            VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
             DescribeColorAspectsParams *params = (DescribeColorAspectsParams *)configData;
-            DEBUG_PRINT_HIGH("Get Config : Color Space values : sAspects.mPrimaries  = %d sAspects.mRange = %d"
-               " sAspects.mTransfer %d, sAspects.mMatrixCoeffs = %d", m_internal_color_space.sAspects.mPrimaries,
-               m_internal_color_space.sAspects.mRange, m_internal_color_space.sAspects.mTransfer,
-               m_internal_color_space.sAspects.mMatrixCoeffs);
-            memcpy(params, &m_internal_color_space, sizeof(DescribeColorAspectsParams));
-            // Sync component's client struct and values informed to client
-            memcpy(&m_client_color_space, &m_internal_color_space, sizeof(DescribeColorAspectsParams));
+
+            print_debug_color_aspects(&(m_client_color_space.sAspects), "GetConfig Client");
+            print_debug_color_aspects(&(m_internal_color_space.sAspects), "GetConfig Internal");
+
+            if (params->bRequestingDataSpace) {
+                DEBUG_PRINT_ERROR("Does not handle dataspace request");
+                return OMX_ErrorUnsupportedSetting;
+            }
+            if (m_internal_color_space.bDataSpaceChanged == OMX_TRUE) {
+                DEBUG_PRINT_LOW("Updating Client's color aspects with internal");
+                memcpy(&(m_client_color_space.sAspects),
+                        &(m_internal_color_space.sAspects), sizeof(ColorAspects));
+                m_internal_color_space.bDataSpaceChanged = OMX_FALSE;
+            }
+            memcpy(&(params->sAspects), &(m_client_color_space.sAspects), sizeof(ColorAspects));
+
             break;
         }
         default: {
@@ -5322,12 +5337,11 @@ OMX_ERRORTYPE  omx_vdec::set_config(OMX_IN OMX_HANDLETYPE      hComp,
     } else if ((int)configIndex == (int)OMX_QTIIndexConfigDescribeColorAspects) {
         VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
         DescribeColorAspectsParams *params = (DescribeColorAspectsParams *)configData;
-        enable_extradata(OMX_DISPLAY_INFO_EXTRADATA, true, true);
+        if (!DEFAULT_EXTRADATA & OMX_DISPLAY_INFO_EXTRADATA) {
+            enable_extradata(OMX_DISPLAY_INFO_EXTRADATA, true, true);
+        }
 
-        DEBUG_PRINT_HIGH("Set Config : Color Space values : sAspects.mPrimaries  = %d sAspects.mRange = %d"
-                " sAspects.mTransfer %d, sAspects.mMatrixCoeffs = %d", params->sAspects.mPrimaries,
-                params->sAspects.mRange, params->sAspects.mTransfer,
-                params->sAspects.mMatrixCoeffs);
+        print_debug_color_aspects(&(params->sAspects), "Set Config");
         memcpy(&m_client_color_space, params, sizeof(DescribeColorAspectsParams));
         return ret;
     }
@@ -10201,7 +10215,6 @@ void omx_vdec::convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
             break;
         case MSM_VIDC_BT601_6_625:
             aspects->mPrimaries = ColorAspects::PrimariesBT601_6_625;
-            *color_space = range ? ITU_R_601_FR : ITU_R_601;
             break;
         case MSM_VIDC_BT601_6_525:
             *color_space = range ? ITU_R_601_FR : ITU_R_601;
@@ -10214,7 +10227,8 @@ void omx_vdec::convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
             aspects->mPrimaries = ColorAspects::PrimariesBT2020;
             break;
         default:
-            aspects->mPrimaries = ColorAspects::PrimariesOther;
+            //aspects->mPrimaries = ColorAspects::PrimariesOther;
+            aspects->mPrimaries = m_client_color_space.sAspects.mPrimaries;
             break;
     }
 
@@ -10224,9 +10238,6 @@ void omx_vdec::convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
         case MSM_VIDC_TRANSFER_BT709_5:
         case MSM_VIDC_TRANSFER_601_6_525: // case MSM_VIDC_TRANSFER_601_6_625:
             aspects->mTransfer = ColorAspects::TransferSMPTE170M;
-            break;
-        case MSM_VIDC_TRANSFER_UNSPECIFIED:
-            aspects->mTransfer = ColorAspects::TransferUnspecified;
             break;
         case MSM_VIDC_TRANSFER_BT_470_6_M:
             aspects->mTransfer = ColorAspects::TransferGamma22;
@@ -10250,7 +10261,8 @@ void omx_vdec::convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
             aspects->mTransfer = ColorAspects::TransferSRGB;
             break;
         default:
-            aspects->mTransfer = ColorAspects::TransferOther;
+            //aspects->mTransfer = ColorAspects::TransferOther;
+            aspects->mTransfer = m_client_color_space.sAspects.mTransfer;
             break;
     }
 
@@ -10275,17 +10287,24 @@ void omx_vdec::convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
             aspects->mMatrixCoeffs = ColorAspects::MatrixBT2020Constant;
             break;
         default:
-            aspects->mMatrixCoeffs = ColorAspects::MatrixOther;
+            //aspects->mMatrixCoeffs = ColorAspects::MatrixOther;
+            aspects->mMatrixCoeffs = m_client_color_space.sAspects.mMatrixCoeffs;
             break;
     }
+}
+
+void omx_vdec::print_debug_color_aspects(ColorAspects *aspects, const char *prefix) {
+        DEBUG_PRINT_HIGH("%s : Color aspects : Primaries = %d Range = %d Transfer = %d MatrixCoeffs = %d",
+                prefix, aspects->mPrimaries, aspects->mRange, aspects->mTransfer, aspects->mMatrixCoeffs);
 }
 
 void omx_vdec::handle_color_space_info(void *data, unsigned int buf_index)
 {
     ColorSpace_t color_space = ITU_R_601_FR;
-    ColorAspects *aspects = &m_internal_color_space.sAspects;
+    ColorAspects tempAspects;
+    memset(&tempAspects, 0x0, sizeof(ColorAspects));
+    ColorAspects *aspects = &tempAspects;
 
-    memcpy(aspects, &m_client_color_space.sAspects, sizeof(ColorAspects));
     switch(output_capability) {
         case V4L2_PIX_FMT_MPEG2:
             {
@@ -10348,7 +10367,7 @@ void omx_vdec::handle_color_space_info(void *data, unsigned int buf_index)
                 struct msm_vidc_vpx_colorspace_payload *vpx_color_space_payload;
                 vpx_color_space_payload = (struct msm_vidc_vpx_colorspace_payload*)data;
 
-                /* Refer VP8 Spec @ RFC 6386 VP8 Data Format and Decoding Guide November 2011
+                /* Refer VP8 Data Format in latest VP8 spec and Decoding Guide November 2011
                  * to understand this code */
 
                 if (vpx_color_space_payload->color_space == 0) {
@@ -10419,20 +10438,24 @@ void omx_vdec::handle_color_space_info(void *data, unsigned int buf_index)
         default:
             break;
     }
-    if (m_enable_android_native_buffers)
+    if (m_enable_android_native_buffers) {
+        DEBUG_PRINT_HIGH("setMetaData for Color Space = 0x%x", color_space);
         setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
                 UPDATE_COLOR_SPACE, (void*)&color_space);
-    if (m_internal_color_space.sAspects.mPrimaries != m_client_color_space.sAspects.mPrimaries ||
-            m_internal_color_space.sAspects.mTransfer != m_client_color_space.sAspects.mTransfer ||
-            m_internal_color_space.sAspects.mMatrixCoeffs != m_client_color_space.sAspects.mMatrixCoeffs ||
-            m_internal_color_space.sAspects.mRange != m_client_color_space.sAspects.mRange) {
+    }
+    print_debug_color_aspects(aspects, "Bitstream");
+
+    if (m_internal_color_space.sAspects.mPrimaries != aspects->mPrimaries ||
+            m_internal_color_space.sAspects.mTransfer != aspects->mTransfer ||
+            m_internal_color_space.sAspects.mMatrixCoeffs != aspects->mMatrixCoeffs ||
+            m_internal_color_space.sAspects.mRange != aspects->mRange) {
+        memcpy(&(m_internal_color_space.sAspects), aspects, sizeof(ColorAspects));
+        m_internal_color_space.bDataSpaceChanged = OMX_TRUE;
+
         DEBUG_PRINT_HIGH("Initiating PORT Reconfig");
-        DEBUG_PRINT_HIGH("Bit stream Color Space values : sAspects.mPrimaries  = %d sAspects.mRange = %d"
-                " sAspects.mTransfer %d, sAspects.mMatrixCoeffs = %d", m_internal_color_space.sAspects.mPrimaries, m_internal_color_space.sAspects.mRange,
-                m_internal_color_space.sAspects.mTransfer, m_internal_color_space.sAspects.mMatrixCoeffs);
-        DEBUG_PRINT_HIGH("Client set Color Space values : sAspects.mPrimaries  = %d sAspects.mRange = %d"
-                " sAspects.mTransfer %d, sAspects.mMatrixCoeffs = %d", m_client_color_space.sAspects.mPrimaries,
-                m_client_color_space.sAspects.mRange, m_client_color_space.sAspects.mTransfer, m_client_color_space.sAspects.mMatrixCoeffs);
+        print_debug_color_aspects(&(m_internal_color_space.sAspects), "Internal");
+        print_debug_color_aspects(&(m_client_color_space.sAspects), "Client");
+
         post_event(OMX_CORE_OUTPUT_PORT_INDEX,
                 OMX_QTIIndexConfigDescribeColorAspects,
                 OMX_COMPONENT_GENERATE_PORT_RECONFIG);
