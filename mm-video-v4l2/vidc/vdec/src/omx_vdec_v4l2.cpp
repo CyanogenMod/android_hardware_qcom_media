@@ -8133,7 +8133,7 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
         }
 
         if (il_buffer) {
-            log_output_buffers(il_buffer);
+            log_output_buffers(buffer);
             if (dynamic_buf_mode) {
                 unsigned int nPortIndex = 0;
                 nPortIndex = buffer-((OMX_BUFFERHEADERTYPE *)client_buffers.get_il_buf_hdr());
