@@ -661,7 +661,7 @@ bool venc_dev::handle_input_extradata(void *buffer, int index, int fd)
     height = ALIGN(m_sVenc_cfg.input_height, 32);
     width = ALIGN(m_sVenc_cfg.input_width, 32);
 
-    index = venc_get_index_from_fd(fd);
+    index = venc_get_index_from_fd(input_extradata_info.m_ion_dev,fd);
 
     unsigned char *pVirt;
     int size = VENUS_BUFFER_SIZE(COLOR_FMT_NV12, width, height);
@@ -901,6 +901,7 @@ OMX_ERRORTYPE venc_dev::allocate_extradata(struct extradata_buffer_info *extrada
             venc_handle->free_ion_memory(&extradata_info->ion);
             return OMX_ErrorInsufficientResources;
         }
+        extradata_info->m_ion_dev = open("/dev/ion", O_RDONLY);
     }
 
 #endif
@@ -917,6 +918,8 @@ void venc_dev::free_extradata()
         close(output_extradata_info.ion.fd_ion_data.fd);
         venc_handle->free_ion_memory(&output_extradata_info.ion);
     }
+    if (output_extradata_info.m_ion_dev)
+        close(output_extradata_info.m_ion_dev);
 
     memset(&output_extradata_info, 0, sizeof(output_extradata_info));
     output_extradata_info.ion.fd_ion_data.fd = -1;
@@ -926,6 +929,9 @@ void venc_dev::free_extradata()
         close(input_extradata_info.ion.fd_ion_data.fd);
         venc_handle->free_ion_memory(&input_extradata_info.ion);
     }
+
+    if (input_extradata_info.m_ion_dev)
+        close(output_extradata_info.m_ion_dev);
 
     memset(&input_extradata_info, 0, sizeof(input_extradata_info));
     input_extradata_info.ion.fd_ion_data.fd = -1;
@@ -1380,6 +1386,7 @@ bool venc_dev::venc_open(OMX_U32 codec)
 
     input_extradata_info.port_index = OUTPUT_PORT;
     output_extradata_info.port_index = CAPTURE_PORT;
+
     return true;
 }
 
@@ -3177,7 +3184,7 @@ bool venc_dev::venc_use_buf(void *buf_addr, unsigned port,unsigned index)
         buf.length = num_input_planes;
 
 if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
-            extradata_index = venc_get_index_from_fd(pmem_tmp->fd);
+            extradata_index = venc_get_index_from_fd(input_extradata_info.m_ion_dev, pmem_tmp->fd);
             if (extradata_index < 0 ) {
                 DEBUG_PRINT_ERROR("Extradata index calculation went wrong for fd = %d", pmem_tmp->fd);
                 return OMX_ErrorBadParameter;
@@ -3560,7 +3567,7 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
     extra_idx = EXTRADATA_IDX(num_input_planes);
 
     if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
-        int extradata_index = venc_get_index_from_fd(fd);
+        int extradata_index = venc_get_index_from_fd(input_extradata_info.m_ion_dev,fd);
         if (extradata_index < 0 ) {
                 DEBUG_PRINT_ERROR("Extradata index calculation went wrong for fd = %d", fd);
                 return OMX_ErrorBadParameter;
@@ -3878,21 +3885,29 @@ bool venc_dev::venc_set_mbi_statistics_mode(OMX_U32 mode)
     return true;
 }
 
-int venc_dev::venc_get_index_from_fd(OMX_U32 fd)
+int venc_dev::venc_get_index_from_fd(OMX_U32 ion_fd, OMX_U32 buffer_fd)
 {
-    unsigned int i = 0;
-    for (;i < 64; i++) {
-        if (fd_list[i] == fd) {
+    unsigned int cookie = buffer_fd;
+    struct ion_fd_data fdData;
+
+    memset(&fdData, 0, sizeof(fdData));
+    fdData.fd = buffer_fd;
+    if (ion_fd && !ioctl(ion_fd, ION_IOC_IMPORT, &fdData)) {
+        cookie = fdData.handle;
+    }
+
+    for (int i = 0; i < 64; i++) {
+        if (fd_list[i] == cookie) {
             DEBUG_PRINT_HIGH("FD is present at index = %d", i);
             return i;
         }
     }
-    for (i = 0;i < 64; i++)
+    for (int i = 0; i < 64; i++)
         if (fd_list[i] == 0) {
             DEBUG_PRINT_HIGH("FD added at index = %d", i);
-            fd_list[i] = fd;
+            fd_list[i] = cookie;
             return i;
-    }
+        }
     return -EINVAL;
 }
 
