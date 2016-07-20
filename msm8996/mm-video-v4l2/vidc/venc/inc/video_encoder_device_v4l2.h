@@ -474,6 +474,7 @@ class venc_dev
         msm_venc_temporal_layers            temporal_layers_config;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
+        bool venc_set_intra_period_config(OMX_U32 nPFrames, OMX_U32 nBFrames);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
         bool venc_set_target_bitrate(OMX_U32 nTargetBitrate, OMX_U32 config);
         bool venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate);

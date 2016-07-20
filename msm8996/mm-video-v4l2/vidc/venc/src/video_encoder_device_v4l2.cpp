@@ -1763,7 +1763,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                         }
                     }
 
-                    if (!venc_set_intra_period (pParam->nPFrames,bFrames)) {
+                    if (!venc_set_intra_period_config (pParam->nPFrames,bFrames)) {
                         DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
                         return false;
                     }
@@ -1796,7 +1796,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                     if (pParam->nBFrames)
                         DEBUG_PRINT_ERROR("WARNING: B frame not supported for H.263");
 
-                    if (venc_set_intra_period (pParam->nPFrames, bFrames) == false) {
+                    if (venc_set_intra_period_config (pParam->nPFrames, bFrames) == false) {
                         DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
                         return false;
                     }
@@ -1837,7 +1837,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                         }
                     }
 
-                    if (!venc_set_intra_period (pParam->nPFrames, bFrames)) {
+                    if (!venc_set_intra_period_config (pParam->nPFrames, bFrames)) {
                         DEBUG_PRINT_ERROR("ERROR: Request for setting intra period failed");
                         return false;
                     }
@@ -4487,6 +4487,17 @@ bool venc_dev::venc_set_voptiming_cfg( OMX_U32 TimeIncRes)
 
     voptimecfg.voptime_resolution = vop_timing_cfg.voptime_resolution;
     return true;
+}
+
+bool venc_dev::venc_set_intra_period_config(OMX_U32 nPFrames, OMX_U32 nBFrames) {
+#if _ANDROID_
+    // Android defines nBFrames as number of Bs between I OR P
+    // Per the spec, nBFrames is number of Bs between I
+    OMX_U32 nBs = nBFrames * (nPFrames + 1);
+    DEBUG_PRINT_INFO("Updating Bframes from %u to %u", nBFrames, nBs);
+    nBFrames = nBs;
+#endif //_ANDROID_
+   return venc_set_intra_period(nPFrames, nBFrames);
 }
 
 bool venc_dev::venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames)
