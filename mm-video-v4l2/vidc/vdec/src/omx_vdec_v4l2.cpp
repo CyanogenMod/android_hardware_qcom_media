@@ -6263,6 +6263,10 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
         DEBUG_PRINT_LOW("Buffer address %p of pmem",*bufferHdr);
         if (allocate_native_handle) {
             native_handle_t *nh = native_handle_create(1 /*numFds*/, 0 /*numInts*/);
+            if (!nh) {
+                DEBUG_PRINT_ERROR("Native handle create failed");
+                return OMX_ErrorInsufficientResources;
+            }
             nh->data[0] = drv_ctx.ptr_inputbuffer[i].pmem_fd;
             input->pBuffer = (OMX_U8 *)nh;
         } else if (secure_mode || m_input_pass_buffer_fd) {
@@ -8373,13 +8377,13 @@ int omx_vdec::async_message_process (void *context, void* message)
         case VDEC_MSG_RESP_OUTPUT_BUFFER_DONE:
 
            v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.output_frame.client_data;
-           plane = v4l2_buf_ptr->m.planes;
            if (v4l2_buf_ptr == NULL || omx->m_out_mem_ptr == NULL ||
                v4l2_buf_ptr->index >= omx->drv_ctx.op_buf.actualcount) {
                omxhdr = NULL;
                vdec_msg->status_code = VDEC_S_EFATAL;
                break;
            }
+           plane = v4l2_buf_ptr->m.planes;
            omxhdr = omx->m_out_mem_ptr + v4l2_buf_ptr->index;
 
            if (omxhdr && omxhdr->pOutputPortPrivate &&
