@@ -669,8 +669,8 @@ class omx_video: public qc_omx_component
 #endif
         OMX_QTI_VIDEO_CONFIG_BLURINFO       m_blurInfo;
         DescribeColorAspectsParams m_sConfigColorAspects;
-        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE m_sParamTemporalLayers;
-        OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERTYPE m_sConfigTemporalLayers;
+        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE m_sParamTemporalLayers;
+        OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE m_sConfigTemporalLayers;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;

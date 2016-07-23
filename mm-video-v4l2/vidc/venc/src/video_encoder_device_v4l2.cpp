@@ -2447,10 +2447,10 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
                 break;
             }
-        case OMX_IndexParamAndroidVideoTemporalLayers:
+        case OMX_IndexParamAndroidVideoTemporalLayering:
             {
                 if (venc_set_temporal_layers(
-                        (OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE*)paramData) != OMX_ErrorNone) {
+                        (OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE*)paramData) != OMX_ErrorNone) {
                     DEBUG_PRINT_ERROR("set_param: Failed to configure temporal layers");
                     return false;
                 }
@@ -2708,7 +2708,7 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
-        case OMX_IndexParamAndroidVideoTemporalLayers:
+        case OMX_IndexParamAndroidVideoTemporalLayering:
             {
                 DEBUG_PRINT_ERROR("TemporalLayer: Changing layer-configuration dynamically is not supported!");
                 return false;
@@ -6610,7 +6610,7 @@ bool venc_dev::venc_get_temporal_layer_caps(OMX_U32 *nMaxLayers,
 }
 
 OMX_ERRORTYPE venc_dev::venc_set_temporal_layers(
-        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE *pTemporalParams) {
+        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pTemporalParams) {
 
     if (!(m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264
             || m_sVenc_cfg.codectype == V4L2_PIX_FMT_HEVC
@@ -6619,14 +6619,23 @@ OMX_ERRORTYPE venc_dev::venc_set_temporal_layers(
         return OMX_ErrorUnsupportedSetting;
     }
 
-    if (pTemporalParams->nTemporalBLayerCountActual > temporal_layers_config.nMaxBLayers) {
-        DEBUG_PRINT_ERROR("TemporalLayer: Requested B-layers(%u) exceeds supported max(%u)",
-                pTemporalParams->nTemporalBLayerCountActual, temporal_layers_config.nMaxBLayers);
+    if (pTemporalParams->ePattern == OMX_VIDEO_AndroidTemporalLayeringPatternNone &&
+            (pTemporalParams->nBLayerCountActual != 0 ||
+             pTemporalParams->nPLayerCountActual != 1)) {
         return OMX_ErrorBadParameter;
-    } else if (pTemporalParams->nTemporalPLayerCountActual + pTemporalParams->nTemporalBLayerCountActual >
-             temporal_layers_config.nMaxLayers) {
+    } else if (pTemporalParams->ePattern != OMX_VIDEO_AndroidTemporalLayeringPatternAndroid ||
+            pTemporalParams->nPLayerCountActual < 1) {
+        return OMX_ErrorBadParameter;
+    }
+
+    if (pTemporalParams->nBLayerCountActual > temporal_layers_config.nMaxBLayers) {
+        DEBUG_PRINT_ERROR("TemporalLayer: Requested B-layers(%u) exceeds supported max(%u)",
+                pTemporalParams->nBLayerCountActual, temporal_layers_config.nMaxBLayers);
+        return OMX_ErrorBadParameter;
+    } else if (pTemporalParams->nPLayerCountActual >
+             temporal_layers_config.nMaxLayers - pTemporalParams->nBLayerCountActual) {
         DEBUG_PRINT_ERROR("TemporalLayer: Requested layers(%u) exceeds supported max(%u)",
-                pTemporalParams->nTemporalPLayerCountActual + pTemporalParams->nTemporalBLayerCountActual,
+                pTemporalParams->nPLayerCountActual + pTemporalParams->nBLayerCountActual,
                 temporal_layers_config.nMaxLayers);
         return OMX_ErrorBadParameter;
     }
@@ -6635,17 +6644,17 @@ OMX_ERRORTYPE venc_dev::venc_set_temporal_layers(
     // use hybrid-HP for best results
     bool isAvc = m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264;
     bool isVBR = rate_ctrl.rcmode == RC_VBR_CFR || rate_ctrl.rcmode == RC_VBR_VFR;
-    bool bUseHybridMode = isAvc && pTemporalParams->nTemporalBLayerCountActual == 0 && isVBR;
+    bool bUseHybridMode = isAvc && pTemporalParams->nBLayerCountActual == 0 && isVBR;
 
     // If there are more than 3 layers configured for AVC, normal HP will not work. force hybrid
-    bUseHybridMode |= (isAvc && pTemporalParams->nTemporalPLayerCountActual > MAX_AVC_HP_LAYERS);
+    bUseHybridMode |= (isAvc && pTemporalParams->nPLayerCountActual > MAX_AVC_HP_LAYERS);
 
     DEBUG_PRINT_LOW("TemporalLayer: RC-mode = %ld : %s hybrid-HP",
             rate_ctrl.rcmode, bUseHybridMode ? "enable" : "disable");
 
     if (bUseHybridMode &&
-            !venc_validate_hybridhp_params(pTemporalParams->nTemporalPLayerCountActual,
-                pTemporalParams->nTemporalBLayerCountActual,
+            !venc_validate_hybridhp_params(pTemporalParams->nPLayerCountActual,
+                pTemporalParams->nBLayerCountActual,
                 0 /* LTR count */, (int) HIER_P_HYBRID)) {
         bUseHybridMode = false;
         DEBUG_PRINT_ERROR("Failed to validate Hybrid HP. Will try fallback to normal HP");
@@ -6664,7 +6673,7 @@ OMX_ERRORTYPE venc_dev::venc_set_temporal_layers(
 
     struct v4l2_control control;
     // Num enhancements layers does not include the base-layer
-    control.value = pTemporalParams->nTemporalPLayerCountActual - 1;
+    control.value = pTemporalParams->nPLayerCountActual - 1;
 
     if (bUseHybridMode) {
         DEBUG_PRINT_LOW("TemporalLayer: Try enabling hybrid HP with %u layers", control.value);
@@ -6692,7 +6701,7 @@ OMX_ERRORTYPE venc_dev::venc_set_temporal_layers(
     if (!bUseHybridMode) {
 
         // in case of normal HP, avc encoder cannot support more than MAX_AVC_HP_LAYERS
-        if (isAvc && pTemporalParams->nTemporalPLayerCountActual > MAX_AVC_HP_LAYERS) {
+        if (isAvc && pTemporalParams->nPLayerCountActual > MAX_AVC_HP_LAYERS) {
             DEBUG_PRINT_ERROR("AVC supports only up to %d layers", MAX_AVC_HP_LAYERS);
             return OMX_ErrorUnsupportedSetting;
         }
@@ -6707,7 +6716,7 @@ OMX_ERRORTYPE venc_dev::venc_set_temporal_layers(
         // configure max layers for a session.. Okay to use current num-layers as max
         //  since we do not plan to support dynamic changes to number of layers
         control.id = V4L2_CID_MPEG_VIDC_VIDEO_MAX_HIERP_LAYERS;
-        control.value = pTemporalParams->nTemporalPLayerCountActual - 1;
+        control.value = pTemporalParams->nPLayerCountActual - 1;
         if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
             DEBUG_PRINT_ERROR("Failed to set max HP layers to %u", control.value);
             return OMX_ErrorUnsupportedSetting;
@@ -6736,29 +6745,29 @@ OMX_ERRORTYPE venc_dev::venc_set_temporal_layers(
     }
 
     temporal_layers_config.hier_mode = bUseHybridMode ? HIER_P_HYBRID : HIER_P;
-    temporal_layers_config.nPLayers = pTemporalParams->nTemporalPLayerCountActual;
+    temporal_layers_config.nPLayers = pTemporalParams->nPLayerCountActual;
     temporal_layers_config.nBLayers = 0;
 
     temporal_layers_config.bIsBitrateRatioValid = OMX_FALSE;
-    if (pTemporalParams->bTemporalLayerBitrateRatioSpecified == OMX_FALSE) {
+    if (pTemporalParams->bBitrateRatiosSpecified == OMX_FALSE) {
         DEBUG_PRINT_LOW("TemporalLayer: layerwise bitrate ratio not specified. Will use cumulative..");
         return OMX_ErrorNone;
     }
     DEBUG_PRINT_LOW("TemporalLayer: layerwise bitrate ratio specified");
 
     OMX_U32 layerBitrates[OMX_VIDEO_MAX_HP_LAYERS] = {0},
-            numLayers = pTemporalParams->nTemporalPLayerCountActual + pTemporalParams->nTemporalBLayerCountActual;
+            numLayers = pTemporalParams->nPLayerCountActual + pTemporalParams->nBLayerCountActual;
 
     OMX_U32 i = 0;
     for (; i < numLayers; ++i) {
-        OMX_U32 previousLayersAccumulatedBitrateRatio = i == 0 ? 0 : pTemporalParams->nTemporalLayerBitrateRatio[i-1];
-        OMX_U32 currentLayerBitrateRatio = pTemporalParams->nTemporalLayerBitrateRatio[i] - previousLayersAccumulatedBitrateRatio;
-        if (previousLayersAccumulatedBitrateRatio > pTemporalParams->nTemporalLayerBitrateRatio[i]) {
+        OMX_U32 previousLayersAccumulatedBitrateRatio = i == 0 ? 0 : pTemporalParams->nBitrateRatios[i-1];
+        OMX_U32 currentLayerBitrateRatio = pTemporalParams->nBitrateRatios[i] - previousLayersAccumulatedBitrateRatio;
+        if (previousLayersAccumulatedBitrateRatio > pTemporalParams->nBitrateRatios[i]) {
             DEBUG_PRINT_ERROR("invalid bitrate ratio for layer %d.. Will fallback to cumulative", i);
             return OMX_ErrorBadParameter;
         } else {
             layerBitrates[i] = (currentLayerBitrateRatio * bitrate.target_bitrate) / 100;
-            temporal_layers_config.nTemporalLayerBitrateRatio[i] = pTemporalParams->nTemporalLayerBitrateRatio[i];
+            temporal_layers_config.nTemporalLayerBitrateRatio[i] = pTemporalParams->nBitrateRatios[i];
             temporal_layers_config.nTemporalLayerBitrateFraction[i] = currentLayerBitrateRatio;
             DEBUG_PRINT_LOW("TemporalLayer: layer[%u] ratio=%u%% bitrate=%u(of %ld)",
                     i, currentLayerBitrateRatio, layerBitrates[i], bitrate.target_bitrate);
@@ -6780,20 +6789,22 @@ OMX_ERRORTYPE venc_dev::venc_set_temporal_layers(
 }
 
 OMX_ERRORTYPE venc_dev::venc_set_temporal_layers_internal() {
-    OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE pTemporalParams;
-    memset(&pTemporalParams, 0x0, sizeof(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE));
+    OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE pTemporalParams;
+    memset(&pTemporalParams, 0x0, sizeof(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE));
 
     if (!temporal_layers_config.nPLayers) {
         return OMX_ErrorNone;
     }
-    pTemporalParams.nTemporalLayerCountMax = temporal_layers_config.nMaxLayers;
-    pTemporalParams.nTemporalBLayerCountActual = temporal_layers_config.nMaxBLayers;
-    pTemporalParams.nTemporalPLayerCountActual = temporal_layers_config.nPLayers;
-    pTemporalParams.nTemporalBLayerCountActual = temporal_layers_config.nBLayers;
-    pTemporalParams.bTemporalLayerBitrateRatioSpecified = temporal_layers_config.bIsBitrateRatioValid;
+    pTemporalParams.eSupportedPatterns = OMX_VIDEO_AndroidTemporalLayeringPatternAndroid;
+    pTemporalParams.nLayerCountMax = temporal_layers_config.nMaxLayers;
+    pTemporalParams.nBLayerCountMax = temporal_layers_config.nMaxBLayers;
+    pTemporalParams.ePattern = OMX_VIDEO_AndroidTemporalLayeringPatternAndroid;
+    pTemporalParams.nPLayerCountActual = temporal_layers_config.nPLayers;
+    pTemporalParams.nBLayerCountActual = temporal_layers_config.nBLayers;
+    pTemporalParams.bBitrateRatiosSpecified = temporal_layers_config.bIsBitrateRatioValid;
     if (temporal_layers_config.bIsBitrateRatioValid == OMX_TRUE) {
         for (OMX_U32 i = 0; i < temporal_layers_config.nPLayers + temporal_layers_config.nBLayers; ++i) {
-            pTemporalParams.nTemporalLayerBitrateRatio[i] =
+            pTemporalParams.nBitrateRatios[i] =
                     temporal_layers_config.nTemporalLayerBitrateRatio[i];
         }
     }

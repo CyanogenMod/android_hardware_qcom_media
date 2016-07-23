@@ -523,7 +523,7 @@ class venc_dev
         bool venc_set_roi_qp_info(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
         bool venc_set_blur_resolution(OMX_QTI_VIDEO_CONFIG_BLURINFO *blurInfo);
         bool venc_set_colorspace(OMX_U32 primaries, OMX_U32 range, OMX_U32 transfer_chars, OMX_U32 matrix_coeffs);
-        OMX_ERRORTYPE venc_set_temporal_layers(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERTYPE *pTemporalParams);
+        OMX_ERRORTYPE venc_set_temporal_layers(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pTemporalParams);
         OMX_ERRORTYPE venc_set_temporal_layers_internal();
 
 #ifdef MAX_RES_1080P
