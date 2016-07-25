@@ -2373,6 +2373,7 @@ int omx_venc::async_message_process (void *context, void* message)
     struct venc_msg *m_sVenc_msg = NULL;
     OMX_BUFFERHEADERTYPE* omxhdr = NULL;
     struct venc_buffer *temp_buff = NULL;
+    native_handle_t *nh = NULL;
 
     if (context == NULL || message == NULL) {
         DEBUG_PRINT_ERROR("ERROR: omx_venc::async_message_process invalid i/p params");
@@ -2444,7 +2445,7 @@ int omx_venc::async_message_process (void *context, void* message)
 
             if ( (omxhdr != NULL) &&
                     ((OMX_U32)(omxhdr - omx->m_out_mem_ptr)  < omx->m_sOutPortDef.nBufferCountActual)) {
-                if (m_sVenc_msg->buf.len <=  omxhdr->nAllocLen) {
+                if (!omx->is_secure_session() && (m_sVenc_msg->buf.len <=  omxhdr->nAllocLen)) {
                     omxhdr->nFilledLen = m_sVenc_msg->buf.len;
                     omxhdr->nOffset = m_sVenc_msg->buf.offset;
                     omxhdr->nTimeStamp = m_sVenc_msg->buf.timestamp;
@@ -2458,6 +2459,14 @@ int omx_venc::async_message_process (void *context, void* message)
                                 (m_sVenc_msg->buf.ptrbuffer),
                                 m_sVenc_msg->buf.len);
                     }
+                } else if (omx->is_secure_session()) {
+                    output_metabuffer *meta_buf = (output_metabuffer *)(omxhdr->pBuffer);
+                    native_handle_t *nh = meta_buf->nh;
+                    nh->data[1] = m_sVenc_msg->buf.offset;
+                    nh->data[2] = m_sVenc_msg->buf.len;
+                    omxhdr->nFilledLen = sizeof(output_metabuffer);
+                    omxhdr->nTimeStamp = m_sVenc_msg->buf.timestamp;
+                    omxhdr->nFlags = m_sVenc_msg->buf.flags;
                 } else {
                     omxhdr->nFilledLen = 0;
                 }

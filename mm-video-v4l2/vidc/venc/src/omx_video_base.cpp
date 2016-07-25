@@ -80,6 +80,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define SZ_4K                       0x1000
 #define SZ_1M                       0x100000
+#define ALIGN(x, to_align) ((((unsigned long) x) + (to_align - 1)) & ~(to_align - 1))
 
 #ifndef ION_FLAG_CP_BITSTREAM
 #define ION_FLAG_CP_BITSTREAM 0
@@ -3290,7 +3291,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
         if (i < m_sOutPortDef.nBufferCountActual) {
 #ifdef USE_ION
 #ifdef _MSM8974_
-            align_size = ((m_sOutPortDef.nBufferSize + 4095)/4096) * 4096;
+            align_size = ALIGN(m_sOutPortDef.nBufferSize, 4096);
             m_pOutput_ion[i].ion_device_fd = alloc_map_ion_memory(align_size,
                     &m_pOutput_ion[i].ion_alloc_data,
                     &m_pOutput_ion[i].fd_ion_data,
@@ -3321,6 +3322,8 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
             m_pOutput_pmem[i].offset = 0;
 
             m_pOutput_pmem[i].buffer = NULL;
+            *bufferHdr = (m_out_mem_ptr + i );
+
             if(!secure_session) {
 #ifdef _MSM8974_
                 m_pOutput_pmem[i].buffer = (unsigned char *)mmap(NULL,
@@ -3344,25 +3347,26 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
             else {
                 //This should only be used for passing reference to source type and
                 //secure handle fd struct native_handle_t*
-                m_pOutput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
-                if (m_pOutput_pmem[i].buffer == NULL) {
-                    DEBUG_PRINT_ERROR("%s: Failed to allocate native-handle", __func__);
-                    return OMX_ErrorInsufficientResources;
-                }
-                (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
-                native_handle_t *handle = native_handle_create(1, 0);
+                native_handle_t *handle = native_handle_create(1, 3); //fd, offset, size, alloc length
                 if (!handle) {
                     DEBUG_PRINT_ERROR("ERROR: native handle creation failed");
                     return OMX_ErrorInsufficientResources;
                 }
+                m_pOutput_pmem[i].buffer = malloc(sizeof(output_metabuffer));
+                if (m_pOutput_pmem[i].buffer == NULL) {
+                    DEBUG_PRINT_ERROR("%s: Failed to allocate meta buffer", __func__);
+                    return OMX_ErrorInsufficientResources;
+                }
+                (*bufferHdr)->nAllocLen = sizeof(output_metabuffer);
                 handle->data[0] = m_pOutput_pmem[i].fd;
-                char *data = (char*) m_pOutput_pmem[i].buffer;
-                OMX_U32 type = 1;
-                memcpy(data, &type, sizeof(OMX_U32));
-                memcpy(data + sizeof(OMX_U32), &handle, sizeof(native_handle_t*));
+                handle->data[1] = 0;
+                handle->data[2] = 0;
+                handle->data[3] = ALIGN(m_sOutPortDef.nBufferSize, 4096);
+                output_metabuffer *buffer = (output_metabuffer*) m_pOutput_pmem[i].buffer;
+                buffer->type = 1;
+                buffer->nh = handle;
             }
 
-            *bufferHdr = (m_out_mem_ptr + i );
             (*bufferHdr)->pBuffer = (OMX_U8 *)m_pOutput_pmem[i].buffer;
             (*bufferHdr)->pAppPrivate = appData;
 
@@ -4354,6 +4358,12 @@ OMX_ERRORTYPE omx_video::fill_buffer_done(OMX_HANDLETYPE hComp,
 
     pending_output_buffers--;
 
+    if (secure_session && m_pCallbacks.FillBufferDone) {
+        if (buffer->nFilledLen > 0)
+            m_fbd_count++;
+        m_pCallbacks.FillBufferDone (hComp,m_app_data,buffer);
+        return OMX_ErrorNone;
+    }
     if(!secure_session) {
         extra_data_handle.create_extra_data(buffer);
 #ifndef _MSM8974_
