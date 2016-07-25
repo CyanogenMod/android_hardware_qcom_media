@@ -140,6 +140,11 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
 
 void* enc_message_thread(void *);
 
+struct output_metabuffer {
+    OMX_U32 type;
+    native_handle_t *nh;
+};
+
 // OMX video class
 class omx_video: public qc_omx_component
 {
