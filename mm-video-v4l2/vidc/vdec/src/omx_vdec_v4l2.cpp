@@ -10238,7 +10238,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     }
                     if (client_extradata & OMX_INTERLACE_EXTRADATA) {
                         append_interlace_extradata(p_extra, payload->format);
-                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + ALIGN(p_extra->nSize, 4));
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_FRAME_RATE:
@@ -10339,7 +10339,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         s3d_frame_packing_payload->fpa_type, s3d_frame_packing_payload->content_interprtation_type, stereo_output_mode);
                     if (client_extradata & OMX_FRAMEPACK_EXTRADATA) {
                         append_framepack_extradata(p_extra, s3d_frame_packing_payload);
-                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + ALIGN(p_extra->nSize, 4));
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_FRAME_QP:
@@ -10347,7 +10347,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     qp_payload = (struct msm_vidc_frame_qp_payload*)(void *)data->data;
                     if (client_extradata & OMX_QP_EXTRADATA) {
                         append_qp_extradata(p_extra, qp_payload);
-                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + ALIGN(p_extra->nSize, 4));
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_FRAME_BITS_INFO:
@@ -10355,13 +10355,13 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     bits_info_payload = (struct msm_vidc_frame_bits_info_payload*)(void *)data->data;
                     if (client_extradata & OMX_BITSINFO_EXTRADATA) {
                         append_bitsinfo_extradata(p_extra, bits_info_payload);
-                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + ALIGN(p_extra->nSize, 4));
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_STREAM_USERDATA:
                     if (client_extradata & OMX_EXTNUSER_EXTRADATA) {
                         append_user_extradata(p_extra, data);
-                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + ALIGN(p_extra->nSize, 4));
                     }
                     break;
                 case MSM_VIDC_EXTRADATA_VQZIP_SEI:
@@ -10370,7 +10370,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     if (client_extradata & OMX_VQZIPSEI_EXTRADATA) {
                         p_buf_hdr->nFlags |= OMX_BUFFERFLAG_EXTRADATA;
                         append_vqzip_extradata(p_extra, vqzip_payload);
-                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+                        p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + ALIGN(p_extra->nSize, 4));
                     }
                     break;
                 default:
@@ -10386,11 +10386,11 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     num_conceal_MB, ((struct vdec_output_frameinfo *)p_buf_hdr->pOutputPortPrivate)->pic_type, frame_rate,
                     time_stamp, panscan_payload,&((struct vdec_output_frameinfo *)
                         p_buf_hdr->pOutputPortPrivate)->aspect_ratio_info);
-            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + ALIGN(p_extra->nSize, 4));
         }
         if (client_extradata & OMX_FRAMEDIMENSION_EXTRADATA) {
             append_frame_dimension_extradata(p_extra);
-            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
+            p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + ALIGN(p_extra->nSize, 4));
         }
     }
 unrecognized_extradata:
