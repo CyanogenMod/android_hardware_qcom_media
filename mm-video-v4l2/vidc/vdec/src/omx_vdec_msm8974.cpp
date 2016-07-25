@@ -3095,16 +3095,21 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level_for_1080p(OMX_VIDEO_PARAM_PR
 
     if (profileLevelType->nPortIndex == 0) {
         if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",OMX_MAX_STRINGNAME_SIZE)) {
+            char property_value[PROPERTY_VALUE_MAX] = {0};
+            OMX_VIDEO_AVCLEVELTYPE level = OMX_VIDEO_AVCLevel4;
+            if (property_get("media.msm8956hw", property_value, "0") && atoi(property_value)) {
+                level = OMX_VIDEO_AVCLevel51;
+            }
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileBaseline;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
 
             } else if (profileLevelType->nProfileIndex == 1) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileMain;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
             } else if (profileLevelType->nProfileIndex == 2) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileHigh;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel4;
+                profileLevelType->eLevel   = level;
             } else {
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
                         (unsigned int)profileLevelType->nProfileIndex);
@@ -6443,7 +6448,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
     auto_lock l(buf_lock);
     temp_buffer = (struct vdec_bufferpayload *)buffer->pInputPortPrivate;
 
-    if ((temp_buffer -  drv_ctx.ptr_inputbuffer) > (int)drv_ctx.ip_buf.actualcount) {
+    if (!temp_buffer || (temp_buffer -  drv_ctx.ptr_inputbuffer) > (int)drv_ctx.ip_buf.actualcount) {
         return OMX_ErrorBadParameter;
     }
     /* If its first frame, H264 codec and reject is true, then parse the nal
