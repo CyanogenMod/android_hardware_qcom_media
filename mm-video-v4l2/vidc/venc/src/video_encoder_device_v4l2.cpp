@@ -2988,6 +2988,12 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,un
     buf.m.planes = plane;
     buf.length = num_planes;
 
+    if (venc_handle->is_secure_session()) {
+        output_metabuffer *meta_buf = (output_metabuffer *)(bufhdr->pBuffer);
+        native_handle_t *handle = meta_buf->nh;
+        plane[0].length = handle->data[3];
+    }
+
     extra_idx = EXTRADATA_IDX(num_planes);
 
     if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
