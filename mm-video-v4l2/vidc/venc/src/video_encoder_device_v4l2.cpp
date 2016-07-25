@@ -2742,6 +2742,16 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
              }
              break;
         }
+        case OMX_QcomIndexConfigH264Transform8x8:
+        {
+            OMX_CONFIG_BOOLEANTYPE *pEnable = (OMX_CONFIG_BOOLEANTYPE *) configData;
+            DEBUG_PRINT_LOW("venc_set_config: OMX_QcomIndexConfigH264Transform8x8");
+            if (venc_h264_transform_8x8(pEnable->bEnabled) == false) {
+                DEBUG_PRINT_ERROR("Failed to set OMX_QcomIndexConfigH264Transform8x8");
+                return false;
+            }
+            break;
+        }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -6151,6 +6161,25 @@ bool venc_dev::venc_set_blur_resolution(OMX_QTI_VIDEO_CONFIG_BLURINFO *blurInfo)
     DEBUG_PRINT_LOW("Blur resolution set = %d x %d", blur_width, blur_height);
     return true;
 
+}
+
+bool venc_dev::venc_h264_transform_8x8(OMX_BOOL enable)
+{
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDC_VIDEO_H264_TRANSFORM_8x8;
+    if (enable)
+        control.value = V4L2_MPEG_VIDC_VIDEO_H264_TRANSFORM_8x8_ENABLE;
+    else
+        control.value = V4L2_MPEG_VIDC_VIDEO_H264_TRANSFORM_8x8_DISABLE;
+
+    DEBUG_PRINT_LOW("Set h264_transform_8x8 mode: %d", control.value);
+    if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control)) {
+        DEBUG_PRINT_ERROR("set control: H264 transform 8x8 failed");
+        return false;
+    }
+
+    return true;
 }
 
 bool venc_dev::venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel)

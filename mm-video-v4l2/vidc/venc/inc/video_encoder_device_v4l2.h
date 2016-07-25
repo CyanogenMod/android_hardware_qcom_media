@@ -314,6 +314,7 @@ class venc_dev
                 OMX_U32 *,OMX_U32);
         bool venc_set_param(void *,OMX_INDEXTYPE);
         bool venc_set_config(void *configData, OMX_INDEXTYPE index);
+        bool venc_h264_transform_8x8(OMX_BOOL enable);
         bool venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel);
         bool venc_get_seq_hdr(void *, unsigned, unsigned *);
         bool venc_loaded_start(void);
