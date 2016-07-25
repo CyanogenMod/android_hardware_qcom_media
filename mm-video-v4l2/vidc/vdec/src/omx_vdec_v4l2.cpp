@@ -8499,8 +8499,8 @@ int omx_vdec::async_message_process (void *context, void* message)
                            DEBUG_PRINT_LOW("Read FBD crop from v4l2 reserved fields");
                            vdec_msg->msgdata.output_frame.framesize.left = plane[0].reserved[2];
                            vdec_msg->msgdata.output_frame.framesize.top = plane[0].reserved[3];
-                           vdec_msg->msgdata.output_frame.framesize.right = plane[0].reserved[4];
-                           vdec_msg->msgdata.output_frame.framesize.bottom = plane[0].reserved[5];
+                           vdec_msg->msgdata.output_frame.framesize.right = plane[0].reserved[2] + plane[0].reserved[4];
+                           vdec_msg->msgdata.output_frame.framesize.bottom = plane[0].reserved[3] + plane[0].reserved[5];
                            vdec_msg->msgdata.output_frame.picsize.frame_width = plane[0].reserved[6];
                            vdec_msg->msgdata.output_frame.picsize.frame_height = plane[0].reserved[7];
                        }
@@ -10274,8 +10274,8 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         if (output_crop_payload) {
                             m_extradata_info.output_crop_rect.nLeft = output_crop_payload->left;
                             m_extradata_info.output_crop_rect.nTop = output_crop_payload->top;
-                            m_extradata_info.output_crop_rect.nWidth = output_crop_payload->display_width;
-                            m_extradata_info.output_crop_rect.nHeight = output_crop_payload->display_height;
+                            m_extradata_info.output_crop_rect.nWidth = output_crop_payload->left + output_crop_payload->display_width;
+                            m_extradata_info.output_crop_rect.nHeight = output_crop_payload->top + output_crop_payload->display_height;
                             m_extradata_info.output_width = output_crop_payload->width;
                             m_extradata_info.output_height = output_crop_payload->height;
                             m_extradata_info.output_crop_updated = OMX_TRUE;
