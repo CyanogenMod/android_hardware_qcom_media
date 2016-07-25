@@ -148,6 +148,11 @@ void* enc_message_thread(void *);
 #define LEGACY_CAM_METADATA_TYPE encoder_media_buffer_type
 #endif
 
+struct output_metabuffer {
+    OMX_U32 type;
+    native_handle_t *nh;
+};
+
 // OMX video class
 class omx_video: public qc_omx_component
 {
