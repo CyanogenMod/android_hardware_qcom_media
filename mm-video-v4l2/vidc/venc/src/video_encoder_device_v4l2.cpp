@@ -1945,7 +1945,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                     DEBUG_PRINT_ERROR("ERROR: Failed to set vpx error resilience");
                     return false;
                  }
-                if(!venc_set_ltrmode(1, 1)) {
+                if(!venc_set_ltrmode(1, ltrinfo.count)) {
                    DEBUG_PRINT_ERROR("ERROR: Failed to enable ltrmode");
                    return false;
                 }
@@ -2261,7 +2261,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 // Disable ltr if hier-p is enabled.
                 if (m_codec == OMX_VIDEO_CodingVP8) {
                     DEBUG_PRINT_LOW("Disable LTR as HIER-P is being set");
-                    if(!venc_set_ltrmode(0, 1)) {
+                    if(!venc_set_ltrmode(0, 0)) {
                          DEBUG_PRINT_ERROR("ERROR: Failed to disable ltrmode");
                      }
                 }
