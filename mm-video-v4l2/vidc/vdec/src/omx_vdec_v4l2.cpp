@@ -6263,6 +6263,10 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
         DEBUG_PRINT_LOW("Buffer address %p of pmem",*bufferHdr);
         if (allocate_native_handle) {
             native_handle_t *nh = native_handle_create(1 /*numFds*/, 0 /*numInts*/);
+            if (!nh) {
+                DEBUG_PRINT_ERROR("Native handle create failed");
+                return OMX_ErrorInsufficientResources;
+            }
             nh->data[0] = drv_ctx.ptr_inputbuffer[i].pmem_fd;
             input->pBuffer = (OMX_U8 *)nh;
         } else if (secure_mode || m_input_pass_buffer_fd) {
@@ -8373,13 +8377,13 @@ int omx_vdec::async_message_process (void *context, void* message)
         case VDEC_MSG_RESP_OUTPUT_BUFFER_DONE:
 
            v4l2_buf_ptr = (v4l2_buffer*)vdec_msg->msgdata.output_frame.client_data;
-           plane = v4l2_buf_ptr->m.planes;
            if (v4l2_buf_ptr == NULL || omx->m_out_mem_ptr == NULL ||
                v4l2_buf_ptr->index >= omx->drv_ctx.op_buf.actualcount) {
                omxhdr = NULL;
                vdec_msg->status_code = VDEC_S_EFATAL;
                break;
            }
+           plane = v4l2_buf_ptr->m.planes;
            omxhdr = omx->m_out_mem_ptr + v4l2_buf_ptr->index;
 
            if (omxhdr && omxhdr->pOutputPortPrivate &&
@@ -8499,8 +8503,8 @@ int omx_vdec::async_message_process (void *context, void* message)
                            DEBUG_PRINT_LOW("Read FBD crop from v4l2 reserved fields");
                            vdec_msg->msgdata.output_frame.framesize.left = plane[0].reserved[2];
                            vdec_msg->msgdata.output_frame.framesize.top = plane[0].reserved[3];
-                           vdec_msg->msgdata.output_frame.framesize.right = plane[0].reserved[4];
-                           vdec_msg->msgdata.output_frame.framesize.bottom = plane[0].reserved[5];
+                           vdec_msg->msgdata.output_frame.framesize.right = plane[0].reserved[2] + plane[0].reserved[4];
+                           vdec_msg->msgdata.output_frame.framesize.bottom = plane[0].reserved[3] + plane[0].reserved[5];
                            vdec_msg->msgdata.output_frame.picsize.frame_width = plane[0].reserved[6];
                            vdec_msg->msgdata.output_frame.picsize.frame_height = plane[0].reserved[7];
                        }
@@ -10122,7 +10126,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
     unsigned long consumed_len = 0;
     OMX_U32 num_MB_in_frame;
     OMX_U32 recovery_sei_flags = 1;
-    int enable = 0;
+    int enable = OMX_InterlaceFrameProgressive;
 
     if (output_flush_progress)
         return;
@@ -10187,21 +10191,22 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     OMX_U32 interlace_color_format;
                     payload = (struct msm_vidc_interlace_payload *)(void *)data->data;
                     if (payload) {
-                        enable = 1;
+                        enable = OMX_InterlaceFrameProgressive;
                         switch (payload->format) {
                             case MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE:
                                 drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-                                enable = 0;
                                 break;
                             case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST:
                                 drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
+                                enable = OMX_InterlaceInterleaveFrameTopFieldFirst;
                                 break;
                             case MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST:
                                 drv_ctx.interlace = VDEC_InterlaceInterleaveFrameBottomFieldFirst;
+                                enable = OMX_InterlaceInterleaveFrameBottomFieldFirst;
                                 break;
                             default:
-                                DEBUG_PRINT_LOW("default case - set interlace to topfield");
-                                drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
+                                DEBUG_PRINT_LOW("default case - set to progressive");
+                                drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
                         }
                         switch (payload->color_format) {
                            case MSM_VIDC_HAL_INTERLACE_COLOR_FORMAT_NV12:
@@ -10232,8 +10237,7 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         }
                     }
                     if (client_extradata & OMX_INTERLACE_EXTRADATA) {
-                        append_interlace_extradata(p_extra, payload->format,
-                                      p_buf_hdr->nFlags & QOMX_VIDEO_BUFFERFLAG_MBAFF);
+                        append_interlace_extradata(p_extra, payload->format);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
                     }
                     break;
@@ -10274,8 +10278,8 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         if (output_crop_payload) {
                             m_extradata_info.output_crop_rect.nLeft = output_crop_payload->left;
                             m_extradata_info.output_crop_rect.nTop = output_crop_payload->top;
-                            m_extradata_info.output_crop_rect.nWidth = output_crop_payload->display_width;
-                            m_extradata_info.output_crop_rect.nHeight = output_crop_payload->display_height;
+                            m_extradata_info.output_crop_rect.nWidth = output_crop_payload->left + output_crop_payload->display_width;
+                            m_extradata_info.output_crop_rect.nHeight = output_crop_payload->top + output_crop_payload->display_height;
                             m_extradata_info.output_width = output_crop_payload->width;
                             m_extradata_info.output_height = output_crop_payload->height;
                             m_extradata_info.output_crop_updated = OMX_TRUE;
@@ -10476,11 +10480,7 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
                 DEBUG_PRINT_HIGH("Failed to set timeinfo extradata");
             }
         }
-        if (requested_extradata & OMX_FRAMEPACK_EXTRADATA) {
-            if (secure_mode) {
-                DEBUG_PRINT_HIGH("S3D frame packing not supported for secure sessions");
-                return OMX_ErrorUnsupportedSetting;
-            }
+        if (!secure_mode && (requested_extradata & OMX_FRAMEPACK_EXTRADATA)) {
             if (output_capability == V4L2_PIX_FMT_H264) {
                 DEBUG_PRINT_HIGH("enable OMX_FRAMEPACK_EXTRADATA");
                 control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
@@ -10506,11 +10506,7 @@ OMX_ERRORTYPE omx_vdec::enable_extradata(OMX_U32 requested_extradata,
                 DEBUG_PRINT_HIGH("Failed to set frame bits info extradata");
             }
         }
-        if (requested_extradata & OMX_EXTNUSER_EXTRADATA) {
-            if (secure_mode) {
-                DEBUG_PRINT_HIGH("ExtnUser Extra Data not supported for secure sessions");
-                return OMX_ErrorUnsupportedSetting;
-            }
+        if (!secure_mode && (requested_extradata & OMX_EXTNUSER_EXTRADATA)) {
             control.id = V4L2_CID_MPEG_VIDC_VIDEO_EXTRADATA;
             control.value = V4L2_MPEG_VIDC_EXTRADATA_STREAM_USERDATA;
             if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_CTRL, &control)) {
@@ -10715,7 +10711,7 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
 }
 
 void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-        OMX_U32 interlaced_format_type, bool is_mbaff)
+        OMX_U32 interlaced_format_type)
 {
     OMX_STREAMINTERLACEFORMAT *interlace_format;
 
@@ -10736,22 +10732,23 @@ void omx_vdec::append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
     interlace_format->nVersion.nVersion = OMX_SPEC_VERSION;
     interlace_format->nPortIndex = OMX_CORE_OUTPUT_PORT_INDEX;
 
-    if ((interlaced_format_type == MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE) && !is_mbaff) {
+    if (interlaced_format_type == MSM_VIDC_INTERLACE_FRAME_PROGRESSIVE) {
         interlace_format->bInterlaceFormat = OMX_FALSE;
         interlace_format->nInterlaceFormats = OMX_InterlaceFrameProgressive;
         drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-    } else if ((interlaced_format_type == MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST) && !is_mbaff) {
-        interlace_format->bInterlaceFormat = OMX_TRUE;
-        interlace_format->nInterlaceFormats =  OMX_InterlaceInterleaveFrameTopFieldFirst;
-        drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-    } else if ((interlaced_format_type == MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST) && !is_mbaff) {
-        interlace_format->bInterlaceFormat = OMX_TRUE;
-        interlace_format->nInterlaceFormats = OMX_InterlaceInterleaveFrameBottomFieldFirst;
-        drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
-    } else {
+    } else if (interlaced_format_type == MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_TOPFIELDFIRST) {
         interlace_format->bInterlaceFormat = OMX_TRUE;
         interlace_format->nInterlaceFormats = OMX_InterlaceInterleaveFrameTopFieldFirst;
         drv_ctx.interlace = VDEC_InterlaceInterleaveFrameTopFieldFirst;
+    } else if (interlaced_format_type == MSM_VIDC_INTERLACE_INTERLEAVE_FRAME_BOTTOMFIELDFIRST) {
+        interlace_format->bInterlaceFormat = OMX_TRUE;
+        interlace_format->nInterlaceFormats = OMX_InterlaceInterleaveFrameBottomFieldFirst;
+        drv_ctx.interlace = VDEC_InterlaceInterleaveFrameBottomFieldFirst;
+    } else {
+        //default case - set to progressive
+        interlace_format->bInterlaceFormat = OMX_FALSE;
+        interlace_format->nInterlaceFormats = OMX_InterlaceFrameProgressive;
+        drv_ctx.interlace = VDEC_InterlaceFrameProgressive;
     }
     print_debug_extradata(extra);
 }

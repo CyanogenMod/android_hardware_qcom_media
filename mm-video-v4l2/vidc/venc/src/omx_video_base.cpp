@@ -3752,6 +3752,10 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
             return OMX_ErrorBadParameter;
         }
         media_buffer = (LEGACY_CAM_METADATA_TYPE *)meta_buffer_hdr[nBufIndex].pBuffer;
+        if (!media_buffer) {
+            DEBUG_PRINT_ERROR("%s: invalid media_buffer",__FUNCTION__);
+            return OMX_ErrorBadParameter;
+        }
         if ((media_buffer->buffer_type == LEGACY_CAM_SOURCE)
                 && buffer->nAllocLen != sizeof(LEGACY_CAM_METADATA_TYPE)) {
             DEBUG_PRINT_ERROR("Invalid metadata size expected(%u) v/s recieved(%zu)",
@@ -4993,6 +4997,10 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
     }
 
     media_buffer = (VideoGrallocMetadata *)buffer->pBuffer;
+    if (!media_buffer) {
+        DEBUG_PRINT_ERROR("%s: invalid media_buffer",__FUNCTION__);
+        return OMX_ErrorBadParameter;
+    }
     if ((media_buffer->eType == LEGACY_CAM_SOURCE)
             && buffer->nAllocLen != sizeof(LEGACY_CAM_METADATA_TYPE)) {
         DEBUG_PRINT_ERROR("Invalid metadata size expected(%u) v/s recieved(%zu)",
