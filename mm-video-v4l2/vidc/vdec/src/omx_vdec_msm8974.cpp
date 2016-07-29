@@ -9528,9 +9528,6 @@ void omx_vdec::convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
             *color_space = ITU_R_709;
             aspects->mPrimaries = ColorAspects::PrimariesBT709_5;
             break;
-        case MSM_VIDC_UNSPECIFIED:
-            aspects->mPrimaries = ColorAspects::PrimariesUnspecified;
-            break;
         case MSM_VIDC_BT470_6_M:
             aspects->mPrimaries = ColorAspects::PrimariesBT470_6M;
             break;
@@ -9547,6 +9544,8 @@ void omx_vdec::convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
         case MSM_VIDC_BT2020:
             aspects->mPrimaries = ColorAspects::PrimariesBT2020;
             break;
+        case MSM_VIDC_UNSPECIFIED:
+            //Client does not expect ColorAspects::PrimariesUnspecified, but rather the supplied default
         default:
             //aspects->mPrimaries = ColorAspects::PrimariesOther;
             aspects->mPrimaries = m_client_color_space.sAspects.mPrimaries;
@@ -9621,7 +9620,7 @@ void omx_vdec::print_debug_color_aspects(ColorAspects *aspects, const char *pref
 
 void omx_vdec::handle_color_space_info(void *data, unsigned int buf_index)
 {
-    ColorSpace_t color_space = ITU_R_601_FR;
+    ColorSpace_t color_space = ITU_R_601;
     ColorAspects tempAspects;
     memset(&tempAspects, 0x0, sizeof(ColorAspects));
     ColorAspects *aspects = &tempAspects;
