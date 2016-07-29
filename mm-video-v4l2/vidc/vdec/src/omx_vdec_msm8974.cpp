@@ -7502,6 +7502,42 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
     }
 
     if (!output_flush_progress && (buffer->nFilledLen > 0)) {
+        // set the default colorspace advised by client, since the bitstream may be
+        // devoid of colorspace-info.
+        if (m_enable_android_native_buffers) {
+            ColorSpace_t color_space = ITU_R_601;
+
+        // Disabled ?
+        // WA for VP8. Vp8 encoder does not embed color-info (yet!).
+        // Encoding RGBA results in 601-LR for all resolutions.
+        // This conflicts with the client't defaults which are based on resolution.
+        //   Eg: 720p will be encoded as 601-LR. Client will say 709.
+        // Re-enable this code once vp8 encoder generates color-info and hence the
+        // decoder will be able to override with the correct source color.
+#if 0
+            switch (m_client_color_space.sAspects.mPrimaries) {
+                case ColorAspects::PrimariesBT601_6_625:
+                case ColorAspects::PrimariesBT601_6_525:
+                {
+                    color_space = m_client_color_space.sAspects.mRange == ColorAspects::RangeFull ?
+                            ITU_R_601_FR : ITU_R_601;
+                    break;
+                }
+                case ColorAspects::PrimariesBT709_5:
+                {
+                    color_space = ITU_R_709;
+                    break;
+                }
+                default:
+                {
+                    break;
+                }
+            }
+#endif
+            DEBUG_PRINT_LOW("setMetaData for Color Space (client) = 0x%x (601=%u FR=%u 709=%u)",
+                    color_space, ITU_R_601, ITU_R_601_FR, ITU_R_709);
+            set_colorspace_in_handle(color_space, buffer - m_out_mem_ptr);
+        }
         DEBUG_PRINT_LOW("Processing extradata");
         handle_extradata(buffer);
     }
@@ -9759,9 +9795,8 @@ void omx_vdec::handle_color_space_info(void *data, unsigned int buf_index)
             break;
     }
     if (m_enable_android_native_buffers) {
-        DEBUG_PRINT_HIGH("setMetaData for Color Space = 0x%x", color_space);
-        setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
-                UPDATE_COLOR_SPACE, (void*)&color_space);
+        DEBUG_PRINT_HIGH("setMetaData for Color Space = 0x%x (601=%u FR=%u 709=%u)", color_space, ITU_R_601, ITU_R_601_FR, ITU_R_709);
+        set_colorspace_in_handle(color_space, buf_index);
     }
     print_debug_color_aspects(aspects, "Bitstream");
 
@@ -9779,6 +9814,17 @@ void omx_vdec::handle_color_space_info(void *data, unsigned int buf_index)
         post_event(OMX_CORE_OUTPUT_PORT_INDEX,
                 OMX_QTIIndexConfigDescribeColorAspects,
                 OMX_COMPONENT_GENERATE_PORT_RECONFIG);
+    }
+}
+void omx_vdec::set_colorspace_in_handle(ColorSpace_t color_space, unsigned int buf_index) {
+    private_handle_t *private_handle = NULL;
+    if (buf_index < drv_ctx.op_buf.actualcount &&
+            buf_index < MAX_NUM_INPUT_OUTPUT_BUFFERS &&
+            native_buffer[buf_index].privatehandle) {
+        private_handle = native_buffer[buf_index].privatehandle;
+    }
+    if (private_handle) {
+        setMetaData(private_handle, UPDATE_COLOR_SPACE, (void*)&color_space);
     }
 }
 void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)

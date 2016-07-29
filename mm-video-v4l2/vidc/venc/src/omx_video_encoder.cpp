@@ -1979,6 +1979,8 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
         case OMX_QTIIndexConfigDescribeColorAspects:
            {
                VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
+               DescribeColorAspectsParams *params = (DescribeColorAspectsParams *)configData;
+               print_debug_color_aspects(&(params->sAspects), "set_config");
                if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)OMX_QTIIndexConfigDescribeColorAspects)) {
                    DEBUG_PRINT_ERROR("Failed to set OMX_QTIIndexConfigDescribeColorAspects");
                    return OMX_ErrorUnsupportedSetting;

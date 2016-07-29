@@ -556,6 +556,7 @@ class omx_video: public qc_omx_component
         }
 
         void complete_pending_buffer_done_cbs();
+        void print_debug_color_aspects(ColorAspects *aspects, const char *prefix);
 
 #ifdef USE_ION
         int alloc_map_ion_memory(int size,
