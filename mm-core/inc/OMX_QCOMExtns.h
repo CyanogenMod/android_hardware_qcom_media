@@ -95,6 +95,14 @@ struct OMX_QCOM_PARAM_MEMMAPENTRYTYPE
  */
 #define QOMX_ErrorLTRUseFailed        (OMX_ErrorVendorStartUnused + 1)
 
+/*
+ * This rate control will be used for low bitrate applications to get better
+ * video quality for a given bitrate.
+ */
+#define QOMX_Video_ControlRateMaxBitrate (OMX_Video_ControlRateVendorStartUnused + 1)
+
+#define QOMX_Video_ControlRateMaxBitrateSkipFrames (OMX_Video_ControlRateVendorStartUnused + 2)
+
 #define QOMX_VIDEO_BUFFERFLAG_BFRAME 0x00100000
 
 #define QOMX_VIDEO_BUFFERFLAG_EOSEQ  0x00200000
@@ -189,6 +197,18 @@ typedef struct OMX_QCOM_VIDEO_PARAM_QPRANGETYPE {
     OMX_U32 minQP;
     OMX_U32 maxQP;
 } OMX_QCOM_VIDEO_PARAM_QPRANGETYPE;
+
+typedef struct OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 minIQP;
+    OMX_U32 maxIQP;
+    OMX_U32 minPQP;
+    OMX_U32 maxPQP;
+    OMX_U32 minBQP;
+    OMX_U32 maxBQP;
+} OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE;
 
 #define OMX_QCOM_PLATFORMPVT_EXTN   "OMX.QCOM.index.param.platformprivate"
 /** Allowed APIs on the above Index: OMX_SetParameter() */
@@ -562,6 +582,10 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Configure BLUR resolution for encode */
     OMX_QTIIndexConfigVideoBlurResolution = 0x7F00005E,
+
+    /* QP range for I frame B frame P frame */
+    OMX_QcomIndexParamVideoIPBQPRange = 0x7F00005F,
+
 };
 
 /**

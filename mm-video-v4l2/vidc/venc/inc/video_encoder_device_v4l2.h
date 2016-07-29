@@ -105,6 +105,16 @@ struct msm_venc_qprange {
     unsigned long    maxqp;
     unsigned long    minqp;
 };
+
+struct msm_venc_ipb_qprange {
+    unsigned long    max_i_qp;
+    unsigned long    min_i_qp;
+    unsigned long    max_p_qp;
+    unsigned long    min_p_qp;
+    unsigned long    max_b_qp;
+    unsigned long    min_b_qp;
+};
+
 struct msm_venc_intraperiod {
     unsigned long    num_pframes;
     unsigned long    num_bframes;
@@ -267,8 +277,10 @@ enum rc_modes {
     RC_VBR_CFR = BIT(1),
     RC_CBR_VFR = BIT(2),
     RC_CBR_CFR = BIT(3),
+    RC_MBR_CFR = BIT(4),
+    RC_MBR_VFR = BIT(5),
     RC_ALL = (RC_VBR_VFR | RC_VBR_CFR
-        | RC_CBR_VFR | RC_CBR_CFR)
+        | RC_CBR_VFR | RC_CBR_CFR | RC_MBR_CFR | RC_MBR_VFR)
 };
 
 class venc_dev
@@ -403,6 +415,7 @@ class venc_dev
         struct msm_venc_initqp              init_qp;
         struct msm_venc_qprange             session_qp_range;
         struct msm_venc_qprange             session_qp_values;
+        struct msm_venc_ipb_qprange         session_ipb_qp_values;
         struct msm_venc_multiclicecfg       multislice;
         struct msm_venc_entropycfg          entropy;
         struct msm_venc_dbcfg               dbkfilter;
@@ -430,6 +443,7 @@ class venc_dev
         bool venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate);
         bool venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U32 b_frame_qp);
         bool venc_set_session_qp_range(OMX_U32 min_qp, OMX_U32 max_qp);
+        bool venc_set_session_qp_range_packed(OMX_U32 min_qp, OMX_U32 max_qp);
         bool venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 config);
         bool venc_set_intra_vop_refresh(OMX_BOOL intra_vop_refresh);
         bool venc_set_color_format(OMX_COLOR_FORMATTYPE color_format);

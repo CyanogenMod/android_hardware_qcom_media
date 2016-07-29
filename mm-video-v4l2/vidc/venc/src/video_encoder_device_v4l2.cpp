@@ -287,6 +287,7 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     memset(&m_sInput_buff_property, 0, sizeof(m_sInput_buff_property));
     memset(&m_sOutput_buff_property, 0, sizeof(m_sOutput_buff_property));
     memset(&session_qp, 0, sizeof(session_qp));
+    memset(&session_ipb_qp_values, 0, sizeof(session_ipb_qp_values));
     memset(&entropy, 0, sizeof(entropy));
     memset(&dbkfilter, 0, sizeof(dbkfilter));
     memset(&intra_refresh, 0, sizeof(intra_refresh));
@@ -1194,6 +1195,12 @@ bool venc_dev::venc_open(OMX_U32 codec)
     }
     session_qp_values.minqp = session_qp_range.minqp;
     session_qp_values.maxqp = session_qp_range.maxqp;
+    session_ipb_qp_values.min_i_qp = session_qp_range.minqp;
+    session_ipb_qp_values.max_i_qp = session_qp_range.maxqp;
+    session_ipb_qp_values.min_p_qp = session_qp_range.minqp;
+    session_ipb_qp_values.max_p_qp = session_qp_range.maxqp;
+    session_ipb_qp_values.min_b_qp = session_qp_range.minqp;
+    session_ipb_qp_values.max_b_qp = session_qp_range.maxqp;
 
     int ret;
     ret = subscribe_to_events(m_nDriver_fd);
@@ -1938,7 +1945,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                     DEBUG_PRINT_ERROR("ERROR: Failed to set vpx error resilience");
                     return false;
                  }
-                if(!venc_set_ltrmode(1, 1)) {
+                if(!venc_set_ltrmode(1, ltrinfo.count)) {
                    DEBUG_PRINT_ERROR("ERROR: Failed to enable ltrmode");
                    return false;
                 }
@@ -2082,6 +2089,48 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
 
                 break;
             }
+        case OMX_QcomIndexParamVideoIPBQPRange:
+            {
+                DEBUG_PRINT_LOW("venc_set_param:OMX_QcomIndexParamVideoIPBQPRange");
+                OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE *qp =
+                    (OMX_QCOM_VIDEO_PARAM_IPB_QPRANGETYPE *)paramData;
+                OMX_U32 min_IPB_packed_QP = 0;
+                OMX_U32 max_IPB_packed_QP = 0;
+                 if (((qp->minIQP >= session_qp_range.minqp) && (qp->maxIQP <= session_qp_range.maxqp)) &&
+                          ((qp->minPQP >= session_qp_range.minqp) && (qp->maxPQP <= session_qp_range.maxqp)) &&
+                          ((qp->minBQP >= session_qp_range.minqp) && (qp->maxBQP <= session_qp_range.maxqp))) {
+
+                        /* When creating the packet, pack the qp value as
+                         * 0xbbppii, where ii = qp range for I-frames,
+                         * pp = qp range for P-frames, etc. */
+                       min_IPB_packed_QP = qp->minIQP | qp->minPQP << 8 | qp->minBQP << 16;
+                       max_IPB_packed_QP = qp->maxIQP | qp->maxPQP << 8 | qp->maxBQP << 16;
+
+                       if (qp->nPortIndex == (OMX_U32)PORT_INDEX_OUT) {
+                           if (venc_set_session_qp_range_packed(min_IPB_packed_QP,
+                                       max_IPB_packed_QP) == false) {
+                               DEBUG_PRINT_ERROR("ERROR: Setting IPB QP Range[%d %d] failed",
+                                   min_IPB_packed_QP, max_IPB_packed_QP);
+                               return false;
+                           } else {
+                               session_ipb_qp_values.min_i_qp = qp->minIQP;
+                               session_ipb_qp_values.max_i_qp = qp->maxIQP;
+                               session_ipb_qp_values.min_p_qp = qp->minPQP;
+                               session_ipb_qp_values.max_p_qp = qp->maxPQP;
+                               session_ipb_qp_values.min_b_qp = qp->minBQP;
+                               session_ipb_qp_values.max_b_qp = qp->maxBQP;
+                           }
+                       } else {
+                           DEBUG_PRINT_ERROR("ERROR: Invalid Port Index for OMX_QcomIndexParamVideoIPBQPRange");
+                       }
+                } else {
+                    DEBUG_PRINT_ERROR("Wrong qp values: IQP range[%u %u], PQP range[%u,%u], BQP[%u,%u] range allowed range[%u %u]",
+                           (unsigned int)qp->minIQP, (unsigned int)qp->maxIQP , (unsigned int)qp->minPQP,
+                           (unsigned int)qp->maxPQP, (unsigned int)qp->minBQP, (unsigned int)qp->maxBQP,
+                           (unsigned int)session_qp_range.minqp, (unsigned int)session_qp_range.maxqp);
+                }
+                break;
+            }
         case OMX_QcomIndexEnableSliceDeliveryMode:
             {
                 QOMX_EXTNINDEX_PARAMTYPE* pParam =
@@ -2212,7 +2261,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 // Disable ltr if hier-p is enabled.
                 if (m_codec == OMX_VIDEO_CodingVP8) {
                     DEBUG_PRINT_LOW("Disable LTR as HIER-P is being set");
-                    if(!venc_set_ltrmode(0, 1)) {
+                    if(!venc_set_ltrmode(0, 0)) {
                          DEBUG_PRINT_ERROR("ERROR: Failed to disable ltrmode");
                      }
                 }
@@ -4153,6 +4202,36 @@ bool venc_dev::venc_set_session_qp_range(OMX_U32 min_qp, OMX_U32 max_qp)
     return true;
 }
 
+bool venc_dev::venc_set_session_qp_range_packed(OMX_U32 min_qp, OMX_U32 max_qp)
+{
+    int rc;
+    struct v4l2_control control;
+
+    control.id = V4L2_CID_MPEG_VIDEO_MIN_QP_PACKED;
+    control.value = min_qp;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set MIN_QP_PACKED control id=%d, val=%d",
+            control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set control");
+        return false;
+    }
+
+    control.id = V4L2_CID_MPEG_VIDEO_MAX_QP_PACKED;
+    control.value = max_qp;
+
+    DEBUG_PRINT_LOW("Calling IOCTL set MAX_QP_PACKED control id=%d, val=%d",
+            control.id, control.value);
+    rc = ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &control);
+    if (rc) {
+        DEBUG_PRINT_ERROR("Failed to set control");
+        return false;
+    }
+
+    return true;
+}
+
 bool venc_dev::venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel)
 {
     struct venc_profile requested_profile = {0};
@@ -5649,7 +5728,7 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
     int rc = 0;
     control.id = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL;
 
-    switch (eControlRate) {
+    switch ((OMX_U32)eControlRate) {
         case OMX_Video_ControlRateDisable:
             control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_OFF;
             break;
@@ -5671,6 +5750,16 @@ bool venc_dev::venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate)
         case OMX_Video_ControlRateConstant:
             (supported_rc_modes & RC_CBR_CFR) ?
                 control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_CBR_CFR :
+                status = false;
+            break;
+        case QOMX_Video_ControlRateMaxBitrate:
+            (supported_rc_modes & RC_MBR_CFR) ?
+                control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_MBR_CFR:
+                status = false;
+            break;
+        case QOMX_Video_ControlRateMaxBitrateSkipFrames:
+            (supported_rc_modes & RC_MBR_VFR) ?
+                control.value = V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_MBR_VFR:
                 status = false;
             break;
         default:
