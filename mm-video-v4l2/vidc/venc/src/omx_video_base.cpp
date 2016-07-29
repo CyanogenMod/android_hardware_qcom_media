@@ -2051,7 +2051,27 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                     DEBUG_PRINT_ERROR("Does not handle dataspace request");
                     return OMX_ErrorUnsupportedSetting;
                 }
-                memcpy(pParam, &m_sConfigColorAspects, sizeof(m_sConfigColorAspects));
+                if (pParam->bDataSpaceChanged == OMX_TRUE) {
+
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config (dataspace changed) Client says");
+                    // If the dataspace says RGB, recommend 601-limited;
+                    // since that is the destination colorspace that C2D or Venus will convert to.
+                    if (pParam->nPixelFormat == HAL_PIXEL_FORMAT_RGBA_8888) {
+                        DEBUG_PRINT_INFO("get_config (dataspace changed): ColorSpace: Recommend 601-limited for RGBA8888");
+                        pParam->sAspects.mPrimaries = ColorAspects::PrimariesBT601_6_625;
+                        pParam->sAspects.mRange = ColorAspects::RangeLimited;
+                        pParam->sAspects.mTransfer = ColorAspects::TransferSMPTE170M;
+                        pParam->sAspects.mMatrixCoeffs = ColorAspects::MatrixBT601_6;
+                    } else {
+                        // For IMPLEMENTATION_DEFINED (or anything else), stick to client's defaults.
+                        DEBUG_PRINT_INFO("get_config (dataspace changed): ColorSpace: use client-default for format=%x",
+                                pParam->nPixelFormat);
+                    }
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config (dataspace changed) recommended");
+                } else {
+                    memcpy(pParam, &m_sConfigColorAspects, sizeof(m_sConfigColorAspects));
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config");
+                }
                 break;
             }
         default:
@@ -4639,6 +4659,10 @@ bool omx_video::omx_c2d_conv::get_buffer_size(int port,unsigned int &buf_size)
         buf_size = bufferreq.size;
     }
     return ret;
+}
+void omx_video::print_debug_color_aspects(ColorAspects *aspects, const char *prefix) {
+    DEBUG_PRINT_HIGH("%s : Color aspects : Primaries = %d Range = %d Transfer = %d MatrixCoeffs = %d",
+            prefix, aspects->mPrimaries, aspects->mRange, aspects->mTransfer, aspects->mMatrixCoeffs);
 }
 
 OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
