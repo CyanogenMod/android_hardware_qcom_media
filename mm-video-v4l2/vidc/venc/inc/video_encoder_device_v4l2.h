@@ -34,9 +34,6 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "OMX_VideoExt.h"
 #include "OMX_QCOMExtns.h"
 #include "qc_omx_component.h"
-#ifdef _VQZIP_
-#include "VQZip.h"
-#endif
 #include "omx_video_common.h"
 #include "omx_video_base.h"
 #include "omx_video_encoder.h"
@@ -304,6 +301,22 @@ enum rc_modes {
     RC_ALL = (RC_VBR_VFR | RC_VBR_CFR
         | RC_CBR_VFR | RC_CBR_CFR | RC_MBR_CFR | RC_MBR_VFR)
 };
+
+#ifdef _VQZIP_
+struct VQZipConfig {
+    uint32_t dummy;
+    void* pSEIPayload;
+    uint16_t nWidth;
+    uint16_t nHeight;
+};
+
+struct VQZipStats {
+    uint32_t nCount;
+    uint32_t stats[16];
+};
+
+typedef int32_t VQZipStatus;
+#endif
 
 class venc_dev
 {
