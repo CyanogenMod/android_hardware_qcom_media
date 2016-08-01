@@ -2137,6 +2137,26 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
     drv_ctx.frame_rate.fps_numerator = DEFAULT_FPS;
     drv_ctx.frame_rate.fps_denominator = 1;
+
+    frm_int = drv_ctx.frame_rate.fps_denominator * 1e6 /
+    drv_ctx.frame_rate.fps_numerator;
+    DEBUG_PRINT_LOW("component_init: frm_int(%u) fps(%.2f)",
+        (unsigned int)frm_int, drv_ctx.frame_rate.fps_numerator /
+        (float)drv_ctx.frame_rate.fps_denominator);
+
+    struct v4l2_outputparm oparm;
+    /*XXX: we're providing timing info as seconds per frame rather than frames
+    * per second.*/
+    oparm.timeperframe.numerator = drv_ctx.frame_rate.fps_denominator;
+    oparm.timeperframe.denominator = drv_ctx.frame_rate.fps_numerator;
+
+    struct v4l2_streamparm sparm;
+    sparm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+    sparm.parm.output = oparm;
+    if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_PARM, &sparm)) {
+        DEBUG_PRINT_ERROR("Unable to convey fps info to driver, performance might be affected");
+    }
+
     operating_frame_rate = DEFAULT_FPS;
     high_fps = false;
     m_poll_efd = eventfd(0, 0);
