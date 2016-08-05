@@ -400,14 +400,17 @@ class venc_dev
                 bool is_YUV_format_uncertain;
                 pthread_mutex_t lock;
                 struct extradata_buffer_info roi_extradata_info;
-                bool init();
+                bool init(unsigned long);
                 void deinit();
                 void get_caps();
                 int configure();
+                bool is_pq_handle_valid();
+                bool is_color_format_supported(unsigned long);
+                bool reinit(unsigned long);
                 struct gpu_stats_lib_input_config pConfig;
                 int fill_pq_stats(struct v4l2_buffer buf, unsigned int data_offset);
                 gpu_stats_lib_caps_t caps;
-                typedef gpu_stats_lib_op_status (*gpu_stats_lib_init_t)(void**, enum perf_hint gpu_hint);
+                typedef gpu_stats_lib_op_status (*gpu_stats_lib_init_t)(void**, enum perf_hint gpu_hint, enum color_compression_format format);
                 typedef gpu_stats_lib_op_status (*gpu_stats_lib_deinit_t)(void*);
                 typedef gpu_stats_lib_op_status (*gpu_stats_lib_get_caps_t)(void* handle, gpu_stats_lib_caps_t *caps);
                 typedef gpu_stats_lib_op_status (*gpu_stats_lib_configure_t)(void* handle, gpu_stats_lib_input_config *input_t);
@@ -422,6 +425,7 @@ class venc_dev
                 gpu_stats_lib_configure_t mPQConfigure;
                 gpu_stats_lib_deinit_t mPQDeInit;
                 gpu_stats_lib_fill_data_t mPQComputeStats;
+                unsigned long configured_format;
         };
         venc_dev_pq m_pq;
         void venc_try_enable_pq(void);
@@ -464,6 +468,7 @@ class venc_dev
         bool is_gralloc_source_ubwc;
         bool is_camera_source_ubwc;
         bool is_csc_enabled;
+        bool is_pq_force_disable;
         OMX_U32 fd_list[64];
 
     private:
