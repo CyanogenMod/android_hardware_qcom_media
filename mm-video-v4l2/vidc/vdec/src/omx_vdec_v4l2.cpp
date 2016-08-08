@@ -10619,11 +10619,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         switch (payload->color_format) {
                            case MSM_VIDC_HAL_INTERLACE_COLOR_FORMAT_NV12:
                                interlace_color_format = (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
-                               drv_ctx.output_format = VDEC_YUV_FORMAT_NV12;
                                break;
                            case MSM_VIDC_HAL_INTERLACE_COLOR_FORMAT_NV12_UBWC:
                                interlace_color_format = (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed;
-                               drv_ctx.output_format = VDEC_YUV_FORMAT_NV12_UBWC;
                                break;
                            default:
                                interlace_color_format = (int)QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m;
