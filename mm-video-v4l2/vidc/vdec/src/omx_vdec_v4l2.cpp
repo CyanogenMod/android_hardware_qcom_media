@@ -10641,6 +10641,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         if (interlace_color_format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
                             setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
                                LINEAR_FORMAT, (void*)&interlace_color_format);
+                        } else if (interlace_color_format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed) {
+                            setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                               LINEAR_FORMAT, NULL);
                         }
                     }
                     if (client_extradata & OMX_INTERLACE_EXTRADATA) {
