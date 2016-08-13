@@ -48,6 +48,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <inttypes.h>
 #include <cstddef>
 #include <cutils/atomic.h>
+#include <qdMetaData.h>
 
 static ptrdiff_t x;
 
@@ -469,7 +470,6 @@ class omx_vdec: public qc_omx_component
         bool is_component_secure();
         void buf_ref_add(int nPortIndex);
         void buf_ref_remove();
-        void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
         OMX_BUFFERHEADERTYPE* get_omx_output_buffer_header(int index);
         OMX_ERRORTYPE set_dpb(bool is_split_mode, int dpb_color_format);
         OMX_ERRORTYPE decide_dpb_buffer_mode(bool force_split_mode);
@@ -676,6 +676,11 @@ class omx_vdec: public qc_omx_component
         void adjust_timestamp(OMX_S64 &act_timestamp);
         void set_frame_rate(OMX_S64 act_timestamp);
         void handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr);
+        void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
+        void convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
+            OMX_U32 transfer, OMX_U32 matrix, ColorSpace_t *color_space,
+            ColorAspects *aspects);
+        void handle_color_space_info(void *data, unsigned int buf_index);
         void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
 #ifdef _MSM8974_
         void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
@@ -996,6 +1001,8 @@ class omx_vdec: public qc_omx_component
         bool m_smoothstreaming_mode;
 
         bool m_input_pass_buffer_fd;
+        DescribeColorAspectsParams m_client_color_space;
+        DescribeColorAspectsParams m_internal_color_space;
 
         OMX_U32 operating_frame_rate;
         bool high_fps;

@@ -665,6 +665,7 @@ class omx_video: public qc_omx_component
         OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE m_sConfigIntraRefresh;
 #endif
         OMX_QTI_VIDEO_CONFIG_BLURINFO       m_blurInfo;
+        DescribeColorAspectsParams m_sConfigColorAspects;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;

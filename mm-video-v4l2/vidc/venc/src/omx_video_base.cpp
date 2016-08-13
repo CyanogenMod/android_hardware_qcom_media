@@ -2278,6 +2278,15 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                memcpy(pParam, &m_blurInfo, sizeof(m_blurInfo));
                break;
            }
+       case OMX_QTIIndexConfigDescribeColorAspects:
+            {
+                VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
+                DescribeColorAspectsParams* pParam =
+                    reinterpret_cast<DescribeColorAspectsParams*>(configData);
+                DEBUG_PRINT_LOW("get_config: OMX_QTIIndexConfigDescribeColorAspects");
+                memcpy(pParam, &m_sConfigColorAspects, sizeof(m_sConfigColorAspects));
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -2419,6 +2428,11 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         return OMX_ErrorNone;
     }
 
+    if (!strncmp(paramName, "OMX.google.android.index.describeColorAspects",
+            sizeof(OMX_QTI_INDEX_CONFIG_COLOR_ASPECTS) - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigDescribeColorAspects;
+        return OMX_ErrorNone;
+    }
     return OMX_ErrorNotImplemented;
 }
 
