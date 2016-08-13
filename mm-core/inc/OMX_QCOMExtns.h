@@ -539,6 +539,17 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* OMX.google.android.index.allocateNativeHandle */
     OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005D,
+
+    /*"OMX.google.android.index.describeColorAspects"*/
+    OMX_QTIIndexConfigDescribeColorAspects = 0x7F000062,
+
+    OMX_QTIIndexParamVUIExtraDataExtraData = 0x7F000063,
+
+    OMX_QTIIndexParamMPEG2SeqDispExtraData = 0x7F000064,
+
+    OMX_QTIIndexParamVC1SeqDispExtraData = 0x7F000065,
+
+    OMX_QTIIndexParamVPXColorSpaceExtraData = 0x7F000066,
 };
 
 /**
@@ -1558,6 +1569,7 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SAR "OMX.QCOM.index.param.video.sar"
 
 #define OMX_QTI_INDEX_PARAM_VIDEO_PREFER_ADAPTIVE_PLAYBACK "OMX.QTI.index.param.video.PreferAdaptivePlayback"
+#define OMX_QTI_INDEX_CONFIG_COLOR_ASPECTS "OMX.google.android.index.describeColorAspects"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,

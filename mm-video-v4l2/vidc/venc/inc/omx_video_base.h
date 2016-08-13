@@ -55,6 +55,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pthread.h>
 #include <semaphore.h>
 #include <linux/msm_vidc_enc.h>
+#include <media/hardware/HardwareAPI.h>
 #include "OMX_Core.h"
 #include "OMX_QCOMExtns.h"
 #include "OMX_VideoExt.h"
@@ -628,6 +629,7 @@ class omx_video: public qc_omx_component
         QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS m_sMaxHPlayers;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
+        DescribeColorAspectsParams m_sConfigColorAspects;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;
