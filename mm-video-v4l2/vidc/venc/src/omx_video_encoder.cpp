@@ -856,6 +856,11 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 m_sConfigBitrate.nEncodeBitrate = pParam->nTargetBitrate;
                 m_sInPortDef.format.video.nBitrate = pParam->nTargetBitrate;
                 m_sOutPortDef.format.video.nBitrate = pParam->nTargetBitrate;
+                /* RC mode chan chage buffer requirements on Input port */
+                dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
+                        &m_sInPortDef.nBufferCountActual,
+                        &m_sInPortDef.nBufferSize,
+                        m_sInPortDef.nPortIndex);
                 DEBUG_PRINT_LOW("bitrate = %u", (unsigned int)m_sOutPortDef.format.video.nBitrate);
                 break;
             }
@@ -1847,6 +1852,14 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                     m_sConfigFramerate.xEncodeFramerate = pParam->xEncodeFramerate;
                     m_sOutPortDef.format.video.xFramerate = pParam->xEncodeFramerate;
                     m_sOutPortFormat.xFramerate = pParam->xEncodeFramerate;
+                    /*
+                     * Frame rate can change buffer requirements. If query is not allowed,
+                     * failure is not FATAL here.
+                     */
+                    dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
+                            &m_sInPortDef.nBufferCountActual,
+                            &m_sInPortDef.nBufferSize,
+                            m_sInPortDef.nPortIndex);
                 } else {
                     DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", (unsigned int)pParam->nPortIndex);
                     return OMX_ErrorBadPortIndex;
@@ -2506,11 +2519,6 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
 int omx_venc::dev_handle_output_extradata(void *buffer, int index)
 {
     return handle->handle_output_extradata(buffer, index);
-}
-
-int omx_venc::dev_handle_input_extradata(void *buffer, int index, int fd)
-{
-    return handle->handle_input_extradata(buffer, index, fd);
 }
 
 int omx_venc::dev_set_format(int color)
