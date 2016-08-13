@@ -55,6 +55,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pthread.h>
 #include <semaphore.h>
 #include <linux/msm_vidc_enc.h>
+#include <media/hardware/HardwareAPI.h>
 #include "OMX_Core.h"
 #include "OMX_QCOMExtns.h"
 #include "OMX_VideoExt.h"
@@ -626,6 +627,7 @@ class omx_video: public qc_omx_component
         OMX_COLOR_FORMATTYPE m_omx_color_formattype;
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
+        DescribeColorAspectsParams m_sConfigColorAspects;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;
