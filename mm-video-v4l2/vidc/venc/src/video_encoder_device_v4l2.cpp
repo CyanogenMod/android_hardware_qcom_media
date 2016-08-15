@@ -1524,7 +1524,6 @@ bool venc_dev::venc_open(OMX_U32 codec)
     return true;
 }
 
-
 static OMX_ERRORTYPE unsubscribe_to_events(int fd)
 {
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
@@ -3048,6 +3047,14 @@ bool venc_dev::venc_set_config(void *configData, OMX_INDEXTYPE index)
                 }
                 break;
             }
+        case OMX_QTIIndexConfigVideoRoiInfo:
+        {
+            if(!venc_set_roi_qp_info((OMX_QTI_VIDEO_CONFIG_ROIINFO *)configData)) {
+                DEBUG_PRINT_ERROR("Failed to set ROI QP info");
+                return false;
+            }
+            break;
+        }
         default:
             DEBUG_PRINT_ERROR("Unsupported config index = %u", index);
             break;
@@ -4371,13 +4378,13 @@ int venc_dev::venc_get_index_from_fd(OMX_U32 ion_fd, OMX_U32 buffer_fd)
         cookie = fdData.handle;
     }
 
-    for (int i = 0; i < 64; i++) {
+    for (unsigned int i = 0; i < (sizeof(fd_list)/sizeof(fd_list[0])); i++) {
         if (fd_list[i] == cookie) {
             DEBUG_PRINT_HIGH("FD is present at index = %d", i);
             return i;
         }
     }
-    for (int i = 0; i < 64; i++)
+    for (unsigned int i = 0; i < (sizeof(fd_list)/sizeof(fd_list[0])); i++)
         if (fd_list[i] == 0) {
             DEBUG_PRINT_HIGH("FD added at index = %d", i);
             fd_list[i] = cookie;
@@ -7847,6 +7854,7 @@ void venc_dev::venc_try_enable_pq(void)
     bool yuv_format_supported = false;
     bool is_non_secure_session = false;
     bool is_pq_handle_valid = false;
+    bool is_non_vpe_session = false;
     bool enable = false;
 
     codec_supported = m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264;
@@ -7866,6 +7874,8 @@ void venc_dev::venc_try_enable_pq(void)
 
     is_non_secure_session = !venc_handle->is_secure_session();
 
+    is_non_vpe_session = (m_sVenc_cfg.input_height == m_sVenc_cfg.dvs_height && m_sVenc_cfg.input_width == m_sVenc_cfg.dvs_width);
+
     is_pq_handle_valid = m_pq.is_pq_handle_valid();
 
     /* Add future PQ conditions here */
@@ -7877,11 +7887,12 @@ void venc_dev::venc_try_enable_pq(void)
                frame_rate_supported  &&
                yuv_format_supported  &&
                is_non_secure_session &&
+               is_non_vpe_session    &&
                is_pq_handle_valid);
 
-    DEBUG_PRINT_HIGH("PQ Condition : Force disable = %d Codec = %d, RC = %d, RES = %d, FPS = %d, YUV = %d, Non - Secure = %d, PQ lib = %d PQ enable = %d",
+    DEBUG_PRINT_HIGH("PQ Condition : Force disable = %d Codec = %d, RC = %d, RES = %d, FPS = %d, YUV = %d, Non - Secure = %d, PQ lib = %d Non - VPE = %d PQ enable = %d",
             is_pq_force_disable, codec_supported, rc_mode_supported, resolution_supported, frame_rate_supported, yuv_format_supported,
-            is_non_secure_session, is_pq_handle_valid, enable);
+            is_non_secure_session, is_pq_handle_valid, is_non_vpe_session, enable);
 
     venc_set_extradata(OMX_ExtraDataEncoderOverrideQPInfo, (OMX_BOOL)enable);
     extradata |= enable;
