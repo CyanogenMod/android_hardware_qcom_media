@@ -2942,6 +2942,7 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
                 DEBUG_PRINT_ERROR("%s: failed to allocate native-handle", __func__);
                 return OMX_ErrorInsufficientResources;
             }
+            (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
         }
 
         (*bufferHdr)->pBuffer           = (OMX_U8 *)m_pInput_pmem[i].buffer;
@@ -3115,6 +3116,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                     DEBUG_PRINT_ERROR("%s: Failed to allocate native-handle", __func__);
                     return OMX_ErrorInsufficientResources;
                 }
+                (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
                 native_handle_t *handle = native_handle_create(1, 0);
                 if(handle) {
                     handle->data[0] = m_pOutput_pmem[i].fd;
