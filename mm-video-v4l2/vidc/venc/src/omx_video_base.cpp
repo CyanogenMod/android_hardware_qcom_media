@@ -4874,12 +4874,11 @@ void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
                     Input_pmem.size = handle->size;
                 } else {
                     meta_error = true;
-                    DEBUG_PRINT_ERROR(" Meta Error set in EBD");
                 }
                 if (!meta_error)
                     meta_error = !dev_free_buf(&Input_pmem,PORT_INDEX_IN);
                 if (meta_error) {
-                    DEBUG_PRINT_ERROR(" Warning dev_free_buf failed flush value is %d",
+                    DEBUG_PRINT_HIGH("In batchmode or dev_free_buf failed, flush %d",
                             input_flush_progress);
                 }
             }
