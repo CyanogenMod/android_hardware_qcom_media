@@ -32,6 +32,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef _ANDROID_
 #include <cstdio>
 #include <pthread.h>
+#include <sys/mman.h>
 
 enum {
    PRIO_ERROR=0x1,
@@ -91,6 +92,22 @@ class auto_lock {
         }
     private:
         pthread_mutex_t &mLock;
+};
+
+class AutoUnmap {
+    void *vaddr;
+    int size;
+
+    public:
+        AutoUnmap(void *vaddr, int size) {
+            this->vaddr = vaddr;
+            this->size = size;
+        }
+
+        ~AutoUnmap() {
+            if (vaddr)
+                munmap(vaddr, size);
+        }
 };
 
 #endif
