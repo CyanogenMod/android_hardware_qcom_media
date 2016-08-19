@@ -5411,7 +5411,8 @@ bool venc_dev::venc_set_error_resilience(OMX_VIDEO_PARAM_ERRORCORRECTIONTYPE* er
     DEBUG_PRINT_ERROR("Success IOCTL set control for id=%x, value=%d", control.id, control.value);
     multislice.mslice_mode=control.value;
 
-    control.id = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_BYTES;
+    control.id = (multislice_cfg.mslice_mode == VEN_MSLICE_GOB) ?
+                  V4L2_CID_MPEG_VIDEO_MULTI_SLICE_GOB : V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_BYTES;
     control.value = resynchMarkerSpacingBytes;
     DEBUG_PRINT_ERROR("Calling IOCTL set control for id=%x, val=%d", control.id, control.value);
 
