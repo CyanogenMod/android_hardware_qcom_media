@@ -8928,6 +8928,7 @@ OMX_ERRORTYPE omx_vdec::push_input_sc_codec(OMX_HANDLETYPE hComp)
         if (psource_frame->nFlags & OMX_BUFFERFLAG_EOS) {
             if (pdest_frame) {
                 pdest_frame->nFlags |= psource_frame->nFlags;
+                pdest_frame->nTimeStamp = psource_frame->nTimeStamp;
                 DEBUG_PRINT_LOW("Frame Found start Decoding Size =%u TimeStamp = %lld",
                         (unsigned int)pdest_frame->nFilledLen,pdest_frame->nTimeStamp);
                 DEBUG_PRINT_LOW("Found a frame size = %u number = %d",
