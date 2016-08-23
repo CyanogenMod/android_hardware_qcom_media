@@ -4110,8 +4110,8 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
 bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
 {
     struct v4l2_buffer buf;
-    struct v4l2_plane plane;
-    int rc = 0;
+    struct v4l2_plane plane[VIDEO_MAX_PLANES];
+    int rc = 0, extra_idx, numBufs;
     struct v4l2_control control;
     LEGACY_CAM_METADATA_TYPE * meta_buf = NULL;
     native_handle_t *hnd = NULL;
@@ -4123,7 +4123,7 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
 
     bool status = true;
     if (metadatamode) {
-        plane.m.userptr = index;
+        plane[0].m.userptr = index;
         meta_buf = (LEGACY_CAM_METADATA_TYPE *)bufhdr->pBuffer;
 
         if (!color_format) {
@@ -4174,13 +4174,45 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
             buf.index = (unsigned)v4l2Id;
             buf.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
             buf.memory = V4L2_MEMORY_USERPTR;
-            plane.reserved[0] = BatchInfo::getFdAt(hnd, i);
-            plane.reserved[1] = 0;
-            plane.data_offset = BatchInfo::getOffsetAt(hnd, i);
-            plane.m.userptr = (unsigned long)meta_buf;
-            plane.length = plane.bytesused = BatchInfo::getSizeAt(hnd, i);
-            buf.m.planes = &plane;
-            buf.length = 1;
+            plane[0].reserved[0] = BatchInfo::getFdAt(hnd, i);
+            plane[0].reserved[1] = 0;
+            plane[0].data_offset = BatchInfo::getOffsetAt(hnd, i);
+            plane[0].m.userptr = (unsigned long)meta_buf;
+            plane[0].length = plane[0].bytesused = BatchInfo::getSizeAt(hnd, i);
+            buf.m.planes = plane;
+            buf.length = num_input_planes;
+
+            extra_idx = EXTRADATA_IDX(num_input_planes);
+
+            if (extra_idx && (extra_idx < VIDEO_MAX_PLANES)) {
+                int fd = plane[0].reserved[0];
+                int extradata_index = venc_get_index_from_fd(input_extradata_info.m_ion_dev, fd);
+                if (extradata_index < 0) {
+                    DEBUG_PRINT_ERROR("Extradata index calculation went wrong for fd = %d", fd);
+                    return OMX_ErrorBadParameter;
+                }
+
+                plane[extra_idx].bytesused = 0;
+                plane[extra_idx].length = input_extradata_info.buffer_size;
+                plane[extra_idx].m.userptr = (unsigned long) (input_extradata_info.uaddr + extradata_index * input_extradata_info.buffer_size);
+                plane[extra_idx].reserved[0] = input_extradata_info.ion.fd_ion_data.fd;
+                plane[extra_idx].reserved[1] = input_extradata_info.buffer_size * extradata_index;
+                plane[extra_idx].reserved[2] = input_extradata_info.size;
+                plane[extra_idx].data_offset = 0;
+            } else if (extra_idx >= VIDEO_MAX_PLANES) {
+                DEBUG_PRINT_ERROR("Extradata index higher than expected: %d\n", extra_idx);
+                return false;
+            }
+
+#ifdef _PQ_
+            if (!streaming[OUTPUT_PORT]) {
+                m_pq.is_YUV_format_uncertain = false;
+                m_pq.reinit(m_sVenc_cfg.inputformat);
+                venc_try_enable_pq();
+            }
+#endif // _PQ_
+
+            handle_input_extradata(buf);
 
             rc = ioctl(m_nDriver_fd, VIDIOC_PREPARE_BUF, &buf);
             if (rc)
@@ -4194,12 +4226,11 @@ bool venc_dev::venc_empty_batch(OMX_BUFFERHEADERTYPE *bufhdr, unsigned index)
                         i, etb + 1, numBufs);
             }
 
-
             // timestamp differences from camera are in nano-seconds
             bufTimeStamp = bufhdr->nTimeStamp + BatchInfo::getTimeStampAt(hnd, i) / 1000;
 
             DEBUG_PRINT_LOW(" Q Batch [%d of %d] : buf=%p fd=%d len=%d TS=%lld",
-                i, numBufs, bufhdr, plane.reserved[0], plane.length, bufTimeStamp);
+                i, numBufs, bufhdr, plane[0].reserved[0], plane[0].length, bufTimeStamp);
             buf.timestamp.tv_sec = bufTimeStamp / 1000000;
             buf.timestamp.tv_usec = (bufTimeStamp % 1000000);
 
