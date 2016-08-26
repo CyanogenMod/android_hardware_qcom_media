@@ -591,6 +591,18 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* H264 transform 8x8 mode */
     OMX_QcomIndexConfigH264Transform8x8 = 0x7F000061,
+
+    /*"OMX.google.android.index.describeColorAspects"*/
+    OMX_QTIIndexConfigDescribeColorAspects = 0x7F000062,
+
+    OMX_QTIIndexParamVUIExtraDataExtraData = 0x7F000063,
+
+    OMX_QTIIndexParamMPEG2SeqDispExtraData = 0x7F000064,
+
+    OMX_QTIIndexParamVC1SeqDispExtraData = 0x7F000065,
+
+    OMX_QTIIndexParamVPXColorSpaceExtraData = 0x7F000066,
+
 };
 
 /**
@@ -1685,6 +1697,7 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO "OMX.QTI.index.config.RoiInfo"
 #define OMX_QTI_INDEX_CONFIG_VIDEO_BLURINFO "OMX.QTI.index.config.BlurInfo"
 #define OMX_QTI_INDEX_PARAM_VIDEO_CLIENT_EXTRADATA "OMX.QTI.index.param.client.extradata"
+#define OMX_QTI_INDEX_CONFIG_COLOR_ASPECTS "OMX.google.android.index.describeColorAspects"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,

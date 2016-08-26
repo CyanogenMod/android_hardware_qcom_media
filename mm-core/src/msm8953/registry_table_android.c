@@ -709,6 +709,19 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.qcom.file.muxer",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxMux.so",
+    {
+      "container_muxer.mp4"
+    }
+  },
+  {
     "OMX.qti.vdec.vpp",
     NULL, // Create instance function
     // Unique instance handle

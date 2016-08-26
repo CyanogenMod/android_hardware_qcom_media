@@ -102,6 +102,7 @@ LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
 ifeq ($(BOARD_USES_ADRENO), true)
 LOCAL_SHARED_LIBRARIES    += libc2dcolorconvert
 endif # ($(BOARD_USES_ADRENO), true)
+LOCAL_SHARED_LIBRARIES += libqdMetaData
 LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
 
 LOCAL_SRC_FILES   := src/omx_video_base.cpp

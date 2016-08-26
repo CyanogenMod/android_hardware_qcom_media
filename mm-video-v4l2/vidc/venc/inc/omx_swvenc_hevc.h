@@ -94,6 +94,10 @@ private:
     virtual bool dev_get_performance_level(OMX_U32 *);
     virtual bool dev_get_vui_timing_info(OMX_U32 *);
     virtual bool dev_get_peak_bitrate(OMX_U32 *);
+    virtual bool dev_get_temporal_layer_caps(OMX_U32 * /*nMaxLayers*/,
+                OMX_U32 * /*nMaxBLayers*/) {
+        return false;
+    }
     virtual bool dev_color_align(OMX_BUFFERHEADERTYPE *buffer, OMX_U32 width,
                         OMX_U32 height);
     virtual bool dev_get_output_log_flag();
