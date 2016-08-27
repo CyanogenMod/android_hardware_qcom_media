@@ -8640,9 +8640,10 @@ int omx_vdec::async_message_process (void *context, void* message)
                    vdec_msg->msgdata.output_frame.bufferaddr =
                        omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].bufferaddr;
 
-                   memcpy(&omx->drv_ctx.frame_size,
-                           &vdec_msg->msgdata.output_frame.framesize,
-                           sizeof(struct vdec_framesize));
+                   if (vdec_msg->msgdata.output_frame.len)
+                       memcpy(&omx->drv_ctx.frame_size,
+                               &vdec_msg->msgdata.output_frame.framesize,
+                               sizeof(struct vdec_framesize));
 
                    DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x) FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
                            omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
@@ -10640,6 +10641,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                         if (interlace_color_format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32m) {
                             setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
                                LINEAR_FORMAT, (void*)&interlace_color_format);
+                        } else if (interlace_color_format == QOMX_COLOR_FORMATYUV420PackedSemiPlanar32mCompressed) {
+                            setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                               LINEAR_FORMAT, NULL);
                         }
                     }
                     if (client_extradata & OMX_INTERLACE_EXTRADATA) {
