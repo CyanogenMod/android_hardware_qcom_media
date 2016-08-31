@@ -411,8 +411,8 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
 
-    m_capability.max_height = OMX_CORE_WVGA_HEIGHT;
-    m_capability.max_width = OMX_CORE_WVGA_WIDTH;
+    m_capability.max_height = OMX_CORE_FWVGA_HEIGHT;
+    m_capability.max_width = OMX_CORE_FWVGA_WIDTH;
     m_capability.min_height = 32;
     m_capability.min_width = 32;
 

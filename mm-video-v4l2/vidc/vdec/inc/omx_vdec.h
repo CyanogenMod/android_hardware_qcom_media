@@ -178,6 +178,8 @@ class VideoHeap : public MemoryHeapBase
 #define OMX_CORE_VGA_WIDTH           640
 #define OMX_CORE_WVGA_HEIGHT         480
 #define OMX_CORE_WVGA_WIDTH          800
+#define OMX_CORE_FWVGA_HEIGHT        480
+#define OMX_CORE_FWVGA_WIDTH         864
 
 #define DESC_BUFFER_SIZE (8192 * 16)
 
