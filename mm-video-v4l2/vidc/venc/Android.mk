@@ -81,7 +81,6 @@ libmm-venc-add-dep  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 include $(CLEAR_VARS)
 
 LOCAL_MODULE                    := libOmxVenc
-LOCAL_CLANG                     := false
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(libmm-venc-inc)
@@ -109,7 +108,7 @@ include $(CLEAR_VARS)
 libmm-venc-inc      += $(TARGET_OUT_HEADERS)/mm-video/swvenc
 
 LOCAL_MODULE                    := libOmxSwVencMpeg4
-LOCAL_CLANG                     := false
+
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(libmm-venc-inc)
@@ -137,7 +136,6 @@ include $(CLEAR_VARS)
 libmm-venc-inc      += $(TARGET_OUT_HEADERS)/mm-video/swVenc
 
 LOCAL_MODULE                    := libOmxSwVencHevc
-LOCAL_CLANG                     := false
 LOCAL_MODULE_TAGS               := optional
 LOCAL_CFLAGS                    := $(libmm-venc-def)
 LOCAL_C_INCLUDES                := $(libmm-venc-inc)
