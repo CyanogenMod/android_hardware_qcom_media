@@ -3707,7 +3707,7 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             post_event(OMX_CommandStateSet, OMX_StateLoaded,
                     OMX_COMPONENT_GENERATE_EVENT);
         } else {
-            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers input %" PRIx64" output %" PRIx64,
+            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers output %" PRIx64" input %" PRIx64,
                     m_out_bm_count, m_inp_bm_count);
         }
     }

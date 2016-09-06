@@ -8650,7 +8650,9 @@ int omx_vdec::async_message_process (void *context, void* message)
                                &vdec_msg->msgdata.output_frame.framesize,
                                sizeof(struct vdec_framesize));
 
-                   DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x) FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
+                   DEBUG_PRINT_LOW("[RespBufDone] Fd(%d) Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x)"
+                           " FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
+                           omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].pmem_fd,
                            omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
                            vdec_msg->msgdata.output_frame.pic_type, v4l2_buf_ptr->flags,
                            (unsigned int)vdec_msg->msgdata.output_frame.len,
