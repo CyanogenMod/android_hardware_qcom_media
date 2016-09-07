@@ -237,6 +237,13 @@ struct msm_venc_hybrid_hp {
    unsigned int nHpLayers;
 };
 
+struct msm_venc_color_space {
+    OMX_U32 primaries;
+    OMX_U32 range;
+    OMX_U32 matrix_coeffs;
+    OMX_U32 transfer_chars;
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -351,6 +358,7 @@ class venc_dev
         int venc_set_format(int);
         bool deinterlace_enabled;
         bool hw_overload;
+        bool is_csc_enabled;
     private:
         OMX_U32                             m_codec;
         struct msm_venc_basecfg             m_sVenc_cfg;
@@ -386,6 +394,7 @@ class venc_dev
         OMX_U32                             operating_rate;
         struct msm_venc_low_latency         low_latency;
         struct msm_venc_hybrid_hp           hybrid_hp;
+        struct msm_venc_color_space         color_space;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -433,6 +442,7 @@ class venc_dev
         bool venc_set_lowlatency_mode(OMX_BOOL enable);
         void venc_clip_luma_chroma(int fd, OMX_U32 offset, OMX_U32 size);
         bool venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmode);
+        bool venc_set_colorspace(OMX_U32 primaries, OMX_U32 range, OMX_U32 transfer_chars, OMX_U32 matrix_coeffs);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();
