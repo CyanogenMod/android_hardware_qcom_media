@@ -31,7 +31,9 @@ ifeq ($(TARGET_USES_ION),true)
 libOmxVdpp-def += -DUSE_ION
 endif
 
+ifeq ($(TARGET_COMPILE_WITH_MSM_KERNEL),true)
 vidpp-inc          = $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
+endif
 
 # ---------------------------------------------------------------------------------
 #			Make the Shared library (libOmxVdpp)
@@ -59,7 +61,9 @@ LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl libc
 
 LOCAL_SRC_FILES         += src/omx_vdpp.cpp
 
+ifeq ($(TARGET_COMPILE_WITH_MSM_KERNEL),true)
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
+endif
 
 include $(BUILD_SHARED_LIBRARY)
 
