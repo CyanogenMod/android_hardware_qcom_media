@@ -86,6 +86,7 @@ LOCAL_COPY_HEADERS      += inc/OMX_VideoExt.h
 LOCAL_COPY_HEADERS      += inc/QOMX_StreamingExtensions.h
 LOCAL_COPY_HEADERS      += inc/QCMediaDefs.h
 LOCAL_COPY_HEADERS      += inc/QCMetaData.h
+LOCAL_COPY_HEADERS      += inc/OMX_Skype_VideoExtensions.h
 
 #===============================================================================
 #             LIBRARY for Android apps
