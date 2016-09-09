@@ -3607,17 +3607,15 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             m_sInPortDef.bPopulated = OMX_FALSE;
 
             /*Free the Buffer Header*/
-            if (release_input_done()
-#ifdef _ANDROID_ICS_
-                    && !meta_mode_enable
-#endif
-               ) {
+            if (release_input_done()) {
                 input_use_buffer = false;
-                if (m_inp_mem_ptr) {
+                // "m_inp_mem_ptr" may point to "meta_buffer_hdr" in some modes,
+                // in which case, it was not explicitly allocated
+                if (m_inp_mem_ptr && m_inp_mem_ptr != meta_buffer_hdr) {
                     DEBUG_PRINT_LOW("Freeing m_inp_mem_ptr");
                     free (m_inp_mem_ptr);
-                    m_inp_mem_ptr = NULL;
                 }
+                m_inp_mem_ptr = NULL;
                 if (m_pInput_pmem) {
                     DEBUG_PRINT_LOW("Freeing m_pInput_pmem");
                     free(m_pInput_pmem);
@@ -3707,7 +3705,7 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             post_event(OMX_CommandStateSet, OMX_StateLoaded,
                     OMX_COMPONENT_GENERATE_EVENT);
         } else {
-            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers input %" PRIx64" output %" PRIx64,
+            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers output %" PRIx64" input %" PRIx64,
                     m_out_bm_count, m_inp_bm_count);
         }
     }
@@ -4874,12 +4872,11 @@ void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
                     Input_pmem.size = handle->size;
                 } else {
                     meta_error = true;
-                    DEBUG_PRINT_ERROR(" Meta Error set in EBD");
                 }
                 if (!meta_error)
                     meta_error = !dev_free_buf(&Input_pmem,PORT_INDEX_IN);
                 if (meta_error) {
-                    DEBUG_PRINT_ERROR(" Warning dev_free_buf failed flush value is %d",
+                    DEBUG_PRINT_HIGH("In batchmode or dev_free_buf failed, flush %d",
                             input_flush_progress);
                 }
             }

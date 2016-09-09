@@ -3896,7 +3896,13 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
                     VideoGrallocMetadata *meta_buf = (VideoGrallocMetadata *)bufhdr->pBuffer;
                     private_handle_t *handle = (private_handle_t *)meta_buf->pHandle;
-                    if (!streaming[OUTPUT_PORT] && handle) {
+
+                    if (!handle) {
+                        DEBUG_PRINT_ERROR("%s : handle is null!", __FUNCTION__);
+                        return false;
+                    }
+
+                    if (!streaming[OUTPUT_PORT]) {
                         int color_space = 0;
                         // Moment of truth... actual colorspace is known here..
                         ColorSpace_t colorSpace = ITU_R_601;
