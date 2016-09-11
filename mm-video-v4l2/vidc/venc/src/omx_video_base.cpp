@@ -2977,11 +2977,11 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
             //This should only be used for passing reference to source type and
             //secure handle fd struct native_handle_t*
             m_pInput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
+            (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
             if (m_pInput_pmem[i].buffer == NULL) {
                 DEBUG_PRINT_ERROR("%s: failed to allocate native-handle", __func__);
                 return OMX_ErrorInsufficientResources;
             }
-            (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
         }
 
         (*bufferHdr)->pBuffer           = (OMX_U8 *)m_pInput_pmem[i].buffer;
