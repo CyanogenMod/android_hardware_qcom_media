@@ -116,32 +116,7 @@ LOCAL_SRC_FILES   := src/omx_video_base.cpp
 LOCAL_SRC_FILES   += src/omx_swvenc_mpeg4.cpp
 
 include $(BUILD_SHARED_LIBRARY)
-endif
 
-ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_HEVC)),true)
-# ---------------------------------------------------------------------------------
-#                            Make the Shared library (libOmxSwVenc)
-# ---------------------------------------------------------------------------------
-include $(CLEAR_VARS)
-
-libmm-venc-inc      += $(TARGET_OUT_HEADERS)/mm-video/swVenc
-
-LOCAL_MODULE                    := libOmxSwVencHevc
-LOCAL_MODULE_TAGS               := optional
-LOCAL_CFLAGS                    := $(libmm-venc-def)
-LOCAL_C_INCLUDES                := $(libmm-venc-inc)
-LOCAL_ADDITIONAL_DEPENDENCIES   := $(libmm-venc-add-dep)
-
-LOCAL_PRELINK_MODULE      := false
-LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
-                             libc2dcolorconvert libdl libgui
-LOCAL_SHARED_LIBRARIES    += libHevcSwEncoder
-LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
-
-LOCAL_SRC_FILES   := src/omx_video_base.cpp
-LOCAL_SRC_FILES   += src/omx_swvenc_hevc.cpp
-
-#include $(BUILD_SHARED_LIBRARY)
 endif
 
 # ---------------------------------------------------------------------------------
