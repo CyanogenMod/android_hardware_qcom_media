@@ -1603,6 +1603,7 @@ OMX_ERRORTYPE  omx_venc::set_config
         }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
+            RETURN(OMX_ErrorUnsupportedSetting);
             break;
     }
 
