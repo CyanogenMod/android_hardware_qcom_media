@@ -3826,47 +3826,47 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                      break;
                                  }
         case OMX_QcomIndexParamConcealMBMapExtraData:
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(VDEC_EXTRADATA_MB_ERROR_MAP, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamFrameInfoExtraData:
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_FRAMEINFO_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_ExtraDataFrameDimension:
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_FRAMEDIMENSION_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamInterlaceExtraData:
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_INTERLACE_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamH264TimeInfo:
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_TIMEINFO_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamVideoFramePackingExtradata:
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_FRAMEPACK_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamVideoQPExtraData:
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_QP_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexParamVideoInputBitsInfoExtraData:
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                eRet = enable_extradata(OMX_BITSINFO_EXTRADATA, false,
                                        ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                break;
         case OMX_QcomIndexEnableExtnUserData:
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
+                               VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
                                 eRet = enable_extradata(OMX_EXTNUSER_EXTRADATA, false,
                                     ((QOMX_ENABLETYPE *)paramData)->bEnable);
                                 break;
@@ -3926,7 +3926,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    break;
 
         case OMX_QcomIndexParamIndexExtraDataType: {
-			VALIDATE_OMX_PARAM_DATA(paramData, QOMX_INDEXEXTRADATATYPE);
+                                    VALIDATE_OMX_PARAM_DATA(paramData, QOMX_INDEXEXTRADATATYPE);
                                     QOMX_INDEXEXTRADATATYPE *extradataIndexType = (QOMX_INDEXEXTRADATATYPE *) paramData;
                                     if ((extradataIndexType->nIndex == OMX_IndexParamPortDefinition) &&
                                             (extradataIndexType->bEnabled == OMX_TRUE) &&
@@ -4102,6 +4102,7 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
 
         case OMX_QTIIndexParamVideoPreferAdaptivePlayback:
         {
+            VALIDATE_OMX_PARAM_DATA(paramData, QOMX_ENABLETYPE);
             DEBUG_PRINT_LOW("set_parameter: OMX_QTIIndexParamVideoPreferAdaptivePlayback");
             m_disable_dynamic_buf_mode = ((QOMX_ENABLETYPE *)paramData)->bEnable;
             if (m_disable_dynamic_buf_mode) {
@@ -7039,7 +7040,7 @@ bool omx_vdec::release_output_done(void)
     bool bRet = false;
     unsigned i=0,j=0;
 
-    DEBUG_PRINT_LOW("Value of m_out_mem_ptr %p",m_out_mem_ptr);
+    DEBUG_PRINT_LOW("Value of m_out_mem_ptr %p", m_out_mem_ptr);
     if (m_out_mem_ptr) {
         for (; j < drv_ctx.op_buf.actualcount ; j++) {
             if (BITMASK_PRESENT(&m_out_bm_count,j)) {
