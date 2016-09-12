@@ -3035,6 +3035,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
             m_pOutput_pmem[i].offset = 0;
 
             m_pOutput_pmem[i].buffer = NULL;
+
             *bufferHdr = (m_out_mem_ptr + i );
 
             if(!secure_session) {
@@ -3061,6 +3062,7 @@ OMX_ERRORTYPE  omx_video::allocate_output_buffer(
                 //This should only be used for passing reference to source type and
                 //secure handle fd struct native_handle_t*
                 native_handle_t *handle = native_handle_create(1, 3); //fd, offset, size, alloc length
+                (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
                 if (!handle) {
                     DEBUG_PRINT_ERROR("ERROR: native handle creation failed");
                     return OMX_ErrorInsufficientResources;
@@ -3229,17 +3231,15 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             m_sInPortDef.bPopulated = OMX_FALSE;
 
             /*Free the Buffer Header*/
-            if (release_input_done()
-#ifdef _ANDROID_ICS_
-                    && !meta_mode_enable
-#endif
-               ) {
+            if (release_input_done()) {
                 input_use_buffer = false;
-                if (m_inp_mem_ptr) {
+                // "m_inp_mem_ptr" may point to "meta_buffer_hdr" in some modes,
+                // in which case, it was not explicitly allocated
+                if (m_inp_mem_ptr && m_inp_mem_ptr != meta_buffer_hdr) {
                     DEBUG_PRINT_LOW("Freeing m_inp_mem_ptr");
                     free (m_inp_mem_ptr);
-                    m_inp_mem_ptr = NULL;
                 }
+                m_inp_mem_ptr = NULL;
                 if (m_pInput_pmem) {
                     DEBUG_PRINT_LOW("Freeing m_pInput_pmem");
                     free(m_pInput_pmem);
