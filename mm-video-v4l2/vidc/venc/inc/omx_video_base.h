@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2014, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -135,10 +135,23 @@ static const char* MEM_DEVICE = "/dev/pmem_smipool";
         & BITMASK_FLAG(mIndex))
 #define BITMASK_ABSENT(mArray,mIndex) (((mArray)[BITMASK_OFFSET(mIndex)] \
             & BITMASK_FLAG(mIndex)) == 0x0)
-
 #define MAX_NUM_INPUT_BUFFERS 64
 #define MAX_NUM_OUTPUT_BUFFERS 64
+
 void* enc_message_thread(void *);
+
+#ifdef USE_NATIVE_HANDLE_SOURCE
+#define LEGACY_CAM_SOURCE kMetadataBufferTypeNativeHandleSource
+#define LEGACY_CAM_METADATA_TYPE encoder_nativehandle_buffer_type
+#else
+#define LEGACY_CAM_SOURCE kMetadataBufferTypeCameraSource
+#define LEGACY_CAM_METADATA_TYPE encoder_media_buffer_type
+#endif
+
+struct output_metabuffer {
+    OMX_U32 type;
+    native_handle_t *nh;
+};
 
 // OMX video class
 class omx_video: public qc_omx_component
@@ -147,7 +160,7 @@ class omx_video: public qc_omx_component
 #ifdef _ANDROID_ICS_
         bool meta_mode_enable;
         bool c2d_opened;
-        encoder_media_buffer_type meta_buffers[MAX_NUM_INPUT_BUFFERS];
+        LEGACY_CAM_METADATA_TYPE meta_buffers[MAX_NUM_INPUT_BUFFERS];
         OMX_BUFFERHEADERTYPE *opaque_buffer_hdr[MAX_NUM_INPUT_BUFFERS];
         bool get_syntaxhdr_enable;
         OMX_BUFFERHEADERTYPE  *psource_frame;

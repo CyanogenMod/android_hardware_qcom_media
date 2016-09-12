@@ -559,8 +559,6 @@ size_t C2DColorConverter::calcLumaAlign(ColorConvertFormat format) {
         case NV12_2K:
           return ALIGN2K;
         case NV12_128m:
-        case YCbCr420SP: //OR NV12
-        case YCbCr420P:
           return 1;
         default:
           ALOGD("unknown format passed for luma alignment number");
