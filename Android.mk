@@ -13,8 +13,4 @@ ifeq ($(BOARD_USES_ADRENO), true)
 include $(QCOM_MEDIA_ROOT)/libc2dcolorconvert/Android.mk
 endif
 
-ifeq ($(TARGET_BOARD_PLATFORM),apq8084)
-include $(QCOM_MEDIA_ROOT)/videopp/Android.mk
-endif
-
 endif
