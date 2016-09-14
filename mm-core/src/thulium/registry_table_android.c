@@ -1,6 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2014, The Linux Foundation. All rights reserved.
-
+Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
 met:
@@ -658,22 +657,6 @@ omx_core_cb_type core[] =
     "libOmxMux.so",
     {
       "container_muxer.mp2"
-    }
-  },
-  {
-    "OMX.qcom.video.postprocessing",
-    NULL, // Create instance function
-    // Unique instance handle
-    {
-      NULL,
-      NULL,
-      NULL,
-      NULL
-    },
-    NULL,   // Shared object library handle
-    "libOmxVdpp.so",
-    {
-      "videopostprocessing"
     }
   }
 };
