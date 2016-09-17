@@ -5507,13 +5507,18 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
                         drv_ctx.ptr_inputbuffer[index].bufferaddr);
                 munmap (drv_ctx.ptr_inputbuffer[index].bufferaddr,
                         drv_ctx.ptr_inputbuffer[index].mmaped_size);
-                close (drv_ctx.ptr_inputbuffer[index].pmem_fd);
-            } else if (allocate_native_handle){
+            }
+
+            if (allocate_native_handle){
                 native_handle_t *nh = (native_handle_t *)bufferHdr->pBuffer;
                 native_handle_close(nh);
                 native_handle_delete(nh);
+            } else {
+                // Close fd for non-secure and secure non-native-handle case
+                close(drv_ctx.ptr_inputbuffer[index].pmem_fd);
             }
             drv_ctx.ptr_inputbuffer[index].pmem_fd = -1;
+
             if (m_desc_buffer_ptr && m_desc_buffer_ptr[index].buf_addr) {
                 free(m_desc_buffer_ptr[index].buf_addr);
                 m_desc_buffer_ptr[index].buf_addr = NULL;
