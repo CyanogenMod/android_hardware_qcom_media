@@ -3383,21 +3383,17 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVEL
 
     if (profileLevelType->nPortIndex == 0) {
         if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",OMX_MAX_STRINGNAME_SIZE)) {
+            profileLevelType->eLevel = OMX_VIDEO_AVCLevel52;
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileBaseline;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel51;
             } else if (profileLevelType->nProfileIndex == 1) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileMain;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else if (profileLevelType->nProfileIndex == 2) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileHigh;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else if (profileLevelType->nProfileIndex == 3) {
                 profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else if (profileLevelType->nProfileIndex == 4) {
                 profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedHigh;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else {
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
                         (unsigned int)profileLevelType->nProfileIndex);
@@ -3819,6 +3815,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         break;
                     case V4L2_MPEG_VIDEO_H264_LEVEL_5_1:
                         pParam->eLevel = OMX_VIDEO_AVCLevel51;
+                        break;
                     case V4L2_MPEG_VIDEO_H264_LEVEL_5_2:
                         pParam->eLevel = OMX_VIDEO_AVCLevel52;
                         break;
