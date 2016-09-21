@@ -105,6 +105,16 @@ struct msm_venc_qprange {
     unsigned long    maxqp;
     unsigned long    minqp;
 };
+
+struct msm_venc_ipb_qprange {
+    unsigned long    max_i_qp;
+    unsigned long    min_i_qp;
+    unsigned long    max_p_qp;
+    unsigned long    min_p_qp;
+    unsigned long    max_b_qp;
+    unsigned long    min_b_qp;
+};
+
 struct msm_venc_intraperiod {
     unsigned long    num_pframes;
     unsigned long    num_bframes;
@@ -252,6 +262,7 @@ struct extradata_buffer_info {
     enum v4l2_ports port_index;
 #ifdef USE_ION
     struct venc_ion ion;
+    unsigned int m_ion_dev;
 #endif
     bool vqzip_sei_found;
 };
@@ -267,8 +278,10 @@ enum rc_modes {
     RC_VBR_CFR = BIT(1),
     RC_CBR_VFR = BIT(2),
     RC_CBR_CFR = BIT(3),
+    RC_MBR_CFR = BIT(4),
+    RC_MBR_VFR = BIT(5),
     RC_ALL = (RC_VBR_VFR | RC_VBR_CFR
-        | RC_CBR_VFR | RC_CBR_CFR)
+        | RC_CBR_VFR | RC_CBR_CFR | RC_MBR_CFR | RC_MBR_VFR)
 };
 
 class venc_dev
@@ -302,6 +315,7 @@ class venc_dev
                 OMX_U32 *,OMX_U32);
         bool venc_set_param(void *,OMX_INDEXTYPE);
         bool venc_set_config(void *configData, OMX_INDEXTYPE index);
+        bool venc_h264_transform_8x8(OMX_BOOL enable);
         bool venc_get_profile_level(OMX_U32 *eProfile,OMX_U32 *eLevel);
         bool venc_get_seq_hdr(void *, unsigned, unsigned *);
         bool venc_loaded_start(void);
@@ -403,6 +417,7 @@ class venc_dev
         struct msm_venc_initqp              init_qp;
         struct msm_venc_qprange             session_qp_range;
         struct msm_venc_qprange             session_qp_values;
+        struct msm_venc_ipb_qprange         session_ipb_qp_values;
         struct msm_venc_multiclicecfg       multislice;
         struct msm_venc_entropycfg          entropy;
         struct msm_venc_dbcfg               dbkfilter;
@@ -430,6 +445,7 @@ class venc_dev
         bool venc_set_ratectrl_cfg(OMX_VIDEO_CONTROLRATETYPE eControlRate);
         bool venc_set_session_qp(OMX_U32 i_frame_qp, OMX_U32 p_frame_qp,OMX_U32 b_frame_qp);
         bool venc_set_session_qp_range(OMX_U32 min_qp, OMX_U32 max_qp);
+        bool venc_set_session_qp_range_packed(OMX_U32 min_qp, OMX_U32 max_qp);
         bool venc_set_encode_framerate(OMX_U32 encode_framerate, OMX_U32 config);
         bool venc_set_intra_vop_refresh(OMX_BOOL intra_vop_refresh);
         bool venc_set_color_format(OMX_COLOR_FORMATTYPE color_format);
@@ -466,7 +482,7 @@ class venc_dev
         bool venc_set_batch_size(OMX_U32 size);
         bool venc_calibrate_gop();
         bool venc_set_vqzip_defaults();
-        int venc_get_index_from_fd(OMX_U32 fd);
+        int venc_get_index_from_fd(OMX_U32 ion_fd, OMX_U32 buffer_fd);
         bool venc_validate_hybridhp_params(OMX_U32 layers, OMX_U32 bFrames, OMX_U32 count, int mode);
         bool venc_set_hierp_layers(OMX_U32 hierp_layers);
         bool venc_set_baselayerid(OMX_U32 baseid);
