@@ -8709,7 +8709,9 @@ int omx_vdec::async_message_process (void *context, void* message)
                                &vdec_msg->msgdata.output_frame.framesize,
                                sizeof(struct vdec_framesize));
 
-                   DEBUG_PRINT_LOW("[RespBufDone] Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x) FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
+                   DEBUG_PRINT_LOW("[RespBufDone] Fd(%d) Buf(%p) Ts(%lld) PicType(%u) Flags (0x%x)"
+                           " FillLen(%u) Crop: L(%u) T(%u) R(%u) B(%u)",
+                           omx->drv_ctx.ptr_outputbuffer[v4l2_buf_ptr->index].pmem_fd,
                            omxhdr, (long long)vdec_msg->msgdata.output_frame.time_stamp,
                            vdec_msg->msgdata.output_frame.pic_type, v4l2_buf_ptr->flags,
                            (unsigned int)vdec_msg->msgdata.output_frame.len,
@@ -8985,6 +8987,7 @@ OMX_ERRORTYPE omx_vdec::push_input_sc_codec(OMX_HANDLETYPE hComp)
         if (psource_frame->nFlags & OMX_BUFFERFLAG_EOS) {
             if (pdest_frame) {
                 pdest_frame->nFlags |= psource_frame->nFlags;
+                pdest_frame->nTimeStamp = psource_frame->nTimeStamp;
                 DEBUG_PRINT_LOW("Frame Found start Decoding Size =%u TimeStamp = %lld",
                         (unsigned int)pdest_frame->nFilledLen,pdest_frame->nTimeStamp);
                 DEBUG_PRINT_LOW("Found a frame size = %u number = %d",
