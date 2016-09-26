@@ -149,14 +149,6 @@ LOCAL_SRC_FILES         := src/frameparser.cpp
 LOCAL_SRC_FILES         += src/h264_utils.cpp
 LOCAL_SRC_FILES         += src/ts_parser.cpp
 LOCAL_SRC_FILES         += src/mp4_utils.cpp
-
-ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_HEVC)),true)
-LOCAL_SHARED_LIBRARIES  += libHevcSwDecoder
-LOCAL_SRC_FILES         += src/omx_vdec_hevc_swvdec.cpp
-else
-LOCAL_SRC_FILES         += src/omx_vdec_hevc.cpp
-endif
-
 LOCAL_SRC_FILES         += src/hevc_utils.cpp
 
 LOCAL_STATIC_LIBRARIES  := libOmxVidcCommon
@@ -165,7 +157,6 @@ include $(BUILD_SHARED_LIBRARY)
 
 endif
 endif
-
 
 # ---------------------------------------------------------------------------------
 #                END
