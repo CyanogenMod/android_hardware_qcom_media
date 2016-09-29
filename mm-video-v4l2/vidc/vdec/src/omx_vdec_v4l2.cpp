@@ -625,6 +625,7 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     m_fps_received(0),
     m_fps_prev(0),
     m_drc_enable(0),
+    m_dfrc_enable(false),
     in_reconfig(false),
     m_display_id(NULL),
     client_extradata(0),
@@ -726,6 +727,13 @@ omx_vdec::omx_vdec(): m_error_propogated(false),
     if (atoi(property_value)) {
         m_drc_enable = true;
         DEBUG_PRINT_HIGH("DRC enabled");
+    }
+
+    property_value[0] = '\0';
+    property_get("media.dfrc_enable", property_value, "0");
+    if (atoi(property_value)) {
+        m_dfrc_enable = true;
+        DEBUG_PRINT_HIGH("DFRC enabled");
     }
 
 #ifdef _UBWC_
@@ -2139,6 +2147,26 @@ OMX_ERRORTYPE omx_vdec::component_init(OMX_STRING role)
     }
     drv_ctx.frame_rate.fps_numerator = DEFAULT_FPS;
     drv_ctx.frame_rate.fps_denominator = 1;
+
+    frm_int = drv_ctx.frame_rate.fps_denominator * 1e6 /
+    drv_ctx.frame_rate.fps_numerator;
+    DEBUG_PRINT_LOW("component_init: frm_int(%u) fps(%.2f)",
+        (unsigned int)frm_int, drv_ctx.frame_rate.fps_numerator /
+        (float)drv_ctx.frame_rate.fps_denominator);
+
+    struct v4l2_outputparm oparm;
+    /*XXX: we're providing timing info as seconds per frame rather than frames
+    * per second.*/
+    oparm.timeperframe.numerator = drv_ctx.frame_rate.fps_denominator;
+    oparm.timeperframe.denominator = drv_ctx.frame_rate.fps_numerator;
+
+    struct v4l2_streamparm sparm;
+    sparm.type = V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE;
+    sparm.parm.output = oparm;
+    if (ioctl(drv_ctx.video_driver_fd, VIDIOC_S_PARM, &sparm)) {
+        DEBUG_PRINT_ERROR("Unable to convey fps info to driver, performance might be affected");
+    }
+
     operating_frame_rate = DEFAULT_FPS;
     high_fps = false;
     m_poll_efd = eventfd(0, 0);
@@ -5998,7 +6026,7 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
     index = bufferHdr - m_inp_mem_ptr;
     DEBUG_PRINT_LOW("Free Input Buffer index = %d",index);
 
-    auto_lock l(buf_lock);
+    auto_lock l(&buf_lock);
     bufferHdr->pInputPortPrivate = NULL;
 
     if (index < drv_ctx.ip_buf.actualcount && drv_ctx.ptr_inputbuffer) {
@@ -7079,7 +7107,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
         return OMX_ErrorNone;
     }
 
-    auto_lock l(buf_lock);
+    auto_lock l(&buf_lock);
     temp_buffer = (struct vdec_bufferpayload *)buffer->pInputPortPrivate;
 
     if (!temp_buffer || (temp_buffer -  drv_ctx.ptr_inputbuffer) > (int)drv_ctx.ip_buf.actualcount) {
@@ -7330,11 +7358,6 @@ OMX_ERRORTYPE  omx_vdec::fill_this_buffer(OMX_IN OMX_HANDLETYPE  hComp,
         buffer->nFilledLen = 0;
         buffer->nAllocLen = handle->size;
         drv_ctx.op_buf.buffer_size = handle->size;
-    }
-
-    if (!m_out_bEnabled) {
-        DEBUG_PRINT_ERROR("ERROR:FTB incorrect state operation, output port is disabled.");
-        return OMX_ErrorIncorrectStateOperation;
     }
 
     nPortIndex = buffer - client_buffers.get_il_buf_hdr();
@@ -8247,6 +8270,17 @@ OMX_ERRORTYPE omx_vdec::fill_buffer_done(OMX_HANDLETYPE hComp,
             DEBUG_PRINT_LOW("stereo_output_mode = %d",stereo_output_mode);
             setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
                                S3D_FORMAT, (void*)&stereo_output_mode);
+
+            if (m_dfrc_enable) {
+                FrameRateControl_t dfrc_ctrl;
+                dfrc_ctrl.enable = 1;
+                dfrc_ctrl.timestamp = buffer->nTimeStamp;
+                dfrc_ctrl.counter = proc_frms;
+                DEBUG_PRINT_LOW("Set metadata: update buf-timestamp %lld, frame_cnt=%d",
+                                buffer->nTimeStamp, proc_frms);
+                setMetaData((private_handle_t *)native_buffer[buf_index].privatehandle,
+                             SET_FRC_INFO, (void*)&dfrc_ctrl);
+            }
         }
 
         if (il_buffer) {
