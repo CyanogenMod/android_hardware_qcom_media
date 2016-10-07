@@ -560,6 +560,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /* Encoder Low Latency mode */
     OMX_QcomIndexConfigVideoVencLowLatencyMode = 0x7F000054,
 
+    /* OMX.google.android.index.allocateNativeHandle */
+    OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005D,
 };
 
 /**
