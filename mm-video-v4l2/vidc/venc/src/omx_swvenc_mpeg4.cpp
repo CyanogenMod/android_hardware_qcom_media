@@ -95,7 +95,7 @@ omx_venc::omx_venc()
     mUseProxyColorFormat = false;
     get_syntaxhdr_enable = false;
     m_bSeqHdrRequested = false;
-    format_set = false;
+    set_format = false;
 
     EXIT_FUNC();
 }
@@ -1682,7 +1682,7 @@ OMX_U32 omx_venc::dev_stop(void)
             __FUNCTION__, Ret);
           RETURN(-1);
        }
-       format_set = false;
+       set_format = false;
        m_stopped = true;
 
        /* post STOP_DONE event as start is synchronus */
@@ -1807,6 +1807,11 @@ bool omx_venc::dev_empty_buf
     {
         LEGACY_CAM_METADATA_TYPE *meta_buf = NULL;
         meta_buf = (LEGACY_CAM_METADATA_TYPE *)bufhdr->pBuffer;
+        if((m_sInPortDef.format.video.eColorFormat == (OMX_COLOR_FORMATTYPE) QOMX_COLOR_FormatAndroidOpaque))
+        {
+            DEBUG_PRINT_LOW("dev_empty_buf: color_format is QOMX_COLOR_FormatAndroidOpaque");
+            set_format = true;
+        }
         if(!meta_buf)
         {
             if (!bufhdr->nFilledLen && (bufhdr->nFlags & OMX_BUFFERFLAG_EOS))
@@ -1827,10 +1832,8 @@ bool omx_venc::dev_empty_buf
             {
                 offset = meta_buf->meta_handle->data[1];
                 size = meta_buf->meta_handle->data[2];
-                if (!format_set &&
-                    (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 5))
+                if (set_format && (meta_buf->meta_handle->numFds + meta_buf->meta_handle->numInts > 5))
                 {
-                    format_set = true;
                     m_sInPortFormat.eColorFormat = (OMX_COLOR_FORMATTYPE)meta_buf->meta_handle->data[5];
                 }
                 ipbuffer.p_buffer = (unsigned char *)mmap(NULL, size, PROT_READ|PROT_WRITE,MAP_SHARED, fd, offset);
@@ -1847,9 +1850,8 @@ bool omx_venc::dev_empty_buf
                 VideoGrallocMetadata *meta_buf = (VideoGrallocMetadata *)bufhdr->pBuffer;
                 private_handle_t *handle = (private_handle_t *)meta_buf->pHandle;
                 size = handle->size;
-                if(!format_set)
+                if(set_format)
                 {
-                    format_set = true;
                     DEBUG_PRINT_LOW("color format = 0x%x",handle->format);
                     if (((OMX_COLOR_FORMATTYPE)handle->format) != m_sInPortFormat.eColorFormat)
                     {
@@ -1882,21 +1884,25 @@ bool omx_venc::dev_empty_buf
                 ipbuffer.size = bufhdr->nAllocLen;
                 ipbuffer.filled_length = bufhdr->nFilledLen;
             }
-            m_sInPortDef.format.video.eColorFormat = m_sInPortFormat.eColorFormat;
-            Ret = swvenc_set_color_format(m_sInPortFormat.eColorFormat);
-            if (Ret != SWVENC_S_SUCCESS)
+            if (set_format)
             {
-                DEBUG_PRINT_ERROR("%s, swvenc_setproperty failed (%d)",
-                    __FUNCTION__, Ret);
-                RETURN(OMX_ErrorUnsupportedSetting);
+                set_format = false;
+                m_sInPortDef.format.video.eColorFormat = m_sInPortFormat.eColorFormat;
+                Ret = swvenc_set_color_format(m_sInPortFormat.eColorFormat);
+                if (Ret != SWVENC_S_SUCCESS)
+                {
+                    DEBUG_PRINT_ERROR("%s, swvenc_setproperty failed (%d)",
+                        __FUNCTION__, Ret);
+                    RETURN(OMX_ErrorUnsupportedSetting);
+                }
             }
         }
     }
     else
     {
-       ipbuffer.p_buffer = bufhdr->pBuffer;
-       ipbuffer.size = bufhdr->nAllocLen;
-       ipbuffer.filled_length = bufhdr->nFilledLen;
+        ipbuffer.p_buffer = bufhdr->pBuffer;
+        ipbuffer.size = bufhdr->nAllocLen;
+        ipbuffer.filled_length = bufhdr->nFilledLen;
     }
     ipbuffer.flags = 0;
     if (bufhdr->nFlags & OMX_BUFFERFLAG_EOS)
@@ -2973,9 +2979,14 @@ SWVENC_STATUS omx_venc::swvenc_set_color_format
     {
         swvenc_color_format = SWVENC_COLOR_FORMAT_NV12;
     }
-    else
+    else if (color_format == ((OMX_COLOR_FORMATTYPE) QOMX_COLOR_FormatYVU420SemiPlanar))
     {
         swvenc_color_format = SWVENC_COLOR_FORMAT_NV21;
+    }
+    else
+    {
+        DEBUG_PRINT_ERROR("%s: color_format %d invalid",__FUNCTION__,color_format);
+        RETURN(SWVENC_S_FAILURE);
     }
     /* set the input color format */
     Prop.id = SWVENC_PROPERTY_ID_COLOR_FORMAT;
