@@ -9273,9 +9273,9 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                     s3d_frame_packing_payload = (struct msm_vidc_s3d_frame_packing_payload *)(void *)data->data;
                     switch (s3d_frame_packing_payload->fpa_type) {
                         case MSM_VIDC_FRAMEPACK_SIDE_BY_SIDE:
-                            if (s3d_frame_packing_payload->content_interprtation_type == 1)
+                            if (s3d_frame_packing_payload->content_interpretation_type == 1)
                                 stereo_output_mode = HAL_3D_SIDE_BY_SIDE_L_R;
-                            else if (s3d_frame_packing_payload->content_interprtation_type == 2)
+                            else if (s3d_frame_packing_payload->content_interpretation_type == 2)
                                 stereo_output_mode = HAL_3D_SIDE_BY_SIDE_R_L;
                             else {
                                 DEBUG_PRINT_ERROR("Unsupported side-by-side framepacking type");
@@ -9289,8 +9289,8 @@ void omx_vdec::handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr)
                             DEBUG_PRINT_ERROR("Unsupported framepacking type");
                             stereo_output_mode = HAL_NO_3D;
                     }
-                    DEBUG_PRINT_LOW("setMetaData FRAMEPACKING : fpa_type = %d, content_interprtation_type = %d, stereo_output_mode= %d",
-                        s3d_frame_packing_payload->fpa_type, s3d_frame_packing_payload->content_interprtation_type, stereo_output_mode);
+                    DEBUG_PRINT_LOW("setMetaData FRAMEPACKING : fpa_type = %d, content_interpretation_type = %d, stereo_output_mode= %d",
+                        s3d_frame_packing_payload->fpa_type, s3d_frame_packing_payload->content_interpretation_type, stereo_output_mode);
                     if (client_extradata & OMX_FRAMEPACK_EXTRADATA) {
                         append_framepack_extradata(p_extra, s3d_frame_packing_payload);
                         p_extra = (OMX_OTHER_EXTRADATATYPE *) (((OMX_U8 *) p_extra) + p_extra->nSize);
@@ -9553,7 +9553,7 @@ void omx_vdec::print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra)
                 "                  cancel_flag: %u \n"
                 "                         type: %u \n"
                 " quincunx_sampling_flagFormat: %u \n"
-                "  content_interprtation_type: %u \n"
+                "  content_interpretation_type: %u \n"
                 "        spatial_flipping_flag: %u \n"
                 "          frame0_flipped_flag: %u \n"
                 "             field_views_flag: %u \n"
