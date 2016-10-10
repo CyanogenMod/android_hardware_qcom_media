@@ -3213,6 +3213,7 @@ OMX_ERRORTYPE omx_swvdec::describe_color_format(
         case OMX_COLOR_FormatYUV420SemiPlanar:
         {
             // do nothing; standard OMX color formats should not be described
+            retval = OMX_ErrorUnsupportedSetting;
             break;
         }
 

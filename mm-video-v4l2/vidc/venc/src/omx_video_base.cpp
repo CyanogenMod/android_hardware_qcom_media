@@ -2108,20 +2108,6 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_slowLatencyMode, sizeof(m_slowLatencyMode));
                 break;
            }
-        case OMX_IndexParamAndroidVideoTemporalLayering:
-            {
-                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
-                OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pLayerInfo =
-                        reinterpret_cast<OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE*>(paramData);
-                if (!dev_get_temporal_layer_caps(&m_sParamTemporalLayers.nLayerCountMax,
-                        &m_sParamTemporalLayers.nBLayerCountMax)) {
-                    DEBUG_PRINT_ERROR("Failed to get temporal layer capabilities");
-                    eRet = OMX_ErrorHardware;
-                }
-                memcpy(pLayerInfo, &m_sParamTemporalLayers, sizeof(m_sParamTemporalLayers));
-                break;
-            }
-        case OMX_IndexParamVideoSliceFMO:
         default:
             {
                 DEBUG_PRINT_LOW("ERROR: get_parameter: unknown param %08x", paramIndex);
@@ -2324,16 +2310,6 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
-        case OMX_IndexParamAndroidVideoTemporalLayering:
-            {
-                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE);
-                OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *layerConfig =
-                        (OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *)configData;
-                DEBUG_PRINT_LOW("get_config: OMX_IndexConfigAndroidVideoTemporalLayering");
-                memcpy(configData, &m_sConfigTemporalLayers, sizeof(m_sConfigTemporalLayers));
-                break;
-            }
-
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -4727,10 +4703,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
         } else if (m_sOutPortDef.format.video.eCompressionFormat == OMX_VIDEO_CodingHEVC) {
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile =  OMX_VIDEO_HEVCProfileMain;
-                profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel52;
-            } else if (profileLevelType->nProfileIndex == 1) {
-                profileLevelType->eProfile =  OMX_VIDEO_HEVCProfileMain10;
-                profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel52;
+                profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel51;
             } else {
                 DEBUG_PRINT_LOW("HEVC: get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
                 (unsigned int)profileLevelType->nProfileIndex);
