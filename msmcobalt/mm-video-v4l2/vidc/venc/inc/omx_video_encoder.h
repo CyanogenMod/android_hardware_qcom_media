@@ -60,7 +60,6 @@ class omx_venc: public omx_video
         OMX_U32 m_nVenc_format;
         class venc_dev *handle;
         int dev_handle_output_extradata(void *, int);
-        int dev_handle_input_extradata(void *, int, int);
         int dev_set_format(int);
     private:
         OMX_U32 dev_stop(void);
@@ -89,6 +88,8 @@ class omx_venc: public omx_video
         bool dev_get_vqzip_sei_info(OMX_U32 *);
         bool dev_get_peak_bitrate(OMX_U32 *);
         bool dev_get_batch_size(OMX_U32 *);
+        bool dev_get_temporal_layer_caps(OMX_U32 * /*nMaxLayers*/,
+                OMX_U32 * /*nMaxBLayers*/);
         bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height);
         bool dev_color_align(OMX_BUFFERHEADERTYPE *buffer, OMX_U32 width,
                         OMX_U32 height);

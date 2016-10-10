@@ -488,6 +488,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
         //Do not allow more than MAX limit for DSP audio decoders
         if((!strcmp(core[cmp_index].so_lib_name,"libOmxWmaDec.so")  ||
             !strcmp(core[cmp_index].so_lib_name,"libOmxAacDec.so")  ||
+            !strcmp(core[cmp_index].so_lib_name,"libOmxG711Dec.so")  ||
             !strcmp(core[cmp_index].so_lib_name,"libOmxAlacDec.so") ||
             !strcmp(core[cmp_index].so_lib_name,"libOmxApeDec.so")) &&
             (number_of_adec_nt_session+1 > MAX_AUDIO_NT_SESSION)) {
@@ -534,6 +535,7 @@ OMX_GetHandle(OMX_OUT OMX_HANDLETYPE*     handle,
           DEBUG_PRINT("Component %p Successfully created\n",*handle);
           if(!strcmp(core[cmp_index].so_lib_name,"libOmxWmaDec.so")  ||
              !strcmp(core[cmp_index].so_lib_name,"libOmxAacDec.so")  ||
+             !strcmp(core[cmp_index].so_lib_name,"libOmxG711Dec.so")  ||
              !strcmp(core[cmp_index].so_lib_name,"libOmxAlacDec.so") ||
              !strcmp(core[cmp_index].so_lib_name,"libOmxApeDec.so")) {
 

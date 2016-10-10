@@ -252,7 +252,6 @@ class omx_video: public qc_omx_component
         virtual bool dev_loaded_stop_done(void) = 0;
         virtual bool is_secure_session(void) = 0;
         virtual int dev_handle_output_extradata(void*, int) = 0;
-        virtual int dev_handle_input_extradata(void*, int, int) = 0;
         virtual int dev_set_format(int) = 0;
         virtual bool dev_is_video_session_supported(OMX_U32 width, OMX_U32 height) = 0;
         virtual bool dev_get_capability_ltrcount(OMX_U32 *, OMX_U32 *, OMX_U32 *) = 0;
@@ -262,6 +261,8 @@ class omx_video: public qc_omx_component
         virtual bool dev_get_peak_bitrate(OMX_U32 *) = 0;
         virtual bool dev_get_batch_size(OMX_U32 *) = 0;
         virtual bool dev_buffer_ready_to_queue(OMX_BUFFERHEADERTYPE *buffer) = 0;
+        virtual bool dev_get_temporal_layer_caps(OMX_U32 * /*nMaxLayers*/,
+                OMX_U32 * /*nMaxBLayers*/) = 0;
 #ifdef _ANDROID_ICS_
         void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif
@@ -578,6 +579,7 @@ class omx_video: public qc_omx_component
 
         void complete_pending_buffer_done_cbs();
         bool is_conv_needed(int, int);
+        void print_debug_color_aspects(ColorAspects *aspects, const char *prefix);
 
 #ifdef USE_ION
         int alloc_map_ion_memory(int size,
@@ -665,6 +667,9 @@ class omx_video: public qc_omx_component
         OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE m_sConfigIntraRefresh;
 #endif
         OMX_QTI_VIDEO_CONFIG_BLURINFO       m_blurInfo;
+        DescribeColorAspectsParams m_sConfigColorAspects;
+        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE m_sParamTemporalLayers;
+        OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE m_sConfigTemporalLayers;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;

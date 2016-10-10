@@ -37,6 +37,10 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef _VQZIP_
 #include "VQZip.h"
 #endif
+
+#ifdef _PQ_
+#include "gpustats.h"
+#endif
 #include "omx_video_common.h"
 #include "omx_video_base.h"
 #include "omx_video_encoder.h"
@@ -47,6 +51,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define TIMEOUT 5*60*1000
 #define BIT(num) (1 << (num))
 #define MAX_HYB_HIERP_LAYERS 6
+#define MAX_AVC_HP_LAYERS (4)
 #define MAX_V4L2_BUFS 64 //VB2_MAX_FRAME
 
 enum hier_type {
@@ -247,6 +252,26 @@ struct msm_venc_hybrid_hp {
    unsigned int nHpLayers;
 };
 
+struct msm_venc_color_space {
+    OMX_U32 primaries;
+    OMX_U32 range;
+    OMX_U32 matrix_coeffs;
+    OMX_U32 transfer_chars;
+};
+
+struct msm_venc_temporal_layers {
+    enum hier_type hier_mode;
+    OMX_U32 nMaxLayers;
+    OMX_U32 nMaxBLayers;
+    OMX_U32 nPLayers;
+    OMX_U32 nBLayers;
+    OMX_BOOL bIsBitrateRatioValid;
+    // cumulative ratio: eg [25, 50, 75, 100] means [L0=25%, L1=25%, L2=25%, L3=25%]
+    OMX_U32 nTemporalLayerBitrateRatio[OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS];
+    // Layerwise ratio: eg [L0=25%, L1=25%, L2=25%, L3=25%]
+    OMX_U32 nTemporalLayerBitrateFraction[OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS];
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -330,6 +355,8 @@ class venc_dev
         bool venc_get_vqzip_sei_info(OMX_U32 *enabled);
         bool venc_get_peak_bitrate(OMX_U32 *peakbitrate);
         bool venc_get_batch_size(OMX_U32 *size);
+        bool venc_get_temporal_layer_caps(OMX_U32 * /*nMaxLayers*/,
+                OMX_U32 * /*nMaxBLayers*/);
         bool venc_get_output_log_flag();
         bool venc_check_valid_config();
         int venc_output_log_buffers(const char *buffer_addr, int buffer_len);
@@ -362,6 +389,47 @@ class venc_dev
         };
         venc_dev_vqzip vqzip;
 #endif
+
+#ifdef _PQ_
+        class venc_dev_pq
+        {
+            public:
+                venc_dev_pq();
+                ~venc_dev_pq();
+                bool is_pq_enabled;
+                bool is_YUV_format_uncertain;
+                pthread_mutex_t lock;
+                struct extradata_buffer_info roi_extradata_info;
+                bool init(unsigned long);
+                void deinit();
+                void get_caps();
+                int configure();
+                bool is_pq_handle_valid();
+                bool is_color_format_supported(unsigned long);
+                bool reinit(unsigned long);
+                struct gpu_stats_lib_input_config pConfig;
+                int fill_pq_stats(struct v4l2_buffer buf, unsigned int data_offset);
+                gpu_stats_lib_caps_t caps;
+                typedef gpu_stats_lib_op_status (*gpu_stats_lib_init_t)(void**, enum perf_hint gpu_hint, enum color_compression_format format);
+                typedef gpu_stats_lib_op_status (*gpu_stats_lib_deinit_t)(void*);
+                typedef gpu_stats_lib_op_status (*gpu_stats_lib_get_caps_t)(void* handle, gpu_stats_lib_caps_t *caps);
+                typedef gpu_stats_lib_op_status (*gpu_stats_lib_configure_t)(void* handle, gpu_stats_lib_input_config *input_t);
+                typedef gpu_stats_lib_op_status (*gpu_stats_lib_fill_data_t)(void *handle, gpu_stats_lib_buffer_params_t *yuv_input,
+                        gpu_stats_lib_buffer_params_t *roi_input,
+                        gpu_stats_lib_buffer_params_t *stats_output, void *addr, void *user_data);
+            private:
+                void *mLibHandle;
+                void *mPQHandle;
+                gpu_stats_lib_init_t mPQInit;
+                gpu_stats_lib_get_caps_t mPQGetCaps;
+                gpu_stats_lib_configure_t mPQConfigure;
+                gpu_stats_lib_deinit_t mPQDeInit;
+                gpu_stats_lib_fill_data_t mPQComputeStats;
+                unsigned long configured_format;
+        };
+        venc_dev_pq m_pq;
+        void venc_try_enable_pq(void);
+#endif
         struct venc_debug_cap m_debug;
         OMX_U32 m_nDriver_fd;
         int m_poll_efd;
@@ -393,12 +461,14 @@ class venc_dev
         void free_extradata();
         int append_mbi_extradata(void *, struct msm_vidc_extradata_header*);
         bool handle_output_extradata(void *, int);
-        bool handle_input_extradata(void *, int, int);
+        bool handle_input_extradata(struct v4l2_buffer);
         int venc_set_format(int);
         bool deinterlace_enabled;
         bool hw_overload;
         bool is_gralloc_source_ubwc;
         bool is_camera_source_ubwc;
+        bool is_csc_enabled;
+        bool is_pq_force_disable;
         OMX_U32 fd_list[64];
 
     private:
@@ -438,6 +508,8 @@ class venc_dev
         OMX_U32                             operating_rate;
         int rc_off_level;
         struct msm_venc_hybrid_hp           hybrid_hp;
+        struct msm_venc_color_space         color_space;
+        msm_venc_temporal_layers            temporal_layers_config;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -491,11 +563,14 @@ class venc_dev
         bool venc_set_priority(OMX_U32 priority);
         bool venc_set_session_priority(OMX_U32 priority);
         bool venc_set_operatingrate(OMX_U32 rate);
-        bool venc_set_layer_bitrates(QOMX_EXTNINDEX_VIDEO_HYBRID_HP_MODE* hpmode);
+        bool venc_set_layer_bitrates(OMX_U32 *pLayerBitrates, OMX_U32 numLayers);
         bool venc_set_lowlatency_mode(OMX_BOOL enable);
         bool venc_set_low_latency(OMX_BOOL enable);
         bool venc_set_roi_qp_info(OMX_QTI_VIDEO_CONFIG_ROIINFO *roiInfo);
         bool venc_set_blur_resolution(OMX_QTI_VIDEO_CONFIG_BLURINFO *blurInfo);
+        bool venc_set_colorspace(OMX_U32 primaries, OMX_U32 range, OMX_U32 transfer_chars, OMX_U32 matrix_coeffs);
+        OMX_ERRORTYPE venc_set_temporal_layers(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pTemporalParams);
+        OMX_ERRORTYPE venc_set_temporal_layers_internal();
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();

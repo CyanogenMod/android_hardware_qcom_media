@@ -353,6 +353,13 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sConfigIntraRefresh.nRefreshPeriod = 0;
 #endif
 
+    OMX_INIT_STRUCT(&m_sConfigColorAspects, DescribeColorAspectsParams);
+    m_sConfigColorAspects.nPortIndex = (OMX_U32) PORT_INDEX_OUT;
+    m_sConfigColorAspects.sAspects.mRange =  ColorAspects::RangeUnspecified;
+    m_sConfigColorAspects.sAspects.mPrimaries = ColorAspects::PrimariesUnspecified;
+    m_sConfigColorAspects.sAspects.mMatrixCoeffs = ColorAspects::MatrixUnspecified;
+    m_sConfigColorAspects.sAspects.mTransfer = ColorAspects::TransferUnspecified;
+
     if (codec_type == OMX_VIDEO_CodingMPEG4) {
         m_sParamProfileLevel.eProfile = (OMX_U32) OMX_VIDEO_MPEG4ProfileSimple;
         m_sParamProfileLevel.eLevel = (OMX_U32) OMX_VIDEO_MPEG4Level0;
@@ -561,6 +568,11 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     OMX_INIT_STRUCT(&m_slowLatencyMode, QOMX_EXTNINDEX_VIDEO_VENC_LOW_LATENCY_MODE);
     m_slowLatencyMode.bLowLatencyMode = OMX_FALSE;
 
+    OMX_INIT_STRUCT(&m_sParamTemporalLayers, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
+    m_sParamTemporalLayers.eSupportedPatterns = OMX_VIDEO_AndroidTemporalLayeringPatternAndroid;
+
+    OMX_INIT_STRUCT(&m_sConfigTemporalLayers, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE);
+
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
 
@@ -691,6 +703,12 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 (unsigned int)portDefn->nBufferCountActual, (unsigned int)MAX_NUM_INPUT_BUFFERS);
                         return OMX_ErrorUnsupportedSetting;
                     }
+                    if (m_inp_mem_ptr &&
+                            (portDefn->nBufferCountActual != m_sInPortDef.nBufferCountActual ||
+                            portDefn->nBufferSize != m_sInPortDef.nBufferSize)) {
+                        DEBUG_PRINT_ERROR("ERROR: (In_PORT) buffer count/size can change only if port is unallocated !");
+                        return OMX_ErrorInvalidState;
+                    }
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
                         DEBUG_PRINT_ERROR("ERROR: (In_PORT) Min buffers (%u) > actual count (%u)",
                                 (unsigned int)portDefn->nBufferCountMin, (unsigned int)portDefn->nBufferCountActual);
@@ -745,6 +763,13 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 (unsigned int)portDefn->nBufferCountActual, (unsigned int)MAX_NUM_OUTPUT_BUFFERS);
                         return OMX_ErrorUnsupportedSetting;
                     }
+                    if (m_out_mem_ptr &&
+                            (portDefn->nBufferCountActual != m_sOutPortDef.nBufferCountActual ||
+                            portDefn->nBufferSize != m_sOutPortDef.nBufferSize)) {
+                        DEBUG_PRINT_ERROR("ERROR: (Out_PORT) buffer count/size can change only if port is unallocated !");
+                        return OMX_ErrorInvalidState;
+                    }
+
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
                         DEBUG_PRINT_ERROR("ERROR: (Out_PORT) Min buffers (%u) > actual count (%u)",
                                 (unsigned int)portDefn->nBufferCountMin, (unsigned int)portDefn->nBufferCountActual);
@@ -844,6 +869,11 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 m_sConfigBitrate.nEncodeBitrate = pParam->nTargetBitrate;
                 m_sInPortDef.format.video.nBitrate = pParam->nTargetBitrate;
                 m_sOutPortDef.format.video.nBitrate = pParam->nTargetBitrate;
+                /* RC mode chan chage buffer requirements on Input port */
+                dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
+                        &m_sInPortDef.nBufferCountActual,
+                        &m_sInPortDef.nBufferSize,
+                        m_sInPortDef.nPortIndex);
                 DEBUG_PRINT_LOW("bitrate = %u", (unsigned int)m_sOutPortDef.format.video.nBitrate);
                 break;
             }
@@ -1682,6 +1712,26 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 m_sExtraData |= VENC_EXTRADATA_ROI;
                 break;
             }
+        case OMX_IndexParamAndroidVideoTemporalLayering:
+            {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
+                if (!handle->venc_set_param(paramData,
+                        (OMX_INDEXTYPE)OMX_IndexParamAndroidVideoTemporalLayering)) {
+                    DEBUG_PRINT_ERROR("Failed to configure temporal layers");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                // save the actual configuration applied
+                memcpy(&m_sParamTemporalLayers, paramData, sizeof(m_sParamTemporalLayers));
+                // keep the config data in sync
+                m_sConfigTemporalLayers.ePattern = m_sParamTemporalLayers.ePattern;
+                m_sConfigTemporalLayers.nBLayerCountActual = m_sParamTemporalLayers.nBLayerCountActual;
+                m_sConfigTemporalLayers.nPLayerCountActual = m_sParamTemporalLayers.nPLayerCountActual;
+                m_sConfigTemporalLayers.bBitrateRatiosSpecified = m_sParamTemporalLayers.bBitrateRatiosSpecified;
+                memcpy(&m_sConfigTemporalLayers.nBitrateRatios[0],
+                        &m_sParamTemporalLayers.nBitrateRatios[0],
+                        OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS * sizeof(OMX_U32));
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -1815,6 +1865,14 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                     m_sConfigFramerate.xEncodeFramerate = pParam->xEncodeFramerate;
                     m_sOutPortDef.format.video.xFramerate = pParam->xEncodeFramerate;
                     m_sOutPortFormat.xFramerate = pParam->xEncodeFramerate;
+                    /*
+                     * Frame rate can change buffer requirements. If query is not allowed,
+                     * failure is not FATAL here.
+                     */
+                    dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
+                            &m_sInPortDef.nBufferCountActual,
+                            &m_sInPortDef.nBufferSize,
+                            m_sInPortDef.nPortIndex);
                 } else {
                     DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", (unsigned int)pParam->nPortIndex);
                     return OMX_ErrorBadPortIndex;
@@ -2159,7 +2217,25 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                     return OMX_ErrorUnsupportedSetting;
                 }
                 break;
+            }
+        case OMX_QTIIndexConfigDescribeColorAspects:
+           {
+               VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
+               DescribeColorAspectsParams *params = (DescribeColorAspectsParams *)configData;
+               print_debug_color_aspects(&(params->sAspects), "set_config");
+               if (!handle->venc_set_config(configData, (OMX_INDEXTYPE)OMX_QTIIndexConfigDescribeColorAspects)) {
+                   DEBUG_PRINT_ERROR("Failed to set OMX_QTIIndexConfigDescribeColorAspects");
+                   return OMX_ErrorUnsupportedSetting;
+               }
+               memcpy(&m_sConfigColorAspects, configData, sizeof(m_sConfigColorAspects));
+               break;
            }
+        case OMX_IndexConfigAndroidVideoTemporalLayering:
+            {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE);
+                DEBUG_PRINT_ERROR("Setting/modifying Temporal layers at run-time is not supported !");
+                return OMX_ErrorUnsupportedSetting;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             break;
@@ -2394,6 +2470,11 @@ bool omx_venc::dev_get_batch_size(OMX_U32 *size)
 #endif
 }
 
+bool omx_venc::dev_get_temporal_layer_caps(OMX_U32 *nMaxLayers,
+        OMX_U32 *nMaxBLayers) {
+    return handle->venc_get_temporal_layer_caps(nMaxLayers, nMaxBLayers);
+}
+
 bool omx_venc::dev_loaded_start()
 {
     return handle->venc_loaded_start();
@@ -2451,11 +2532,6 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
 int omx_venc::dev_handle_output_extradata(void *buffer, int index)
 {
     return handle->handle_output_extradata(buffer, index);
-}
-
-int omx_venc::dev_handle_input_extradata(void *buffer, int index, int fd)
-{
-    return handle->handle_input_extradata(buffer, index, fd);
 }
 
 int omx_venc::dev_set_format(int color)

@@ -2108,6 +2108,19 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_slowLatencyMode, sizeof(m_slowLatencyMode));
                 break;
            }
+        case OMX_IndexParamAndroidVideoTemporalLayering:
+            {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
+                OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pLayerInfo =
+                        reinterpret_cast<OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE*>(paramData);
+                if (!dev_get_temporal_layer_caps(&m_sParamTemporalLayers.nLayerCountMax,
+                        &m_sParamTemporalLayers.nBLayerCountMax)) {
+                    DEBUG_PRINT_ERROR("Failed to get temporal layer capabilities");
+                    eRet = OMX_ErrorHardware;
+                }
+                memcpy(pLayerInfo, &m_sParamTemporalLayers, sizeof(m_sParamTemporalLayers));
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -2278,6 +2291,49 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                memcpy(pParam, &m_blurInfo, sizeof(m_blurInfo));
                break;
            }
+       case OMX_QTIIndexConfigDescribeColorAspects:
+            {
+                VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
+                DescribeColorAspectsParams* pParam =
+                    reinterpret_cast<DescribeColorAspectsParams*>(configData);
+                DEBUG_PRINT_LOW("get_config: OMX_QTIIndexConfigDescribeColorAspects");
+                if (pParam->bRequestingDataSpace) {
+                    DEBUG_PRINT_ERROR("Does not handle dataspace request");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                if (pParam->bDataSpaceChanged == OMX_TRUE) {
+
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config (dataspace changed) Client says");
+                    // If the dataspace says RGB, recommend 601-limited;
+                    // since that is the destination colorspace that C2D or Venus will convert to.
+                    if (pParam->nPixelFormat == HAL_PIXEL_FORMAT_RGBA_8888) {
+                        DEBUG_PRINT_INFO("get_config (dataspace changed): ColorSpace: Recommend 601-limited for RGBA8888");
+                        pParam->sAspects.mPrimaries = ColorAspects::PrimariesBT601_6_625;
+                        pParam->sAspects.mRange = ColorAspects::RangeLimited;
+                        pParam->sAspects.mTransfer = ColorAspects::TransferSMPTE170M;
+                        pParam->sAspects.mMatrixCoeffs = ColorAspects::MatrixBT601_6;
+                    } else {
+                        // For IMPLEMENTATION_DEFINED (or anything else), stick to client's defaults.
+                        DEBUG_PRINT_INFO("get_config (dataspace changed): ColorSpace: use client-default for format=%x",
+                                pParam->nPixelFormat);
+                    }
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config (dataspace changed) recommended");
+                } else {
+                    memcpy(pParam, &m_sConfigColorAspects, sizeof(m_sConfigColorAspects));
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config");
+                }
+                break;
+            }
+        case OMX_IndexParamAndroidVideoTemporalLayering:
+            {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE);
+                OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *layerConfig =
+                        (OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *)configData;
+                DEBUG_PRINT_LOW("get_config: OMX_IndexConfigAndroidVideoTemporalLayering");
+                memcpy(configData, &m_sConfigTemporalLayers, sizeof(m_sConfigTemporalLayers));
+                break;
+            }
+
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -2285,6 +2341,8 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
     return OMX_ErrorNone;
 
 }
+
+#define extn_equals(param, extn) (!strcmp(param, extn))
 
 /* ======================================================================
    FUNCTION
@@ -2310,115 +2368,100 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         return OMX_ErrorInvalidState;
     }
 #ifdef MAX_RES_1080P
-    if (!strncmp(paramName, "OMX.QCOM.index.param.SliceDeliveryMode",
-            sizeof("OMX.QCOM.index.param.SliceDeliveryMode") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.SliceDeliveryMode")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexEnableSliceDeliveryMode;
         return OMX_ErrorNone;
     }
 #endif
 #ifdef _ANDROID_ICS_
-    if (!strncmp(paramName, "OMX.google.android.index.storeMetaDataInBuffers",
-            sizeof("OMX.google.android.index.storeMetaDataInBuffers") - 1)) {
+    if (extn_equals(paramName, "OMX.google.android.index.storeMetaDataInBuffers")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoMetaBufferMode;
         return OMX_ErrorNone;
     }
 #endif
-    if (!strncmp(paramName, "OMX.google.android.index.prependSPSPPSToIDRFrames",
-            sizeof("OMX.google.android.index.prependSPSPPSToIDRFrames") - 1)) {
+    if (extn_equals(paramName, "OMX.google.android.index.prependSPSPPSToIDRFrames")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.HierStructure",
-            sizeof("OMX.QCOM.index.param.video.HierStructure") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.HierStructure")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexHierarchicalStructure;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.LTRCount",
-            sizeof("OMX.QCOM.index.param.video.LTRCount") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.LTRCount")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVideoLTRCount;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.LTRPeriod",
-            sizeof("OMX.QCOM.index.param.video.LTRPeriod") - 1)) {
-        *indexType = (OMX_INDEXTYPE)QOMX_IndexConfigVideoLTRPeriod;
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.LTRPeriod")) {
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.config.video.LTRUse",
-            sizeof("OMX.QCOM.index.config.video.LTRUse") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.config.video.LTRUse")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoLTRUse;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.config.video.LTRMark",
-            sizeof("OMX.QCOM.index.config.video.LTRMark") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.config.video.LTRMark")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigVideoLTRMark;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.config.video.hierplayers",
-            sizeof("OMX.QCOM.index.config.video.hierplayers") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.config.video.hierplayers")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigNumHierPLayers;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.baselayerid",
-            sizeof("OMX.QCOM.index.param.video.baselayerid") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.baselayerid")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigBaseLayerId;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.config.video.qp",
-            sizeof("OMX.QCOM.index.config.video.qp") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.config.video.qp")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigQp;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.sar",
-            sizeof("OMX.QCOM.index.param.video.sar") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.sar")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamVencAspectRatio;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QCOM.index.param.video.InputBatch",
-            sizeof("OMX.QCOM.index.param.video.InputBatch") - 1)) {
+    if (extn_equals(paramName, "OMX.QCOM.index.param.video.InputBatch")) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamBatchSize;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, "OMX.QTI.index.param.video.LowLatency",
-                sizeof("OMX.QTI.index.param.video.LowLatency") - 1)) {
+    if (extn_equals(paramName, "OMX.QTI.index.param.video.LowLatency")) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamLowLatencyMode;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_SETTIMEDATA,
-            sizeof(OMX_QTI_INDEX_CONFIG_VIDEO_SETTIMEDATA) - 1)) {
+    if (extn_equals(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_SETTIMEDATA)) {
         *indexType = (OMX_INDEXTYPE)OMX_IndexConfigTimePosition;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO,
-            sizeof(OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO) - 1)) {
+    if (extn_equals(paramName, OMX_QTI_INDEX_PARAM_VIDEO_ENABLE_ROIINFO)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamVideoEnableRoiInfo;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO,
-            sizeof(OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO) - 1)) {
+    if (extn_equals(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoRoiInfo;
         return OMX_ErrorNone;
     }
 
-    if (!strncmp(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_BLURINFO,
-            sizeof(OMX_QTI_INDEX_CONFIG_VIDEO_BLURINFO) - 1)) {
+    if (extn_equals(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_BLURINFO)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoBlurResolution;
         return OMX_ErrorNone;
     }
 
+    if (extn_equals(paramName, "OMX.google.android.index.describeColorAspects")) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigDescribeColorAspects;
+        return OMX_ErrorNone;
+    }
     return OMX_ErrorNotImplemented;
 }
 
@@ -3564,17 +3607,15 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             m_sInPortDef.bPopulated = OMX_FALSE;
 
             /*Free the Buffer Header*/
-            if (release_input_done()
-#ifdef _ANDROID_ICS_
-                    && !meta_mode_enable
-#endif
-               ) {
+            if (release_input_done()) {
                 input_use_buffer = false;
-                if (m_inp_mem_ptr) {
+                // "m_inp_mem_ptr" may point to "meta_buffer_hdr" in some modes,
+                // in which case, it was not explicitly allocated
+                if (m_inp_mem_ptr && m_inp_mem_ptr != meta_buffer_hdr) {
                     DEBUG_PRINT_LOW("Freeing m_inp_mem_ptr");
                     free (m_inp_mem_ptr);
-                    m_inp_mem_ptr = NULL;
                 }
+                m_inp_mem_ptr = NULL;
                 if (m_pInput_pmem) {
                     DEBUG_PRINT_LOW("Freeing m_pInput_pmem");
                     free(m_pInput_pmem);
@@ -3664,7 +3705,7 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             post_event(OMX_CommandStateSet, OMX_StateLoaded,
                     OMX_COMPONENT_GENERATE_EVENT);
         } else {
-            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers input %" PRIx64" output %" PRIx64,
+            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers output %" PRIx64" input %" PRIx64,
                     m_out_bm_count, m_inp_bm_count);
         }
     }
@@ -3901,16 +3942,6 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
                     post_event((unsigned long)buffer, 0, OMX_COMPONENT_GENERATE_EBD);
                     return OMX_ErrorUndefined;
             }
-    }
-    if (m_sExtraData && !dev_handle_input_extradata((void *)buffer, nBufIndex,fd)) {
-        DEBUG_PRINT_ERROR("Failed to parse input extradata\n");
-#ifdef _ANDROID_ICS_
-        omx_release_meta_buffer(buffer);
-#endif
-        post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_EBD);
-        /*Generate an async error and move to invalid state*/
-        pending_input_buffers--;
-        return OMX_ErrorBadParameter;
     }
 #ifdef _MSM8974_
     if (dev_empty_buf(buffer, pmem_data_buf,nBufIndex,fd) != true)
@@ -4841,12 +4872,11 @@ void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
                     Input_pmem.size = handle->size;
                 } else {
                     meta_error = true;
-                    DEBUG_PRINT_ERROR(" Meta Error set in EBD");
                 }
                 if (!meta_error)
                     meta_error = !dev_free_buf(&Input_pmem,PORT_INDEX_IN);
                 if (meta_error) {
-                    DEBUG_PRINT_ERROR(" Warning dev_free_buf failed flush value is %d",
+                    DEBUG_PRINT_HIGH("In batchmode or dev_free_buf failed, flush %d",
                             input_flush_progress);
                 }
             }
@@ -4999,6 +5029,11 @@ bool omx_video::is_conv_needed(int hal_fmt, int hal_flags)
 #endif
     DEBUG_PRINT_LOW("RGBA conversion %s", bRet ? "Needed":"Not-Needed");
     return bRet;
+}
+
+void omx_video::print_debug_color_aspects(ColorAspects *aspects, const char *prefix) {
+    DEBUG_PRINT_HIGH("%s : Color aspects : Primaries = %d Range = %d Transfer = %d MatrixCoeffs = %d",
+            prefix, aspects->mPrimaries, aspects->mRange, aspects->mTransfer, aspects->mMatrixCoeffs);
 }
 
 OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,

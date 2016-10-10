@@ -363,6 +363,15 @@ typedef struct OMX_AUDIO_PARAM_WMATYPE {
     OMX_U32 nSuperBlockAlign; /**< WMA Type-specific data */
 } OMX_AUDIO_PARAM_WMATYPE;
 
+/** G711 params */
+typedef struct OMX_AUDIO_PARAM_G711TYPE {
+    OMX_U32 nSize;            /**< size of the structure in bytes */
+    OMX_VERSIONTYPE nVersion; /**< OMX specification version information */
+    OMX_U32 nPortIndex;       /**< port that this structure applies to */
+    OMX_U16 nChannels;        /**< Number of channels */
+    OMX_U32 nSamplingRate;    /**< Sampling rate of the source data */
+} OMX_AUDIO_PARAM_G711TYPE;
+
 /** 
  * RealAudio format
  */
