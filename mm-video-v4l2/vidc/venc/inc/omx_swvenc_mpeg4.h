@@ -134,6 +134,8 @@ class omx_venc: public omx_video
         bool dev_get_output_log_flag();
         int dev_output_log_buffers(const char *buffer_addr, int buffer_len);
         int dev_extradata_log_buffers(char *buffer);
+        bool swvenc_color_align(OMX_BUFFERHEADERTYPE *buffer, OMX_U32 width,
+                                OMX_U32 height);
 
         SWVENC_STATUS swvenc_set_rc_mode(OMX_VIDEO_CONTROLRATETYPE eControlRate);
         SWVENC_STATUS swvenc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
