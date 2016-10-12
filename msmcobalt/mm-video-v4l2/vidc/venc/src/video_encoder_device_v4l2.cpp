@@ -50,6 +50,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <qdMetaData.h>
 
+#define YUV_STATS_LIBRARY_NAME "libgpustats.so" // UBWC case: use GPU library
+
 #define ALIGN(x, to_align) ((((unsigned long) x) + (to_align - 1)) & ~(to_align - 1))
 #define EXTRADATA_IDX(__num_planes) ((__num_planes) ? (__num_planes) - 1 : 0)
 #define MAXDPB 16
@@ -353,11 +355,6 @@ venc_dev::venc_dev(class omx_venc *venc_class)
     } else {
         is_pq_force_disable = 0;
     }
-    #ifdef _UBWC_
-        #define YUV_STATS_LIBRARY_NAME "libgpustats.so" // UBWC case: use GPU library
-    #else // _UBWC_
-        // Non UBWC case. May be CPU
-    #endif // _UBWC_
 #endif // _PQ_
 
     snprintf(m_debug.log_loc, PROPERTY_VALUE_MAX,
@@ -7896,7 +7893,9 @@ void venc_dev::venc_try_enable_pq(void)
 
     codec_supported = m_sVenc_cfg.codectype == V4L2_PIX_FMT_H264;
 
-    rc_mode_supported = rate_ctrl.rcmode == V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_VBR_CFR;
+    rc_mode_supported = (rate_ctrl.rcmode == V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_VBR_CFR) ||
+        (rate_ctrl.rcmode == V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_MBR_CFR) ||
+        (rate_ctrl.rcmode == V4L2_CID_MPEG_VIDC_VIDEO_RATE_CONTROL_MBR_VFR);
 
     resolution_supported = m_sVenc_cfg.input_height * m_sVenc_cfg.input_width <=
         m_pq.caps.max_width * m_pq.caps.max_height;

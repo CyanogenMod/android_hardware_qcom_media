@@ -3371,21 +3371,17 @@ OMX_ERRORTYPE omx_vdec::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVEL
 
     if (profileLevelType->nPortIndex == 0) {
         if (!strncmp(drv_ctx.kind, "OMX.qcom.video.decoder.avc",OMX_MAX_STRINGNAME_SIZE)) {
+            profileLevelType->eLevel = OMX_VIDEO_AVCLevel52;
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileBaseline;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel51;
             } else if (profileLevelType->nProfileIndex == 1) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileMain;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else if (profileLevelType->nProfileIndex == 2) {
                 profileLevelType->eProfile = OMX_VIDEO_AVCProfileHigh;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else if (profileLevelType->nProfileIndex == 3) {
                 profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedBaseline;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else if (profileLevelType->nProfileIndex == 4) {
                 profileLevelType->eProfile = QOMX_VIDEO_AVCProfileConstrainedHigh;
-                profileLevelType->eLevel   = OMX_VIDEO_AVCLevel52;
             } else {
                 DEBUG_PRINT_LOW("get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
                         (unsigned int)profileLevelType->nProfileIndex);
@@ -3807,6 +3803,7 @@ OMX_ERRORTYPE  omx_vdec::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                         break;
                     case V4L2_MPEG_VIDEO_H264_LEVEL_5_1:
                         pParam->eLevel = OMX_VIDEO_AVCLevel51;
+                        break;
                     case V4L2_MPEG_VIDEO_H264_LEVEL_5_2:
                         pParam->eLevel = OMX_VIDEO_AVCLevel52;
                         break;
@@ -6063,13 +6060,18 @@ OMX_ERRORTYPE omx_vdec::free_input_buffer(OMX_BUFFERHEADERTYPE *bufferHdr)
                         drv_ctx.ptr_inputbuffer[index].bufferaddr);
                 munmap (drv_ctx.ptr_inputbuffer[index].bufferaddr,
                         drv_ctx.ptr_inputbuffer[index].mmaped_size);
-                close (drv_ctx.ptr_inputbuffer[index].pmem_fd);
-            } else if (allocate_native_handle){
+            }
+
+            if (allocate_native_handle){
                 native_handle_t *nh = (native_handle_t *)bufferHdr->pBuffer;
                 native_handle_close(nh);
                 native_handle_delete(nh);
+            } else {
+                // Close fd for non-secure and secure non-native-handle case
+                close(drv_ctx.ptr_inputbuffer[index].pmem_fd);
             }
             drv_ctx.ptr_inputbuffer[index].pmem_fd = -1;
+
             if (m_desc_buffer_ptr && m_desc_buffer_ptr[index].buf_addr) {
                 free(m_desc_buffer_ptr[index].buf_addr);
                 m_desc_buffer_ptr[index].buf_addr = NULL;

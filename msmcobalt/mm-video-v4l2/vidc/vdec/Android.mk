@@ -28,8 +28,6 @@ libmm-vdec-def += -DMAX_RES_1080P_EBI
 
 TARGETS_THAT_USE_HEVC_ADSP_HEAP := msm8226 msm8974
 TARGETS_THAT_HAVE_VENUS_HEVC := apq8084 msm8994 msm8996
-TARGETS_THAT_NEED_HEVC_LIB := msm8974 msm8610 msm8226 msm8916
-TARGETS_THAT_NEED_SW_HEVC := msm8974 msm8226 msm8916
 TARGETS_THAT_SUPPORT_UBWC := msm8996 msm8953 msmcobalt
 TARGETS_THAT_NEED_SW_VDEC := msm8937
 
@@ -132,47 +130,6 @@ LOCAL_SRC_FILES         += src/omx_vdec_v4l2.cpp
 include $(BUILD_SHARED_LIBRARY)
 
 
-# ---------------------------------------------------------------------------------
-# 			Make the Shared library (libOmxVdecHevc)
-# ---------------------------------------------------------------------------------
-
-include $(CLEAR_VARS)
-
-# libOmxVdecHevc library is not built for OSS builds as QCPATH is null in OSS builds.
-
-ifneq "$(wildcard $(QCPATH) )" ""
-ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_HEVC_LIB)),true)
-
-LOCAL_MODULE                    := libOmxVdecHevc
-LOCAL_MODULE_TAGS               := optional
-LOCAL_CFLAGS                    := $(libmm-vdec-def)
-LOCAL_C_INCLUDES                += $(libmm-vdec-inc)
-LOCAL_ADDITIONAL_DEPENDENCIES   := $(libmm-vdec-add-dep)
-
-LOCAL_PRELINK_MODULE    := false
-LOCAL_SHARED_LIBRARIES  := liblog libutils libbinder libcutils libdl
-
-LOCAL_SHARED_LIBRARIES  += libqdMetaData
-
-LOCAL_SRC_FILES         := src/frameparser.cpp
-LOCAL_SRC_FILES         += src/h264_utils.cpp
-LOCAL_SRC_FILES         += src/ts_parser.cpp
-LOCAL_SRC_FILES         += src/mp4_utils.cpp
-
-ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_HEVC)),true)
-LOCAL_SHARED_LIBRARIES  += libHevcSwDecoder
-LOCAL_SRC_FILES         += src/omx_vdec_hevc_swvdec.cpp
-else
-LOCAL_SRC_FILES         += src/omx_vdec_hevc.cpp
-endif
-
-LOCAL_SRC_FILES         += src/hevc_utils.cpp
-
-LOCAL_STATIC_LIBRARIES  := libOmxVidcCommon
-
-include $(BUILD_SHARED_LIBRARY)
-endif
-endif
 
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxSwVdec)
@@ -198,7 +155,6 @@ LOCAL_SRC_FILES               += src/omx_swvdec_utils.cpp
 include $(BUILD_SHARED_LIBRARY)
 endif
 endif
-
 
 # ---------------------------------------------------------------------------------
 #                END
