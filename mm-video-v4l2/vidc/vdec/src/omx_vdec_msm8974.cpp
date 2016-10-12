@@ -5226,6 +5226,12 @@ OMX_ERRORTYPE  omx_vdec::use_input_heap_buffers(
 {
     DEBUG_PRINT_LOW("Inside %s, %p", __FUNCTION__, buffer);
     OMX_ERRORTYPE eRet = OMX_ErrorNone;
+
+    if (secure_mode) {
+        DEBUG_PRINT_ERROR("use_input_heap_buffers is not allowed in secure mode");
+        return OMX_ErrorUndefined;
+    }
+
     if (!m_inp_heap_ptr)
         m_inp_heap_ptr = (OMX_BUFFERHEADERTYPE*)
             calloc( (sizeof(OMX_BUFFERHEADERTYPE)),
@@ -6457,7 +6463,7 @@ OMX_ERRORTYPE  omx_vdec::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
     /*for use buffer we need to memcpy the data*/
     temp_buffer->buffer_len = buffer->nFilledLen;
 
-    if (input_use_buffer && temp_buffer->bufferaddr) {
+    if (input_use_buffer && temp_buffer->bufferaddr && !secure_mode) {
         if (buffer->nFilledLen <= temp_buffer->buffer_len) {
             if (arbitrary_bytes) {
                 memcpy (temp_buffer->bufferaddr, (buffer->pBuffer + buffer->nOffset),buffer->nFilledLen);
