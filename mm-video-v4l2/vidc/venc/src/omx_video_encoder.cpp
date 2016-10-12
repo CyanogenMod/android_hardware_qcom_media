@@ -533,6 +533,12 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     DEBUG_PRINT_LOW("i/p actual cnt requested = %u", (unsigned int)portDefn->nBufferCountActual);
                     DEBUG_PRINT_LOW("i/p min cnt requested = %u", (unsigned int)portDefn->nBufferCountMin);
                     DEBUG_PRINT_LOW("i/p buffersize requested = %u", (unsigned int)portDefn->nBufferSize);
+                    if (m_inp_mem_ptr &&
+                            (portDefn->nBufferCountActual != m_sInPortDef.nBufferCountActual ||
+                            portDefn->nBufferSize != m_sInPortDef.nBufferSize)) {
+                        DEBUG_PRINT_ERROR("ERROR: (In_PORT) buffer count/size can change only if port is unallocated !");
+                        return OMX_ErrorInvalidState;
+                    }
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
                         DEBUG_PRINT_ERROR("ERROR: (In_PORT) Min buffers (%u) > actual count (%u)",
                                 (unsigned int)portDefn->nBufferCountMin, (unsigned int)portDefn->nBufferCountActual);
@@ -580,6 +586,13 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                     DEBUG_PRINT_LOW("o/p actual cnt requested = %u", (unsigned int)portDefn->nBufferCountActual);
                     DEBUG_PRINT_LOW("o/p min cnt requested = %u", (unsigned int)portDefn->nBufferCountMin);
                     DEBUG_PRINT_LOW("o/p buffersize requested = %u", (unsigned int)portDefn->nBufferSize);
+                    if (m_out_mem_ptr &&
+                            (portDefn->nBufferCountActual != m_sOutPortDef.nBufferCountActual ||
+                            portDefn->nBufferSize != m_sOutPortDef.nBufferSize)) {
+                        DEBUG_PRINT_ERROR("ERROR: (Out_PORT) buffer count/size can change only if port is unallocated !");
+                        return OMX_ErrorInvalidState;
+                    }
+
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
                         DEBUG_PRINT_ERROR("ERROR: (Out_PORT) Min buffers (%u) > actual count (%u)",
                                 (unsigned int)portDefn->nBufferCountMin, (unsigned int)portDefn->nBufferCountActual);
