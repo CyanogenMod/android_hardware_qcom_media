@@ -4635,7 +4635,20 @@ OMX_ERRORTYPE  omx_vdec::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                    }
                                    break;
         case OMX_GoogleAndroidIndexAllocateNativeHandle: {
+
                 AllocateNativeHandleParams* allocateNativeHandleParams = (AllocateNativeHandleParams *) paramData;
+                VALIDATE_OMX_PARAM_DATA(paramData, AllocateNativeHandleParams);
+
+                if (allocateNativeHandleParams->nPortIndex != OMX_CORE_INPUT_PORT_INDEX) {
+                    DEBUG_PRINT_ERROR("Enable/Disable allocate-native-handle allowed only on input port!");
+                    eRet = OMX_ErrorUnsupportedSetting;
+                    break;
+                } else if (m_inp_mem_ptr) {
+                    DEBUG_PRINT_ERROR("Enable/Disable allocate-native-handle is not allowed since Input port is not free !");
+                    eRet = OMX_ErrorInvalidState;
+                    break;
+                }
+
                 if (allocateNativeHandleParams != NULL) {
                     allocate_native_handle = allocateNativeHandleParams->enable;
                 }
