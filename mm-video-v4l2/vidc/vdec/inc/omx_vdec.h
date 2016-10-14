@@ -658,6 +658,7 @@ class omx_vdec: public qc_omx_component
             OMX_U32 transfer, OMX_U32 matrix, ColorSpace_t *color_space,
             ColorAspects *aspects);
         void handle_color_space_info(void *data, unsigned int buf_index);
+        void set_colorspace_in_handle(ColorSpace_t color, unsigned int buf_index);
         void print_debug_color_aspects(ColorAspects *aspects, const char *prefix);
         void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
 #ifdef _MSM8974_
