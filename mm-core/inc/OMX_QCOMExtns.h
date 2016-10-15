@@ -573,6 +573,8 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     OMX_QTIIndexParamVC1SeqDispExtraData = 0x7F000065,
 
     OMX_QTIIndexParamVPXColorSpaceExtraData = 0x7F000066,
+    /* Enable client extradata */
+    OMX_QTIIndexParamVideoClientExtradata = 0x7F000060,
 };
 
 /**
@@ -1589,6 +1591,7 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SAR "OMX.QCOM.index.param.video.sar"
 
 #define OMX_QTI_INDEX_CONFIG_COLOR_ASPECTS "OMX.google.android.index.describeColorAspects"
+#define OMX_QTI_INDEX_PARAM_VIDEO_CLIENT_EXTRADATA "OMX.QTI.index.param.client.extradata"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,
@@ -1881,6 +1884,15 @@ typedef struct QOMX_VIDEO_BATCHSIZETYPE {
     OMX_U32 nPortIndex;
     OMX_U32 nBatchSize;
 } QOMX_VIDEO_BATCHSIZETYPE;
+
+typedef struct QOMX_VIDEO_CLIENT_EXTRADATA {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nFd;
+    OMX_U32 nExtradataAllocSize;
+    OMX_U32 nExtradataSize;
+} QOMX_VIDEO_CLIENT_EXTRADATATYPE;
 
 #ifdef __cplusplus
 }
