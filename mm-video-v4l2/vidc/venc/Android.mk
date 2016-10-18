@@ -48,8 +48,10 @@ ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_SUPPORT_VQZIP)),true)
 libmm-venc-def += -D_VQZIP_
 endif
 
+ifneq ($(QCPATH),)
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_SUPPORT_PQ)),true)
 libmm-venc-def += -D_PQ_
+endif
 endif
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_FLAG_MSM8226)),true)
