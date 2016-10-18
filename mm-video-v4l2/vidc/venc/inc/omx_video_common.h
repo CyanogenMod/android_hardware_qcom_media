@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2010-2011, 2013, The Linux Foundation. All rights reserved.
+Copyright (c) 2010-2016, The Linux Foundation. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
@@ -60,6 +60,8 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define OMX_CORE_VGA_WIDTH           640
 #define OMX_CORE_WVGA_HEIGHT         480
 #define OMX_CORE_WVGA_WIDTH          800
+#define OMX_CORE_FWVGA_HEIGHT        480
+#define OMX_CORE_FWVGA_WIDTH         864
 #define OMX_CORE_720P_WIDTH          1280
 #define OMX_CORE_720P_HEIGHT          720
 #define OMX_CORE_1080P_WIDTH         1920

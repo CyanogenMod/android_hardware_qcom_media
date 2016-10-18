@@ -47,6 +47,29 @@ extern "C" {
 #include "OMX_Video.h"
 
 #define OMX_VIDEO_MAX_HP_LAYERS 6
+
+/**
+ * These MACROS used by Camera and Video to decide buffer count.
+ * This is to avoid mismatch of buffer count between Camera and Video.
+ * In Meta mode, read this count as buffer count in Camera and Header
+ * count in Video.
+ * 1) Number of buffers in Non-DCVS mode.
+ * 2) DCVS resolution.
+ * 3) Buffer count when Current resolution is greater than DCVS resolution
+ * defined in 2)
+ */
+
+#define OMX_VIDEO_MIN_CAMERA_BUFFERS 9
+#define OMX_VIDEO_ENC_DCVS_RESOLUTION 3840 * 2160
+#define OMX_VIDEO_MIN_CAMERA_BUFFERS_DCVS 11
+
+/**
+ * This count indicates the number of Ints in the legacy Camera payload
+ * used for HAL1
+ */
+
+#define VIDEO_METADATA_NUM_COMMON_INTS 1
+
 /**
  * This extension is used to register mapping of a virtual
  * address to a physical address. This extension is a parameter
@@ -1406,6 +1429,9 @@ typedef enum OMX_QCOM_EXTRADATATYPE
     OMX_ExtraDataInputBitsInfo =           0x7F00000e,
     OMX_ExtraDataVideoEncoderMBInfo =      0x7F00000f,
     OMX_ExtraDataVQZipSEI  =               0x7F000010,
+    OMX_ExtraDataDisplayColourSEI =        0x7F000011,
+    OMX_ExtraDataLightLevelSEI =           0x7F000012,
+    OMX_ExtraDataEncoderOverrideQPInfo =   0x7F000013,
 } OMX_QCOM_EXTRADATATYPE;
 
 typedef struct  OMX_STREAMINTERLACEFORMATTYPE {

@@ -703,6 +703,12 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 (unsigned int)portDefn->nBufferCountActual, (unsigned int)MAX_NUM_INPUT_BUFFERS);
                         return OMX_ErrorUnsupportedSetting;
                     }
+                    if (m_inp_mem_ptr &&
+                            (portDefn->nBufferCountActual != m_sInPortDef.nBufferCountActual ||
+                            portDefn->nBufferSize != m_sInPortDef.nBufferSize)) {
+                        DEBUG_PRINT_ERROR("ERROR: (In_PORT) buffer count/size can change only if port is unallocated !");
+                        return OMX_ErrorInvalidState;
+                    }
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
                         DEBUG_PRINT_ERROR("ERROR: (In_PORT) Min buffers (%u) > actual count (%u)",
                                 (unsigned int)portDefn->nBufferCountMin, (unsigned int)portDefn->nBufferCountActual);
@@ -757,6 +763,13 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 (unsigned int)portDefn->nBufferCountActual, (unsigned int)MAX_NUM_OUTPUT_BUFFERS);
                         return OMX_ErrorUnsupportedSetting;
                     }
+                    if (m_out_mem_ptr &&
+                            (portDefn->nBufferCountActual != m_sOutPortDef.nBufferCountActual ||
+                            portDefn->nBufferSize != m_sOutPortDef.nBufferSize)) {
+                        DEBUG_PRINT_ERROR("ERROR: (Out_PORT) buffer count/size can change only if port is unallocated !");
+                        return OMX_ErrorInvalidState;
+                    }
+
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
                         DEBUG_PRINT_ERROR("ERROR: (Out_PORT) Min buffers (%u) > actual count (%u)",
                                 (unsigned int)portDefn->nBufferCountMin, (unsigned int)portDefn->nBufferCountActual);
@@ -856,6 +869,11 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 m_sConfigBitrate.nEncodeBitrate = pParam->nTargetBitrate;
                 m_sInPortDef.format.video.nBitrate = pParam->nTargetBitrate;
                 m_sOutPortDef.format.video.nBitrate = pParam->nTargetBitrate;
+                /* RC mode chan chage buffer requirements on Input port */
+                dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
+                        &m_sInPortDef.nBufferCountActual,
+                        &m_sInPortDef.nBufferSize,
+                        m_sInPortDef.nPortIndex);
                 DEBUG_PRINT_LOW("bitrate = %u", (unsigned int)m_sOutPortDef.format.video.nBitrate);
                 break;
             }
@@ -1847,6 +1865,14 @@ OMX_ERRORTYPE  omx_venc::set_config(OMX_IN OMX_HANDLETYPE      hComp,
                     m_sConfigFramerate.xEncodeFramerate = pParam->xEncodeFramerate;
                     m_sOutPortDef.format.video.xFramerate = pParam->xEncodeFramerate;
                     m_sOutPortFormat.xFramerate = pParam->xEncodeFramerate;
+                    /*
+                     * Frame rate can change buffer requirements. If query is not allowed,
+                     * failure is not FATAL here.
+                     */
+                    dev_get_buf_req(&m_sInPortDef.nBufferCountMin,
+                            &m_sInPortDef.nBufferCountActual,
+                            &m_sInPortDef.nBufferSize,
+                            m_sInPortDef.nPortIndex);
                 } else {
                     DEBUG_PRINT_ERROR("ERROR: Unsupported port index: %u", (unsigned int)pParam->nPortIndex);
                     return OMX_ErrorBadPortIndex;
@@ -2506,11 +2532,6 @@ bool omx_venc::dev_is_video_session_supported(OMX_U32 width, OMX_U32 height)
 int omx_venc::dev_handle_output_extradata(void *buffer, int index)
 {
     return handle->handle_output_extradata(buffer, index);
-}
-
-int omx_venc::dev_handle_input_extradata(void *buffer, int index, int fd)
-{
-    return handle->handle_input_extradata(buffer, index, fd);
 }
 
 int omx_venc::dev_set_format(int color)

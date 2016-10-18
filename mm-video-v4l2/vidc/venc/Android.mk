@@ -26,6 +26,7 @@ TARGETS_THAT_NEED_SW_VENC_MPEG4 := msm8909 msm8937
 TARGETS_THAT_NEED_SW_VENC_HEVC := msm8992
 TARGETS_THAT_SUPPORT_UBWC := msm8996 msmcobalt
 TARGETS_THAT_SUPPORT_VQZIP := msm8996 msmcobalt
+TARGETS_THAT_SUPPORT_PQ := msm8996 msmcobalt
 
 ifeq ($(TARGET_BOARD_PLATFORM),msm8610)
 libmm-venc-def += -DMAX_RES_720P
@@ -45,6 +46,10 @@ endif
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_SUPPORT_VQZIP)),true)
 libmm-venc-def += -D_VQZIP_
+endif
+
+ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_SUPPORT_PQ)),true)
+libmm-venc-def += -D_PQ_
 endif
 
 ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_USE_FLAG_MSM8226)),true)
@@ -78,6 +83,7 @@ libmm-venc-inc      += frameworks/native/include/media/hardware
 libmm-venc-inc      += frameworks/native/include/media/openmax
 libmm-venc-inc      += $(call project-path-for,qcom-media)/libc2dcolorconvert
 libmm-venc-inc      += $(TARGET_OUT_HEADERS)/libvqzip
+libmm-venc-inc      += $(TARGET_OUT_HEADERS)/libgpustats
 libmm-venc-inc      += frameworks/av/include/media/stagefright
 libmm-venc-inc      += $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr/include
 
@@ -142,34 +148,6 @@ LOCAL_SRC_FILES   += src/omx_swvenc_mpeg4.cpp
 include $(BUILD_SHARED_LIBRARY)
 endif
 
-ifeq ($(call is-board-platform-in-list, $(TARGETS_THAT_NEED_SW_VENC_HEVC)),true)
-# ---------------------------------------------------------------------------------
-#                            Make the Shared library (libOmxSwVenc)
-# ---------------------------------------------------------------------------------
-include $(CLEAR_VARS)
-
-libmm-venc-inc      += $(TARGET_OUT_HEADERS)/mm-video/swVenc
-
-LOCAL_MODULE                    := libOmxSwVencHevc
-LOCAL_MODULE_TAGS               := optional
-LOCAL_CFLAGS                    := $(libmm-venc-def)
-LOCAL_C_INCLUDES                := $(libmm-venc-inc)
-LOCAL_ADDITIONAL_DEPENDENCIES   := $(libmm-venc-add-dep)
-
-LOCAL_PRELINK_MODULE      := false
-LOCAL_SHARED_LIBRARIES    := liblog libutils libbinder libcutils \
-                             libdl libgui
-LOCAL_SHARED_LIBRARIES    += libHevcSwEncoder
-ifeq ($(BOARD_USES_ADRENO), true)
-LOCAL_SHARED_LIBRARIES    += libc2dcolorconvert
-endif # ($(BOARD_USES_ADRENO), true)
-LOCAL_STATIC_LIBRARIES    := libOmxVidcCommon
-
-LOCAL_SRC_FILES   := src/omx_video_base.cpp
-LOCAL_SRC_FILES   += src/omx_swvenc_hevc.cpp
-
-include $(BUILD_SHARED_LIBRARY)
-endif
 
 # ---------------------------------------------------------------------------------
 # 					END

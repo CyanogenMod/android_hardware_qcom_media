@@ -2108,20 +2108,6 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_slowLatencyMode, sizeof(m_slowLatencyMode));
                 break;
            }
-        case OMX_IndexParamAndroidVideoTemporalLayering:
-            {
-                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
-                OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pLayerInfo =
-                        reinterpret_cast<OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE*>(paramData);
-                if (!dev_get_temporal_layer_caps(&m_sParamTemporalLayers.nLayerCountMax,
-                        &m_sParamTemporalLayers.nBLayerCountMax)) {
-                    DEBUG_PRINT_ERROR("Failed to get temporal layer capabilities");
-                    eRet = OMX_ErrorHardware;
-                }
-                memcpy(pLayerInfo, &m_sParamTemporalLayers, sizeof(m_sParamTemporalLayers));
-                break;
-            }
-        case OMX_IndexParamVideoSliceFMO:
         default:
             {
                 DEBUG_PRINT_LOW("ERROR: get_parameter: unknown param %08x", paramIndex);
@@ -2324,16 +2310,6 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
-        case OMX_IndexParamAndroidVideoTemporalLayering:
-            {
-                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE);
-                OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *layerConfig =
-                        (OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *)configData;
-                DEBUG_PRINT_LOW("get_config: OMX_IndexConfigAndroidVideoTemporalLayering");
-                memcpy(configData, &m_sConfigTemporalLayers, sizeof(m_sConfigTemporalLayers));
-                break;
-            }
-
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -3607,17 +3583,15 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             m_sInPortDef.bPopulated = OMX_FALSE;
 
             /*Free the Buffer Header*/
-            if (release_input_done()
-#ifdef _ANDROID_ICS_
-                    && !meta_mode_enable
-#endif
-               ) {
+            if (release_input_done()) {
                 input_use_buffer = false;
-                if (m_inp_mem_ptr) {
+                // "m_inp_mem_ptr" may point to "meta_buffer_hdr" in some modes,
+                // in which case, it was not explicitly allocated
+                if (m_inp_mem_ptr && m_inp_mem_ptr != meta_buffer_hdr) {
                     DEBUG_PRINT_LOW("Freeing m_inp_mem_ptr");
                     free (m_inp_mem_ptr);
-                    m_inp_mem_ptr = NULL;
                 }
+                m_inp_mem_ptr = NULL;
                 if (m_pInput_pmem) {
                     DEBUG_PRINT_LOW("Freeing m_pInput_pmem");
                     free(m_pInput_pmem);
@@ -3707,7 +3681,7 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             post_event(OMX_CommandStateSet, OMX_StateLoaded,
                     OMX_COMPONENT_GENERATE_EVENT);
         } else {
-            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers input %" PRIx64" output %" PRIx64,
+            DEBUG_PRINT_HIGH("in free buffer, release not done, need to free more buffers output %" PRIx64" input %" PRIx64,
                     m_out_bm_count, m_inp_bm_count);
         }
     }
@@ -3944,16 +3918,6 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
                     post_event((unsigned long)buffer, 0, OMX_COMPONENT_GENERATE_EBD);
                     return OMX_ErrorUndefined;
             }
-    }
-    if (m_sExtraData && !dev_handle_input_extradata((void *)buffer, nBufIndex,fd)) {
-        DEBUG_PRINT_ERROR("Failed to parse input extradata\n");
-#ifdef _ANDROID_ICS_
-        omx_release_meta_buffer(buffer);
-#endif
-        post_event ((unsigned long)buffer,0,OMX_COMPONENT_GENERATE_EBD);
-        /*Generate an async error and move to invalid state*/
-        pending_input_buffers--;
-        return OMX_ErrorBadParameter;
     }
 #ifdef _MSM8974_
     if (dev_empty_buf(buffer, pmem_data_buf,nBufIndex,fd) != true)
@@ -4739,10 +4703,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
         } else if (m_sOutPortDef.format.video.eCompressionFormat == OMX_VIDEO_CodingHEVC) {
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile =  OMX_VIDEO_HEVCProfileMain;
-                profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel52;
-            } else if (profileLevelType->nProfileIndex == 1) {
-                profileLevelType->eProfile =  OMX_VIDEO_HEVCProfileMain10;
-                profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel52;
+                profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel51;
             } else {
                 DEBUG_PRINT_LOW("HEVC: get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
                 (unsigned int)profileLevelType->nProfileIndex);
@@ -4884,12 +4845,11 @@ void omx_video::omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer)
                     Input_pmem.size = handle->size;
                 } else {
                     meta_error = true;
-                    DEBUG_PRINT_ERROR(" Meta Error set in EBD");
                 }
                 if (!meta_error)
                     meta_error = !dev_free_buf(&Input_pmem,PORT_INDEX_IN);
                 if (meta_error) {
-                    DEBUG_PRINT_ERROR(" Warning dev_free_buf failed flush value is %d",
+                    DEBUG_PRINT_HIGH("In batchmode or dev_free_buf failed, flush %d",
                             input_flush_progress);
                 }
             }
