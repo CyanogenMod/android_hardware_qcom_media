@@ -301,6 +301,32 @@ omx_core_cb_type core[] =
     }
   },
   {
+    "OMX.qcom.audio.decoder.amrnb",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxAmrDec.so",
+    {
+      "audio_decoder.amrnb"
+    }
+  },
+  {
+    "OMX.qcom.audio.decoder.amrwb",
+    NULL,   // Create instance function
+    // Unique instance handle
+    {
+      NULL
+    },
+    NULL,   // Shared object library handle
+    "libOmxAmrDec.so",
+    {
+      "audio_decoder.amrwb"
+    }
+  },
+  {
     "OMX.qcom.video.encoder.mpeg4",
     NULL, // Create instance function
     // Unique instance handle

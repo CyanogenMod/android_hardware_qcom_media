@@ -458,7 +458,8 @@ class venc_dev
         bool async_thread_force_stop;
         class omx_venc *venc_handle;
         OMX_ERRORTYPE allocate_extradata(struct extradata_buffer_info *extradata_info);
-        void free_extradata();
+        void free_extradata_all();
+        void free_extradata(struct extradata_buffer_info *extradata_info);
         int append_mbi_extradata(void *, struct msm_vidc_extradata_header*);
         bool handle_output_extradata(void *, int);
         bool handle_input_extradata(struct v4l2_buffer);

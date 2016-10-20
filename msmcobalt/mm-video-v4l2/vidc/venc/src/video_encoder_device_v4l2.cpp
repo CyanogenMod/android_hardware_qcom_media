@@ -1020,45 +1020,38 @@ OMX_ERRORTYPE venc_dev::allocate_extradata(struct extradata_buffer_info *extrada
     return OMX_ErrorNone;
 }
 
-void venc_dev::free_extradata()
+void venc_dev::free_extradata(struct extradata_buffer_info *extradata_info)
 {
 #ifdef USE_ION
 
-    if (output_extradata_info.uaddr) {
-        munmap((void *)output_extradata_info.uaddr, output_extradata_info.size);
-        close(output_extradata_info.ion.fd_ion_data.fd);
-        venc_handle->free_ion_memory(&output_extradata_info.ion);
-    }
-    if (output_extradata_info.m_ion_dev)
-        close(output_extradata_info.m_ion_dev);
-
-    memset(&output_extradata_info, 0, sizeof(output_extradata_info));
-    output_extradata_info.ion.fd_ion_data.fd = -1;
-
-    if (input_extradata_info.uaddr) {
-        munmap((void *)input_extradata_info.uaddr, input_extradata_info.size);
-        close(input_extradata_info.ion.fd_ion_data.fd);
-        venc_handle->free_ion_memory(&input_extradata_info.ion);
+    if (extradata_info == NULL) {
+        return;
     }
 
-    if (input_extradata_info.m_ion_dev)
-        close(output_extradata_info.m_ion_dev);
+    if (extradata_info->uaddr) {
+        munmap((void *)extradata_info->uaddr, extradata_info->size);
+        extradata_info->uaddr = NULL;
+        close(extradata_info->ion.fd_ion_data.fd);
+        venc_handle->free_ion_memory(&extradata_info->ion);
+    }
 
-    memset(&input_extradata_info, 0, sizeof(input_extradata_info));
-    input_extradata_info.ion.fd_ion_data.fd = -1;
+    if (extradata_info->m_ion_dev)
+        close(extradata_info->m_ion_dev);
 
+    memset(extradata_info, 0, sizeof(*extradata_info));
+    extradata_info->ion.fd_ion_data.fd = -1;
+    extradata_info->allocated = OMX_FALSE;
+
+#endif // USE_ION
+}
+
+void venc_dev::free_extradata_all()
+{
+    free_extradata(&output_extradata_info);
+    free_extradata(&input_extradata_info);
 #ifdef _PQ_
-    if (m_pq.roi_extradata_info.uaddr) {
-        munmap((void *)m_pq.roi_extradata_info.uaddr, m_pq.roi_extradata_info.size);
-        close(m_pq.roi_extradata_info.ion.fd_ion_data.fd);
-        venc_handle->free_ion_memory(&m_pq.roi_extradata_info.ion);
-    }
-
-    memset(&m_pq.roi_extradata_info, 0, sizeof(m_pq.roi_extradata_info));
-    m_pq.roi_extradata_info.ion.fd_ion_data.fd = -1;
+    free_extradata(&m_pq.roi_extradata_info);
 #endif // _PQ_
-
-#endif
 }
 
 bool venc_dev::venc_get_output_log_flag()
@@ -1510,7 +1503,6 @@ bool venc_dev::venc_open(OMX_U32 codec)
 #ifdef _PQ_
     if (codec == OMX_VIDEO_CodingAVC) {
         m_pq.init(V4L2_DEFAULT_OUTPUT_COLOR_FMT);
-        allocate_extradata(&m_pq.roi_extradata_info);
         m_pq.get_caps();
     }
 #endif // _PQ_
@@ -2574,6 +2566,7 @@ bool venc_dev::venc_set_param(void *paramData, OMX_INDEXTYPE index)
                 }
 #ifdef _PQ_
                 m_pq.pConfig.a_qp.roi_enabled = (OMX_U32)true;
+                allocate_extradata(&m_pq.roi_extradata_info);
                 m_pq.configure();
 #endif // _PQ_
                 break;
@@ -3154,7 +3147,7 @@ unsigned venc_dev::venc_start_done(void)
 unsigned venc_dev::venc_stop_done(void)
 {
     struct venc_msg venc_msg;
-    free_extradata();
+    free_extradata_all();
     venc_msg.msgcode=VEN_MSG_STOP;
     venc_msg.statuscode=VEN_S_SUCCESS;
     venc_handle->async_message_process(venc_handle,&venc_msg);
@@ -3495,6 +3488,17 @@ unsigned venc_dev::venc_flush( unsigned port)
 {
     struct v4l2_encoder_cmd enc;
     DEBUG_PRINT_LOW("in %s", __func__);
+
+    unsigned int cookie = 0;
+    for (unsigned int i = 0; i < (sizeof(fd_list)/sizeof(fd_list[0])); i++) {
+        cookie = fd_list[i];
+        if (cookie != 0) {
+            if (!ioctl(input_extradata_info.m_ion_dev, ION_IOC_FREE, &cookie)) {
+                DEBUG_PRINT_HIGH("Freed handle = %u", cookie);
+            }
+            fd_list[i] = 0;
+        }
+    }
 
     enc.cmd = V4L2_ENC_QCOM_CMD_FLUSH;
     enc.flags = V4L2_QCOM_CMD_FLUSH_OUTPUT | V4L2_QCOM_CMD_FLUSH_CAPTURE;
@@ -4410,14 +4414,19 @@ int venc_dev::venc_get_index_from_fd(OMX_U32 ion_fd, OMX_U32 buffer_fd)
     fdData.fd = buffer_fd;
     if (ion_fd && !ioctl(ion_fd, ION_IOC_IMPORT, &fdData)) {
         cookie = fdData.handle;
+        DEBUG_PRINT_HIGH("FD = %u imported handle = %u", fdData.fd, fdData.handle);
     }
 
     for (unsigned int i = 0; i < (sizeof(fd_list)/sizeof(fd_list[0])); i++) {
         if (fd_list[i] == cookie) {
             DEBUG_PRINT_HIGH("FD is present at index = %d", i);
+            if (ion_fd && !ioctl(ion_fd, ION_IOC_FREE, &fdData.handle)) {
+                DEBUG_PRINT_HIGH("freed handle = %u", cookie);
+            }
             return i;
         }
     }
+
     for (unsigned int i = 0; i < (sizeof(fd_list)/sizeof(fd_list[0])); i++)
         if (fd_list[i] == 0) {
             DEBUG_PRINT_HIGH("FD added at index = %d", i);
