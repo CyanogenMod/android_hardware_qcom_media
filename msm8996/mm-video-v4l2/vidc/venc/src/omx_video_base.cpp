@@ -2068,6 +2068,19 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 memcpy(pParam, &m_sSar, sizeof(m_sSar));
                 break;
             }
+        case OMX_IndexParamAndroidVideoTemporalLayering:
+            {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
+                OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pLayerInfo =
+                        reinterpret_cast<OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE*>(paramData);
+                if (!dev_get_temporal_layer_caps(&m_sParamTemporalLayers.nLayerCountMax,
+                        &m_sParamTemporalLayers.nBLayerCountMax)) {
+                    DEBUG_PRINT_ERROR("Failed to get temporal layer capabilities");
+                    eRet = OMX_ErrorHardware;
+                }
+                memcpy(pLayerInfo, &m_sParamTemporalLayers, sizeof(m_sParamTemporalLayers));
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -2191,13 +2204,13 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                 }
                 break;
             }
-       case OMX_QcomIndexConfigMaxHierPLayers:
+       case OMX_QcomIndexConfigNumHierPLayers:
            {
-                VALIDATE_OMX_PARAM_DATA(configData, QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS);
-               QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS* pParam =
-                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS*>(configData);
-               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigMaxHierPLayers");
-               memcpy(pParam, &m_sMaxHPlayers, sizeof(m_sMaxHPlayers));
+                VALIDATE_OMX_PARAM_DATA(configData, QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS);
+               QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS* pParam =
+                   reinterpret_cast<QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS*>(configData);
+               DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigNumHierPLayers");
+               memcpy(pParam, &m_sHPlayers, sizeof(m_sHPlayers));
                break;
            }
        case OMX_QcomIndexConfigQp:
@@ -2227,6 +2240,48 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                memcpy(pParam, &m_sConfigIntraRefresh, sizeof(m_sConfigIntraRefresh));
                break;
            }
+        case OMX_IndexParamAndroidVideoTemporalLayering:
+            {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE);
+                OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *layerConfig =
+                        (OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *)configData;
+                DEBUG_PRINT_LOW("get_config: OMX_IndexConfigAndroidVideoTemporalLayering");
+                memcpy(configData, &m_sConfigTemporalLayers, sizeof(m_sConfigTemporalLayers));
+                break;
+            }
+       case OMX_QTIIndexConfigDescribeColorAspects:
+            {
+                VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
+                DescribeColorAspectsParams* pParam =
+                    reinterpret_cast<DescribeColorAspectsParams*>(configData);
+                DEBUG_PRINT_LOW("get_config: OMX_QTIIndexConfigDescribeColorAspects");
+                if (pParam->bRequestingDataSpace) {
+                    DEBUG_PRINT_ERROR("Does not handle dataspace request");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                if (pParam->bDataSpaceChanged == OMX_TRUE) {
+
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config (dataspace changed) Client says");
+                    // If the dataspace says RGB, recommend 601-limited;
+                    // since that is the destination colorspace that C2D or Venus will convert to.
+                    if (pParam->nPixelFormat == HAL_PIXEL_FORMAT_RGBA_8888) {
+                        DEBUG_PRINT_INFO("get_config (dataspace changed): ColorSpace: Recommend 601-limited for RGBA8888");
+                        pParam->sAspects.mPrimaries = ColorAspects::PrimariesBT601_6_625;
+                        pParam->sAspects.mRange = ColorAspects::RangeLimited;
+                        pParam->sAspects.mTransfer = ColorAspects::TransferSMPTE170M;
+                        pParam->sAspects.mMatrixCoeffs = ColorAspects::MatrixBT601_6;
+                    } else {
+                        // For IMPLEMENTATION_DEFINED (or anything else), stick to client's defaults.
+                        DEBUG_PRINT_INFO("get_config (dataspace changed): ColorSpace: use client-default for format=%x",
+                                pParam->nPixelFormat);
+                    }
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config (dataspace changed) recommended");
+                } else {
+                    memcpy(pParam, &m_sConfigColorAspects, sizeof(m_sConfigColorAspects));
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config");
+                }
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -2303,7 +2358,7 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     }
 
     if (extn_equals(paramName, "OMX.QCOM.index.config.video.hierplayers")) {
-        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigMaxHierPLayers;
+        *indexType = (OMX_INDEXTYPE)OMX_QcomIndexConfigNumHierPLayers;
         return OMX_ErrorNone;
     }
 
@@ -2331,11 +2386,16 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexParamVideoEnableRoiInfo;
         return OMX_ErrorNone;
     }
+
     if (extn_equals(paramName, OMX_QTI_INDEX_CONFIG_VIDEO_ROIINFO)) {
         *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigVideoRoiInfo;
         return OMX_ErrorNone;
     }
 
+    if (extn_equals(paramName, "OMX.google.android.index.describeColorAspects")) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigDescribeColorAspects;
+        return OMX_ErrorNone;
+    }
     return OMX_ErrorNotImplemented;
 }
 
@@ -4880,6 +4940,11 @@ bool omx_video::is_conv_needed(int hal_fmt, int hal_flags)
 #endif
     DEBUG_PRINT_LOW("RGBA conversion %s", bRet ? "Needed":"Not-Needed");
     return bRet;
+}
+
+void omx_video::print_debug_color_aspects(ColorAspects *aspects, const char *prefix) {
+    DEBUG_PRINT_HIGH("%s : Color aspects : Primaries = %d Range = %d Transfer = %d MatrixCoeffs = %d",
+            prefix, aspects->mPrimaries, aspects->mRange, aspects->mTransfer, aspects->mMatrixCoeffs);
 }
 
 OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,

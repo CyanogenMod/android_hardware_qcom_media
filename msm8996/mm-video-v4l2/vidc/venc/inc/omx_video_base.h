@@ -245,6 +245,8 @@ class omx_video: public qc_omx_component
         virtual bool dev_get_vqzip_sei_info(OMX_U32 *) = 0;
         virtual bool dev_get_peak_bitrate(OMX_U32 *) = 0;
         virtual bool dev_get_batch_size(OMX_U32 *) = 0;
+        virtual bool dev_get_temporal_layer_caps(OMX_U32 * /*nMaxLayers*/,
+                OMX_U32 * /*nMaxBLayers*/) = 0;
 #ifdef _ANDROID_ICS_
         void omx_release_meta_buffer(OMX_BUFFERHEADERTYPE *buffer);
 #endif
@@ -561,6 +563,7 @@ class omx_video: public qc_omx_component
 
         void complete_pending_buffer_done_cbs();
         bool is_conv_needed(int, int);
+        void print_debug_color_aspects(ColorAspects *aspects, const char *prefix);
 
 #ifdef USE_ION
         int alloc_map_ion_memory(int size,
@@ -627,7 +630,7 @@ class omx_video: public qc_omx_component
         QOMX_VIDEO_HIERARCHICALLAYERS m_sHierLayers;
         OMX_QOMX_VIDEO_MBI_STATISTICS m_sMBIStatistics;
         QOMX_EXTNINDEX_VIDEO_INITIALQP m_sParamInitqp;
-        QOMX_EXTNINDEX_VIDEO_MAX_HIER_P_LAYERS m_sMaxHPlayers;
+        QOMX_EXTNINDEX_VIDEO_HIER_P_LAYERS m_sHPlayers;
         OMX_SKYPE_VIDEO_CONFIG_BASELAYERPID m_sBaseLayerID;
         OMX_SKYPE_VIDEO_PARAM_DRIVERVER m_sDriverVer;
         OMX_SKYPE_VIDEO_CONFIG_QP m_sConfigQP;
@@ -636,6 +639,9 @@ class omx_video: public qc_omx_component
         OMX_U32 m_sExtraData;
         OMX_U32 m_input_msg_id;
         OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE m_sConfigIntraRefresh;
+        OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE m_sParamTemporalLayers;
+        OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE m_sConfigTemporalLayers;
+        DescribeColorAspectsParams m_sConfigColorAspects;
 
         // fill this buffer queue
         omx_cmd_queue m_ftb_q;
