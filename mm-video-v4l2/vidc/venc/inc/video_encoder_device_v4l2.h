@@ -211,6 +211,13 @@ struct msm_venc_priority {
     OMX_U32 priority;
 };
 
+struct msm_venc_color_space {
+    OMX_U32 primaries;
+    OMX_U32 range;
+    OMX_U32 matrix_coeffs;
+    OMX_U32 transfer_chars;
+};
+
 enum v4l2_ports {
     CAPTURE_PORT,
     OUTPUT_PORT,
@@ -323,6 +330,7 @@ class venc_dev
         int venc_set_format(int);
         bool deinterlace_enabled;
         bool hw_overload;
+        bool is_csc_enabled;
     private:
         OMX_U32                             m_codec;
         struct msm_venc_basecfg             m_sVenc_cfg;
@@ -356,6 +364,7 @@ class venc_dev
         struct msm_venc_vpx_error_resilience vpx_err_resilience;
         struct msm_venc_priority            sess_priority;
         OMX_U32                             operating_rate;
+        struct msm_venc_color_space         color_space;
 
         bool venc_set_profile_level(OMX_U32 eProfile,OMX_U32 eLevel);
         bool venc_set_intra_period(OMX_U32 nPFrames, OMX_U32 nBFrames);
@@ -395,6 +404,7 @@ class venc_dev
         bool venc_set_perf_mode(OMX_U32 mode);
 	bool venc_set_session_priority(OMX_U32 priority);
 	bool venc_set_operatingrate(OMX_U32 rate);
+        bool venc_set_colorspace(OMX_U32 primaries, OMX_U32 range, OMX_U32 transfer_chars, OMX_U32 matrix_coeffs);
 
 #ifdef MAX_RES_1080P
         OMX_U32 pmem_free();

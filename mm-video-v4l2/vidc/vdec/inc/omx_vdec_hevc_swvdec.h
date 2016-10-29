@@ -1,5 +1,5 @@
 /*--------------------------------------------------------------------------
-Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -183,6 +183,8 @@ extern "C" {
 #define OMX_CORE_VGA_WIDTH           640
 #define OMX_CORE_WVGA_HEIGHT         480
 #define OMX_CORE_WVGA_WIDTH          800
+#define OMX_CORE_FWVGA_HEIGHT        480
+#define OMX_CORE_FWVGA_WIDTH         864
 
 #define DESC_BUFFER_SIZE (8192 * 16)
 

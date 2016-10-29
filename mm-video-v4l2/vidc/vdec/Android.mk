@@ -87,6 +87,10 @@ ifeq ($(call is-platform-sdk-version-at-least, 22),true)
 libmm-vdec-def += -DFLEXYUV_SUPPORTED
 endif
 
+ifeq ($(TARGET_USES_MEDIA_EXTENSIONS),true)
+libmm-vdec-def += -DALLOCATE_OUTPUT_NATIVEHANDLE
+endif
+
 # ---------------------------------------------------------------------------------
 # 			Make the Shared library (libOmxVdec)
 # ---------------------------------------------------------------------------------

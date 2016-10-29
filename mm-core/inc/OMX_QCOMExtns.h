@@ -46,6 +46,29 @@ extern "C" {
 #include "OMX_Core.h"
 #include "OMX_Video.h"
 
+
+/**
+ * These MACROS used by Camera and Video to decide buffer count.
+ * This is to avoid mismatch of buffer count between Camera and Video.
+ * In Meta mode, read this count as buffer count in Camera and Header
+ * count in Video.
+ * 1) Number of buffers in Non-DCVS mode.
+ * 2) DCVS resolution.
+ * 3) Buffer count when Current resolution is greater than DCVS resolution
+ * defined in 2)
+ */
+
+#define OMX_VIDEO_MIN_CAMERA_BUFFERS 9
+#define OMX_VIDEO_ENC_DCVS_RESOLUTION 3840 * 2160
+#define OMX_VIDEO_MIN_CAMERA_BUFFERS_DCVS 11
+
+/**
+ * This count indicates the number of Ints in the legacy Camera payload
+ * used for HAL1
+ */
+
+#define VIDEO_METADATA_NUM_COMMON_INTS 1
+
 /**
  * This extension is used to register mapping of a virtual
  * address to a physical address. This extension is a parameter
@@ -537,6 +560,21 @@ enum OMX_QCOM_EXTN_INDEXTYPE
     /* Encoder Low Latency mode */
     OMX_QcomIndexConfigVideoVencLowLatencyMode = 0x7F000054,
 
+    /* OMX.google.android.index.allocateNativeHandle */
+    OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005D,
+
+    /*"OMX.google.android.index.describeColorAspects"*/
+    OMX_QTIIndexConfigDescribeColorAspects = 0x7F000062,
+
+    OMX_QTIIndexParamVUIExtraDataExtraData = 0x7F000063,
+
+    OMX_QTIIndexParamMPEG2SeqDispExtraData = 0x7F000064,
+
+    OMX_QTIIndexParamVC1SeqDispExtraData = 0x7F000065,
+
+    OMX_QTIIndexParamVPXColorSpaceExtraData = 0x7F000066,
+    /* Enable client extradata */
+    OMX_QTIIndexParamVideoClientExtradata = 0x7F000060,
 };
 
 /**
@@ -1552,6 +1590,9 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QCOM_INDEX_CONFIG_VIDEO_QP "OMX.QCOM.index.config.video.qp"
 #define OMX_QCOM_INDEX_PARAM_VIDEO_SAR "OMX.QCOM.index.param.video.sar"
 
+#define OMX_QTI_INDEX_CONFIG_COLOR_ASPECTS "OMX.google.android.index.describeColorAspects"
+#define OMX_QTI_INDEX_PARAM_VIDEO_CLIENT_EXTRADATA "OMX.QTI.index.param.client.extradata"
+
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,
     QOMX_VIDEO_FRAME_PACKING_COLUMN_INTERLEAVE = 1,
@@ -1843,6 +1884,15 @@ typedef struct QOMX_VIDEO_BATCHSIZETYPE {
     OMX_U32 nPortIndex;
     OMX_U32 nBatchSize;
 } QOMX_VIDEO_BATCHSIZETYPE;
+
+typedef struct QOMX_VIDEO_CLIENT_EXTRADATA {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nFd;
+    OMX_U32 nExtradataAllocSize;
+    OMX_U32 nExtradataSize;
+} QOMX_VIDEO_CLIENT_EXTRADATATYPE;
 
 #ifdef __cplusplus
 }
