@@ -3667,6 +3667,12 @@ bool venc_dev::venc_fill_buf(void *buffer, void *pmem_data_buf,unsigned index,un
     buf.length = num_output_planes;
     buf.flags = 0;
 
+    if (venc_handle->is_secure_session()) {
+        output_metabuffer *meta_buf = (output_metabuffer *)(bufhdr->pBuffer);
+        native_handle_t *handle_t = meta_buf->nh;
+        plane[0].length = handle_t->data[3];
+    }
+
     if (mBatchSize) {
         // Should always mark first buffer as DEFER, since 0 % anything is 0, just offset by 1
         // This results in the first batch being of size mBatchSize + 1, but thats good because
