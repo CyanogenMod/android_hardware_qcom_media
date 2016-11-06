@@ -791,6 +791,21 @@ class omx_vdec: public qc_omx_component
         nativebuffer native_buffer[MAX_NUM_INPUT_OUTPUT_BUFFERS];
 #endif
 
+        class auto_lock {
+            public:
+                auto_lock(pthread_mutex_t *lock)
+                    : mLock(lock) {
+                        if (mLock)
+                            pthread_mutex_lock(mLock);
+                    }
+                ~auto_lock() {
+                    if (mLock)
+                        pthread_mutex_unlock(mLock);
+                }
+            private:
+                pthread_mutex_t *mLock;
+        };
+
         //*************************************************************
         //*******************MEMBER VARIABLES *************************
         //*************************************************************
@@ -910,6 +925,7 @@ class omx_vdec: public qc_omx_component
         OMX_U32 m_fps_received;
         float   m_fps_prev;
         bool m_drc_enable;
+        bool m_dfrc_enable;
 
         struct vdec_allocatorproperty op_buf_rcnfg;
         bool in_reconfig;
