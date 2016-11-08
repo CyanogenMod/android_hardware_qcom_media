@@ -679,14 +679,12 @@ bool venc_dev::handle_input_extradata(void *buffer, int fd)
             p_extra = (OMX_OTHER_EXTRADATATYPE *)((char *)p_extra + p_extra->nSize);
         }
 
-#ifdef _VQZIP_
         data->nSize = (sizeof(OMX_OTHER_EXTRADATATYPE) +  sizeof(struct VQZipStats) + 3)&(~3);
         data->nVersion.nVersion = OMX_SPEC_VERSION;
         data->nPortIndex = 0;
         data->eType = (OMX_EXTRADATATYPE)MSM_VIDC_EXTRADATA_YUVSTATS_INFO;
         data->nDataSize = sizeof(struct VQZipStats);
         vqzip.fill_stats_data((void*)pVirt, (void*) data->data);
-#endif
 
         data = (OMX_OTHER_EXTRADATATYPE *)((char *)data + data->nSize);
 
@@ -3615,12 +3613,10 @@ bool venc_dev::venc_set_vqzip_sei_type(OMX_BOOL enable)
     if (ioctl(m_nDriver_fd, VIDIOC_S_CTRL, &yuvstats_control) < 0) {
         DEBUG_PRINT_HIGH("Non-Fatal: Request to set YUVSTATS failed");
     }
-#ifdef _VQZIP_
     vqzip.pConfig.nWidth = ALIGN(m_sVenc_cfg.input_width, 16);
     vqzip.pConfig.nHeight = ALIGN(m_sVenc_cfg.input_height, 16);
     vqzip.init();
     vqzip_sei_info.enabled = true;
-#endif
 
     return true;
 }
@@ -6477,7 +6473,6 @@ int venc_dev::BatchInfo::getTimeStampAt(native_handle_t *hnd, int index) {
     return size;
 }
 
-#ifdef _VQZIP_
 venc_dev::venc_dev_vqzip::venc_dev_vqzip()
 {
     mLibHandle = NULL;
@@ -6559,7 +6554,6 @@ venc_dev::venc_dev_vqzip::~venc_dev_vqzip()
     mLibHandle = NULL;
     pthread_mutex_destroy(&lock);
 }
-#endif
 
 encExtradata::encExtradata(class omx_venc *venc_handle)
 {
