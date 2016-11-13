@@ -96,6 +96,11 @@ LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_SHARED_LIBRARY)
 
+#
+# Disabled vidc tests
+#
+ifneq (,)
+
 # ---------------------------------------------------------------------------------
 # 			Make the apps-test (mm-vdec-omx-test)
 # ---------------------------------------------------------------------------------
@@ -139,6 +144,8 @@ LOCAL_SRC_FILES                 += test/decoder_driver_test.c
 LOCAL_ADDITIONAL_DEPENDENCIES  := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ/usr
 
 include $(BUILD_EXECUTABLE)
+
+endif
 
 endif #BUILD_TINY_ANDROID
 

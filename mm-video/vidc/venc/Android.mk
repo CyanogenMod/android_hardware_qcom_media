@@ -78,6 +78,11 @@ LOCAL_SRC_FILES   += ../common/src/extra_data_handler.cpp
 
 include $(BUILD_SHARED_LIBRARY)
 
+#
+# Disabled vidc tests
+#
+ifneq (,)
+
 # -----------------------------------------------------------------------------
 #  #                       Make the apps-test (mm-venc-omx-test720p)
 # -----------------------------------------------------------------------------
@@ -124,6 +129,8 @@ LOCAL_SRC_FILES                 := test/video_encoder_test.c
 LOCAL_SRC_FILES                 += test/queue.c
 
 include $(BUILD_EXECUTABLE)
+
+endif
 
 endif #BUILD_TINY_ANDROID
 
