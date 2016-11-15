@@ -1,5 +1,3 @@
-ifeq ($(call my-dir),$(call project-path-for,qcom-media))
-
 # TODO:  Find a better way to separate build configs for ADP vs non-ADP devices
 ifneq ($(TARGET_BOARD_AUTO),true)
   # for msm8996 targets, use the msm8996 directory, for all other targets
@@ -26,6 +24,4 @@ ifneq ($(TARGET_BOARD_AUTO),true)
   ifneq ($(filter msm8610 msm8226 msm8974 msm8960 msm8084 msm8952 msm8992 msm8994 msm8996,$(TARGET_BOARD_PLATFORM)),)
     include $(QCOM_MEDIA_ROOT)/libc2dcolorconvert/Android.mk
   endif
-endif
-
 endif
