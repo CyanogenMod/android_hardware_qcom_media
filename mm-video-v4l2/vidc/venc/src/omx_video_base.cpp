@@ -3490,6 +3490,10 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_proxy(OMX_IN OMX_HANDLETYPE  hComp,
             return OMX_ErrorBadParameter;
         }
         media_buffer = (LEGACY_CAM_METADATA_TYPE *)meta_buffer_hdr[nBufIndex].pBuffer;
+        if (media_buffer == NULL) {
+             DEBUG_PRINT_ERROR("ERROR: ETBProxy: meta buffer is NULL buffer[%p]", media_buffer);
+             return OMX_ErrorBadParameter;
+        }
         if ((media_buffer->buffer_type == LEGACY_CAM_SOURCE)
                 && buffer->nAllocLen != sizeof(LEGACY_CAM_METADATA_TYPE)) {
             DEBUG_PRINT_ERROR("Invalid metadata size expected(%u) v/s recieved(%zu)",
@@ -4696,6 +4700,10 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
     }
 
     media_buffer = (VideoGrallocMetadata *)buffer->pBuffer;
+    if (media_buffer == NULL) {
+         DEBUG_PRINT_ERROR("ERROR: empty_this_buffer_opaque: gralloc buffer is NULL buffer[%p]", media_buffer);
+         return OMX_ErrorBadParameter;
+    }
     if ((media_buffer->eType == LEGACY_CAM_SOURCE)
             && buffer->nAllocLen != sizeof(LEGACY_CAM_METADATA_TYPE)) {
         DEBUG_PRINT_ERROR("Invalid metadata size expected(%u) v/s recieved(%zu)",
@@ -4724,7 +4732,7 @@ OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,
     /*Enable following code once private handle color format is
       updated correctly*/
 
-    if (buffer->nFilledLen > 0) {
+    if (buffer->nFilledLen > 0 && handle) {
         if (c2d_opened && handle->format != c2d_conv.get_src_format()) {
             c2d_conv.close();
             c2d_opened = false;
