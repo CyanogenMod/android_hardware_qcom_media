@@ -2095,7 +2095,50 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                DEBUG_PRINT_LOW("get_config: OMX_QcomIndexConfigMaxHierPLayers");
                memcpy(pParam, &m_sMaxHPlayers, sizeof(m_sMaxHPlayers));
                break;
+           }
+       case OMX_QTIIndexConfigDescribeColorAspects:
+            {
+                VALIDATE_OMX_PARAM_DATA(configData, DescribeColorAspectsParams);
+                DescribeColorAspectsParams* pParam =
+                    reinterpret_cast<DescribeColorAspectsParams*>(configData);
+                DEBUG_PRINT_LOW("get_config: OMX_QTIIndexConfigDescribeColorAspects");
+                if (pParam->bRequestingDataSpace) {
+                    DEBUG_PRINT_ERROR("Does not handle dataspace request");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                if (pParam->bDataSpaceChanged == OMX_TRUE) {
+
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config (dataspace changed) Client says");
+                    // If the dataspace says RGB, recommend 601-limited;
+                    // since that is the destination colorspace that C2D or Venus will convert to.
+                    if (pParam->nPixelFormat == HAL_PIXEL_FORMAT_RGBA_8888) {
+                        DEBUG_PRINT_INFO("get_config (dataspace changed): ColorSpace: Recommend 601-limited for RGBA8888");
+                        pParam->sAspects.mPrimaries = ColorAspects::PrimariesBT601_6_625;
+                        pParam->sAspects.mRange = ColorAspects::RangeLimited;
+                        pParam->sAspects.mTransfer = ColorAspects::TransferSMPTE170M;
+                        pParam->sAspects.mMatrixCoeffs = ColorAspects::MatrixBT601_6;
+                    } else {
+                        // For IMPLEMENTATION_DEFINED (or anything else), stick to client's defaults.
+                        DEBUG_PRINT_INFO("get_config (dataspace changed): ColorSpace: use client-default for format=%x",
+                                pParam->nPixelFormat);
+                    }
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config (dataspace changed) recommended");
+                } else {
+                    memcpy(pParam, &m_sConfigColorAspects, sizeof(m_sConfigColorAspects));
+                    print_debug_color_aspects(&(pParam->sAspects), "get_config");
+                }
+                break;
             }
+#ifdef SUPPORT_CONFIG_INTRA_REFRESH
+       case OMX_IndexConfigAndroidIntraRefresh:
+           {
+               OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE* pParam =
+                   reinterpret_cast<OMX_VIDEO_CONFIG_ANDROID_INTRAREFRESHTYPE*>(configData);
+               DEBUG_PRINT_LOW("get_config: OMX_IndexConfigAndroidIntraRefresh");
+               memcpy(pParam, &m_sConfigIntraRefresh, sizeof(m_sConfigIntraRefresh));
+               break;
+           }
+#endif
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -2144,6 +2187,11 @@ OMX_ERRORTYPE  omx_video::get_extension_index(OMX_IN OMX_HANDLETYPE      hComp,
     if (!strncmp(paramName, "OMX.google.android.index.prependSPSPPSToIDRFrames",
             sizeof("OMX.google.android.index.prependSPSPPSToIDRFrames") - 1)) {
         *indexType = (OMX_INDEXTYPE)OMX_QcomIndexParamSequenceHeaderWithIDR;
+        return OMX_ErrorNone;
+    }
+    if (!strncmp(paramName, "OMX.google.android.index.describeColorAspects",
+            sizeof(OMX_QTI_INDEX_CONFIG_COLOR_ASPECTS) - 1)) {
+        *indexType = (OMX_INDEXTYPE)OMX_QTIIndexConfigDescribeColorAspects;
         return OMX_ErrorNone;
     }
     return OMX_ErrorNotImplemented;
@@ -2939,11 +2987,11 @@ OMX_ERRORTYPE  omx_video::allocate_input_buffer(
             //This should only be used for passing reference to source type and
             //secure handle fd struct native_handle_t*
             m_pInput_pmem[i].buffer = malloc(sizeof(OMX_U32) + sizeof(native_handle_t*));
+            (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
             if (m_pInput_pmem[i].buffer == NULL) {
                 DEBUG_PRINT_ERROR("%s: failed to allocate native-handle", __func__);
                 return OMX_ErrorInsufficientResources;
             }
-            (*bufferHdr)->nAllocLen = sizeof(OMX_U32) + sizeof(native_handle_t*);
         }
 
         (*bufferHdr)->pBuffer           = (OMX_U8 *)m_pInput_pmem[i].buffer;
@@ -3284,17 +3332,15 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             m_sInPortDef.bPopulated = OMX_FALSE;
 
             /*Free the Buffer Header*/
-            if (release_input_done()
-#ifdef _ANDROID_ICS_
-                    && !meta_mode_enable
-#endif
-               ) {
+            if (release_input_done()) {
                 input_use_buffer = false;
-                if (m_inp_mem_ptr) {
+                // "m_inp_mem_ptr" may point to "meta_buffer_hdr" in some modes,
+                // in which case, it was not explicitly allocated
+                if (m_inp_mem_ptr && m_inp_mem_ptr != meta_buffer_hdr) {
                     DEBUG_PRINT_LOW("Freeing m_inp_mem_ptr");
                     free (m_inp_mem_ptr);
-                    m_inp_mem_ptr = NULL;
                 }
+                m_inp_mem_ptr = NULL;
                 if (m_pInput_pmem) {
                     DEBUG_PRINT_LOW("Freeing m_pInput_pmem");
                     free(m_pInput_pmem);
@@ -4401,10 +4447,7 @@ OMX_ERRORTYPE omx_video::get_supported_profile_level(OMX_VIDEO_PARAM_PROFILELEVE
         } else if (m_sOutPortDef.format.video.eCompressionFormat == OMX_VIDEO_CodingHEVC) {
             if (profileLevelType->nProfileIndex == 0) {
                 profileLevelType->eProfile =  OMX_VIDEO_HEVCProfileMain;
-                profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel52;
-            } else if (profileLevelType->nProfileIndex == 1) {
-                profileLevelType->eProfile =  OMX_VIDEO_HEVCProfileMain10;
-                profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel52;
+                profileLevelType->eLevel   =  OMX_VIDEO_HEVCMainTierLevel51;
             } else {
                 DEBUG_PRINT_LOW("HEVC: get_parameter: OMX_IndexParamVideoProfileLevelQuerySupported nProfileIndex ret NoMore %u",
                 (unsigned int)profileLevelType->nProfileIndex);
@@ -4682,6 +4725,10 @@ bool omx_video::omx_c2d_conv::get_buffer_size(int port,unsigned int &buf_size)
         buf_size = bufferreq.size;
     }
     return ret;
+}
+void omx_video::print_debug_color_aspects(ColorAspects *aspects, const char *prefix) {
+    DEBUG_PRINT_HIGH("%s : Color aspects : Primaries = %d Range = %d Transfer = %d MatrixCoeffs = %d",
+            prefix, aspects->mPrimaries, aspects->mRange, aspects->mTransfer, aspects->mMatrixCoeffs);
 }
 
 OMX_ERRORTYPE  omx_video::empty_this_buffer_opaque(OMX_IN OMX_HANDLETYPE hComp,

@@ -48,6 +48,7 @@ IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <inttypes.h>
 #include <cstddef>
 #include <cutils/atomic.h>
+#include <qdMetaData.h>
 
 static ptrdiff_t x;
 
@@ -194,6 +195,13 @@ class VideoHeap : public MemoryHeapBase
 #define OMX_FRAMEPACK_EXTRADATA 0x00400000
 #define OMX_QP_EXTRADATA        0x00800000
 #define OMX_BITSINFO_EXTRADATA  0x01000000
+#define DRIVER_EXTRADATA_MASK   0x0000FFFF
+
+#define OMX_VUI_DISPLAY_INFO_EXTRADATA  0x08000000
+#define OMX_MPEG2_SEQDISP_INFO_EXTRADATA 0x10000000
+#define OMX_VPX_COLORSPACE_INFO_EXTRADATA  0x20000000
+#define OMX_VC1_SEQDISP_INFO_EXTRADATA  0x40000000
+#define OMX_DISPLAY_INFO_EXTRADATA  0x80000000
 #define DRIVER_EXTRADATA_MASK   0x0000FFFF
 
 #define OMX_INTERLACE_EXTRADATA_SIZE ((sizeof(OMX_OTHER_EXTRADATATYPE) +\
@@ -686,10 +694,16 @@ class omx_vdec: public qc_omx_component
         OMX_ERRORTYPE set_frame_rate(OMX_U64 numerator, OMX_U64 denominator);
         void handle_extradata_secure(OMX_BUFFERHEADERTYPE *p_buf_hdr);
         void handle_extradata(OMX_BUFFERHEADERTYPE *p_buf_hdr);
+        void convert_color_space_info(OMX_U32 primaries, OMX_U32 range,
+            OMX_U32 transfer, OMX_U32 matrix, ColorSpace_t *color_space,
+            ColorAspects *aspects);
+        void handle_color_space_info(void *data, unsigned int buf_index);
+        void set_colorspace_in_handle(ColorSpace_t color, unsigned int buf_index);
+        void print_debug_color_aspects(ColorAspects *aspects, const char *prefix);
         void print_debug_extradata(OMX_OTHER_EXTRADATATYPE *extra);
 #ifdef _MSM8974_
         void append_interlace_extradata(OMX_OTHER_EXTRADATATYPE *extra,
-                OMX_U32 interlaced_format_type, bool is_mbaff);
+                OMX_U32 interlaced_format_type);
         OMX_ERRORTYPE enable_extradata(OMX_U32 requested_extradata, bool is_internal,
                 bool enable = true);
         void append_frame_info_extradata(OMX_OTHER_EXTRADATATYPE *extra,
@@ -1008,6 +1022,8 @@ private:
         OMX_U32 m_reconfig_width;
         OMX_U32 m_reconfig_height;
         bool m_smoothstreaming_mode;
+        DescribeColorAspectsParams m_client_color_space;
+        DescribeColorAspectsParams m_internal_color_space;
         OMX_U32 m_smoothstreaming_width;
         OMX_U32 m_smoothstreaming_height;
         OMX_ERRORTYPE enable_smoothstreaming();
@@ -1167,6 +1183,59 @@ private:
 
         static OMX_ERRORTYPE describeColorFormat(OMX_PTR params);
 
+        class client_extradata_info {
+            private:
+                int fd;
+                OMX_U32 total_size;
+                OMX_U32 size;
+                void *vaddr;
+            public:
+                client_extradata_info() {
+                    fd = -1;
+                    size = 0;
+                    total_size = 0;
+                    vaddr = NULL;
+                }
+
+                void reset() {
+                    if (vaddr) {
+                        munmap(vaddr, total_size);
+                        vaddr = NULL;
+                    }
+                    if (fd != -1) {
+                        close(fd);
+                        fd = -1;
+                    }
+                }
+
+                ~client_extradata_info() {
+                    reset();
+                }
+
+                bool set_extradata_info(int fd, OMX_U32 total_size, OMX_U32 size) {
+                    reset();
+                    this->fd = fd;
+                    this->size = size;
+                    this->total_size = total_size;
+                    vaddr = (OMX_U8*)mmap(0, total_size,
+                            PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+                    if (vaddr == MAP_FAILED) {
+                        vaddr = NULL;
+                        reset();
+                        return false;
+                    }
+                    return true;
+                }
+
+                OMX_U8 *getBase() const {
+                    return (OMX_U8 *)vaddr;
+                }
+
+                OMX_U32 getSize() const {
+                    return size;
+                }
+        };
+        client_extradata_info m_client_extradata_info;
 };
 
 #ifdef _MSM8974_
