@@ -46,6 +46,29 @@ extern "C" {
 #include "OMX_Core.h"
 #include "OMX_Video.h"
 
+
+/**
+ * These MACROS used by Camera and Video to decide buffer count.
+ * This is to avoid mismatch of buffer count between Camera and Video.
+ * In Meta mode, read this count as buffer count in Camera and Header
+ * count in Video.
+ * 1) Number of buffers in Non-DCVS mode.
+ * 2) DCVS resolution.
+ * 3) Buffer count when Current resolution is greater than DCVS resolution
+ * defined in 2)
+ */
+
+#define OMX_VIDEO_MIN_CAMERA_BUFFERS 9
+#define OMX_VIDEO_ENC_DCVS_RESOLUTION 3840 * 2160
+#define OMX_VIDEO_MIN_CAMERA_BUFFERS_DCVS 11
+
+/**
+ * This count indicates the number of Ints in the legacy Camera payload
+ * used for HAL1
+ */
+
+#define VIDEO_METADATA_NUM_COMMON_INTS 1
+
 /**
  * This extension is used to register mapping of a virtual
  * address to a physical address. This extension is a parameter
@@ -545,6 +568,12 @@ enum OMX_QCOM_EXTN_INDEXTYPE
 
     /* Set Low Latency Mode */
     OMX_QTIIndexParamLowLatencyMode = 0x7F000058,
+
+    /* OMX.google.android.index.allocateNativeHandle */
+    OMX_GoogleAndroidIndexAllocateNativeHandle = 0x7F00005D,
+
+    /* Enable client extradata */
+    OMX_QTIIndexParamVideoClientExtradata = 0x7F000060,
 };
 
 /**
@@ -1579,6 +1608,7 @@ typedef struct QOMX_VIDEO_CUSTOM_BUFFERSIZE {
 #define OMX_QTI_INDEX_PARAM_VIDEO_LOW_LATENCY "OMX.QTI.index.param.video.LowLatency"
 
 #define OMX_QTI_INDEX_PARAM_VIDEO_PREFER_ADAPTIVE_PLAYBACK "OMX.QTI.index.param.video.PreferAdaptivePlayback"
+#define OMX_QTI_INDEX_PARAM_VIDEO_CLIENT_EXTRADATA "OMX.QTI.index.param.client.extradata"
 
 typedef enum {
     QOMX_VIDEO_FRAME_PACKING_CHECKERBOARD = 0,
@@ -1861,6 +1891,15 @@ typedef struct QOMX_VIDEO_BATCHSIZETYPE {
     OMX_U32 nPortIndex;
     OMX_U32 nBatchSize;
 } QOMX_VIDEO_BATCHSIZETYPE;
+
+typedef struct QOMX_VIDEO_CLIENT_EXTRADATA {
+    OMX_U32 nSize;
+    OMX_VERSIONTYPE nVersion;
+    OMX_U32 nPortIndex;
+    OMX_U32 nFd;
+    OMX_U32 nExtradataAllocSize;
+    OMX_U32 nExtradataSize;
+} QOMX_VIDEO_CLIENT_EXTRADATATYPE;
 
 #ifdef __cplusplus
 }
