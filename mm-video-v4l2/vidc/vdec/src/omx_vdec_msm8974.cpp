@@ -5548,6 +5548,10 @@ OMX_ERRORTYPE  omx_vdec::allocate_input_buffer(
         DEBUG_PRINT_LOW("Buffer address %p of pmem",*bufferHdr);
         if (allocate_native_handle) {
             native_handle_t *nh = native_handle_create(1 /*numFds*/, 0 /*numInts*/);
+            if (nh == NULL) {
+                DEBUG_PRINT_ERROR("ERROR:Native handle create fails");
+                return OMX_ErrorInsufficientResources;
+            }
             nh->data[0] = drv_ctx.ptr_inputbuffer[i].pmem_fd;
             input->pBuffer = (OMX_U8 *)nh;
         } else if (secure_mode) {

@@ -2994,7 +2994,8 @@ bool omx_vdec::post_event(unsigned long p1,
     pthread_mutex_lock(&m_lock);
 
     if (id == OMX_COMPONENT_GENERATE_FTB ||
-        id == OMX_COMPONENT_GENERATE_FBD)
+        id == OMX_COMPONENT_GENERATE_FBD ||
+        id == OMX_COMPONENT_GENERATE_PORT_RECONFIG)
     {
         m_ftb_q.insert_entry(p1,p2,id);
     }

@@ -2825,6 +2825,10 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                 } else if (meta_buf->buffer_type == kMetadataBufferTypeGrallocSource) {
                     VideoGrallocMetadata *meta_buf = (VideoGrallocMetadata *)bufhdr->pBuffer;
                     private_handle_t *handle = (private_handle_t *)meta_buf->pHandle;
+                    if (handle == NULL) {
+                        DEBUG_PRINT_ERROR("ERROR: venc_etb: Gralloc metadata buffer is NULL");
+                        return false;
+                    }
                     if (!streaming[OUTPUT_PORT] && handle) {
                         int color_space = 0;
                         // Moment of truth... actual colorspace is known here..
@@ -2920,12 +2924,11 @@ bool venc_dev::venc_empty_buf(void *buffer, void *pmem_data_buf, unsigned index,
                             return false;
                         }*/
                     }
-
                     fd = handle->fd;
                     plane.data_offset = 0;
                     plane.length = handle->size;
                     plane.bytesused = handle->size;
-                        DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
+                    DEBUG_PRINT_LOW("venc_empty_buf: Opaque camera buf: fd = %d "
                                 ": filled %d of %d", fd, plane.bytesused, plane.length);
                 }
             } else {
