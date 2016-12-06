@@ -470,6 +470,13 @@ OMX_ERRORTYPE omx_venc::component_init(OMX_STRING role)
     m_sHierLayers.nNumLayers = 0;
     m_sHierLayers.eHierarchicalCodingType = QOMX_HIERARCHICALCODING_P;
 
+    memset(&m_sParamTemporalLayers, 0x0, sizeof(OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE));
+    OMX_INIT_STRUCT(&m_sParamTemporalLayers, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
+    m_sParamTemporalLayers.eSupportedPatterns = OMX_VIDEO_AndroidTemporalLayeringPatternAndroid;
+
+    memset(&m_sConfigTemporalLayers, 0x0, sizeof(OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE));
+    OMX_INIT_STRUCT(&m_sConfigTemporalLayers, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE);
+
     m_state                   = OMX_StateLoaded;
     m_sExtraData = 0;
 
@@ -603,6 +610,12 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 (unsigned int)portDefn->nBufferCountActual, (unsigned int)MAX_NUM_INPUT_BUFFERS);
                         return OMX_ErrorUnsupportedSetting;
                     }
+                    if (m_inp_mem_ptr &&
+                            (portDefn->nBufferCountActual != m_sInPortDef.nBufferCountActual ||
+                            portDefn->nBufferSize != m_sInPortDef.nBufferSize)) {
+                        DEBUG_PRINT_ERROR("ERROR: (In_PORT) buffer count/size can change only if port is unallocated !");
+                        return OMX_ErrorInvalidState;
+                    }
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
                         DEBUG_PRINT_ERROR("ERROR: (In_PORT) Min buffers (%u) > actual count (%u)",
                                 (unsigned int)portDefn->nBufferCountMin, (unsigned int)portDefn->nBufferCountActual);
@@ -657,6 +670,13 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                                 (unsigned int)portDefn->nBufferCountActual, (unsigned int)MAX_NUM_OUTPUT_BUFFERS);
                         return OMX_ErrorUnsupportedSetting;
                     }
+                    if (m_out_mem_ptr &&
+                            (portDefn->nBufferCountActual != m_sOutPortDef.nBufferCountActual ||
+                            portDefn->nBufferSize != m_sOutPortDef.nBufferSize)) {
+                        DEBUG_PRINT_ERROR("ERROR: (Out_PORT) buffer count/size can change only if port is unallocated !");
+                        return OMX_ErrorInvalidState;
+                    }
+
                     if (portDefn->nBufferCountMin > portDefn->nBufferCountActual) {
                         DEBUG_PRINT_ERROR("ERROR: (Out_PORT) Min buffers (%u) > actual count (%u)",
                                 (unsigned int)portDefn->nBufferCountMin, (unsigned int)portDefn->nBufferCountActual);
@@ -1477,6 +1497,26 @@ OMX_ERRORTYPE  omx_venc::set_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                 }
                 break;
             }
+        case OMX_IndexParamAndroidVideoTemporalLayering:
+            {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
+                if (!handle->venc_set_param(paramData,
+                        (OMX_INDEXTYPE)OMX_IndexParamAndroidVideoTemporalLayering)) {
+                    DEBUG_PRINT_ERROR("Failed to configure temporal layers");
+                    return OMX_ErrorUnsupportedSetting;
+                }
+                // save the actual configuration applied
+                memcpy(&m_sParamTemporalLayers, paramData, sizeof(m_sParamTemporalLayers));
+                // keep the config data in sync
+                m_sConfigTemporalLayers.ePattern = m_sParamTemporalLayers.ePattern;
+                m_sConfigTemporalLayers.nBLayerCountActual = m_sParamTemporalLayers.nBLayerCountActual;
+                m_sConfigTemporalLayers.nPLayerCountActual = m_sParamTemporalLayers.nPLayerCountActual;
+                m_sConfigTemporalLayers.bBitrateRatiosSpecified = m_sParamTemporalLayers.bBitrateRatiosSpecified;
+                memcpy(&m_sConfigTemporalLayers.nBitrateRatios[0],
+                        &m_sParamTemporalLayers.nBitrateRatios[0],
+                        OMX_VIDEO_ANDROID_MAXTEMPORALLAYERS * sizeof(OMX_U32));
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -2072,6 +2112,11 @@ bool omx_venc::dev_get_peak_bitrate(OMX_U32 *peakbitrate)
     DEBUG_PRINT_ERROR("Get peak bitrate is not supported");
     return false;
 #endif
+}
+
+bool omx_venc::dev_get_temporal_layer_caps(OMX_U32 *nMaxLayers,
+        OMX_U32 *nMaxBLayers) {
+    return handle->venc_get_temporal_layer_caps(nMaxLayers, nMaxBLayers);
 }
 
 bool omx_venc::dev_loaded_start()

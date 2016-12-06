@@ -1910,6 +1910,19 @@ OMX_ERRORTYPE  omx_video::get_parameter(OMX_IN OMX_HANDLETYPE     hComp,
                      memcpy(initqp, &m_sParamInitqp, sizeof(m_sParamInitqp));
                 break;
             }
+        case OMX_IndexParamAndroidVideoTemporalLayering:
+            {
+                VALIDATE_OMX_PARAM_DATA(paramData, OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE);
+                OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE *pLayerInfo =
+                        reinterpret_cast<OMX_VIDEO_PARAM_ANDROID_TEMPORALLAYERINGTYPE*>(paramData);
+                if (!dev_get_temporal_layer_caps(&m_sParamTemporalLayers.nLayerCountMax,
+                        &m_sParamTemporalLayers.nBLayerCountMax)) {
+                    DEBUG_PRINT_ERROR("Failed to get temporal layer capabilities");
+                    eRet = OMX_ErrorHardware;
+                }
+                memcpy(pLayerInfo, &m_sParamTemporalLayers, sizeof(m_sParamTemporalLayers));
+                break;
+            }
         case OMX_IndexParamVideoSliceFMO:
         default:
             {
@@ -2042,6 +2055,14 @@ OMX_ERRORTYPE  omx_video::get_config(OMX_IN OMX_HANDLETYPE      hComp,
                memcpy(pParam, &m_sConfigIntraRefresh, sizeof(m_sConfigIntraRefresh));
                break;
            }
+        case OMX_IndexParamAndroidVideoTemporalLayering:
+            {
+                VALIDATE_OMX_PARAM_DATA(configData, OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE);
+                OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *layerConfig =
+                        (OMX_VIDEO_CONFIG_ANDROID_TEMPORALLAYERINGTYPE *)configData;
+                memcpy(configData, &m_sConfigTemporalLayers, sizeof(m_sConfigTemporalLayers));
+                break;
+            }
         default:
             DEBUG_PRINT_ERROR("ERROR: unsupported index %d", (int) configIndex);
             return OMX_ErrorUnsupportedIndex;
@@ -3220,17 +3241,15 @@ OMX_ERRORTYPE  omx_video::free_buffer(OMX_IN OMX_HANDLETYPE         hComp,
             m_sInPortDef.bPopulated = OMX_FALSE;
 
             /*Free the Buffer Header*/
-            if (release_input_done()
-#ifdef _ANDROID_ICS_
-                    && !meta_mode_enable
-#endif
-               ) {
+            if (release_input_done()) {
                 input_use_buffer = false;
-                if (m_inp_mem_ptr) {
+                // "m_inp_mem_ptr" may point to "meta_buffer_hdr" in some modes,
+                // in which case, it was not explicitly allocated
+                if (m_inp_mem_ptr && m_inp_mem_ptr != meta_buffer_hdr) {
                     DEBUG_PRINT_LOW("Freeing m_inp_mem_ptr");
                     free (m_inp_mem_ptr);
-                    m_inp_mem_ptr = NULL;
                 }
+                m_inp_mem_ptr = NULL;
                 if (m_pInput_pmem) {
                     DEBUG_PRINT_LOW("Freeing m_pInput_pmem");
                     free(m_pInput_pmem);
